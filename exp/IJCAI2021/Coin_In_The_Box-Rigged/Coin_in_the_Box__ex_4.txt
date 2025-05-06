@@ -1,0 +1,40 @@
+%Execution line: make && bin/efp.out exp/IJCAI2021/Coin_In_The_Box-Rigged/Coin_in_the_Box__pl_2.txt -bis PT -attitudes -debug -e shout
+
+fluent tails;
+
+action shout;
+action peek;
+
+agent l,m,r,s,c;
+
+has_attitude l wrt c f_trusty;
+has_attitude m wrt c f_mistrusty;
+has_attitude s wrt c f_untrusty;
+
+executable peek;
+peek determines -tails;
+r aware_of peek;
+s aware_of peek;
+l observes peek;
+m observes peek;
+%c observes peek;
+
+executable shout;
+shout announces tails;
+c executes shout;
+l observes shout;
+m observes shout;
+r aware_of shout;
+s observes shout;
+c observes shout;
+
+
+
+
+
+initially C([l,m,r,s,c], B(c,tails) | B(c,(-tails)));
+initially tails;
+
+% 2 actions
+goal B(l,tails);
+

@@ -1,0 +1,56 @@
+fluent tiger_left, wealth, at_left_a, at_left_b;
+
+action move_left_b, move_left_a_b, move_right_b, move_right_a_b, open_right_a, open_left_a, open_right_b, open_left_b, look_b, listen_a;
+
+agent a,b;
+
+executable move_left_b if B(b, -at_left_b), -at_left_b;
+move_left_b causes at_left_b if -at_left_b;
+b observes move_left_b; 
+a observes move_left_b;
+
+executable move_right_b if B(b, at_left_b), at_left_b;
+move_right_b causes -at_left_b if at_left_b;
+b observes move_right_b;
+a observes move_right_b;
+
+executable move_left_a_b if B(a, -at_left_a), B(a, -at_left_b), B(b, -at_left_a), B(b, -at_left_b), -at_left_a, -at_left_b; 
+move_left_a_b causes at_left_a, at_left_b;
+a observes move_left_a_b;
+b observes move_left_a_b;
+
+executable move_right_a_b if B(a, at_left_a), B(a, at_left_b), B(b, at_left_a), B(b, at_left_b), at_left_a, at_left_b; 
+move_right_a_b causes -at_left_a, -at_left_b;
+a observes move_right_a_b;
+b observes move_right_a_b;
+
+executable open_right_a if B(a, -at_left_a), B(a, tiger_left), -at_left_a, tiger_left;
+open_right_a causes wealth if tiger_left;
+a observes open_right_a;
+
+executable open_right_b if B(b, -at_left_b), B(b, tiger_left), -at_left_b, tiger_left;
+open_right_b causes wealth if tiger_left;
+b observes open_right_b;
+
+executable open_left_a if B(a, at_left_a), B(a, -tiger_left), at_left_a;
+open_left_a causes wealth if -tiger_left;
+a observes open_left_a;
+
+executable open_left_b if B(b, at_left_b), B(b, -tiger_left), at_left_b;
+open_left_b causes wealth if -tiger_left;
+b observes open_left_b;
+
+look_b determines at_left_b;
+b observes look_b;
+
+listen_a determines tiger_left;
+a observes listen_a;
+
+initially -wealth, tiger_left, -at_left_a, -at_left_b;
+initially C([a,b],-wealth);
+initially C([a,b],-at_left_a);
+initially C([a,b],-at_left_b);
+
+goal wealth;
+
+

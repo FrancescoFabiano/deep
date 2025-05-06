@@ -1,0 +1,58 @@
+Selective Communication:
+
+Let a, b, and c be three agents in a corridor of four rooms (i.e., p_1, p_2, p_3, and p_4 from left to right). The agents can move from a room to a contiguous room. When an agent tells somethings in a room, all the agents who are in the same room or in the contiguous rooms will hear what was communicated. For example, if agent a expresses his knowledge about q in room p_2, agents in rooms p_1, p_2, and p_3 will come to know it.  
+
+We consider the problem where agents a, b, and c are initially in rooms p_1, p_2, and p_3, respectively. Agent a has to find out the truth value of fluent q and shares that information with only agent c. Moreover, agent a can sense the truth value of q when in p_2.       
+
+Encoding:
+The set of fluents are defined as: 
+fluents q, at(1), at(2), at(3), at(4);
+where fluent at(X) (1<=X<=4) expresses that agent a is currently in room p_X.
+ 
+The set of agents are defined as:
+agents a, b, c;
+
+The set of actions are defined as:
+actions right, left, sense, shout(1), shout(2), shout(3), shout(4);
+
+Of those actions, the ontic actions are right and left that affects the location of agent a in the obvious way. Specifically, their executable conditions are:  
+executable right if -at(4)
+executable left if -at(1), 
+and theirs affections are:
+right causes at(Y+1), -at(Y) if at(Y) for 1<= Y <= 3;
+left causes at(Y-1), -at(Y) if at(Y) for 2 <= Y <= 4; 
+The movement of agent a between rooms will be observable by all agents (i.e., 
+A observes right; 
+A observes left;
+where A \in \{a, b, c\}.
+
+The only sensing action is sense that determines q and be observable by only agent a. Specifically,
+executable sense if B(a, at(2)), at(2);
+sense determines q;
+a observes sense;
+
+There are four announcement actions shout(X) where 1 <= X <= 4, and shout(X) represents that agent a is sharing his knowledge about q in room X. The shout(X) action is executable if agent a already knows about the truth value of q and agent is currently in room p_X. Moreover, shout(X) is observable by agents in the contiguous rooms with p_X. For example,
+executable shout(4) if B(a, q), at(4);
+shout(4) announces q;
+A observes shout(4);
+where A \in \{a,c\}.
+
+The initial state is defined as:
+initially at(1), -at(2), -at(3), -at(4), q;
+initially C([a,b,c], at(1));
+initially C([a,b,c], -at(2));
+initially C([a,b,c], -at(3));
+initially C([a,b,c], -at(4));
+
+where the last four statements mean all agents initially know that agent is currently at room 1;
+
+The goal is declared as:
+goal B(c,q);
+goal (-B(b,q));
+where the former and latter statements state that--agent c knows about the truth value of q, but agent b does not know. 
+
+
+  
+
+
+

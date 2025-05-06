@@ -1,0 +1,101 @@
+# Prerequisites
+*.d
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+build/
+
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+*.smod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+bin/
+
+# Project
+EFP_ICAPS_old/nbproject/
+nbproject/
+readme_old
+.vscode/
+compile_commands.json
+.idea/
+.idea/*
+.idea_original/
+
+# Doxygen
+Doxygen/Docs/
+
+# Out files
+out/
+*.tmp
+callgrind.out*
+
+#Old planner
+EFP_ICAPS_old/cpa+
+EFP_ICAPS_old/built_date
+EFP_ICAPS_old/bison.c
+EFP_ICAPS_old/lcp.output
+EFP_ICAPS_old/lcp.tab.c
+EFP_ICAPS_old/lcp.tab.h
+EFP_ICAPS_old/lex.c
+EFP_ICAPS_old/lex.yy.c
+EFP_ICAPS_old/tok.h
+
+
+#Other files
+
+#Results
+results/
+.idea_original/tools/External Tools.xml
+.idea/workspace.xml
+.idea_original/customTargets.xml
+.idea_original/EFP.iml
+.idea_original/misc.xml
+.idea_original/modules.xml
+.idea_original/vcs.xml
+.idea_original/workspace.xml
+exp/.DS_Store
+exp/ICAPS20/.DS_Store
+IDEA_ORIGINAL/customTargets.xml
+IDEA_ORIGINAL/EFP.iml
+IDEA_ORIGINAL/misc.xml
+IDEA_ORIGINAL/modules.xml
+IDEA_ORIGINAL/vcs.xml
+IDEA_ORIGINAL/workspace.xml
+.DS_Store
+.idea/workspace.xml
+.idea_original/customTargets.xml
+.idea_original/EFP.iml
+.idea_original/misc.xml
+.idea_original/modules.xml
+.idea_original/vcs.xml
+.idea_original/workspace.xml
+.idea/workspace.xml
+.idea_original/customTargets.xml
+.idea_original/EFP.iml
+.idea_original/misc.xml
+.idea_original/modules.xml
+.idea_original/vcs.xml
+.idea_original/workspace.xml

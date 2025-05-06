@@ -1,0 +1,30 @@
+fluent i,j;
+action do_i, do_j, undo_j, sense_j;
+
+agent a,b,c;
+
+executable do_i;
+do_i causes -i;
+a observes do_i;
+b observes do_i;
+
+executable do_j;
+do_j causes -j;
+%a observes do_j;
+c observes do_j;
+
+executable undo_j;
+undo_j causes j;
+%a observes undo_j;
+c observes undo_j;
+
+executable sense_j;
+sense_j determines j;
+a observes sense_j;
+%c observes sense_j;
+b aware_of sense_j;
+
+initially i,j;
+initially C([a,b,c], i);
+
+goal B(a, -i);

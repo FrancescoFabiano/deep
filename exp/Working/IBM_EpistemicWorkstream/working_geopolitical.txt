@@ -1,0 +1,153 @@
+%*****FLUENTS DECLARATION*****%
+
+%%%%Fluents that describe possible properties of the agents (each fluent can be true or false)%%%%
+fluent pacifist_a, pacifist_b, 	pacifist_c; 	%This fluents describe whether an agent is pacifist or not
+fluent has_nuke_a, has_nuke_b, 	has_nuke_c;		%This fluents describe whether an agent has nuclear weapons or not
+fluent has_oil_a,  has_oil_b, 	has_oil_c;		%This fluents describe whether an agent has oil or not
+fluent is_rich_a,  is_rich_b, 	is_rich_c;		%This fluents describe whether an agent is rich or not
+fluent allies_a_b, allies_a_c, 	allies_b_c;		%This fluents describe whether two agents are allied or not
+
+%%%%Fluents that describe possible properties of the world (each fluent can be true or false)%%%%
+fluent declared_war; 							%This fluents describe whether during the meeting war has been declared
+
+
+
+
+%*****ACTIONS DECLARATION*****%
+
+%%%%Actions that describe what the agents can do. We will explore ore in detail each action when we describe each agent%%%%
+action public_pact_a_b, public_pact_b_c;	%This actions establish an agreement between the two agent and let know all the other agents about this agreement
+action secret_pact_a_b, secret_pact_b_c;	%This actions establish an agreement between the two agent without letting the other agents know
+action check_oil_a_b;						%This action allows "a" to check if "b" has oil
+action destroy_nukes_a;						%This action allows "a" to dismantle the nukes
+action war_declaration;						%This action start the war
+
+
+
+
+%*****AGENT INITIAL DESCRIPTION*****%
+%%%%The declaration of each agent's initial status along with the actions she can perform%%%%
+agents a,b,c;
+
+
+%%%Agent "a" is not pacifist, has nuke, is rich, does not have oil and is not allied with anyone (Everybody ("b","c") knows these information).%%%
+%%Initial Description%%
+initially C([a,b,c],-pacifist_a);
+initially C([a,b,c],has_nuke_a);
+initially C([a,b,c],is_rich_a);
+initially C([a,b,c],-has_oil_a);
+initially C([a,b,c],-allies_a_b);
+initially C([a,b,c],-allies_a_c);
+
+%%Goals%%
+goal B(a,has_oil_a); %Agent "a" wants to know to have oil
+
+%%Possible Actions that "a" can perform%%
+
+%This action defines the secret trade between "a" and "b". During this trade "a" buys oil from "b" and only "c" does not know that this trade happened%
+%Executability Conditions
+executable secret_pact_a_b if B(b, B(a, allies_b_c));	%Executable if "b" knows that "a" knows that "b" and "c" are allied ("b" wants protection), and
+executable secret_pact_a_b if B(a, has_oil_b); 			%			if "a" knows that "b" has oil, and
+executable secret_pact_a_b if B(b, is_rich_a); 			%			if "b" knows that "a" has money to buy the oil
+%Observability Relation
+a observes secret_pact_a_b; %Agent "a" knows about the execution of the action and its consequences
+b observes secret_pact_a_b; %Agent "b" knows about the execution of the action and its consequences
+%Effects
+secret_pact_a_b causes allies_a_b;	% The action set "allies_a_b" to true	-- Now "a" and "b" are allied											
+secret_pact_a_b causes has_oil_a;	% The action set "has_oil_a" to true	-- Now "a" has the oil	
+secret_pact_a_b causes is_rich_b;	% The action set "is_rich_b" to true	-- Now "b" is a rich state	
+
+%This action defines the public trade between "a" and "b". During this trade "a" buys oil from "b" and only "c" knows that this trade happened%
+%Executability Conditions
+executable public_pact_a_b if B(b, B(a, allies_b_c));	%Executable if "b" knows that "a" knows that "b" and "c" are allied (b wants protection), and
+executable public_pact_a_b if B(a, has_oil_b); 			%			if "a" knows that "b" has oil, and
+executable public_pact_a_b if B(b, is_rich_a); 			%			if "b" knows that "a" has money to buy the oil
+%Observability Relation
+a observes public_pact_a_b; %Agent "a" knows about the execution of the action and its consequences
+b observes public_pact_a_b; %Agent "b" knows about the execution of the action and its consequences
+c observes public_pact_a_b; %Agent "c" knows about the execution of the action and its consequences
+%Effects
+public_pact_a_b causes allies_a_b;	% The action set "allies_a_b" to true 	-- Now "a" and "b" are allied										
+public_pact_a_b causes has_oil_a;	% The action set "has_oil_a" to true	-- Now "a" has the oil
+public_pact_a_b causes is_rich_b;	% The action set "is_rich_b" to true	-- Now "b" is a rich state	
+
+%This action allow "a" to check if "b" has oil. "c" will not interfere with "a" entering in "b" (to check for the presence of oil) only if "a" got rid of the nukes.%
+%Executability Conditions
+executable check_oil_a_b if B(c,-has_nuke_a); %Executable if "c" knows that "a" has no nukes
+%Observability Relations
+a observes check_oil_a_b; %Agent "a" knows about the execution of the action and its consequences
+b observes check_oil_a_b; %Agent "b" knows about the execution of the action and its consequences
+c aware_of check_oil_a_b; %Agent "c" knows about the execution of the action but not its results ("c" knows that "a" and "b" know)
+%Effects
+check_oil_a_b determines has_oil_b; % The action establish if "has_oil_b" is true -- Now "a" and "b" are know wheter "b" has oil or not	(in this instance "b" has oil)
+
+%This action defines makes so that "a" do not posses nukes anymore and let "b" and "c" know about this%
+executable destroy_nukes_a;
+%Observability Relations
+a observes destroy_nukes_a; %Agent "a" knows about the execution of the action and its consequences
+b observes destroy_nukes_a; %Agent "b" knows about the execution of the action and its consequences
+c observes destroy_nukes_a; %Agent "c" knows about the execution of the action and its consequences
+%Effects
+destroy_nukes_a causes -has_nuke_a;
+
+
+%%%Agent "b" is pacifist, does not have nuke, is not rich and is not allied with anyone (Everybody ("a","c") knows these information).%%%
+%%%			"b" has also oil but no one knows if it true or not, this info needs to be certified.%%%
+%%Initial Description%%
+initially C([a,b,c],pacifist_b);
+initially C([a,b,c],-has_nuke_b);
+initially C([a,b,c],-is_rich_b);
+initially C([a,b,c],-allies_b_c);
+
+%%Goals%%
+goal B(a,-war); %Agent "b" does not want the war
+
+%%Possible Actions that "b" can perform (the pact between "a" and "b" are not re-written)%%
+
+%This action defines the secret trade between "b" and "c". After this trade "c" will protect "a" from "c". Since the trade is secret "c" will not know about it%
+%Executability Conditions
+executable secret_pact_b_c if B(c,-allies_a_b); %Executable if "c" knows that "a" and "b" are not allied
+%Observability Relations
+b observes secret_pact_b_c; %Agent "a" knows about the execution of the action and its consequences
+c observes secret_pact_b_c; %Agent "b" knows about the execution of the action and its consequences
+%Effects
+secret_pact_b_c causes allies_b_c;
+
+%This action defines the public trade between "b" and "c". After this trade "c" will protect "a" from "c". Since the trade is public "c" knows about it%
+%Executability Conditions
+executable secret_pact_b_c if B(c,-allies_a_b); %Executable if "c" knows that "a" and "b" are not allied
+%Observability Relations
+a observes public_pact_b_c; %Agent "a" knows about the execution of the action and its consequences
+b observes public_pact_b_c; %Agent "b" knows about the execution of the action and its consequences
+c observes public_pact_b_c; %Agent "c" knows about the execution of the action and its consequences
+%Effects
+public_pact_b_c causes allies_b_c;
+
+
+
+%%Agent "c" is not pacifist, does not have nuke, is rich, has oil and is not allied with anyone (Everybody ("a","b") knows these information).
+%%Initial Description%%
+initially C([a,b,c],-pacifist_c);
+initially C([a,b,c],-has_nuke_c);
+initially C([a,b,c],is_rich_c);
+initially C([a,b,c],has_oil_c);
+
+%%Goals%%
+goal B(c,-allies_a_b); %Agent "c" does not want that "a" and "b" to be allied
+
+
+
+%%%%Other information%%%%
+initially C([a,b,c],-war); % Everyone knows that there is not war at the moment
+
+executable war_declaration if B(b, has_oil_c), has_oil_c;
+war_declaration causes war, has_oil_a;
+a observes war_declaration;
+b observes war_declaration;
+c observes war_declaration;
+
+%The real configuration of the world of the thing
+initially has_nuke_a, -pacifist_a, is_rich_a, -has_oil_a, -allies_a_b, -allies_a_c;
+initially pacifist_b, -has_nuke_b, -is_rich_b, -allies_b_c, has_oil_b;
+initially -pacifist_c, -has_nuke_c,is_rich_c, has_oil_c;
+initially -war;

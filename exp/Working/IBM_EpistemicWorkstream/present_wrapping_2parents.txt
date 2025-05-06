@@ -1,0 +1,81 @@
+%%Fluents that describe properties of the world
+fluent at_Father_PO1, 	at_Father_PO2,	at_Father_Home;
+fluent at_Gift_PO1,	at_Gift_PO2;
+fluent has_Father_Gift;
+fluent wrapped_Gift;
+
+
+
+%%Possible Actions
+action call_PO;
+action go_PO1, go_PO2, go_Home;
+action pickUp_PO1, pickUp_PO2;
+action wrap;
+action inform_mother;
+
+
+
+%%Agents
+agent father,mother;
+
+
+
+%%Action Specification
+
+executable call_PO;
+call_PO determines at_Gift_PO1 if at_Gift_PO1;
+call_PO determines at_Gift_PO2 if at_Gift_PO2;
+father observes call_PO;
+
+
+executable go_PO1 if -at_Father_PO1, B(father, at_Gift_PO1);
+go_PO1 causes at_Father_PO1;
+go_PO1 causes -at_Father_PO2;
+go_PO1 causes -at_Father_Home;
+father observes go_PO1;
+
+executable go_PO2 if -at_Father_PO2, B(father, at_Gift_PO2);
+go_PO2 causes at_Father_PO2;
+go_PO2 causes -at_Father_PO1;
+go_PO2 causes -at_Father_Home;
+father observes go_PO2;
+
+executable go_Home if -at_Father_Home;
+go_Home causes at_Father_Home;
+go_Home causes -at_Father_PO1;
+go_Home causes -at_Father_PO2;
+father observes go_Home;
+
+
+executable pickUp_PO1 if at_Father_PO1;
+pickUp_PO1 causes has_Father_Gift if at_Gift_PO1;
+pickUp_PO1 causes -at_Gift_PO1 if -at_Gift_PO1;
+father observes pickUp_PO1;
+
+executable pickUp_PO2 if at_Father_PO2;
+pickUp_PO2 causes has_Father_Gift if at_Gift_PO2;
+pickUp_PO2 causes -at_Gift_PO2 if -at_Gift_PO2;
+father observes pickUp_PO2;
+
+
+executable wrap if has_Father_Gift, at_Father_Home, -wrapped_Gift;
+wrap causes wrapped_Gift;
+father observes wrap;
+
+
+executable inform_mother if B(father, wrapped_Gift);
+inform_mother announces wrapped_Gift;
+father observes inform_mother;
+mother observes inform_mother;
+
+
+initially C([father,mother],-wrapped_Gift);
+initially C([father,mother],-has_Father_Gift);
+initially C([father,mother], at_Father_Home);
+initially C([father,mother], -at_Father_PO1);
+initially C([father,mother], -at_Father_PO2);
+
+
+initially -wrapped_Gift, -has_Father_Gift, -at_Gift_PO1, at_Gift_PO2, at_Father_Home, -at_Father_PO1, -at_Father_PO2;
+
+goal B(mother, wrapped_Gift);

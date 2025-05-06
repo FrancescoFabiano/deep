@@ -1,0 +1,72 @@
+fluent tiger_left, found, at_left_a, at_left_b,alive_a, alive_b;
+
+action move_left_b, move_left_a_b, move_right_b, move_right_a_b, open_right_a, open_left_a, open_right_b, open_left_b, look_b, listen_a;
+
+agent a,b;
+
+executable move_left_b if B(b, -at_left_b), -at_left_b, alive_b;
+move_left_b causes at_left_b if -at_left_b;
+b observes move_left_b; 
+%a observes move_left_b;
+
+executable move_right_b if B(b, at_left_b), at_left_b, alive_b;
+move_right_b causes -at_left_b if at_left_b;
+b observes move_right_b;
+%a observes move_right_b;
+
+executable move_left_a_b if B(a, -at_left_a), B(a, -at_left_b), B(b, -at_left_a), B(b, -at_left_b), -at_left_a, -at_left_b, alive_a, alive_b; 
+move_left_a_b causes at_left_a, at_left_b;
+%a observes move_left_a_b;
+b observes move_left_a_b;
+
+executable move_right_a_b if B(b, at_left_a), B(a, at_left_b), B(b, at_left_a), B(b, at_left_b), at_left_a, at_left_b, alive_a, alive_b; 
+move_right_a_b causes -at_left_a, -at_left_b;
+%a observes move_right_a_b;
+b observes move_right_a_b;
+
+executable open_right_a if  B(a,tiger_left), -at_left_a, alive_a;
+open_right_a causes found if tiger_left;
+open_right_a causes -alive_a if -tiger_left;
+open_right_a causes -alive_b if -tiger_left, -at_left_b;
+a observes open_right_a if -at_left_a;
+b observes open_right_a if -at_left_b;
+
+executable open_right_b if B(b, tiger_left), -at_left_b, alive_b;
+open_right_b causes found if B(b,tiger_left), tiger_left;
+open_right_b causes -alive_b if -tiger_left;
+open_right_b causes -alive_a if -tiger_left, -at_left_a;
+a observes open_right_b if -at_left_a;
+b observes open_right_b if -at_left_b;
+
+executable open_left_a if B(a,-tiger_left), at_left_a, alive_a;
+open_left_a causes found if B(a,-tiger_left), -tiger_left;
+open_left_a causes -alive_a if tiger_left;
+open_left_a causes -alive_b if tiger_left, at_left_b;
+a observes open_left_a if at_left_a;
+b observes open_left_a if at_left_b;
+
+executable open_left_b if B(b,-tiger_left), at_left_b, alive_b;
+open_left_b causes found if B(b,-tiger_left), -tiger_left;
+open_left_b causes -alive_b if tiger_left;
+open_left_b causes -alive_a if tiger_left, at_left_a;
+a observes open_left_b if at_left_a;
+b observes open_left_b if at_left_b;
+
+look_b determines at_left_a;
+b observes look_b;
+
+listen_a determines tiger_left;
+a observes listen_a;
+
+initially -found, tiger_left, at_left_a, at_left_b,alive_a, alive_b;
+initially C([a,b],-found);
+initially C([a,b],alive_a);
+initially C([a,b],alive_b);
+initially C([a,b],B(b,at_left_b) | B(b,-at_left_b));
+
+goal found;
+goal alive_a;
+goal alive_b;
+%goal C([a,b],found);
+
+

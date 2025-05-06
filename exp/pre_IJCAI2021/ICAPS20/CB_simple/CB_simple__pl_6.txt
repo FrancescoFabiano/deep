@@ -1,0 +1,72 @@
+%%% Executed actions: signal_a_b open_a peek_b %%%
+
+fluent has_key_a, has_key_b, has_key_c, opened_a, opened_b, opened_c;
+fluent tails;
+
+action open_a, open_b ,open_c;
+action peek_up_key_a, peek_up_key_b, peek_up_key_c;
+action peek_a;
+
+agent a,b,c;
+
+
+
+executable open_a if B(a,has_key_a), has_key_a;
+open_a causes opened_a;
+b observes open_a;
+c observes open_a;
+a observes open_a;
+
+executable open_b if B(b,has_key_b), has_key_b;
+open_b causes opened_b;
+c observes open_b;
+a observes open_b;
+b observes open_b;
+
+executable open_c if B(c,has_key_c), has_key_c;
+open_c causes opened_c;
+a observes open_c;
+b observes open_c;
+c observes open_c;
+
+
+executable peek_up_key_a if B(a,-has_key_a), -has_key_a;
+peek_up_key_a causes has_key_a;
+b observes peek_up_key_a;
+c observes peek_up_key_a;
+a observes peek_up_key_a;
+
+executable peek_up_key_b if B(a,-has_key_b), -has_key_b;
+peek_up_key_b causes has_key_b;
+c observes peek_up_key_b;
+a observes peek_up_key_b;
+b observes peek_up_key_b;
+
+executable peek_up_key_c if B(a,-has_key_b), -has_key_c;
+peek_up_key_c causes has_key_c;
+a observes peek_up_key_c;
+b observes peek_up_key_c;
+c observes peek_up_key_c;
+
+executable peek_a if B(a,opened_a), opened_a;
+peek_a causes tails;
+b observes peek_a;
+c observes peek_a;
+a observes peek_a;
+
+
+
+initially C([a,b,c],-has_key_a);
+initially C([a,b,c],-has_key_b);
+initially C([a,b,c],-has_key_c);
+initially C([a,b,c],-opened_a);
+initially C([a,b,c],-opened_b);
+initially C([a,b,c],-opened_c);
+
+initially -has_key_a, -has_key_b, -has_key_c, -opened_a, -opened_b, -opened_c, tails;
+
+% 2 actions
+goal B(a,opened_a);
+goal B(b,opened_b);
+goal B(c,opened_c);
+goal B(a, tails);

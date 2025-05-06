@@ -1,0 +1,72 @@
+fluent at_a_1,at_a_2,at_b_1,at_b_2,at_c_1,at_c_2,at_d_1, at_d_2,secret;
+
+
+action right_b, left_b;
+action share, fib;
+
+
+agent a,b,c,d;
+
+
+has_attitude b wrt a f_untrusty if (B(b,secret)) | (B(b,-secret));
+has_attitude c wrt a f_untrusty if (B(c,secret)) | (B(c,-secret));
+has_attitude d wrt a f_untrusty if (B(d,secret)) | (B(d,-secret));
+
+
+
+executable right_b if -at_b_2;
+right_b causes at_b_2, -at_b_1 if at_b_1;
+a observes right_b;
+b observes right_b;
+c observes right_b;
+d observes right_b;
+
+executable left_b if -at_b_1;
+left_b causes -at_b_2, at_b_1 if at_b_2;
+a observes left_b;
+b observes left_b;
+c observes left_b;
+d observes left_b;
+
+
+executable share if (B(a,secret) | B(a,-secret));
+share announces secret;
+a executes share;
+a observes share;
+b observes share if ((at_a_1, at_b_1) | (at_a_2, at_b_2));
+c observes share if ((at_a_1, at_c_1) | (at_a_2, at_c_2));
+d observes share if ((at_a_1, at_d_1) | (at_a_2, at_d_2));
+
+executable fib if (B(a,secret) | B(a,-secret));
+fib announces -secret;
+a executes fib;
+a observes fib;
+b observes fib if ((at_a_1, at_b_1) | (at_a_2, at_b_2));
+c observes fib if ((at_a_1, at_c_1) | (at_a_2, at_c_2));
+d observes fib if ((at_a_1, at_d_1) | (at_a_2, at_d_2));
+
+
+
+
+
+initially at_a_1, at_b_1, at_c_1, at_d_1, -at_a_2, -at_b_2, -at_c_2, -at_d_2, secret;
+initially C([a,b,c,d], at_a_1);
+initially C([a,b,c,d], at_b_1);
+initially C([a,b,c,d], at_c_1);
+initially C([a,b,c,d], at_d_1);
+initially C([a,b,c,d], -at_a_2);
+initially C([a,b,c,d], -at_b_2);
+initially C([a,b,c,d], -at_c_2);
+initially C([a,b,c,d], -at_d_2);
+initially C([a,b,c,d], (B(a,secret) | B(a,(-secret))));
+%initially C([a,b,c,d], sb);
+%initially C([a,b,c,d], sc);
+%initially C([a,b,c,d], sd);
+
+%Goal Length: 4
+%Plan: right_b, fib, left_b, share
+goal B(c, (-secret));
+goal B(b, (secret));
+goal B(c, B(a, (secret)));
+goal B(c, B(b, (secret)));
+goal B(b, at_b_2);

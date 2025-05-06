@@ -1,0 +1,215 @@
+%%% Executed actions: share_b_sb_1 share_c_sc_1 %%%
+
+fluent sa, sb, sc, sd, se;
+
+action call_a_b, call_a_c, call_a_d, call_a_e;
+action call_b_a, call_b_c, call_b_d, call_b_e;
+action call_c_b, call_c_a, call_c_d, call_c_e;
+action call_d_b, call_d_c, call_d_a, call_d_e;
+action call_e_b, call_e_c, call_e_d, call_e_a;
+
+agent a,b,c,d,e;
+
+
+executable call_a_b;
+call_a_b announces sa if B(a, sa);
+call_a_b announces sb if B(a, sb);
+call_a_b announces sc if B(a, sc);
+call_a_b announces sd if B(a, sd);
+call_a_b announces se if B(a, se);
+a observes call_a_b;
+b observes call_a_b;
+
+executable call_a_c;
+call_a_c announces sa if B(a, sa);
+call_a_c announces sb if B(a, sb);
+call_a_c announces sc if B(a, sc);
+call_a_c announces sd if B(a, sd);
+call_a_c announces se if B(a, se);
+a observes call_a_c;
+c observes call_a_c;
+
+executable call_a_d;
+call_a_d announces sa if B(a, sa);
+call_a_d announces sb if B(a, sb);
+call_a_d announces sc if B(a, sc);
+call_a_d announces sd if B(a, sd);
+call_a_d announces se if B(a, se);
+a observes call_a_d;
+d observes call_a_d;
+
+executable call_a_e;
+call_a_e announces sa if B(a, sa);
+call_a_e announces sb if B(a, sb);
+call_a_e announces sc if B(a, sc);
+call_a_e announces sd if B(a, sd);
+call_a_e announces se if B(a, se);
+a observes call_a_e;
+e observes call_a_e;
+
+
+
+executable call_b_a;
+call_b_a announces sa if B(b, sa);
+call_b_a announces sb if B(b, sb);
+call_b_a announces sc if B(b, sc);
+call_b_a announces sd if B(b, sd);
+call_b_a announces se if B(b, se);
+b observes call_b_a;
+a observes call_b_a;
+
+executable call_b_c;
+call_b_c announces sa if B(b, sa);
+call_b_c announces sb if B(b, sb);
+call_b_c announces sc if B(b, sc);
+call_b_c announces sd if B(b, sd);
+call_b_c announces se if B(b, se);
+b observes call_b_c;
+c observes call_b_c;
+
+executable call_b_d;
+call_b_d announces sa if B(b, sa);
+call_b_d announces sb if B(b, sb);
+call_b_d announces sc if B(b, sc);
+call_b_d announces sd if B(b, sd);
+call_b_d announces se if B(b, se);
+b observes call_b_d;
+d observes call_b_d;
+
+executable call_b_e;
+call_b_e announces sa if B(b, sa);
+call_b_e announces sb if B(b, sb);
+call_b_e announces sc if B(b, sc);
+call_b_e announces sd if B(b, sd);
+call_b_e announces se if B(b, se);
+b observes call_b_e;
+e observes call_b_e;
+
+
+
+
+executable call_c_a;
+call_c_a announces sa if B(c, sa);
+call_c_a announces sb if B(c, sb);
+call_c_a announces sc if B(c, sc);
+call_c_a announces sd if B(c, sd);
+call_c_a announces se if B(c, se);
+c observes call_c_a;
+a observes call_c_a;
+
+executable call_c_b;
+call_c_b announces sa if B(c, sa);
+call_c_b announces sb if B(c, sb);
+call_c_b announces sc if B(c, sc);
+call_c_b announces sd if B(c, sd);
+call_c_b announces se if B(c, se);
+c observes call_c_b;
+b observes call_c_b;
+
+executable call_c_d;
+call_c_d announces sa if B(c, sa);
+call_c_d announces sb if B(c, sb);
+call_c_d announces sc if B(c, sc);
+call_c_d announces sd if B(c, sd);
+call_c_d announces se if B(c, se);
+c observes call_c_d;
+d observes call_c_d;
+
+executable call_c_e;
+call_c_e announces sa if B(c, sa);
+call_c_e announces sb if B(c, sb);
+call_c_e announces sc if B(c, sc);
+call_c_e announces sd if B(c, sd);
+call_c_e announces se if B(c, se);
+c observes call_c_e;
+e observes call_c_e;
+
+
+executable call_d_a;
+call_d_a announces sa if B(d, sa);
+call_d_a announces sb if B(d, sb);
+call_d_a announces sc if B(d, sc);
+call_d_a announces sd if B(d, sd);
+call_d_a announces se if B(d, se);
+d observes call_d_a;
+a observes call_d_a;
+
+executable call_d_b;
+call_d_b announces sa if B(d, sa);
+call_d_b announces sb if B(d, sb);
+call_d_b announces sc if B(d, sc);
+call_d_b announces sd if B(d, sd);
+call_d_b announces se if B(d, se);
+d observes call_d_b;
+b observes call_d_b;
+
+executable call_d_c;
+call_d_c announces sa if B(d, sa);
+call_d_c announces sb if B(d, sb);
+call_d_c announces sc if B(d, sc);
+call_d_c announces sd if B(d, sd);
+call_d_c announces se if B(d, se);
+d observes call_d_c;
+c observes call_d_c;
+
+
+executable call_d_e;
+call_d_e announces sa if B(d, sa);
+call_d_e announces sb if B(d, sb);
+call_d_e announces sc if B(d, sc);
+call_d_e announces sd if B(d, sd);
+call_d_e announces se if B(d, se);
+d observes call_d_e;
+e observes call_d_e;
+
+executable call_e_a;
+call_e_a announces sa if B(e, sa);
+call_e_a announces sb if B(e, sb);
+call_e_a announces sc if B(e, sc);
+call_e_a announces sd if B(e, sd);
+call_e_a announces se if B(e, se);
+e observes call_e_a;
+a observes call_e_a;
+
+executable call_e_b;
+call_e_b announces sa if B(e, sa);
+call_e_b announces sb if B(e, sb);
+call_e_b announces sc if B(e, sc);
+call_e_b announces sd if B(e, sd);
+call_e_b announces se if B(e, se);
+e observes call_e_b;
+b observes call_e_b;
+
+executable call_e_c;
+call_e_c announces sa if B(e, sa);
+call_e_c announces sb if B(e, sb);
+call_e_c announces sc if B(e, sc);
+call_e_c announces sd if B(e, sd);
+call_e_c announces se if B(e, se);
+e observes call_e_c;
+c observes call_e_c;
+
+executable call_e_d;
+call_e_d announces sa if B(e, sa);
+call_e_d announces sb if B(e, sb);
+call_e_d announces sc if B(e, sc);
+call_e_d announces sd if B(e, sd);
+call_e_d announces se if B(e, se);
+e observes call_e_d;
+d observes call_e_d;
+
+
+
+initially sa,sb,sc,sd,se;
+
+initially C([a,b,c,d,e], (B(a,sa) | B(a,(-sa))));
+initially C([a,b,c,d,e], (B(b,sb) | B(b,(-sb))));
+initially C([a,b,c,d,e], (B(c,sc) | B(c,(-sc))));
+initially C([a,b,c,d,e], (B(d,sd) | B(d,(-sd))));
+initially C([a,b,c,d,e], (B(e,se) | B(e,(-se))));
+
+% 2 actions
+goal B(a, sb);
+goal B(b, se);
+goal B(a, se);
+goal B(b, ((-B(a,se)), (-B(a,-se))));

@@ -1,0 +1,36 @@
+(define (domain ex3)
+
+	(:agents a b c)
+	(:types )
+	(:constants )
+
+	(:predicates
+		(tail)
+	   {AK}	(has_key ?agent)
+		(opened)
+		(looking ?agent)
+	)
+
+	(:action open
+		:derive-condition	always
+		:parameters		(?a - agent)
+		:precondition		(and (has_key ?a) (!opened))
+		:effect			(and [?a](opened))
+	)
+
+	(:action peek
+		:derive-condition	(looking $agent$)
+		:parameters		(?a - agent)
+		:precondition		(and [?a](opened) (looking ?a))
+		:effect			(and (when (and [b](looking b) [?a](looking b)) ([b][a](tail))  )   
+					     (when (and [c](looking c) [?a](looking c)) ([c][a](tail))  )  
+					)
+	)
+
+	(:action signal
+		:derive-condition	always
+		:parameters		(?a ?as - agent)
+		:precondition		(and [?a](!looking ?as) [?a](looking ?a))
+		:effect			(and [?a](looking ?as) [?as](looking ?as)) 
+	)
+)

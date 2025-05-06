@@ -1,0 +1,129 @@
+fluent in_f, in_a, in_b, muddy_a, muddy_b, attentive_a, attentive_b;
+action clean_a, clean_a_b, clean_b, clean_b_a, spray_a, spray_a_b, spray_b, spray_b_a, look_a_b, look_b_a, call_a, call_a_no_b, call_b, call_b_no_a, tell_a, tell_b, tell_a_b;
+
+agent f,a,b;
+
+executable clean_a if in_f, in_a, muddy_a, (-attentive_b | -in_b);
+clean_a causes -muddy_a;
+a observes clean_a;
+f observes clean_a;
+
+executable clean_a_b if in_f, in_a, in_b, muddy_a, attentive_b;
+clean_a_b causes -muddy_a;
+a observes clean_a_b;
+b observes clean_a_b;
+f observes clean_a_b;
+
+
+executable clean_b if in_f, in_b, muddy_b, (-attentive_a | -in_a);
+clean_b causes -muddy_b;
+b observes clean_b;
+f observes clean_b;
+
+executable clean_b_a if in_f, in_b, in_a, muddy_b, attentive_a;
+clean_b_a causes -muddy_b;
+a observes clean_b_a;
+b observes clean_b_a;
+f observes clean_b_a;
+
+
+executable spray_a if in_f, in_a, -muddy_a, (-attentive_b | -in_b);
+spray_a causes muddy_a;
+a observes spray_a;
+f observes spray_a;
+
+executable spray_a_b if in_f, in_a, in_b, -muddy_a, attentive_b;
+spray_a_b causes muddy_a;
+a observes spray_a_b;
+b observes spray_a_b;
+f observes spray_a_b;
+
+executable spray_b if in_f, in_b, -muddy_b, (-attentive_a | -in_a);
+spray_b causes muddy_b;
+b observes spray_b;
+f observes spray_b;
+
+executable spray_b_a if in_f, in_b, in_a, -muddy_b, attentive_a;
+spray_b_a causes muddy_b;
+a observes spray_b_a;
+b observes spray_b_a;
+f observes spray_b_a;
+
+
+
+
+executable look_a_b if in_f, in_b, in_a;
+look_a_b determines muddy_b;
+a observes look_a_b;
+b aware_of look_a_b;
+
+executable look_b_a if in_f, in_b, in_a;
+look_b_a determines muddy_a;
+b observes look_b_a;
+a aware_of look_b_a;
+
+
+executable call_a if in_f, in_a, in_b;
+call_a causes attentive_a;
+a observes call_a;
+b observes call_a;
+f observes call_a;
+
+executable call_a_no_b if in_f, in_a, -in_b;
+call_a_no_b causes attentive_a;
+a observes call_a_no_b;
+f observes call_a_no_b;
+
+executable call_b if in_f, in_a, in_b;
+call_b causes attentive_b;
+b observes call_b;
+a observes call_b;
+f observes call_b;
+
+executable call_b_no_a if in_f, -in_a, in_b;
+call_b_no_a causes attentive_b;
+b observes call_b_no_a;
+f observes call_b_no_a;
+
+
+executable tell_a if in_f, in_a, attentive_a, (muddy_a | muddy_b), (-in_b | -attentive_b);
+tell_a announces (muddy_a | muddy_b);
+a observes tell_a;
+f observes tell_a;
+
+executable tell_b if in_f, in_b, attentive_b, (muddy_a | muddy_b), (-in_a | -attentive_a);
+tell_b announces (muddy_a | muddy_b);
+b observes tell_b;
+f observes tell_b;
+
+executable tell_a_b if in_f, in_a, in_b, attentive_a, attentive_b, (muddy_a | muddy_b);
+tell_a_b announces (muddy_a | muddy_b);
+a observes tell_a_b;
+b observes tell_a_b;
+f observes tell_a_b;
+
+
+initially in_f, in_a, -in_b, muddy_a, -muddy_b, -attentive_a, -attentive_b;
+initially C([f,a,b], in_f);
+initially C([f,a,b], in_a);
+initially C([f,a,b], -in_b);
+%initially B(f, -muddy_a);
+%initially B(f, -muddy_b);
+%initially B(a, -muddy_b);
+%initially B(b, -muddy_a);
+%initially C([f,a,b], muddy_a);
+initially C([f,a,b], -muddy_b);
+initially B(a, -muddy_b);
+initially C([f,a,b], -attentive_a);
+initially C([f,a,b], -attentive_b);
+
+%goal B(a,at_b1_1);
+%goal B(b,at_b2_3);
+%goal B(b,at_b1_1);
+%goal B(a,at_b2_3);
+%goal C([a,b], at_b1_1);
+%goal B(a, muddy_b);
+%goal B(b, muddy_a);
+%goal C([a,b], muddy_b);
+%goal C([a,b], muddy_a);
+goal B(a, muddy_a);

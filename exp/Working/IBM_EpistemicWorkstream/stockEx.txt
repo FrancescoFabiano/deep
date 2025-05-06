@@ -1,0 +1,103 @@
+% "a" war-oriented and wants oil (does not have oil). "a" will take oil from pacifist without war and will take oil from not pacifist with war. "a" wants oil.
+% "b" is a pacifist and has oil. "b" will give oil without war to "c" (money in return). "b" wants to let know "a" that she has an agreement with "c" as insurance.
+% "c" is not a pacifist and wants "a" to reduce the weapons. "c" has oil. "c" will not agree to partner with "b" if "b" is allied with "a".
+% "c" will not permit "a" to visit "b" if "a" does not reduce the weapons.
+
+fluent weapon_a, weapon_b, weapon_c;
+fluent has_oil_a, has_oil_b, has_oil_c;
+fluent money_a, money_b, money_c;
+fluent allies_a_b, allies_a_c, allies_b_c;
+fluent war;
+
+action public_pact_a_b, public_pact_a_c, public_pact_b_c;
+action secret_pact_a_b, secret_pact_a_c, secret_pact_b_c;
+action check_oil_a_b, check_oil_a_c;
+action decrease_weapon_a;
+action war_declaration;
+agent a,b,c;
+
+executable secret_pact_a_b if B(b, -money_b), B(a, has_oil_b), B(b, money_a), -money_b,  has_oil_b, money_a;
+secret_pact_a_b causes allies_a_b;
+secret_pact_a_b causes has_oil_a;
+secret_pact_a_b causes money_b;
+a observes secret_pact_a_b;
+b observes secret_pact_a_b;
+
+executable secret_pact_a_c;
+secret_pact_a_c causes allies_a_c;
+a observes secret_pact_a_c;
+c observes secret_pact_a_c;
+
+executable secret_pact_b_c;
+secret_pact_b_c causes allies_b_c;
+b observes secret_pact_b_c;
+c observes secret_pact_b_c;
+
+
+executable public_pact_a_b;
+public_pact_a_b causes allies_a_b;
+a observes public_pact_a_b;
+b observes public_pact_a_b;
+c observes public_pact_a_b;
+
+executable public_pact_a_c;
+public_pact_a_c causes allies_a_c;
+a observes public_pact_a_c;
+b observes public_pact_a_c;
+c observes public_pact_a_c;
+
+executable public_pact_b_c if B(c,-allies_a_b);
+public_pact_b_c causes allies_b_c;
+a observes public_pact_b_c;
+b observes public_pact_b_c;
+c observes public_pact_b_c;
+
+executable check_oil_a_b if B(c,-weapon_a), -weapon_a;
+check_oil_a_b determines has_oil_b;
+a observes check_oil_a_b;
+b observes check_oil_a_b;
+c aware_of check_oil_a_b;
+
+%secretly
+executable check_oil_a_c;
+check_oil_a_c determines has_oil_c;
+a observes check_oil_a_c;
+
+executable decrease_weapon_a;
+decrease_weapon_a causes -weapon_a;
+a observes decrease_weapon_a;
+b observes decrease_weapon_a;
+c observes decrease_weapon_a;
+
+
+executable war_declaration if B(b, has_oil_c), has_oil_c;
+war_declaration causes war, has_oil_a;
+a observes war_declaration;
+b observes war_declaration;
+c observes war_declaration;
+
+
+initially C([a,b,c],weapon_a);
+initially C([a,b,c],-weapon_b);
+initially C([a,b,c],weapon_c);
+
+initially C([a,b,c],money_a);
+initially C([a,b,c],-money_b);
+initially C([a,b,c],money_c);
+
+initially C([a,b,c],-has_oil_a);
+initially C([a,b,c],has_oil_c);
+
+initially C([a,b,c],-allies_a_b);
+initially C([a,b,c],-allies_a_c);
+initially C([a,b,c],-allies_b_c);
+
+initially C([a,b,c],-war);
+
+initially weapon_a,-weapon_b,weapon_c,money_a,-money_b,money_c,-has_oil_a,has_oil_b,has_oil_c,-allies_a_b,-allies_a_c,-allies_b_c,-war;
+
+% Goals
+goal B(a,has_oil_a);
+% Simulate the static law
+goal B(c,-allies_a_b);
+%goal C([a,b,c], -war);

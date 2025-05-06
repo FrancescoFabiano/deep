@@ -1,0 +1,154 @@
+%%% Executed actions: open_a peek_a %%%
+
+fluent tail, has_key_a, has_key_b, has_key_c, opened ,looking_a, looking_b, looking_c;
+
+action open_a, open_b ,open_c;
+action peek_a, peek_b, peek_c; 
+action signal_a_b, signal_a_c, signal_b_a, signal_b_c, signal_c_a, signal_c_b;
+action distract_a_b, distract_a_c, distract_b_a, distract_b_c, distract_c_a, distract_c_b;
+action shout_tail_a, shout_tail_b, shout_tail_c;
+
+agent a,b,c;
+
+
+
+executable open_a if B(a,has_key_a), has_key_a;
+open_a causes opened;
+b observes open_a if looking_b;
+c observes open_a if looking_c;
+a observes open_a;
+
+executable open_b if B(b,has_key_b), has_key_b;
+open_b causes opened;
+c observes open_b if looking_c;
+a observes open_b if looking_a;
+b observes open_b;
+
+executable open_c if B(c,has_key_c), has_key_c;
+open_c causes opened;
+a observes open_c if looking_a;
+b observes open_c if looking_b;
+c observes open_c;
+
+
+
+executable peek_a if B(a,opened), B(a,looking_a), looking_a, opened;
+peek_a determines tail;
+b aware_of peek_a if looking_b;
+c aware_of peek_a if looking_c;
+a observes peek_a;
+
+executable peek_b if B(b,opened), B(b,looking_b), looking_b, opened;
+peek_b determines tail;
+a aware_of peek_b if looking_a;
+c aware_of peek_b if looking_c;
+b observes peek_b;
+
+executable peek_c if B(c,opened), B(c,looking_c), looking_c, opened;
+peek_c determines tail;
+a aware_of peek_c if looking_a;
+b aware_of peek_c if looking_b;
+c observes peek_c;
+
+
+
+executable signal_a_b if  B(a, looking_a), B(a, -looking_b), looking_a, -looking_b;
+signal_a_b causes looking_b;
+b observes signal_a_b;
+a observes signal_a_b;
+
+executable signal_a_c if  B(a, looking_a), B(a, -looking_c), looking_a, -looking_c;
+signal_a_c causes looking_c;
+a observes signal_a_c;
+c observes signal_a_c;
+
+executable signal_b_a if  B(b, looking_b), B(b, -looking_a), looking_b, -looking_a;
+signal_b_a causes looking_a;
+b observes signal_b_a;
+a observes signal_b_a;
+
+executable signal_b_c if  B(b, looking_b), B(b, -looking_c), looking_b, -looking_c;
+signal_b_c causes looking_c;
+c observes signal_b_c;
+b observes signal_b_c;
+
+executable signal_c_a if  B(c, looking_c), B(c, -looking_a), looking_c, -looking_a;
+signal_c_a causes looking_a;
+c observes signal_c_a;
+a observes signal_c_a;
+
+executable signal_c_b if  B(c, looking_c), B(c, -looking_b), looking_c, -looking_b;
+signal_c_b causes looking_b;
+c observes signal_c_b;
+b observes signal_c_b;
+
+
+
+executable distract_a_b if B(a,looking_a), B(a, looking_b), looking_a, looking_b;
+distract_a_b causes -looking_b;
+a observes distract_a_b;
+b observes distract_a_b;
+
+executable distract_a_c if B(a,looking_a), B(a, looking_c), looking_a, looking_c;
+distract_a_c causes -looking_c;
+a observes distract_a_c;
+c observes distract_a_c;
+
+executable distract_b_a if B(b,looking_b), B(b, looking_a), looking_b, looking_a;
+distract_b_a causes -looking_a;
+a observes distract_b_a;
+b observes distract_b_a;
+
+executable distract_b_c if B(b,looking_b), B(b, looking_c), looking_b, looking_c;
+distract_b_c causes -looking_c;
+b observes distract_b_c;
+c observes distract_b_c;
+
+executable distract_c_a if B(c,looking_c), B(c, looking_a), looking_c, looking_a;
+distract_c_a causes -looking_a;
+a observes distract_c_a;
+c observes distract_c_a;
+
+executable distract_c_b if B(c,looking_c), B(c, looking_b), looking_c, looking_b;
+distract_c_b causes -looking_b;
+c observes distract_c_b;
+b observes distract_c_b;
+
+
+
+executable shout_tail_a if B(a,tail), tail;
+shout_tail_a announces tail;
+a observes shout_tail_a;
+b observes shout_tail_a if looking_b;
+c observes shout_tail_a if looking_c;
+
+
+executable shout_tail_b if B(b,tail), tail;
+shout_tail_b announces tail;
+b observes shout_tail_b;
+a observes shout_tail_b if looking_a;
+c observes shout_tail_b if looking_c;
+
+
+executable shout_tail_c if B(c,tail), tail;
+shout_tail_c announces tail;
+c observes shout_tail_c;
+a observes shout_tail_c if looking_a;
+b observes shout_tail_c if looking_b;
+
+
+initially C([a,b,c],has_key_a);
+initially C([a,b,c],-has_key_b);
+initially C([a,b,c],-has_key_c);
+initially C([a,b,c],-opened);
+%initially C([a,b,c],-B(a,tail) , -B(a,(-tail));
+%initially C([a,b,c],-B(b,tail) , -B(b,(-tail));
+%initially C([a,b,c],-B(c,tail) , -B(c,(-tail));
+initially C([a,b,c], looking_a);
+initially C([a,b,c], -looking_b);
+initially C([a,b,c], -looking_c);
+initially tail, has_key_a, -has_key_b, -has_key_c, -opened, looking_a, -looking_b, -looking_c;
+%initially C([a,b,c],B(a,tail));
+
+% 2 actions
+goal B(a,tail);
