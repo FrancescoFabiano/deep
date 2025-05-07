@@ -6,7 +6,6 @@
 #include "../include/utilities/define.h"
 #include "../include/actions/proposition.h"
 #include "../include/formulae/belief_formula.h"
-#include "../include/domain/attitude.h"
 
 #include "tok.h"
 
@@ -41,16 +40,7 @@ comment %.*$
 "C" {return MC;}
 "E" {return ME;}
 "D" {return MD;}
-"dox_announces" {return LIE;}
 
-"has_attitude" {return ATTITUDES;}
-"wrt" {return WRT;}
-"f_trusty" {return TRUSTY;}
-"f_mistrusty" {return MISTRUSTY;}
-"f_untrusty" {return UNTRUSTY;}
-"f_stubborn" {return STUBBORN;}
-"p_keeper" {return KEEPER;}
-"p_insecure" {return INSECURE;}
 
 
 "[" {return LEFT_BRAC;}

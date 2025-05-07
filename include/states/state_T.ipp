@@ -266,12 +266,6 @@ void state<T>::print_graphviz(std::string postfix) const
 	std::string folder = "out/state/";
 	folder += domain::get_instance().get_name();
 	switch ( domain::get_instance().get_stype() ) {
-	case KRIPKE:
-		folder += "_kripke";
-		if (domain::get_instance().get_k_optimized()) {
-			folder += "_opt";
-		}
-		break;
 	case POSSIBILITIES:
 		folder += "_poss";
 		break;
@@ -313,12 +307,6 @@ const std::string state<T>::print_graphviz_ML_dataset(std::string postfix) const
 	std::string folder = "out/state/";
 	folder += domain::get_instance().get_name();
 	switch ( domain::get_instance().get_stype() ) {
-	case KRIPKE:
-		folder += "_kripke";
-		if (domain::get_instance().get_k_optimized()) {
-			folder += "_opt";
-		}
-		break;
 	case POSSIBILITIES:
 		folder += "_poss";
 		break;
@@ -342,22 +330,6 @@ const std::string state<T>::print_graphviz_ML_dataset(std::string postfix) const
 	return folder + "/" + exec_act_names + postfix + ".dot";
 
 }
-
-template <class T>
-single_attitudes_map state<T>::get_F_attitudes(agent executor) const
-{
-
-	return get_representation().get_F_attitudes();
-
-}
-
-template <class T>
-single_attitudes_map state<T>::get_P_attitudes(agent executor) const
-{
-	return get_representation().get_P_attitudes();
-	//get_attitudes(executor, domain::get_instance().get_attitudes().get_P_attitudes(), false);
-}
-
 
 
 

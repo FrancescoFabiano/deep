@@ -24,7 +24,6 @@
 #include "define.h"
 #include "../formulae/belief_formula.h"
 #include "../actions/proposition.h"
-#include "../domain/attitude.h"
 
 class reader
 {
@@ -50,10 +49,6 @@ public:
 
     /** \brief String description of propositions, each one of these specifies an action conditions (yet to ground).*/
     proposition_list m_propositions;
-
-    /** \brief String description of the agents_attitude, each one of these specifies an agent attitude (yet to ground).*/
-    attitudes_list m_attitudes;
-
 
     /** \brief Function that reads the info from the domain file.
      * 

@@ -22,22 +22,16 @@
 #pragma once
 #include <fstream>
 
-#include "kripke/kstate.h"
 #include "possibilities/pstate.h"
-#include "possibilities_opt/pstate_opt.h"
-
 
 #include "../utilities/define.h"
 #include "../formulae/belief_formula.h"
 #include "../actions/action.h"
 #include "../domain/initially.h"
-#include "../domain/attitudes_table.h"
 
 /**
  * @tparam T:
- *    - \ref KRIPKE
- *    - \ref POSSIBILITIES
- *    - \ref OBDD*/
+ *    - \ref POSSIBILITIES*/
 template <class T>
 class state
 {
@@ -45,9 +39,7 @@ private:
     /** \brief The type of state m_representation.
      * 
      * One of:
-     *    - \ref KRIPKE
-     *    - \ref POSSIBILITIES
-     *    - \ref OBDD*/
+     *   - \ref POSSIBILITIES*/
     T m_representation;
 
     /** \brief The list of executed \ref action to get from the initial state to *this*.
@@ -291,21 +283,6 @@ public:
 
     const std::string print_graphviz_ML_dataset(std::string postfix = "") const;
 
-    /**Function that add retrieve the fully_obs attitude w.r.t \ref executor and the current state
-     *
-     * @param[in] executor: the agent executing the action.
-     * @param[in] curr: the state where the attitude's conditions are checked.
-     * @return: the fully_obs attitudes that the agents have
-     */
-    single_attitudes_map get_F_attitudes(agent executor) const;
-
-    /**Function that add retrieve the partially_obs attitude w.r.t \ref executor and the current state
-     *
-     * @param[in] executor: the agent executing the action.
-     * @param[in] curr: the state where the attitude's conditions are checked.
-     * @return: the partially_obs attitudes that the agents have
-     */
-    single_attitudes_map get_P_attitudes(agent executor) const;
 
     //DEBUG
     //    void min_with_print(state<T> tmp);

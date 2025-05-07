@@ -23,8 +23,6 @@
 
 #include "../../include/domain/domain.h"
 #include "../../include/utilities/define.h"
-#include "../../include/states/kripke/kworld.h"
-#include "../../include/states/kripke/kstate.h"
 
 //STRUCTURE DECLARATION
 //index is the type of the implicit pointers to the array
@@ -153,12 +151,6 @@ public:
     bool MinimizeAutomaFB(automa *A);
 
     bisimulation();
-
-    /*\***KRIPKE RELATED ONLY***/
-    automa* merge_kstate_to_automaton(const kstate & ks1, const kstate & ks2, int & root2, const std::map<agent, bis_label> & agent_to_label) const;
-    //automa* merge_automata(const kstate & ks1, const kstate & ks2, int & root2);
-    bool compare_automata(const kstate & ks1, const kstate & ks2);
-    bool compare_automata_eq(const kstate & ks1, const kstate & ks2);
     //DEBUG
     //    const automa compare_automata_debug(const kstate & ks1, const kstate & ks2, std::vector<kworld_ptr> & kworld_vec);
     //    automa* merge_kstate_to_automaton_debug(const kstate & ks1, const kstate & ks2, std::vector<kworld_ptr> & kworld_vec) const;

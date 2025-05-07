@@ -1,12 +1,9 @@
 # Makefile
 OBJS	=	$(BUILD_DIR)/bison.o $(BUILD_DIR)/lex.o $(BUILD_DIR)/main.o \
 			$(BUILD_DIR)/belief_formula.o $(BUILD_DIR)/proposition.o $(BUILD_DIR)/domain.o \
-			$(BUILD_DIR)/grounder.o $(BUILD_DIR)/printer.o $(BUILD_DIR)/asp_maker.o \
+			$(BUILD_DIR)/grounder.o $(BUILD_DIR)/printer.o \
 			$(BUILD_DIR)/action.o $(BUILD_DIR)/helper.o $(BUILD_DIR)/initially.o \
-			$(BUILD_DIR)/attitude.o $(BUILD_DIR)/attitudes_table.o \
-			$(BUILD_DIR)/kstore.o $(BUILD_DIR)/kedge.o $(BUILD_DIR)/kworld.o $(BUILD_DIR)/kstate.o \
 			$(BUILD_DIR)/pstore.o $(BUILD_DIR)/pworld.o $(BUILD_DIR)/pstate.o \
-			$(BUILD_DIR)/event.o $(BUILD_DIR)/pem.o $(BUILD_DIR)/pem_store.o $(BUILD_DIR)/pem_parser.o $(BUILD_DIR)/delphic_helper.o \
 			$(BUILD_DIR)/reader.o \
 			$(BUILD_DIR)/heuristics_manager.o $(BUILD_DIR)/satisfied_goals.o $(BUILD_DIR)/planning_graph.o \
 			$(BUILD_DIR)/bisimulation.o
@@ -39,7 +36,6 @@ BISIMULATION_DIR = $(LIB_DIR)/bisimulation
 
 INCLUDE_DIR = include
 ACTION_DIR = $(INCLUDE_DIR)/actions
-DELPHIC_DIR = $(INCLUDE_DIR)/delphic
 DOMAIN_DIR = $(INCLUDE_DIR)/domain
 FORMULA_DIR = $(INCLUDE_DIR)/formulae
 HEURISTIC_DIR = $(INCLUDE_DIR)/heuristics
@@ -113,7 +109,6 @@ $(BUILD_DIR)/printer.o: $(UTILITIES_DIR)/printer.cpp $(UTILITIES_DIR)/printer.h 
 $(BUILD_DIR)/reader.o: $(UTILITIES_DIR)/reader.cpp $(UTILITIES_DIR)/reader.h \
 					   $(UTILITIES_DIR)/define.h $(UTILITIES_DIR)/printer.h \
 					   $(FORMULA_DIR)/belief_formula.h \
-					   $(DOMAIN_DIR)/attitude.h \
 					   $(ACTION_DIR)/proposition.h
 		$(dir_guard)
 		$(CC) $(CFLAGS) -c $(UTILITIES_DIR)/reader.cpp -o $(BUILD_DIR)/reader.o
@@ -123,13 +118,7 @@ $(BUILD_DIR)/helper.o: $(UTILITIES_DIR)/helper.cpp $(UTILITIES_DIR)/helper.h \
 					   $(FORMULA_DIR)/belief_formula.h 
 		$(dir_guard)
 		$(CC) $(CFLAGS) -c $(UTILITIES_DIR)/helper.cpp -o $(BUILD_DIR)/helper.o
-		
-$(BUILD_DIR)/asp_maker.o: $(UTILITIES_DIR)/asp_maker.cpp $(UTILITIES_DIR)/asp_maker.h \
-					   $(UTILITIES_DIR)/define.h $(UTILITIES_DIR)/printer.h \
-					   $(FORMULA_DIR)/belief_formula.h \
-					   $(DOMAIN_DIR)/domain.h
-		$(dir_guard)
-		$(CC) $(CFLAGS) -c $(UTILITIES_DIR)/asp_maker.cpp -o $(BUILD_DIR)/asp_maker.o
+
 
 ####FORMULAE			
 $(BUILD_DIR)/belief_formula.o: $(FORMULA_DIR)/belief_formula.cpp $(FORMULA_DIR)/belief_formula.h \
@@ -162,17 +151,6 @@ $(BUILD_DIR)/proposition.o: $(ACTION_DIR)/proposition.cpp $(ACTION_DIR)/proposit
 		
 		
 ####ACTIONS
-$(BUILD_DIR)/attitude.o: $(DOMAIN_DIR)/attitude.cpp $(DOMAIN_DIR)/attitude.h \
-					   $(DOMAIN_DIR)/domain.h \
-					   $(FORMULA_DIR)/belief_formula.h \
-					   $(UTILITIES_DIR)/define.h
-		$(dir_guard)
-		$(CC) $(CFLAGS) -c $(DOMAIN_DIR)/attitude.cpp -o $(BUILD_DIR)/attitude.o
-		
-$(BUILD_DIR)/attitudes_table.o: $(DOMAIN_DIR)/attitudes_table.cpp $(DOMAIN_DIR)/attitudes_table.h \
-							$(DOMAIN_DIR)/attitude.h
-		$(dir_guard)
-		$(CC) $(CFLAGS) -c $(DOMAIN_DIR)/attitudes_table.cpp -o $(BUILD_DIR)/attitudes_table.o
 			
 ####STATES
 #$(BUILD_DIR)/state_T.o: $(STATES_DIR)/state_T.cpp $(STATES_DIR)/state_T.h \
@@ -205,36 +183,6 @@ $(BUILD_DIR)/planning_graph.o: $(HEURISTIC_DIR)/planning_graph.cpp $(HEURISTIC_D
 		$(CC) $(CFLAGS) -c $(HEURISTIC_DIR)/planning_graph.cpp -o $(BUILD_DIR)/planning_graph.o
 
 
-
-
-##KRIPKE STATES
-$(BUILD_DIR)/kstate.o: $(S_KRIPE_DIR)/kstate.cpp $(S_KRIPE_DIR)/kstate.h \
-					   $(S_KRIPE_DIR)/kworld.h $(S_KRIPE_DIR)/kedge.h $(S_KRIPE_DIR)/kstore.h \
-					   $(ACTION_DIR)/action.h \
-					   $(DOMAIN_DIR)/initially.h \
-					   $(UTILITIES_DIR)/helper.h \
-					   $(UTILITIES_DIR)/define.h \
-					   $(BISIMULATION_DIR)/bisimulation.h
-		$(dir_guard)
-		$(CC) $(CFLAGS) -c $(S_KRIPE_DIR)/kstate.cpp -o $(BUILD_DIR)/kstate.o
-
-$(BUILD_DIR)/kworld.o: $(S_KRIPE_DIR)/kworld.cpp $(S_KRIPE_DIR)/kworld.h \
-					   $(UTILITIES_DIR)/printer.h $(UTILITIES_DIR)/define.h
-		$(dir_guard)
-		$(CC) $(CFLAGS) -c $(S_KRIPE_DIR)/kworld.cpp -o $(BUILD_DIR)/kworld.o
-
-$(BUILD_DIR)/kedge.o: $(S_KRIPE_DIR)/kedge.cpp $(S_KRIPE_DIR)/kedge.h \
-					  $(S_KRIPE_DIR)/kworld.h \
-					  $(UTILITIES_DIR)/define.h
-		$(dir_guard)
-		$(CC) $(CFLAGS) -c $(S_KRIPE_DIR)/kedge.cpp -o $(BUILD_DIR)/kedge.o
-
-$(BUILD_DIR)/kstore.o: $(S_KRIPE_DIR)/kstore.cpp $(S_KRIPE_DIR)/kstore.h \
-					   $(S_KRIPE_DIR)/kworld.h $(S_KRIPE_DIR)/kedge.h \
-					   $(UTILITIES_DIR)/define.h
-		$(dir_guard)
-		$(CC) $(CFLAGS) -c $(S_KRIPE_DIR)/kstore.cpp -o $(BUILD_DIR)/kstore.o
-		
 
 ##POSSIBILITIES STATES
 $(BUILD_DIR)/pstate.o: $(S_POSSIBILITY_DIR)/pstate.cpp $(S_POSSIBILITY_DIR)/pstate.h \
@@ -274,42 +222,7 @@ $(BUILD_DIR)/pstore_opt.o: $(S_POSSIBILITY_OPT_DIR)/pstore_opt.cpp $(S_POSSIBILI
 		$(dir_guard)
 		$(CC) $(CFLAGS) -c $(S_POSSIBILITY_OPT_DIR)/pstore_opt.cpp -o $(BUILD_DIR)/pstore_opt.o
 
-##DELPHIC
-$(BUILD_DIR)/event.o: $(DELPHIC_DIR)/event.cpp $(DELPHIC_DIR)/event.h \
-					$(DELPHIC_DIR)/pem_store.h $(DELPHIC_DIR)/delphic_helper.h \
-					$(UTILITIES_DIR)/helper.h \
-					$(UTILITIES_DIR)/define.h
-		$(dir_guard)
-		$(CC) $(CFLAGS) -c $(DELPHIC_DIR)/event.cpp -o $(BUILD_DIR)/event.o
 
-$(BUILD_DIR)/pem.o: $(DELPHIC_DIR)/pem.cpp $(DELPHIC_DIR)/pem.h \
-					$(DELPHIC_DIR)/event.h \
-					$(DELPHIC_DIR)/pem_store.h $(DELPHIC_DIR)/delphic_helper.h \
-					$(UTILITIES_DIR)/helper.h \
-					$(UTILITIES_DIR)/define.h
-		$(dir_guard)
-		$(CC) $(CFLAGS) -c $(DELPHIC_DIR)/pem.cpp -o $(BUILD_DIR)/pem.o
-
-$(BUILD_DIR)/pem_store.o: $(DELPHIC_DIR)/pem_store.cpp $(DELPHIC_DIR)/pem_store.h \
-					      $(DELPHIC_DIR)/pem.h \
-						  $(DELPHIC_DIR)/event.h \
-					      $(UTILITIES_DIR)/define.h
-		$(dir_guard)
-		$(CC) $(CFLAGS) -c $(DELPHIC_DIR)/pem_store.cpp -o $(BUILD_DIR)/pem_store.o
-		
-$(BUILD_DIR)/pem_parser.o: $(DELPHIC_DIR)/pem_parser.cpp $(DELPHIC_DIR)/pem_parser.h \
-					      $(DELPHIC_DIR)/pem.h \
-						  $(DELPHIC_DIR)/event.h \
-					      $(DELPHIC_DIR)/pem_store.h \
-					      $(UTILITIES_DIR)/define.h
-		$(dir_guard)
-		$(CC) $(CFLAGS) -c $(DELPHIC_DIR)/pem_parser.cpp -o $(BUILD_DIR)/pem_parser.o
-
-$(BUILD_DIR)/delphic_helper.o: $(DELPHIC_DIR)/delphic_helper.cpp $(DELPHIC_DIR)/delphic_helper.h \
-					      	   $(DELPHIC_DIR)/pem.h \
-					      	   $(UTILITIES_DIR)/define.h
-		$(dir_guard)
-		$(CC) $(CFLAGS) -c $(DELPHIC_DIR)/delphic_helper.cpp -o $(BUILD_DIR)/delphic_helper.o
 
 ####DOMAIN
 $(BUILD_DIR)/initially.o: $(DOMAIN_DIR)/initially.cpp $(DOMAIN_DIR)/initially.h \
@@ -326,7 +239,6 @@ $(BUILD_DIR)/grounder.o: $(DOMAIN_DIR)/grounder.cpp $(DOMAIN_DIR)/grounder.h \
 $(BUILD_DIR)/domain.o: $(DOMAIN_DIR)/domain.cpp $(DOMAIN_DIR)/domain.h \
 					   $(DOMAIN_DIR)/initially.h $(DOMAIN_DIR)/grounder.h \
 					   $(UTILITIES_DIR)/reader.h $(UTILITIES_DIR)/define.h \
-					   $(DOMAIN_DIR)/attitudes_table.h \
 					   $(ACTION_DIR)/action.h
 		$(dir_guard)
 		$(CC) $(CFLAGS) -c $(DOMAIN_DIR)/domain.cpp -o $(BUILD_DIR)/domain.o

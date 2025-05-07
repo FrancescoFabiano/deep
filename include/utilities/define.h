@@ -264,63 +264,11 @@ typedef std::set<std::pair<event_type, event_type> > event_type_relation;
  */
 enum state_type
 {
-    KRIPKE, /**< \brief The default state representation, through Kripke structures.
-            * 
-            * It encodes the mA* semantic and bases its entailment and its transition function
-            * on reachability on Kripke structure. @see kstate.*/
     POSSIBILITIES, /**< \brief State representation based on possibilities and nwf-set theory.
             * 
             * It encodes the mA^rho semantic and bases its entailment and its transition function
             * on possibilities. @see poss_state. */
-    OBDD /**< \brief State representation based on OBDD.
-            * 
-            *\todo Yet to study.*/
 };
-
-/*****************Kripke States*****************/
-class kstate;
-
-class kedge;
-typedef std::string kedge_id; /**< \brief The id of an \ref kedge in a \ref kstate.
-                                * 
-                                * The id is calculated through an hash (kedge::hash_info_into_id()) of the info of the \ref kedge.
-                                *
-                                * This id is used to extract the \ref kedge from the \ref kstore to not create a new every time
-                                * but to access the already created ones.
-                                * @see kedge and kstore*/
-/*typedef std::shared_ptr<const kedge> kedge_ptr;*/ /*< \brief A std::shared_pointer to a \ref kedge usually stored in \ref kstore.
-                                                * @see kedge and kstore.
-                                                * \todo transform into class for < into set, also add = and empty constructor, operator*,operator ->, = with string.*/
-class kedge_ptr;
-typedef std::set<kedge_ptr> kedge_ptr_set; /**< \brief A set of \ref kedge_ptr.
-                                            * 
-                                            * Mainly used to store all the \ref kedge of a \ref kstate without wasting memory.
-                                            *
-                                            * \todo The operator < for std::shared_ptr must be implemented
-                                            * @see kedge and kstate*/
-
-class kworld;
-///\todo: remove string from code because they have terrible performances
-typedef std::string kworld_id; /**< \brief The id of a \ref kworld in a \ref kstate.
-                                * 
-                                * The id is calculated through an hash (kworld::hash_fluents_into_id()) of the info of the \ref kworld.
-                                *
-                                * This id is used to extract the \ref kworld from the \ref kstore to not create a new every time
-                                * but to access the already created ones.
-                                * @see kworld and kstore*/
-/*typedef std::shared_ptr<const kworld> kworld_ptr;*/ /*< \brief A std::shared_pointer to a \ref kworld usually stored in \ref kstore.
-                                                   * 
-                                                   * @see kworld and kstore.
-                                                   * \todo transform into class for < into set.*/
-class kworld_ptr;
-typedef std::set<kworld_ptr> kworld_ptr_set; /**< \brief A set of \ref kworld_ptr.
-                                            * 
-                                            * Mainly used to store all the \ref kworld of a \ref kstate without wasting memory.
-                                            *
-                                            * \todo The operator < for std::shared_ptr must be implemented.
-                                            * @see kworld and kstate.*/
-
-typedef std::map<std::pair<kworld_ptr, event_type>, kworld_ptr> kstate_map;
 
 
 /*****************Possibilities*****************/
@@ -483,7 +431,6 @@ typedef std::set<pem> pem_set; /**< \brief A set of \ref pem, used to store all 
 typedef unsigned short bis_label;
 typedef std::set<bis_label> bis_label_set;
 
-typedef std::map<kworld_ptr, std::map<kworld_ptr, bis_label_set> > kbislabel_map;
 typedef std::map<pworld_ptr, std::map<pworld_ptr, bis_label_set> > pbislabel_map;
 
 /****************** Bisimulation *******************/

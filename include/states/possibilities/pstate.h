@@ -21,7 +21,6 @@
 #include "../../utilities/define.h"
 #include "../../domain/initially.h"
 #include "../../actions/action.h"
-#include "../../domain/attitudes_table.h"
 #include "../../../lib/bisimulation/bisimulation.h"
 
 class pstate
@@ -260,96 +259,6 @@ private:
      * @param[in] act: the \ref ANNOUNCEMENT action to be applied on *this*.
      * @return the \ref pstate that results after the execution.*/
     pstate execute_announcement(const action &act) const;
-
-
-    /** \brief Function that applies the transition function for a \ref SENSING \ref action effect on *this* implementing the possibilities semantic with attitudes.
-     *
-     * This new function is introduced as it won't look at the pointed world to extrapolate the truth value (we have non-consistent belief)
-     * The transition function is applied accordingly to mA^rho. Check the paper IJCAI 21 for more information.
-     *
-     * @see action.
-     *
-     * @param[in] act: the \ref SENSING action to be applied on *this*.
-     * @return the \ref pstate that results after the execution.*/
-    pstate execute_sensing_att(const action &act) const;
-    /** \brief Function that applies the transition function for a \ref ANNOUNCEMENT \ref action effect on *this* implementing the possibilities semantic with attitudes.
-     *
-     * This new function is introduced as it won't look at the pointed world to extrapolate the truth value (we have non-consistent belief)
-     * The transition function is applied accordingly to mA^rho. Check the paper IJCAI 21 for more information.
-     *
-     * @see action.
-     *
-     * @param[in] act: the \ref ANNOUNCEMENT action to be applied on *this*.
-     * @return the \ref pstate that results after the execution.*/
-    pstate execute_announcement_att(const action &act) const;
-
-    /** \brief Function that recursively calculates the \ref pworld resulting from the transition function with attitudes.
-     *
-     * @param[in] effects: the effects of the \ref SENSING/\ref ANNOUNCEMENT \ref action to be applied on *this*.
-     * @param[in] ret: the \ref pstate resulting from the \ref action.
-     * @param[in] current_pw: the world being currently calculated.
-     * @param[in] calculated: a map that keeps track of the results of the transition function.
-     * @param[in] partially_obs_agents: the partially observant \ref agent set.
-     * @param[in] oblivious_obs_agents: the oblivious \ref agent set.
-     * @param[in] fully_att: map that contains the attitudes of the fully observant wrt to the action execution
-     * @param[in] part_att: map that contains the attitudes of the partially observant wrt to the action execution
-     * @param[in] previous_entailment: the value of the coming state entailment (if first is pointed).
-     * @return the \ref pworld resulting from the application of the transition function on "current_pw".*/
-    pworld_ptr execute_sensing_announcement_helper_att(const fluent_formula &effects, pstate &ret, const pworld_ptr &current_pw, transition_map &calculated, agent_set &partially_obs_agents, agent_set &oblivious_obs_agents, const single_attitudes_map & fully_att, const single_attitudes_map & part_att, bool previous_entailment) const;
-
-
-    /**Function that add retrieve the fully_obs attitude for \ref m_agent w.r.t \ref executor and the current state
-     *
-     * @param[in] m_agent: the agent of whom we want to discover the attitude.
-     * @param[in] executor: the agent with respects with \ref m_agent has \ref attitude.
-     * @param[in] table: the map where to check the attitude_condition (fully or partially).
-     * @param[in] is_fully: a boolean that says whether is a fully_obs agent or not.
-     * @return: the attitude that the agent has
-     */
-    agents_attitudes get_attitude(agent m_agent, agent executor, const complete_attitudes_map & table, bool is_fully) const;
-
-
-    /**Function that add retrieve the partially_obs attitude w.r.t \ref executor and the current state
-     *
-     * @param[in] executor: the agent executing the action.
-     * @param[in] agent_set: the set of agents whom we need the attitudes.
-     * @param[in] table: the map where to check the attitude_condition (fully or partially).
-     * @param[in] is_fully: a boolean that says whether is a fully_obs agent or not.
-     * @return: the attitudes that the agents have
-     */
-    single_attitudes_map get_attitudes(agent executor, const agent_set & fully_observant, const complete_attitudes_map & table, bool is_fully) const;
-
-    /**Function that add retrieve the fully_obs attitude w.r.t \ref executor and the current state
-     *
-     * @param[in] executor: the agent executing the action.
-     * @param[in] fully_observant: the set of the fully observant agents.
-     * @return: the fully_obs attitudes that the agents have
-     */
-    single_attitudes_map get_F_attitudes(agent executor, const agent_set & fully_observant) const;
-
-    /**Function that add retrieve the partially_obs attitude w.r.t \ref executor and the current state
-     *
-     * @param[in] executor: the agent executing the action.
-     * @param[in] partially_observant: the set of the partially observant agents.
-     * @return: the partially_obs attitudes that the agents have
-     */
-    single_attitudes_map get_P_attitudes(agent executor, const agent_set & partially_observant) const;
-
-
-    pworld_ptr phi_attitudes(fluent announced_f, pstate &ret, const pworld_ptr &current_pw, transition_map_att &calculated, const single_attitudes_map & attitudes, agent executor = agent()) const;
-
-    pworld_ptr K_attitudes(fluent announced_f, pstate &ret, const pworld_ptr &current_pw, transition_map_att &calculated, const single_attitudes_map & attitudes) const;
-
-    pworld_ptr I_attitudes(fluent announced_f, pstate &ret, const pworld_ptr &current_pw, transition_map_att &calculated, const single_attitudes_map & attitudes) const;
-
-    // pworld_ptr T_attitudes(fluent announced_f, pstate &ret, const pworld_ptr &current_pw, transition_map_att &calculated, const single_attitudes_map & attitudes, bool is_trusty) const;
-
-    pworld_ptr U_attitudes(fluent announced_f, bool ann_f_truth_value, pstate &ret, const pworld_ptr &current_pw, transition_map_att &calculated, const single_attitudes_map & attitudes, unsigned short increase_rep, agent executor = agent()) const;
-
-    pworld_ptr chi_attitudes(fluent announced_f, bool ann_f_truth_value, pstate &ret, const pworld_ptr &current_pw, transition_map_att &calculated, const single_attitudes_map & attitudes, bool trusty_chi, unsigned short increase_rep) const;
-
-
-
 
     void get_all_reachable_worlds(const pworld_ptr & pw, pworld_ptr_set & reached_worlds, pworld_transitive_map & reached_edges) const;
 
@@ -649,14 +558,6 @@ public:
      *
      * @param[in] graphviz: the ostream where to print the info of *this*.*/
     void print_graphviz_explicit(std::ostream& graphviz) const;
-
-
-    /*fluent_formula get_sensing_effects_if_entailed(const effects_map & map, const pworld_ptr & start) const;*/
-
-    /***************DOXASTIC REASONING***************/
-    pworld_ptr execute_announcement_helper_dox(const fluent_formula &effects, pstate &ret, const pworld_ptr &current_pw, transition_map &calculated, agent_set &partially_obs_agents, agent_set &oblivious_obs_agents, bool reached_by_fully, bool & implications) const;
-    pstate execute_announcement_dox(const action & act) const;
-    /***************END DOXASTIC***************/
 
     //
     //

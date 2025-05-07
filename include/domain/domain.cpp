@@ -19,7 +19,7 @@ domain& domain::get_instance()
 	return instance;
 }
 
-void domain::set_domain(std::string name, bool debug, state_type stype, bool k_opt, boost::shared_ptr<reader> reader, domain_restriction ini_res, domain_restriction goal_res, bool is_global_obsv, action_check act_check, bool check_visited, bis_type bisimulation, bool has_attitudes)
+void domain::set_domain(std::string name, bool debug, state_type stype, bool k_opt, boost::shared_ptr<reader> reader, domain_restriction ini_res, domain_restriction goal_res, bool is_global_obsv, action_check act_check, bool check_visited, bis_type bisimulation)
 {
 	m_name = name;
 	m_debug = debug;
@@ -32,7 +32,6 @@ void domain::set_domain(std::string name, bool debug, state_type stype, bool k_o
 	m_act_check = act_check;
 	m_check_visited = check_visited;
 	m_bisimulation = bisimulation;
-	m_has_attitudes = has_attitudes;
 }
 
 const state_type & domain::get_stype()
@@ -71,10 +70,6 @@ const action_set & domain::get_actions()
 	return m_actions;
 }
 
-const attitudes_table & domain::get_attitudes()
-{
-	return m_attitudes;
-}
 
 const agent_set & domain::get_agents()
 {
@@ -94,11 +89,6 @@ bool domain::get_debug()
 bool domain::check_visited()
 {
 	return m_check_visited;
-}
-
-bool domain::has_attitudes()
-{
-	return m_has_attitudes;
 }
 
 std::string domain::get_name()
@@ -141,9 +131,6 @@ void domain::build()
 	build_actions();
 	//std::cout << "Initilly" <<std::endl;
 	build_initially();
-	//
-	if (has_attitudes())
-		{build_attitudes();}
 	// std::cout << "Goal" <<std::endl;
 	build_goal();
 }
@@ -299,28 +286,6 @@ void domain::build_propositions()
 	}
 }
 
-void domain::build_attitudes()
-{
-
-	std::cout << "\nBuilding attitudes table..." << std::endl;
-	m_attitudes.set_attitudes_table(get_agents(), *(get_fluents().begin()));
-	auto it_attitudes = m_reader->m_attitudes.begin();
-	for (; it_attitudes != m_reader->m_attitudes.end(); it_attitudes++) {
-		m_attitudes.add_attitude(*it_attitudes);
-	}
-
-	if (m_debug) {
-		std::cout << "\nPrinting complete attitudes list..." << std::endl;
-		auto it_attitudes_p = m_reader->m_attitudes.begin();
-		for (; it_attitudes_p != m_reader->m_attitudes.end(); it_attitudes_p++) {
-			belief_formula att_tmp = it_attitudes_p->get_original_attitude_conditions();
-			att_tmp.ground();
-			it_attitudes_p->print(att_tmp);
-			std::cout << std::endl;
-		}
-	}
-
-}
 
 void domain::build_initially()
 {

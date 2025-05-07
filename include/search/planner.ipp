@@ -44,20 +44,6 @@ void planner<T>::print_results(std::chrono::duration<double> elapsed_seconds, in
 		result.open(folder + domain::get_instance().get_name() + file_extension, std::ofstream::out | std::ofstream::app);
 		result << "EFP Version 2.0 (";
 		switch ( domain::get_instance().get_stype() ) {
-		case KRIPKE:
-			if (domain::get_instance().get_k_optimized()) {
-				result << "on KRIPKE with OPTIMIZED transition function";
-			} else {
-				result << "on KRIPKE with STANDARD transition function";
-			}
-
-			if (domain::get_instance().get_bisimulation() == PaigeTarjan) {
-				result << " and Paige-Tarjan Bisimulation";
-			} else if (domain::get_instance().get_bisimulation() == FastBisimulation) {
-				result << " and Fast Bismulation";
-			}
-
-			break;
 		case POSSIBILITIES:
 			result << "on POSS with STANDARD transition function";
 			break;
@@ -661,12 +647,6 @@ void planner<T>::execute_given_actions(std::vector<std::string>& act_name)
 		std::string name_folder_graphviz = "out/state/";
 		name_folder_graphviz += domain::get_instance().get_name();
 		switch ( domain::get_instance().get_stype() ) {
-		case KRIPKE:
-			name_folder_graphviz += "_kripke";
-			if (domain::get_instance().get_k_optimized()) {
-				name_folder_graphviz += "_opt";
-			}
-			break;
 		case POSSIBILITIES:
 			name_folder_graphviz += "_poss";
 			break;
