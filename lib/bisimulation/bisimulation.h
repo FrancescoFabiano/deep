@@ -21,8 +21,8 @@
 #include <stdlib.h>
 #include <cstring>
 
-#include "../../include/domain/domain.h"
-#include "../../include/utilities/define.h"
+#include "../../src/domain/domain.h"
+#include "../../src/utilities/define.h"
 
 //STRUCTURE DECLARATION
 //index is the type of the implicit pointers to the array

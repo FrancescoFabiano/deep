@@ -14,7 +14,7 @@
 #include <vector>
 
  
-#include "../include/search/planner.ipp"
+#include "../src/search/planner.ipp"
 
 #include <boost/shared_ptr.hpp>
 #include <boost/make_shared.hpp>

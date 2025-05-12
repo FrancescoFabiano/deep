@@ -1,0 +1,92 @@
+cmake_minimum_required(VERSION 3.10)
+
+project(deep VERSION 1.0 LANGUAGES CXX)
+
+# Define build directories
+set(BUILD_DIR ${CMAKE_BINARY_DIR}/build)
+set(BIN_DIR ${CMAKE_BINARY_DIR}/bin)
+
+# Include directories
+include_directories(
+        src
+        src/actions
+        src/domain
+        src/formulae
+        src/heuristics
+        src/parse
+        src/states
+        src/states/possibilities
+        src/utilities
+        src/search
+        lib/bisimulation
+)
+
+# Automatically include all source files
+file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "src/*.cpp" "lib/bisimulation/*.cpp")
+
+# Flex and Bison integration (before creating executable)
+find_package(FLEX REQUIRED)
+find_package(BISON REQUIRED)
+
+FLEX_TARGET(Lexer src/parse/lcp.lex ${BUILD_DIR}/lex.c)
+BISON_TARGET(Parser src/parse/lcp.y ${BUILD_DIR}/bison.c)
+ADD_FLEX_BISON_DEPENDENCY(Lexer Parser)
+
+# Add executable with all sources
+add_executable(deep ${SOURCES} ${FLEX_Lexer_OUTPUTS} ${BISON_Parser_OUTPUTS})
+
+# Set the C++ standard explicitly for the target
+set_target_properties(deep PROPERTIES
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED ON
+        CXX_EXTENSIONS OFF
+)
+
+# Compiler flags
+target_compile_options(deep PRIVATE -g -Wall -ansi -Wfatal-errors -pthread)
+
+# Link libraries
+target_link_libraries(deep PRIVATE pthread rt)
+
+# Debug macro
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    target_compile_definitions(deep PRIVATE DEBUG)
+endif()
+
+# Output directories
+set_target_properties(deep PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY ${BIN_DIR}
+        ARCHIVE_OUTPUT_DIRECTORY ${BUILD_DIR}
+        LIBRARY_OUTPUT_DIRECTORY ${BUILD_DIR}
+)
+
+# Ensure build dir exists
+add_custom_target(prepare_build_dir ALL
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${BUILD_DIR}
+        COMMENT "Ensuring build directory exists"
+)
+add_dependencies(deep prepare_build_dir)
+
+# Custom cleaning targets
+add_custom_target(clean_build
+        COMMAND ${CMAKE_COMMAND} -E remove_directory ${BIN_DIR}
+        COMMAND ${CMAKE_COMMAND} -E remove_directory ${BUILD_DIR}
+        COMMENT "Cleaning build and binary directories"
+)
+
+add_custom_target(clean_out
+        COMMAND ${CMAKE_COMMAND} -E remove_directory ${CMAKE_BINARY_DIR}/out
+        COMMAND ${CMAKE_COMMAND} -E remove -f ${CMAKE_BINARY_DIR}/*.tmp
+        COMMENT "Cleaning output directory and temporary files"
+)
+
+add_custom_target(clear
+        DEPENDS clean_build clean_out
+        COMMENT "Clearing all build and output files"
+)
+
+add_custom_target(fresh
+        DEPENDS clear
+        COMMAND ${CMAKE_COMMAND} -E remove_directory ${CMAKE_BINARY_DIR}/doxygen/Docs
+        COMMENT "Performing a fresh cleanup"
+)

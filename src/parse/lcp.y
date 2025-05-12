@@ -1,6 +1,6 @@
 /* Parser for AL language */
 %{
-#include "../include/utilities/reader.h"
+#include "../src/utilities/reader.h"
 
 int yyerror(const char *s);
 int yylex(void);
