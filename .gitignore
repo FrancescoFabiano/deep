@@ -99,3 +99,7 @@ IDEA_ORIGINAL/workspace.xml
 .idea_original/modules.xml
 .idea_original/vcs.xml
 .idea_original/workspace.xml
+cmake-build-*/
+cmake-build-*/*
+cmake-build-debug/
+cmake-build-debug/*

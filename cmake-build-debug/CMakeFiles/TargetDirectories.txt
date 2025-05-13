@@ -1,8 +1,0 @@
-/mnt/c/Users/fraano/Desktop/Repos/deep/cmake-build-debug/CMakeFiles/deep.dir
-/mnt/c/Users/fraano/Desktop/Repos/deep/cmake-build-debug/CMakeFiles/prepare_build_dir.dir
-/mnt/c/Users/fraano/Desktop/Repos/deep/cmake-build-debug/CMakeFiles/clean_build.dir
-/mnt/c/Users/fraano/Desktop/Repos/deep/cmake-build-debug/CMakeFiles/clean_out.dir
-/mnt/c/Users/fraano/Desktop/Repos/deep/cmake-build-debug/CMakeFiles/clear.dir
-/mnt/c/Users/fraano/Desktop/Repos/deep/cmake-build-debug/CMakeFiles/fresh.dir
-/mnt/c/Users/fraano/Desktop/Repos/deep/cmake-build-debug/CMakeFiles/edit_cache.dir
-/mnt/c/Users/fraano/Desktop/Repos/deep/cmake-build-debug/CMakeFiles/rebuild_cache.dir
