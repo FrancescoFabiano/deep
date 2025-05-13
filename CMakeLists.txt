@@ -42,6 +42,10 @@ target_compile_options(deep PRIVATE -g -Wall -ansi -Wfatal-errors -pthread -std=
 target_link_libraries(deep PRIVATE pthread rt)
 
 # Debug macro
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Debug CACHE STRING "Build type" FORCE)
+endif()
+
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_definitions(deep PRIVATE DEBUG)
 endif()
@@ -53,10 +57,11 @@ set_target_properties(deep PROPERTIES
         LIBRARY_OUTPUT_DIRECTORY ${BUILD_DIR}
 )
 
-# Ensure build dir exists
+# Ensure build and bin directories exist
 add_custom_target(prepare_build_dir ALL
         COMMAND ${CMAKE_COMMAND} -E make_directory ${BUILD_DIR}
-        COMMENT "Ensuring build directory exists"
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${BIN_DIR}
+        COMMENT "Ensuring build and bin directories exist"
 )
 add_dependencies(deep prepare_build_dir)
 
