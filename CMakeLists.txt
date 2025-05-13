@@ -10,6 +10,7 @@ set(BIN_DIR ${CMAKE_BINARY_DIR}/bin)
 include_directories(
         src
         src/actions
+        src/argparse
         src/domain
         src/formulae
         src/heuristics
@@ -20,6 +21,8 @@ include_directories(
         src/search
         lib/bisimulation
 )
+
+add_subdirectory(lib/CLI11)
 
 # Automatically include all source files
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "src/*.cpp" "lib/bisimulation/*.cpp")
@@ -36,10 +39,10 @@ ADD_FLEX_BISON_DEPENDENCY(Lexer Parser)
 add_executable(deep ${SOURCES} ${FLEX_Lexer_OUTPUTS} ${BISON_Parser_OUTPUTS})
 
 # Compiler flags
-target_compile_options(deep PRIVATE -g -Wall -ansi -Wfatal-errors -pthread -std=c++17)
+target_compile_options(deep PRIVATE -g -Wall -ansi -Wfatal-errors -pthread -std=c++20)
 
 # Link libraries
-target_link_libraries(deep PRIVATE pthread rt)
+target_link_libraries(deep PRIVATE pthread rt CLI11::CLI11)
 
 # Debug macro
 if(NOT CMAKE_BUILD_TYPE)
