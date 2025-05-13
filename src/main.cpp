@@ -516,7 +516,7 @@ void generate_domain(char** argv)
 int main(int argc, char** argv)
 {
 	//Get build date
-	std::cout << "EFP version " << VERSION << " - Built date: " << BUILT_DATE << std::endl;
+	//std::cout << "EFP version " << VERSION << " - Built date: " << BUILT_DATE << std::endl;
 
 	
 	//if arguments are too less

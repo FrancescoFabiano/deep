@@ -7,9 +7,10 @@
 #include "../src/actions/proposition.h"
 #include "../src/formulae/belief_formula.h"
 
-#include "tok.h"
+#include "bison.hpp"
 
 int yyerror(const char* s);
+extern "C" int yywrap() { return 1; }
 //int yylineno = 1;
 %}
 

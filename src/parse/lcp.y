@@ -1,4 +1,7 @@
 /* Parser for AL language */
+
+%defines
+
 %{
 #include "../src/utilities/reader.h"
 

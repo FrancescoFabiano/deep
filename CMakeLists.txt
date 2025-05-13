@@ -28,22 +28,15 @@ file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "src/*.cpp" "lib/bisimulation/*.cpp"
 find_package(FLEX REQUIRED)
 find_package(BISON REQUIRED)
 
-FLEX_TARGET(Lexer src/parse/lcp.lex ${BUILD_DIR}/lex.c)
-BISON_TARGET(Parser src/parse/lcp.y ${BUILD_DIR}/bison.c)
+FLEX_TARGET(Lexer src/parse/lcp.lex ${BUILD_DIR}/lex.cpp)
+BISON_TARGET(Parser src/parse/lcp.y ${BUILD_DIR}/bison.cpp)
 ADD_FLEX_BISON_DEPENDENCY(Lexer Parser)
 
 # Add executable with all sources
 add_executable(deep ${SOURCES} ${FLEX_Lexer_OUTPUTS} ${BISON_Parser_OUTPUTS})
 
-# Set the C++ standard explicitly for the target
-set_target_properties(deep PROPERTIES
-        CXX_STANDARD 17
-        CXX_STANDARD_REQUIRED ON
-        CXX_EXTENSIONS OFF
-)
-
 # Compiler flags
-target_compile_options(deep PRIVATE -g -Wall -ansi -Wfatal-errors -pthread)
+target_compile_options(deep PRIVATE -g -Wall -ansi -Wfatal-errors -pthread -std=c++17)
 
 # Link libraries
 target_link_libraries(deep PRIVATE pthread rt)
