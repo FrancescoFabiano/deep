@@ -10,7 +10,7 @@
 #include <stdlib.h>
 
 #include "state_T.h"
-#include "../domain/domain.h"
+#include "../domain/Domain.h"
 
 template <class T>
 state<T>::state()

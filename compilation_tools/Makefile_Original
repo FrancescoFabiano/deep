@@ -84,7 +84,7 @@ $(BUILD_DIR)/bison.c:	$(PARSE_DIR)/lcp.y
 #-----------------------------------MAIN FILE-----------------------------------#
 $(BUILD_DIR)/main.o:	$(SRC_DIR)/main.cpp \
 						$(UTILITIES_DIR)/reader.h \
-						$(DOMAIN_DIR)/domain.h \
+						$(DOMAIN_DIR)/Domain.h \
 						$(SEARCH_DIR)/planner.h $(SEARCH_DIR)/planner.ipp \
 						$(HEURISTIC_DIR)/heuristics_manager.h $(HEURISTIC_DIR)/heuristics_template.ipp\
 						$(STATES_DIR)/state_T.h $(STATES_DIR)/state_T.ipp
@@ -124,7 +124,7 @@ $(BUILD_DIR)/helper.o: $(UTILITIES_DIR)/helper.cpp $(UTILITIES_DIR)/helper.h \
 $(BUILD_DIR)/asp_maker.o: $(UTILITIES_DIR)/asp_maker.cpp $(UTILITIES_DIR)/asp_maker.h \
 					   $(UTILITIES_DIR)/define.h $(UTILITIES_DIR)/printer.h \
 					   $(FORMULA_DIR)/belief_formula.h \
-					   $(DOMAIN_DIR)/domain.h
+					   $(DOMAIN_DIR)/Domain.h
 		$(dir_guard)
 		$(CC) $(CFLAGS) -c $(UTILITIES_DIR)/asp_maker.cpp -o $(BUILD_DIR)/asp_maker.o
 
@@ -138,7 +138,7 @@ $(BUILD_DIR)/belief_formula.o: $(FORMULA_DIR)/belief_formula.cpp $(FORMULA_DIR)/
 ####SEARCH
 #$(BUILD_DIR)/planner.o: $(SEARCH_DIR)/planner.cpp $(SEARCH_DIR)/planner.h \
 #					    $(STATES_DIR)/state_T.h $(STATES_DIR)/state_T.ipp \
-#						$(DOMAIN_DIR)/domain.h
+#						$(DOMAIN_DIR)/Domain.h
 #		$(dir_guard)
 #		$(CC) $(CFLAGS) -c $(SEARCH_DIR)/planner.cpp -o $(BUILD_DIR)/planner.o
 
@@ -265,7 +265,7 @@ $(BUILD_DIR)/grounder.o: $(DOMAIN_DIR)/grounder.cpp $(DOMAIN_DIR)/grounder.h \
 		$(dir_guard)
 		$(CC) $(CFLAGS) -c $(DOMAIN_DIR)/grounder.cpp -o $(BUILD_DIR)/grounder.o
 
-$(BUILD_DIR)/domain.o: $(DOMAIN_DIR)/domain.cpp $(DOMAIN_DIR)/domain.h \
+$(BUILD_DIR)/domain.o: $(DOMAIN_DIR)/domain.cpp $(DOMAIN_DIR)/Domain.h \
 					   $(DOMAIN_DIR)/initially.h $(DOMAIN_DIR)/grounder.h \
 					   $(UTILITIES_DIR)/reader.h $(UTILITIES_DIR)/define.h \
 					   $(ACTION_DIR)/action.h

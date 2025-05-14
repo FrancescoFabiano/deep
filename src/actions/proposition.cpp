@@ -9,7 +9,7 @@
 #include <iostream>
 
 #include "proposition.h"
-#include "../domain/domain.h"
+#include "../domain/Domain.h"
 
 proposition_type proposition::get_type() const
 {

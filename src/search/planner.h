@@ -35,7 +35,7 @@ std::mt19937 gen(rd());
 std::uniform_real_distribution<> dis(0.0, 1.0);
 
 
-#include "../domain/domain.h"
+#include "../domain/Domain.h"
 #include "../heuristics/heuristics_manager.h"
 // Because planner is templated, and state_T is a dependency:
 #include "../states/state_T.ipp"

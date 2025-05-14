@@ -5,7 +5,7 @@
  * \date March 31, 2019
  */
 #include "belief_formula.h"
-#include "../domain/domain.h"
+#include "../domain/Domain.h"
 #include "../utilities/printer.h"
 
 belief_formula::belief_formula()

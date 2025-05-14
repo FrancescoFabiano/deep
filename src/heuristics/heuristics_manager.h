@@ -13,7 +13,7 @@
 
 
 #include "../utilities/define.h"
-#include "../domain/domain.h"
+#include "../domain/Domain.h"
 #include "satisfied_goals.h"
 #include "planning_graph.h"
 

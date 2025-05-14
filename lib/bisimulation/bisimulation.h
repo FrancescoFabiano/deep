@@ -21,7 +21,7 @@
 #include <stdlib.h>
 #include <cstring>
 
-#include "../../src/domain/domain.h"
+#include "../../src/domain/Domain.h"
 #include "../../src/utilities/define.h"
 
 //STRUCTURE DECLARATION

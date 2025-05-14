@@ -5,7 +5,7 @@
  * Created on April 4, 2019, 2:58 PM
  */
 #include "action.h"
-#include "../domain/domain.h"
+#include "../domain/Domain.h"
 
 /*********************************************************************
  Action implementation
