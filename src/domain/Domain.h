@@ -85,5 +85,5 @@ private:
 
     Domain(); ///< Private constructor since it is a Singleton class.
 
-    static std::unique_ptr<Domain> instance; ///< Singleton instance
+    static Domain* instance; ///< Singleton instance
 };

@@ -13,13 +13,32 @@
 
 #include "ArgumentParser.h"
 
-std::unique_ptr<Domain> Domain::instance = nullptr;
 
-Domain::Domain() = default;
+Domain* Domain::instance = nullptr;
+
+
+Domain::Domain()
+{
+    auto& arg_parser = ArgumentParser::get_instance();
+    std::string input_file = arg_parser.get_input_file();
+
+    if (freopen(input_file.c_str(), "r", stdin) == nullptr) {
+        std::cerr << "File " << input_file << " cannot be opened.\n";
+        std::exit(1);
+    }
+
+    instance->m_name = input_file.substr(input_file.find_last_of("\\/") + 1);
+    instance->m_name = instance->m_name.substr(0, instance->m_name.find_last_of('.'));
+
+    /////@TODO This will be replaced by epddl parser
+    auto domain_reader = boost::make_shared<reader>(reader());
+    domain_reader->read();
+    instance->m_reader = domain_reader;
+}
 
 Domain& Domain::get_instance() {
     if (!instance) {
-        throw std::runtime_error("Domain instance not created. Call create_instance() first.");
+        throw std::runtime_error("Domain instance not created. Call populate_instance() first.");
     }
     return *instance;
 }
@@ -27,23 +46,7 @@ Domain& Domain::get_instance() {
 
 void Domain::create_instance() {
     if (!instance) {
-        instance = std::make_unique<Domain>();
-
-        auto& arg_parser = ArgumentParser::get_instance();
-        std::string input_file = arg_parser.get_input_file();
-
-        if (freopen(input_file.c_str(), "r", stdin) == nullptr) {
-            std::cerr << "File " << input_file << " cannot be opened.\n";
-            std::exit(1);
-        }
-
-        instance->m_name = input_file.substr(input_file.find_last_of("\\/") + 1);
-        instance->m_name = instance->m_name.substr(0, instance->m_name.find_last_of('.'));
-
-        /////@TODO This will be replaced by epddl parser
-        auto domain_reader = boost::make_shared<reader>(reader());
-        domain_reader->read();
-        instance->m_reader = domain_reader;
+        instance = new Domain();
     }
 }
 const grounder& Domain::get_grounder() const noexcept {

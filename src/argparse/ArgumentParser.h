@@ -4,6 +4,8 @@
 #include <vector>
 #include <memory>
 #include <CLI/CLI.hpp>
+#include "utilities/ExitHandler.h"
+
 
 /**
  * \class ArgumentParser
@@ -29,7 +31,7 @@ public:
      * \param argc Argument count.
      * \param argv Argument values.
      */
-    static void create_instance(int argc = 0, char** argv = nullptr);
+    static void create_instance(int argc, char** argv);
 
     /**
      * \brief Returns the singleton instance of ArgumentParser.
@@ -140,15 +142,20 @@ public:
 private:
     /**
      * \brief Constructor for ArgumentParser, parsing the command-line arguments.
+     */
+    ArgumentParser();
+
+    /**
+     * \brief Parses the command-line arguments.
      * \param argc Argument count.
      * \param argv Argument values.
      */
-    ArgumentParser(int argc, char** argv);
+    void parse(int argc, char** argv);
 
     CLI::App app;  ///< CLI11 app object for argument parsing.
 
 
-    static std::unique_ptr<ArgumentParser> instance;  ///< Singleton instance of the class.
+    static ArgumentParser* instance;  ///< Singleton instance of the class.
 
     // Option storage
     std::string m_input_file;  ///< Input domain file path.

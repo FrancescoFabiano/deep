@@ -11,11 +11,14 @@
 #include <iostream>
 #include <stdexcept>
 
-std::unique_ptr<ArgumentParser> ArgumentParser::instance = nullptr;
+ArgumentParser* ArgumentParser::instance = nullptr;
+
+
 
 void ArgumentParser::create_instance(int argc, char** argv) {
     if (!instance) {
-        instance = std::make_unique<ArgumentParser>(argc, argv);
+        instance = new ArgumentParser();
+        instance->parse(argc, argv);
     }
 }
 
@@ -26,27 +29,57 @@ ArgumentParser& ArgumentParser::get_instance() {
     return *instance;
 }
 
-ArgumentParser::ArgumentParser(int argc, char** argv) : app("Argument Parser") {
+void ArgumentParser::parse(int argc, char** argv) {
+
+    if (argc < 2) {
+        print_usage();
+        ExitHandler::exit_with_message(
+            ExitHandler::ExitCode::ArgParseError,
+            "No arguments provided." + std::string(ExitHandler::arg_parse_suggestion)
+        );
+    }
+
+    try {
+        app.parse(argc, argv);
+    } catch (const CLI::CallForHelp& e) {
+        print_usage();
+        std::exit(static_cast<int>(ExitHandler::ExitCode::Success));
+    } catch (const CLI::ParseError& e) {
+        ExitHandler::exit_with_message(
+            ExitHandler::ExitCode::ArgParseError,
+            std::string("Oops! There was a problem with your command line arguments. Below more info:\n  ") +
+            e.what() + ExitHandler::arg_parse_suggestion.data()
+        );
+    } catch (const std::exception& e) {
+        ExitHandler::exit_with_message(
+            ExitHandler::ExitCode::ArgParseError,
+            std::string("An unexpected error occurred. Below more info:\n  ") +
+            e.what() + ExitHandler::arg_parse_suggestion.data()
+        );
+    }
+}
+
+ArgumentParser::ArgumentParser() : app("deep") {
+
     app.add_option("input_file", m_input_file, "Specify input domain file")->required();
 
     app.add_flag("--debug", m_debug, "Makes the solving process verbose");
 
     app.add_flag("--bis", m_bisimulation,
-        "Set the bisimulation type used for kstate reduction.");
+        "Activate e-states size reduction through bisimulation.");
 
-    app.add_flag("--check_visited", m_check_visited,
-        "Planner will check for visited states (default: false)");
+    app.add_flag("--check_visited", m_check_visited, "Planner will check for visited states");
 
     app.add_option("--dataset-size", m_dataset_depth, "Maximum depth for dataset generation")
         ->default_val("10");
 
     app.add_option("--search", m_search_strategy,
-        "Search strategy to use: BFS (default), DFS, I_DFS")
+        "Search strategy to use")
         ->check(CLI::IsMember({"BFS", "DFS", "I_DFS"}))
         ->default_val("BFS");
 
     app.add_option("--heuristic", m_heuristic_opt,
-        "Heuristic to use: NONE (default), L_PG, S_PG, C_PG, GNN, SUBGOALS")
+        "Heuristic to use")
         ->check(CLI::IsMember({"NONE", "L_PG", "S_PG", "C_PG", "GNN", "SUBGOALS"}))
         ->default_val("NONE");
 
@@ -66,11 +99,9 @@ ArgumentParser::ArgumentParser(int argc, char** argv) : app("Argument Parser") {
     app.add_option("--execute-actions", m_exec_actions,
         "Perform sequence of actions instead of planning")->expected(-1);
 
-    app.add_flag("--execute", m_exec_plan, "Execute the generated plan");
+    app.add_flag("--execute", m_exec_plan, "Execute the plan in the '--plan_file' file");
     app.add_option("--plan-file", m_plan_file, "Specify file for saving/loading plan")
         ->default_val("plan.txt");
-
-    app.parse(argc, argv);
 }
 
 // Getters

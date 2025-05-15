@@ -9,23 +9,30 @@ set(BIN_DIR ${CMAKE_BINARY_DIR}/bin)
 # Include directories
 include_directories(
         src
-        src/actions
+#        src/actions
         src/argparse
-        src/domain
-        src/formulae
-        src/heuristics
-        src/parse
-        src/states
-        src/states/possibilities
-        src/utilities
-        src/search
-        lib/bisimulation
+#        src/domain
+#        src/formulae
+#        src/heuristics
+#        src/parse
+#        src/states
+#        src/states/possibilities
+#        src/utilities
+#        src/search
+#        lib/bisimulation
 )
+
+# Automatically include all source files
+set(SOURCES ""
+        src/utilities/ExitHandler.h)
+get_property(INCLUDE_DIRS DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY INCLUDE_DIRECTORIES)
+foreach(dir ${INCLUDE_DIRS})
+    file(GLOB TMP_SOURCES CONFIGURE_DEPENDS "${dir}/*.cpp")
+    list(APPEND SOURCES ${TMP_SOURCES})
+endforeach()
 
 add_subdirectory(lib/CLI11)
 
-# Automatically include all source files
-file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "src/*.cpp" "lib/bisimulation/*.cpp")
 
 # Flex and Bison integration (before creating executable)
 find_package(FLEX REQUIRED)
@@ -36,7 +43,8 @@ BISON_TARGET(Parser src/parse/lcp.y ${BUILD_DIR}/bison.cpp)
 ADD_FLEX_BISON_DEPENDENCY(Lexer Parser)
 
 # Add executable with all sources
-add_executable(deep ${SOURCES} ${FLEX_Lexer_OUTPUTS} ${BISON_Parser_OUTPUTS})
+add_executable(deep ${SOURCES})
+#add_executable(deep ${SOURCES} ${FLEX_Lexer_OUTPUTS} ${BISON_Parser_OUTPUTS})
 
 # Compiler flags
 target_compile_options(deep PRIVATE -g -Wall -ansi -Wfatal-errors -pthread -std=c++20)
