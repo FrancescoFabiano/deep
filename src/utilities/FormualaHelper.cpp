@@ -1,6 +1,6 @@
 #include "FormulaHelper.h"
 #include <cmath>
-#include "states/possibilities/pstate.h"
+#include "states/kripke/KripkeState.h"
 #include "ExitHandler.h"
 
 /**
@@ -105,7 +105,7 @@ FluentFormula FormulaHelper::and_ff(const FluentFormula& to_merge_1, const Fluen
     return ret;
 }
 
-bool FormulaHelper::check_Bff_notBff(const belief_formula& to_check_1, const belief_formula& to_check_2, const std::shared_ptr<FluentFormula>& ret)
+bool FormulaHelper::check_Bff_notBff(const BeliefFormula& to_check_1, const BeliefFormula& to_check_2, const std::shared_ptr<FluentFormula>& ret)
 {
     if (to_check_1.get_formula_type() == BELIEF_FORMULA && to_check_2.get_formula_type() == BELIEF_FORMULA) {
         const auto to_check_nested_1 = to_check_1.get_bf1();
@@ -201,7 +201,7 @@ bool FormulaHelper::fluentset_negated_empty_intersection(const FluentsSet& set1,
     return true;
 }
 
-AgentsSet FormulaHelper::get_agents_if_entailed(const observability_map& map, const pstate& state)
+AgentsSet FormulaHelper::get_agents_if_entailed(const observability_map& map, const KripkeState& state)
 {
     AgentsSet ret;
     for (const auto& [agent, formula] : map) {
@@ -212,7 +212,7 @@ AgentsSet FormulaHelper::get_agents_if_entailed(const observability_map& map, co
     return ret;
 }
 
-FluentFormula FormulaHelper::get_effects_if_entailed(const effects_map& map, const pstate& state)
+FluentFormula FormulaHelper::get_effects_if_entailed(const effects_map& map, const KripkeState& state)
 {
     FluentFormula ret;
     for (const auto& [effect, formula] : map) {

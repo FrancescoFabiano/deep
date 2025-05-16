@@ -117,28 +117,28 @@ private:
      * \brief Adds an executability condition to this action.
      * \param[in] to_add The belief_formula representing the executability condition to add.
      */
-    void add_executability(const belief_formula& to_add);
+    void add_executability(const BeliefFormula& to_add);
 
     /**
      * \brief Adds an effect (with its conditions) to this action.
      * \param[in] to_add The fluent_formula representing the effect to add.
      * \param[in] condition The condition of to_add.
      */
-    void add_effect(const FluentFormula& to_add, const belief_formula& condition);
+    void add_effect(const FluentFormula& to_add, const BeliefFormula& condition);
 
     /**
      * \brief Adds a fully observant agent (with its conditions) to this action.
      * \param[in] ag The agent that is fully observant if condition holds.
      * \param[in] condition The condition for ag to be fully observant.
      */
-    void add_fully_observant(const Agent& ag, const belief_formula& condition);
+    void add_fully_observant(const Agent& ag, const BeliefFormula& condition);
 
     /**
      * \brief Adds a partially observant agent (with its conditions) to this action.
      * \param[in] ag The agent that is partially observant if condition holds.
      * \param[in] condition The condition for ag to be partially observant.
      */
-    void add_partially_observant(const Agent& ag, const belief_formula& condition);
+    void add_partially_observant(const Agent& ag, const BeliefFormula& condition);
     ///@}
 };
 

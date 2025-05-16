@@ -22,10 +22,10 @@
 #pragma once
 #include <fstream>
 
-#include "possibilities/pstate.h"
+#include "kripke/pstate.h"
 
 #include "../utilities/Define.h"
-#include "../formulae/belief_formula.h"
+#include "../formulae/BeliefFormula.h"
 #include "../actions/Action.h"
 #include "../domain/InitialStateInformation.h"
 

@@ -7,7 +7,8 @@
  */
 
 #include "InitialStateInformation.h"
-#include "utilities/printer.h"
+
+#include "BeliefFormula.h"
 #include "utilities/ExitHandler.h"
 
 #include "utilities/FormulaHelper.h"
@@ -15,7 +16,7 @@
 /// \brief Checks if a belief formula respects the initial restriction.
 /// \param[in] bf The belief formula to check.
 /// \return true if the formula respects the restriction, false otherwise.
-[[nodiscard]] bool InitialStateInformation::check_restriction(const belief_formula& bf)
+[[nodiscard]] bool InitialStateInformation::check_restriction(const BeliefFormula& bf)
 {
     /* The possible cases are:
      * - *phi* -> all worlds must entail *phi*.
@@ -83,14 +84,14 @@ void InitialStateInformation::add_pointed_condition(const FluentFormula& to_add)
     m_pointed_world_conditions = FormulaHelper::and_ff(m_pointed_world_conditions, to_add);
 }
 
-void InitialStateInformation::add_initial_condition(const belief_formula& to_add)
+void InitialStateInformation::add_initial_condition(const BeliefFormula& to_add)
 {
     // Keep only bf_1, bf_2 and not (bf_1 AND bf_2)
     if (to_add.get_formula_type() == PROPOSITIONAL_FORMULA && to_add.get_operator() == BF_AND) {
         add_initial_condition(to_add.get_bf1());
         add_initial_condition(to_add.get_bf2());
     } else if (check_restriction(to_add)) {
-        m_bf_intial_conditions.push_back(to_add);
+        m_bf_initial_conditions.push_back(to_add);
     } else {
         ExitHandler::exit_with_message(
             ExitHandler::ExitCode::DomainInitialStateRestrictionError,
@@ -106,7 +107,7 @@ void InitialStateInformation::add_initial_condition(const belief_formula& to_add
 
 [[nodiscard]] const FormulaeList& InitialStateInformation::get_initial_conditions() const
 {
-    return m_bf_intial_conditions;
+    return m_bf_initial_conditions;
 }
 
 [[nodiscard]] const FluentFormula& InitialStateInformation::get_ff_forS5() const
@@ -118,7 +119,7 @@ void InitialStateInformation::set_ff_forS5()
 {
     // The consistency with S5 is already checked
     FluentFormula ret;
-    for (const auto& bf : m_bf_intial_conditions) {
+    for (const auto& bf : m_bf_initial_conditions) {
         switch (bf.get_formula_type()) {
             case FLUENT_FORMULA:
                 ret = FormulaHelper::and_ff(ret, bf.get_fluent_formula());

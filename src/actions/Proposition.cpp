@@ -5,11 +5,13 @@
  * \brief Implementation of Proposition class.
  * \copyright GNU Public License.
  * \author Francesco Fabiano
- * \date April 1, 2019
+ * \date May 16, 2025
  */
 
 #include <iostream>
 #include "Proposition.h"
+
+#include "HelperPrint.h"
 #include "domain/Domain.h"
 
 PropositionType Proposition::get_type() const noexcept {
@@ -28,21 +30,11 @@ Agent Proposition::get_agent() const {
     return Domain::get_instance().get_grounder().ground_agent(m_agent);
 }
 
-const belief_formula& Proposition::get_observability_conditions() const noexcept {
+const BeliefFormula& Proposition::get_observability_conditions() const noexcept {
     return m_observability_conditions;
 }
 
-const belief_formula& Proposition::get_executability_conditions() const noexcept {
-    return m_executability_conditions;
-}
-
-const belief_formula& Proposition::get_grounded_observability_conditions() {
-    m_observability_conditions.ground();
-    return m_observability_conditions;
-}
-
-const belief_formula& Proposition::get_grounded_executability_conditions() {
-    m_executability_conditions.ground();
+const BeliefFormula& Proposition::get_executability_conditions() const noexcept {
     return m_executability_conditions;
 }
 
@@ -66,11 +58,11 @@ void Proposition::set_agent(const std::string& to_set) {
     m_agent = to_set;
 }
 
-void Proposition::set_observability_conditions(const belief_formula& to_set) {
+void Proposition::set_observability_conditions(const BeliefFormula& to_set) {
     m_observability_conditions = to_set;
 }
 
-void Proposition::set_executability_conditions(const belief_formula& to_set) {
+void Proposition::set_executability_conditions(const BeliefFormula& to_set) {
     m_executability_conditions = to_set;
 }
 
@@ -112,7 +104,7 @@ void Proposition::print() const {
     }
 
     std::cout << "\n Effects:\n";
-    printer::get_instance().print_list(m_action_effect);
+    HelperPrint::print_list(m_action_effect);
 
     // Uncomment and adapt if you want to print observability/executability conditions
     // std::cout << "\nObservability conditions:\n";

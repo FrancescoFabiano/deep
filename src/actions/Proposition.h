@@ -2,9 +2,8 @@
 
 #include <list>
 #include <string>
-#include "formulae/belief_formula.h"
+#include "formulae/BeliefFormula.h"
 #include "utilities/Define.h"
-#include "utilities/printer.h"
 
 /**
  * \enum PropositionType
@@ -54,16 +53,11 @@ public:
     [[nodiscard]] Agent get_agent() const;
 
     /** \brief Gets the observability conditions. */
-    [[nodiscard]] const belief_formula& get_observability_conditions() const noexcept;
+    [[nodiscard]] const BeliefFormula& get_observability_conditions() const noexcept;
 
     /** \brief Gets the executability conditions. */
-    [[nodiscard]] const belief_formula& get_executability_conditions() const noexcept;
+    [[nodiscard]] const BeliefFormula& get_executability_conditions() const noexcept;
 
-    /** \brief Gets the grounded observability conditions. */
-    [[nodiscard]] const belief_formula& get_grounded_observability_conditions();
-
-    /** \brief Gets the grounded executability conditions. */
-    [[nodiscard]] const belief_formula& get_grounded_executability_conditions();
     ///@}
 
     /// \name Setters
@@ -84,10 +78,10 @@ public:
     void set_agent(const std::string& to_set);
 
     /** \brief Sets the observability conditions. */
-    void set_observability_conditions(const belief_formula& to_set);
+    void set_observability_conditions(const BeliefFormula& to_set);
 
     /** \brief Sets the executability conditions. */
-    void set_executability_conditions(const belief_formula& to_set);
+    void set_executability_conditions(const BeliefFormula& to_set);
     ///@}
 
     /**
@@ -111,8 +105,8 @@ private:
     std::string m_action_name;                        ///< The name/id of this proposition.
     StringSetsSet m_action_effect;                    ///< Effects (for ONTIC, SENSING, ANNOUNCEMENT).
     std::string m_agent;                              ///< Agent (for OBSERVANCE, AWARENESS).
-    belief_formula m_observability_conditions;        ///< Observability condition (not grounded).
-    belief_formula m_executability_conditions;        ///< Executability condition (not grounded).
+    BeliefFormula m_observability_conditions;        ///< Observability condition (not grounded).
+    BeliefFormula m_executability_conditions;        ///< Executability condition (not grounded).
 };
 
 /// \brief A list of Proposition objects.

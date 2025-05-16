@@ -113,11 +113,11 @@ struct ML_Dataset_Params {
 
 /// \name Actions Related
 ///@{
-class belief_formula;
-using FormulaeList = std::list<belief_formula>; ///< CNF formula of belief_formula.
-using bformula_set = std::set<belief_formula>;
-using observability_map = std::map<Agent, belief_formula>; ///< Agent to observability conditions.
-using effects_map = std::map<FluentFormula, belief_formula>; ///< Action effect to its conditions.
+class BeliefFormula;
+using FormulaeList = std::list<BeliefFormula>; ///< CNF formula of BeliefFormula.
+using FormulaeSet = std::set<BeliefFormula>;
+using observability_map = std::map<Agent, BeliefFormula>; ///< Agent to observability conditions.
+using effects_map = std::map<FluentFormula, BeliefFormula>; ///< Action effect to its conditions.
 ///@}
 
 /**
@@ -135,24 +135,24 @@ using event_type_relation = std::set<std::pair<event_type, event_type>>;
 
 /// \name eState
 ///@{
-class pstate;
-class pworld;
-using pworld_id = std::size_t; ///< ID of a pworld in a pstate.
-class pworld_ptr;
-using pworld_ptr_set = std::set<pworld_ptr>;
-using pworld_map = std::map<Agent, pworld_ptr_set>;
-using pworld_transitive_map = std::map<pworld_ptr, pworld_map>;
-using pworld_queue = std::queue<pworld_ptr>;
-using transition_map = std::map<pworld_ptr, pworld_ptr>;
-using beliefs_vector = std::vector<std::tuple<pworld_ptr, pworld_ptr, Agent>>;
-using pg_bfs_score = std::map<belief_formula, unsigned short>;
+class KripkeState;
+class KripkeWorld;
+using KripkeWorldId = std::size_t; ///< ID of a KripkeWorld
+class KripkeWorldPointer;
+using KripkeWorldPointersSet = std::set<KripkeWorldPointer>;
+using KripkeWorldPointersMap = std::map<Agent, KripkeWorldPointersSet>;
+using KripkeWorldPointersTransitiveMap = std::map<KripkeWorldPointer, KripkeWorldPointersMap>;
+using KripkeWorldPointersQueue = std::queue<KripkeWorldPointer>;
+using TransitionMap = std::map<KripkeWorldPointer, KripkeWorldPointer>;
+using BeliefsVector = std::vector<std::tuple<KripkeWorldPointer, KripkeWorldPointer, Agent>>;
+using pg_bfs_score = std::map<BeliefFormula, unsigned short>;
 ///@}
 
 /// \name Bisimulation
 ///@{
 using bis_label = unsigned short;
 using bis_label_set = std::set<bis_label>;
-using pbislabel_map = std::map<pworld_ptr, std::map<pworld_ptr, bis_label_set>>;
+using pbislabel_map = std::map<KripkeWorldPointer, std::map<KripkeWorldPointer, bis_label_set>>;
 class bisimulation;
 using BIS_indexType = int;
 ///@}

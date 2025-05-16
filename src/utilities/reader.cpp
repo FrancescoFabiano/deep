@@ -11,7 +11,7 @@
 #include <iostream>
 
 #include "reader.h"
-#include "printer.h" //Used in \ref print as a support
+#include "HelperPrint.h" //Used in \ref print as a support
 
 
 //prototype of bison-generated parser function
@@ -71,14 +71,14 @@ void reader::print() const
 	std::cout << std::endl << std::endl;
 	std::cout << "AGENT DECLARATION" << std::endl;
 	std::cout << "---------------------------" << std::endl;
-	printer::get_instance().print_list(m_agents);
+	HelperPrint::get_instance().print_list(m_agents);
 	std::cout << std::endl << std::endl;
 
 
 	//Printing of all the fluents with the \ref printer functions
 	std::cout << "FLUENT DECLARATION" << std::endl;
 	std::cout << "----------------------------" << std::endl;
-	printer::get_instance().print_list(m_fluents);
+	HelperPrint::get_instance().print_list(m_fluents);
 	std::cout << std::endl << std::endl;
 
 	//Printing of all the proposition with the \ref proposition functions
@@ -89,8 +89,8 @@ void reader::print() const
 		std::cout << std::endl;
 	}
 
-	//Printing of all the proposition with the \ref belief_formula functions
-	formula_list::const_iterator it_formlist;
+	//Printing of all the proposition with the \ref BeliefFormula functions
+	FormulaeList::const_iterator it_formlist;
 	std::cout << "INIT" << std::endl;
 	std::cout << "----------------------------" << std::endl;
 
@@ -101,7 +101,7 @@ void reader::print() const
 
 	std::cout << std::endl;
 
-	//Printing of all the goal with the \ref belief_formula functions
+	//Printing of all the goal with the \ref BeliefFormula functions
 	std::cout << "GOAL " << std::endl;
 	std::cout << "----------------------------" << std::endl;
 	for (it_formlist = m_bf_goal.begin(); it_formlist != m_bf_goal.end(); it_formlist++) {

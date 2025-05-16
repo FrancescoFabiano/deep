@@ -1,5 +1,5 @@
 /*
- * \brief Implementation of \ref pstore.h
+ * \brief Implementation of \ref KripkeStorage.h
  * \copyright GNU Public License.
  *
  * \author Francesco Fabiano.
@@ -7,19 +7,19 @@
  */
 
 
-#include "pstore.h"
+#include "KripkeStorage.h"
 
-pstore::pstore()
+KripkeStorage::KripkeStorage()
 {
 }
 
-pstore& pstore::get_instance()
+KripkeStorage& KripkeStorage::get_instance()
 {
-	static pstore instance;
+	static KripkeStorage instance;
 	return instance;
 }
 
-const pworld_ptr pstore::add_world(const pworld & to_add)
+const KripkeWorldPointer KripkeStorage::add_world(const eStateWorld & to_add)
 {
 	//It returns the pointer to the newly inserted element if it doesn't exit (The old one otherwise)
 	//The pair is <iterator,bool>
@@ -39,7 +39,7 @@ const pworld_ptr pstore::add_world(const pworld & to_add)
 	//*tmp_ptr = tmp;
 	//return tmp_ptr;
 
-    auto tmp_ptr = std::make_shared<const pworld>(*(std::get<0>(m_created_worlds.insert(to_add))));
+    auto tmp_ptr = std::make_shared<const eStateWorld>(*(std::get<0>(m_created_worlds.insert(to_add))));
     //*tmp_ptr = tmp;
     return tmp_ptr;
 }

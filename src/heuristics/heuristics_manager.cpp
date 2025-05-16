@@ -64,10 +64,10 @@ void heuristics_manager::expand_goals(unsigned short nesting)
 	//
 	//	//unsigned short added_subgoals = 0;
 	//	for (it_fl = original_goal.begin(); it_fl != original_goal.end(); it_fl++) {
-	//		belief_formula to_explore = *it_fl;
+	//		BeliefFormula to_explore = *it_fl;
 	//		if (to_explore.get_formula_type() == C_FORMULA) {
 	//			for (it_agset = to_explore.get_group_agents().begin(); it_agset != to_explore.get_group_agents().end(); it_agset++) {
-	//				belief_formula new_subgoal;
+	//				BeliefFormula new_subgoal;
 	//				new_subgoal.set_formula_type(BELIEF_FORMULA);
 	//				new_subgoal.set_bf1(to_explore.get_bf1());
 	//				new_subgoal.set_string_agent(gr.deground_agent(*it_agset));
@@ -79,7 +79,7 @@ void heuristics_manager::expand_goals(unsigned short nesting)
 	//	}
 }
 
-void heuristics_manager::produce_subgoals(unsigned short nesting, unsigned short depth, const belief_formula & to_explore, const AgentSet & agents)
+void heuristics_manager::produce_subgoals(unsigned short nesting, unsigned short depth, const BeliefFormula & to_explore, const AgentSet & agents)
 {
 
 	AgentSet::const_iterator it_agset;
@@ -90,7 +90,7 @@ void heuristics_manager::produce_subgoals(unsigned short nesting, unsigned short
 		|| (to_explore.get_formula_type() == BELIEF_FORMULA && depth > 0)) {
 		for (it_agset = agents.begin(); it_agset != agents.end(); it_agset++) {
 			if ((to_explore.get_agent() != *it_agset) || (depth == 0)) {
-				belief_formula new_subgoal;
+				BeliefFormula new_subgoal;
 				new_subgoal.set_formula_type(BELIEF_FORMULA);
 				if (depth == 0) {
 					new_subgoal.set_bf1(to_explore.get_bf1());

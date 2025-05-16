@@ -93,12 +93,12 @@ const observability_map& Action::get_partially_observants() const
     return m_partially_observants;
 }
 
-void Action::add_executability(const belief_formula& exec)
+void Action::add_executability(const BeliefFormula& exec)
 {
     m_executability.push_back(exec);
 }
 
-void Action::add_effect(const FluentFormula& effect, const belief_formula& condition)
+void Action::add_effect(const FluentFormula& effect, const BeliefFormula& condition)
 {
     auto [it, inserted] = m_effects.insert(effects_map::value_type(effect, condition));
     if (!inserted) {
@@ -109,12 +109,12 @@ void Action::add_effect(const FluentFormula& effect, const belief_formula& condi
     }
 }
 
-void Action::add_fully_observant(const Agent& fully, const belief_formula& condition)
+void Action::add_fully_observant(const Agent& fully, const BeliefFormula& condition)
 {
     m_fully_observants.insert(observability_map::value_type(fully, condition));
 }
 
-void Action::add_partially_observant(const Agent& partial, const belief_formula& condition)
+void Action::add_partially_observant(const Agent& partial, const BeliefFormula& condition)
 {
     m_partially_observants.insert(observability_map::value_type(partial, condition));
 }
@@ -187,7 +187,7 @@ void Action::print() const
     std::cout << "\n    Effects:";
     for (const auto& [effect, condition] : m_effects) {
         std::cout << " | ";
-        printer::get_instance().print_list(effect);
+        HelperPrint::get_instance().print_list(effect);
         std::cout << " if ";
         condition.print();
     }

@@ -1,5 +1,5 @@
 /**
- * \class pworld
+ * \class KripkeWorld
  * 
  * \brief Class that describes a possible interpretation of the world and of the agents' beliefs.
  *
@@ -18,18 +18,17 @@
 
 #include <set>
 
-#include "../../utilities/Define.h"
-#include "../../utilities/printer.h"
+#include "utilities/Define.h"
 
-class pworld
+class KripkeWorld
 {
-    friend class pworld_ptr;
+    friend class KripkeWorldPointer;
 
 private:
     /** \brief The set of  \ref fluent that describes how these are interpreted in *this*.*/
     FluentsSet m_fluent_set;
     /** \brief The unique id of *this* computed with \ref hash_fluents_into_id().*/
-    pworld_id m_id;
+    KripkeWorldId m_id;
 
     /** \brief Function used to hash the the info of an edge in a unique id.
      * 
@@ -37,12 +36,12 @@ private:
      * @return the unique id of the pworld.
      * 
      * @warning Useless if not moved to \ref pstore.*/
-    pworld_id hash_fluents_into_id(const FluentsSet& description);
+    KripkeWorldId hash_fluents_into_id(const FluentsSet& description);
 
     /** \brief Function used to hash the the info of *this* in a unique id.
      *
      * @return the unique id of *this*. */
-    pworld_id hash_fluents_into_id();
+    KripkeWorldId hash_fluents_into_id();
 
     /** \brief Setter for the field \ref m_fluent_set.
      *
@@ -82,11 +81,11 @@ private:
      * Only accessible by the \ref pworld_ptr.
      * 
      * @return the int that is the unique id of *this*.*/
-    pworld_id get_id() const;
+    KripkeWorldId get_id() const;
 
 public:
     /** \brief Empty constructor, call the default constructor of all the fields.*/
-    pworld();
+    KripkeWorld();
 
     /** \brief Constructor with parameters.
      * Construct an object with the given info and then set the unique id.
@@ -95,12 +94,12 @@ public:
      * @param[in] description: the set of \ref fluent to set as \ref m_fluent_set.
      *
      * \todo is the parameter passing the best one? Copy?*/
-    pworld(const FluentsSet & description);
+    KripkeWorld(const FluentsSet & description);
 
     /** \brief Copy constructor.
      * 
      * @param[in] world: the \ref pworld to copy into *this*.*/
-    pworld(const pworld & world);
+    KripkeWorld(const KripkeWorld & world);
 
     /** \brief Function that check the entailment of a single \ref fluent in *this*.
      * 
@@ -149,7 +148,7 @@ public:
      * @param [in] to_compare: the \ref pworld to compare with *this*.
      * @return true: if \p to_compare is smaller than *this*
      * @return false: otherwise.*/
-    bool operator<(const pworld& to_compare) const;
+    bool operator<(const KripkeWorld& to_compare) const;
     /**
      *\brief The > operator based on the field \ref m_id.
      * 
@@ -158,28 +157,28 @@ public:
      * @param [in] to_compare: the \ref pworld to compare with *this*.
      * @return true: if \p to_compare is bigger than *this*
      * @return false: otherwise.*/
-    bool operator>(const pworld& to_compare) const;
+    bool operator>(const KripkeWorld& to_compare) const;
 
     /** \brief The == operator based on the field \ref m_id.
      *     
      * @param [in] to_compare: the \ref pworld to compare with *this*.
      * @return true: if \p to_compare is equal to *this*
      * @return false: otherwise.*/
-    bool operator==(const pworld& to_compare) const;
+    bool operator==(const KripkeWorld& to_compare) const;
 
     /** \brief The copy operator.
      *   
      * @param [in] to_assign: the \ref pworld to assign to *this*.
      * @return true: if \p the assignment went ok.
      * @return false: otherwise.*/
-    bool operator=(const pworld& to_assign);
+    bool operator=(const KripkeWorld& to_assign);
 
     /** \brief Function used to print all the information of *this*.*/
     void print() const;
 };
 
 /**
- * \class pworld_ptr
+ * \class KripkeWorldPointer
  * 
  * \brief A wrapper class for a std::shared_pointer to a \ref pworld usually stored in \ref pstore.
  * 
@@ -192,18 +191,18 @@ public:
  * \author Francesco Fabiano.
  * \date April 29, 2019
  */
-class pworld_ptr
+class KripkeWorldPointer
 {
 private:
     /**\brief the pointer that is wrapped by *this*.*/
-    std::shared_ptr<const pworld> m_ptr;
+    std::shared_ptr<const KripkeWorld> m_ptr;
 
     /** \brief The number of repetition of *this* in a \ref pstate due to oblivious obsv.*/
     unsigned short m_repetition = 0;
 
 public:
     /**\brief Constructor without parameters.*/
-    pworld_ptr();
+    KripkeWorldPointer();
     /**\brief Constructor with parameters.
      *
      * This constructor uses const pointer, this means that the pointer is copied
@@ -212,7 +211,7 @@ public:
      * @param[in] ptr: the pointer to assign to \ref m_ptr.
      * @param[in] repetition: the value to give to \ref m_repetition, default to 0.
      */
-    pworld_ptr(const std::shared_ptr<const pworld> & ptr, unsigned short repetition = 0);
+    KripkeWorldPointer(const std::shared_ptr<const KripkeWorld> & ptr, unsigned short repetition = 0);
     /**\brief Constructor with parameters.
      *
      * This constructor uses non-const pointer, this means that the pointer is copied
@@ -221,7 +220,7 @@ public:
      * @param[in] ptr: the pointer to assign to \ref m_ptr.
      * @param[in] repetition: the value to give to \ref m_repetition, default to 0.
      */
-    pworld_ptr(std::shared_ptr<const pworld>&& ptr, unsigned short repetition = 0);
+    KripkeWorldPointer(std::shared_ptr<const KripkeWorld>&& ptr, unsigned short repetition = 0);
 
     /** \brief Constructor with parameters.
      *
@@ -229,12 +228,12 @@ public:
      *  
      * @param[in] world: the \ref pworld that *this* (\ref m_ptr) should point.
      * @param[in] repetition: the value to give to \ref m_repetition, default to 0.*/
-    pworld_ptr(const pworld & world, unsigned short repetition = 0);
+    KripkeWorldPointer(const KripkeWorld & world, unsigned short repetition = 0);
 
     /**\brief Getter for the field \ref m_ptr.
      *  
      * @return a copy of the pointer \ref m_ptr.*/
-    std::shared_ptr<const pworld> get_ptr() const;
+    std::shared_ptr<const KripkeWorld> get_ptr() const;
 
     /**\brief Setter for the field \ref m_ptr.
      *
@@ -242,14 +241,14 @@ public:
      * and the counter of the shared pointer is increased (std implementation).
      * 
      * @param[in] ptr: the pointer to assign to \ref m_ptr.*/
-    void set_ptr(const std::shared_ptr<const pworld> & ptr);
+    void set_ptr(const std::shared_ptr<const KripkeWorld> & ptr);
     /**\brief Setter for the field \ref m_ptr (move constructor).
      * 
      * This setter uses non-const parameter, this means that the pointer is copied
      * in \ref m_ptr and \p ptr becomes empty (std implementation).
      *  
      * @param[in] ptr: the pointer to assign to \ref m_ptr.*/
-    void set_ptr(std::shared_ptr<const pworld>&& ptr);
+    void set_ptr(std::shared_ptr<const KripkeWorld>&& ptr);
 
     /** \brief Setter for the field \ref m_repetition.
      * 
@@ -274,18 +273,18 @@ public:
     /** \brief Function that return the field m_id of the pointed \ref pworld + \ref m_repetition.
      *     
      * @return the \ref pworld_id that is the id of the \ref pworld pointed by \ref m_ptr + \ref m_repetition.*/
-    pworld_id get_id() const;
+    KripkeWorldId get_id() const;
 
     /** \brief Function that return the field m_id of \ref pworld.
      *     
      * @return the \ref pworld_id that is the id of the \ref pworld pointed by \ref m_ptr.*/
-    pworld_id get_numerical_id() const;
+    KripkeWorldId get_numerical_id() const;
 
 
     /** \brief Function that return the field m_id of the pointed \ref pworld.
      *     
      * @return the \ref pworld_id that is the id of the \ref pworld pointed by \ref m_ptr.*/
-    pworld_id get_fluent_based_id() const;
+    KripkeWorldId get_fluent_based_id() const;
 
     /** \brief Function that check the entailment of a single \ref fluent in \ref m_ptr.
      * 
@@ -319,7 +318,7 @@ public:
      * @param[in] to_copy: the \ref pworld_ptr to assign to *this*.
      * @return true: if the assignment went through.
      * @return false: otherwise.*/
-    bool operator=(const pworld_ptr & to_copy);
+    bool operator=(const KripkeWorldPointer & to_copy);
     /**\brief The operator < for set operation.
      *
      * The ordering is based on the pointed object and not on the pointer itself so we have one
@@ -330,7 +329,7 @@ public:
      * @return true: if *this* is smaller than \p to_compare.
      * @return false: otherwise.*/
 
-    bool operator<(const pworld_ptr & to_compare) const;
+    bool operator<(const KripkeWorldPointer & to_compare) const;
     /**\brief The operator > for \ref pstate < comparison.
      *
      * The ordering is based on the pointed object and not on the pointer itself so we have one
@@ -341,12 +340,12 @@ public:
      * @return true: if *this* is bigger than \p to_compare.
      * @return false: otherwise.*/
 
-    bool operator>(const pworld_ptr & to_compare) const;
+    bool operator>(const KripkeWorldPointer & to_compare) const;
     /**\brief The operator ==.
      * 
      * @param[in] to_compare: the \ref pworld_ptr to confront with *this*.
      * @return true: if *this* is equal to \p to_compare.
      * @return false: otherwise.*/
-    bool operator==(const pworld_ptr & to_compare) const;
+    bool operator==(const KripkeWorldPointer & to_compare) const;
 };
 

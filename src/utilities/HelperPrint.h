@@ -1,0 +1,106 @@
+#pragma once
+
+#include "Define.h"
+#include "domain/Grounder.h"
+
+
+/**
+ * \class HelperPrint
+ * \brief Singleton class to facilitate printing of domain structures.
+ *
+ * \details Prints \ref string_set, \ref string_set_set, and other domain-related sets.
+ *          Only std::string representations are printed for clarity.
+ *          Use \ref get_instance() to access the singleton.
+ *
+ * \copyright GNU Public License.
+ * \author Francesco Fabiano
+ * \date May 16, 2025
+ */
+class HelperPrint
+{
+
+public:
+    /// \brief Deleted copy constructor (singleton).
+    HelperPrint(const HelperPrint&) = delete;
+    /// \brief Deleted copy assignment (singleton).
+    HelperPrint& operator=(const HelperPrint&) = delete;
+    /// \brief Deleted move constructor (singleton).
+    HelperPrint(HelperPrint&&) = delete;
+    /// \brief Deleted move assignment (singleton).
+    HelperPrint& operator=(HelperPrint&&) = delete;
+
+    /**
+     * \brief Get the singleton instance.
+     * \return Reference to the singleton HelperPrint.
+     */
+    [[nodiscard]]
+    static HelperPrint& get_instance();
+
+    /**
+     * \brief Set the grounder used for de-grounding fluents.
+     * \param gr The grounder to set.
+     */
+    void set_grounder(const Grounder& gr);
+
+    /**
+     * \brief Print all std::string in a set (conjunctive set of fluents).
+     * \param to_print The set to print.
+     */
+    static void print_list(const StringsSet& to_print);
+
+    /**
+     * \brief Print all std::string sets in a set (DNF formula).
+     * \param to_print The set of sets to print.
+     */
+    static void print_list(const StringSetsSet& to_print);
+
+    /**
+     * \brief Print all fluents in a set (conjunctive set).
+     * \param to_print The set to print.
+     */
+    void print_list(const FluentsSet& to_print) const;
+
+    /**
+     * \brief Print all fluent sets in a formula (DNF).
+     * \param to_print The formula to print.
+     */
+    void print_list(const FluentFormula& to_print) const;
+
+    /**
+     * \brief Print all belief formulas in a list (CNF).
+     * \param to_print The list to print.
+     */
+    static void print_list(const FormulaeList& to_print) ;
+
+    /**
+     * \brief Print all pworld pointers in a set.
+     * \param to_print The set to print.
+     */
+    static void print_list(const KripkeWorldPointersSet& to_print);
+
+    /**
+     * \brief Print all action names in a list.
+     * \param to_print The list to print.
+     */
+    void print_list(const ActionIdsList& to_print) const;
+
+    /**
+     * \brief Print all agent names in a set.
+     * \param to_print The set to print.
+     */
+    void print_list_ag(const AgentsSet& to_print) const;
+
+    /**
+     * \brief Print all agent names in a set.
+     * \param to_print The BeliefFormula to print.
+     */
+    void print_belief_formula(const BeliefFormula& to_print) const;
+
+private:
+    Grounder m_grounder;           ///< Used to de-ground fluents for printing.
+    bool m_set_grounder = false;///< True if \ref m_grounder has been set.
+
+    /// \brief Private constructor for singleton pattern.
+    HelperPrint() = default;
+
+};

@@ -9,13 +9,13 @@ int yyerror(const char *s);
 int yylex(void);
 
 std::string get_negation(const std::string*);
-bool is_consistent(string_set,string_set);
-//string_set_set get_negateFluentForm(string_set_set);
-string_set_set negate_or(string_set);
-string_set_set negate_form(string_set_set);
-string_set_set join_SL2(string_set_set, string_set_set);
-void print_string_set(string_set);
-void print_string_set_set(string_set_set);
+bool is_consistent(StringsSet,StringsSet);
+//StringSetsSet get_negateFluentForm(StringSetsSet);
+StringSetsSet negate_or(StringsSet);
+StringSetsSet negate_form(StringSetsSet);
+StringSetsSet join_SL2(StringSetsSet, StringSetsSet);
+void print_string_set(StringsSet);
+void print_string_set_set(StringSetsSet);
 
 extern std::shared_ptr<reader> domain_reader;
 
@@ -23,12 +23,12 @@ extern std::shared_ptr<reader> domain_reader;
 
 %union{
   std::string*	str_val;
-  string_set*  str_list; 
-  string_set_set* str_list2;
-  proposition* prop;
-  proposition_list* prop_list;
-  belief_formula* bf;
-  formula_list* init_nodes;
+  StringsSet*  str_list; 
+  StringSetsSet* str_list2;
+  Proposition* prop;
+  PropositionsList* prop_list;
+  BeliefFormulaParsed* bf;
+  ParsedFormulaeList* init_nodes;
 }
 
 %start	input 
@@ -110,14 +110,14 @@ extern std::shared_ptr<reader> domain_reader;
 %type <init_nodes> goal_spec
 
 %type <str_list2> formula
-%type <bf> belief_formula
+%type <bf> BeliefFormulaParsed
 /* DEBUG_WARNING_REMOVAL %type <str_list2> gd_formula DEBUG_WARNING_REMOVAL*/
 
 //%type <prop> static_law
 %type <prop> dynamic_law
 %type <prop> executability
 //%type <prop> impossibility
-%type <prop> proposition
+%type <prop> Proposition
 %type <prop> determine
 %type <prop> awareness
 %type <prop> observance
@@ -200,13 +200,13 @@ id LEFT_PAREN param_list RIGHT_PAREN
 
 fluent_det_list:
 fluent {
-  $$ = new string_set;
+  $$ = new StringsSet;
   $$->insert(*$1);
 };
 
 fluent_set:
 fluent {
-  $$ = new string_set;
+  $$ = new StringsSet;
   $$->insert(*$1);
 }
 |
@@ -229,7 +229,7 @@ NEGATION fluent
 literal_list:
 literal
 {
-  $$ = new string_set;
+  $$ = new StringsSet;
   $$->insert(*$1);
 } 
 | 
@@ -240,9 +240,9 @@ literal_list COMMA literal {
 
 formula:
 literal {
-  string_set s1;
+  StringsSet s1;
 
-  $$ = new string_set_set;
+  $$ = new StringSetsSet;
 
   s1.insert(*$1);
 
@@ -250,11 +250,11 @@ literal {
 }
 | formula COMMA formula
 {
-  string_set_set::iterator it1;
-  string_set_set::iterator it2;
-  string_set ns;
+  StringSetsSet::iterator it1;
+  StringSetsSet::iterator it2;
+  StringsSet ns;
 
-  $$ = new string_set_set;
+  $$ = new StringSetsSet;
 
   for (it2 = $1->begin(); it2 != $1->end(); it2++) {
     for (it1 = $3->begin(); it1 != $3->end(); it1++){
@@ -284,7 +284,7 @@ FLUENT fluent_set SEMICOLON {
 fluent_decls:
 /* empty */
 {
-  $$ = new string_set;
+  $$ = new StringsSet;
 }
 |
 fluent_decls fluent_decl
@@ -306,7 +306,7 @@ id LEFT_PAREN param_list RIGHT_PAREN {
 
 action_list:
 action {
-  $$ = new string_set;
+  $$ = new StringsSet;
   $$->insert(*$1);
 }
 |
@@ -323,7 +323,7 @@ ACTION action_list SEMICOLON {
 action_decls:
 /* empty */
 {
-  $$ = new string_set;
+  $$ = new StringsSet;
 }
 |
 action_decls action_decl
@@ -344,7 +344,7 @@ id LEFT_PAREN param_list RIGHT_PAREN {
 
 agent_list:
 agent {
-  $$ = new string_set;
+  $$ = new StringsSet;
   $$->insert(*$1);
 }
 |
@@ -361,7 +361,7 @@ AGENT agent_list SEMICOLON {
 agent_decls:
 /* empty */
 {
-  $$ = new string_set;
+  $$ = new StringsSet;
 }
 |
 agent_decls agent_decl
@@ -375,85 +375,85 @@ agent_decls agent_decl
 /*DEBUG_WARNING_REMOVAL if_part: DEBUG_WARNING_REMOVAL*/ 
 /* empty */
 /*DEBUG_WARNING_REMOVAL {
-  $$ = new string_set;
+  $$ = new StringsSet;
 }
 |
 IF literal_list {
   $$ = $2;
 };DEBUG_WARNING_REMOVAL*/
 
-/* if part for belief_formula */
+/* if part for BeliefFormulaParsed */
 if_part_bf:
 /* fail */
 {
-  $$ = new belief_formula;
+  $$ = new BeliefFormulaParsed;
   $$->set_formula_type(BF_EMPTY);
 }
 |
-IF belief_formula {
+IF BeliefFormulaParsed {
   $$ = $2;
 };
 
-belief_formula:
+BeliefFormulaParsed:
 formula{  
-    $$ = new belief_formula;
+    $$ = new BeliefFormulaParsed;
     $$->set_formula_type(FLUENT_FORMULA);
     $$->set_string_fluent_formula(*$1);
 }
 |
-MB LEFT_PAREN agent COMMA belief_formula RIGHT_PAREN {
-   $$ = new belief_formula;
+MB LEFT_PAREN agent COMMA BeliefFormulaParsed RIGHT_PAREN {
+   $$ = new BeliefFormulaParsed;
    $$->set_formula_type(BELIEF_FORMULA);
    $$->set_string_agent(*$3);
    $$->set_bf1(*$5);
 }
 |
-belief_formula COMMA belief_formula {
-   $$ = new belief_formula;
+BeliefFormulaParsed COMMA BeliefFormulaParsed {
+   $$ = new BeliefFormulaParsed;
    $$->set_formula_type(PROPOSITIONAL_FORMULA);
    $$->set_operator(BF_AND);
    $$->set_bf1(*$1);
    $$->set_bf2(*$3);
 }
 |
-belief_formula OR belief_formula {
-   $$ = new belief_formula;
+BeliefFormulaParsed OR BeliefFormulaParsed {
+   $$ = new BeliefFormulaParsed;
    $$->set_formula_type(PROPOSITIONAL_FORMULA);
    $$->set_operator(BF_OR);
    $$->set_bf1(*$1);
    $$->set_bf2(*$3);
 }
 |
-LEFT_PAREN NEGATION belief_formula RIGHT_PAREN{
-   $$ = new belief_formula;
+LEFT_PAREN NEGATION BeliefFormulaParsed RIGHT_PAREN{
+   $$ = new BeliefFormulaParsed;
    $$->set_formula_type(PROPOSITIONAL_FORMULA);
    $$->set_operator(BF_NOT);
    $$->set_bf1(*$3);
 }
 |
-LEFT_PAREN belief_formula RIGHT_PAREN{
-    $$ = new belief_formula;
+LEFT_PAREN BeliefFormulaParsed RIGHT_PAREN{
+    $$ = new BeliefFormulaParsed;
     $$->set_formula_type(PROPOSITIONAL_FORMULA);
     $$->set_operator(BF_INPAREN);
     $$->set_bf1(*$2);
 }
 |
-ME LEFT_PAREN LEFT_BRAC agent_list RIGHT_BRAC COMMA belief_formula RIGHT_PAREN {
-   $$ = new belief_formula;
+ME LEFT_PAREN LEFT_BRAC agent_list RIGHT_BRAC COMMA BeliefFormulaParsed RIGHT_PAREN {
+   $$ = new BeliefFormulaParsed;
    $$->set_formula_type(E_FORMULA);
    $$->set_string_group_agents(*$4);
    $$->set_bf1(*$7);
 }
 |
-MC LEFT_PAREN LEFT_BRAC agent_list RIGHT_BRAC COMMA belief_formula RIGHT_PAREN {
-   $$ = new belief_formula;
+MC LEFT_PAREN LEFT_BRAC agent_list RIGHT_BRAC COMMA BeliefFormulaParsed RIGHT_PAREN {
+   $$ = new BeliefFormulaParsed;
    $$->set_formula_type(C_FORMULA);
    $$->set_string_group_agents(*$4);
    $$->set_bf1(*$7);
 }
 |
-MD LEFT_PAREN LEFT_BRAC agent_list RIGHT_BRAC COMMA belief_formula RIGHT_PAREN {
-   $$ = new belief_formula;
+MD LEFT_PAREN LEFT_BRAC agent_list RIGHT_BRAC COMMA BeliefFormulaParsed RIGHT_PAREN {
+   $$ = new BeliefFormulaParsed;
    $$->set_formula_type(D_FORMULA);
    $$->set_string_group_agents(*$4);
    $$->set_bf1(*$7);
@@ -465,7 +465,7 @@ MD LEFT_PAREN LEFT_BRAC agent_list RIGHT_BRAC COMMA belief_formula RIGHT_PAREN {
 if_part_fluent: 
 /* empty */
 {
-  $$ = new string_set_set;
+  $$ = new StringSetsSet;
 }
 |
 IF formula {
@@ -482,7 +482,7 @@ IF formula {
 static_law:
 literal_list if_part SEMICOLON
 {
-  $$ = new proposition;
+  $$ = new Proposition;
   $$->set_type(STATIC);
   $$->set_action_precondition(*$2);
   $$->set_action_effect(*$1);
@@ -492,7 +492,7 @@ literal_list if_part SEMICOLON
 dynamic_law:
 action CAUSES literal_list if_part_bf SEMICOLON 
 {  
-  $$ = new proposition;
+  $$ = new Proposition;
   $$->set_type(ONTIC);
   $$->set_action_name(*$1);
   $$->set_executability_conditions(*$4);
@@ -504,7 +504,7 @@ action CAUSES literal_list if_part_bf SEMICOLON
 executability:
 EXECUTABLE action if_part_bf SEMICOLON
 {
-  $$ = new proposition;
+  $$ = new Proposition;
   $$->set_type(EXECUTABILITY);
   $$->set_action_name(*$2);
   $$->set_executability_conditions(*$3);
@@ -514,7 +514,7 @@ EXECUTABLE action if_part_bf SEMICOLON
 determine:
 action DETERMINE literal_list if_part_bf SEMICOLON
 {
-  $$ = new proposition;
+  $$ = new Proposition;
   $$->set_type(SENSING);
   $$->set_action_name(*$1);
   //@TODO:Effect_Conversion | previously   $$->m_action_effect = *$3;
@@ -526,7 +526,7 @@ action DETERMINE literal_list if_part_bf SEMICOLON
 announcement:
 action ANNOUNCES literal_list if_part_bf SEMICOLON
 {
-  $$ = new proposition;
+  $$ = new Proposition;
   $$->set_type(ANNOUNCEMENT);
   $$->set_action_name(*$1);
   $$->add_action_effect(*$3);
@@ -541,7 +541,7 @@ action ANNOUNCES literal_list if_part_bf SEMICOLON
 lie:
 action LIE formula SEMICOLON
 {
-  $$ = new proposition;
+  $$ = new Proposition;
   $$->set_type(LIES);
   $$->set_action_name(*$1);
   $$->set_action_effect(*$3);
@@ -552,7 +552,7 @@ action LIE formula SEMICOLON
 awareness:
 agent AWAREOF action if_part_bf SEMICOLON
 {
-  $$ = new proposition;
+  $$ = new Proposition;
   $$->set_type(AWARENESS);
   $$->set_action_name(*$3);
   $$->set_agent(*$1);
@@ -563,7 +563,7 @@ agent AWAREOF action if_part_bf SEMICOLON
 observance:
 agent OBSERVES action if_part_bf SEMICOLON
 {
-  $$ = new proposition;
+  $$ = new Proposition;
   $$->set_type(OBSERVANCE);
   $$->set_action_name(*$3);				
   $$->set_agent(*$1);
@@ -574,7 +574,7 @@ agent OBSERVES action if_part_bf SEMICOLON
 executing:
 agent AGEXEC action SEMICOLON
 {
-  $$ = new proposition;
+  $$ = new Proposition;
   $$->set_type(EXECUTOR);
   $$->set_action_name(*$3);				
   $$->set_agent(*$1);
@@ -583,14 +583,14 @@ agent AGEXEC action SEMICOLON
 impossibility:
 IMPOSSIBLE action if_part SEMICOLON
 {
-  $$ = new proposition;
+  $$ = new Proposition;
   $$->set_type(IMPOSSIBILITY);
   $$->set_action_name(*$2);
   $$->set_action_precondition(*$3);
 };
 */
-/* proposition */
-proposition:
+/* Proposition */
+Proposition:
 /*static_law {
   $$ = $1;
 }
@@ -647,9 +647,9 @@ lie
 domain:
 /* empty */
 {
-  $$ = new proposition_list;
+  $$ = new PropositionsList;
 }
-| domain proposition
+| domain Proposition
 {
   $$ = $1;
   $1->push_back(*$2);
@@ -659,7 +659,7 @@ domain:
 
 /* init */
 init:
-INIT belief_formula SEMICOLON
+INIT BeliefFormulaParsed SEMICOLON
 {
   $$ = $2;
 };
@@ -667,10 +667,10 @@ INIT belief_formula SEMICOLON
 init_spec:
 /* empty */
 {
-  $$ = new formula_list;
+  $$ = new ParsedFormulaeList;
   //$$->insert(bf());
-  //$$ = new string_set_set;
-  //$$->insert(string_set());
+  //$$ = new StringSetsSet;
+  //$$->insert(StringsSet());
 }
 | init_spec init
 {
@@ -681,9 +681,9 @@ init_spec:
 /* goal */
 /*DEBUG_WARNING_REMOVAL gd_formula:
 literal {
-  string_set s1;
+  StringsSet s1;
 
-  $$ = new string_set_set;
+  $$ = new StringSetsSet;
 
   s1.insert(*$1);
   $$->insert(s1);
@@ -695,11 +695,11 @@ literal {
 }
 | 
 gd_formula OR gd_formula {
-  string_set_set::iterator it1;
-  string_set_set::iterator it2;
-  string_set ns;
+  StringSetsSet::iterator it1;
+  StringSetsSet::iterator it2;
+  StringsSet ns;
 
-  $$ = new string_set_set;
+  $$ = new StringSetsSet;
 
   for (it2 = $1->begin(); it2 != $1->end(); it2++) {
     for (it1 = $3->begin(); it1 != $3->end(); it1++){
@@ -717,7 +717,7 @@ gd_formula OR gd_formula {
 }; DEBUG_WARNING_REMOVAL*/
 
 goal:
-GOAL belief_formula SEMICOLON
+GOAL BeliefFormulaParsed SEMICOLON
 {
   $$ = $2;
 };
@@ -725,7 +725,7 @@ GOAL belief_formula SEMICOLON
 goal_spec:
 /* empty */
 {
-  $$ = new formula_list;
+  $$ = new ParsedFormulaeList;
 }
 | goal_spec goal
 {
@@ -750,9 +750,9 @@ int yyerror(const char *s)
   return yyerror(std::string(s));
 }
 
-bool is_consistent(string_set sl1, string_set sl2)
+bool is_consistent(StringsSet sl1, StringsSet sl2)
 {
-  string_set::const_iterator it;
+  StringsSet::const_iterator it;
   std::string nl;
 
   for (it = sl2.begin(); it != sl2.end(); it++) {
@@ -776,15 +776,15 @@ std::string get_negation(const std::string* s)
 }
 
 /*
-string_set_set get_negateFluentForm(string_set_set input){
+StringSetsSet get_negateFluentForm(StringSetsSet input){
   
-  string_set_set separate;
-  string_set_set join;
-  string_set_set::iterator it1;
-  string_set_set::iterator it3;
-  string_set_set negation;
+  StringSetsSet separate;
+  StringSetsSet join;
+  StringSetsSet::iterator it1;
+  StringSetsSet::iterator it3;
+  StringSetsSet negation;
   std::string temp;
-  string_set::const_iterator it2;
+  StringsSet::const_iterator it2;
 
   for(it1 = input.begin(); it1 != input.end(); it1++){
      if(it1->begin() == it1->end())
@@ -796,7 +796,7 @@ string_set_set get_negateFluentForm(string_set_set input){
   //Separate elements in separate
      for(it1 = separate.begin(); it1 != separate.end(); it1++){
         temp = get_negation(&(*(it1->begin())));    //possible pointer problem
-        string_set tiep;
+        StringsSet tiep;
 	tiep.insert(temp);
 	negation.insert(tiep);
      }//for loop
@@ -808,7 +808,7 @@ string_set_set get_negateFluentForm(string_set_set input){
         for(it2 = it1->begin(); it2 != it1->end(); it2++)
         {
            temp = get_negation(&(*it2));    //possible pointer problem
-           string_set tiep;
+           StringsSet tiep;
            tiep.insert(temp);
            negation.insert(tiep);
 	}
@@ -820,14 +820,14 @@ string_set_set get_negateFluentForm(string_set_set input){
 //negate_or: input: String list = list of or. 
 //             output: Stringlist 2 = list of and of negation
 
-string_set_set negate_or(string_set input){
+StringSetsSet negate_or(StringsSet input){
    
-   string_set::iterator it;
-   string_set_set output;
+   StringsSet::iterator it;
+   StringSetsSet output;
    std::string element;
    
    for(it = input.begin(); it != input.end(); it++){
-      string_set temp;
+      StringsSet temp;
       element = get_negation(&(*it));
       temp.insert(element);
       output.insert(temp);
@@ -844,17 +844,17 @@ string_set_set negate_or(string_set input){
 //                -> n std::stringlist 2 -> std::stringlist 3
 //                output = first member stirnglist 3 or second member of std::stringlist 3
 
-string_set_set join_SL2(string_set_set input1, string_set_set input2){
+StringSetsSet join_SL2(StringSetsSet input1, StringSetsSet input2){
   
   if(input2.size() == 0){
      return input1;
   }
 
-  string_set_set::iterator it1;
-  string_set_set::iterator it2;
-  string_set ns;
+  StringSetsSet::iterator it1;
+  StringSetsSet::iterator it2;
+  StringsSet ns;
 
-  string_set_set output;
+  StringSetsSet output;
 
   for (it2 = input1.begin(); it2 != input1.end(); it2++) {
     for (it1 = input2.begin(); it1 != input2.end(); it1++){
@@ -870,17 +870,17 @@ string_set_set join_SL2(string_set_set input1, string_set_set input2){
    
 }
 
-string_set_set negate_form(string_set_set input){
+StringSetsSet negate_form(StringSetsSet input){
    
-  typedef std::set<string_set_set> string_set3;
+  typedef std::set<StringSetsSet> string_set3;
   string_set3 list3;
-  string_set_set::iterator it1;
-  string_set_set::iterator it2;
+  StringSetsSet::iterator it1;
+  StringSetsSet::iterator it2;
   string_set3::iterator it3;
-  string_set ns;
-  string_set_set temp;
+  StringsSet ns;
+  StringSetsSet temp;
 
-  string_set_set output;
+  StringSetsSet output;
 
   //turn all the otr statements to and statements
    for(it1 = input.begin(); it1 != input.end(); it1++){
@@ -898,8 +898,8 @@ string_set_set negate_form(string_set_set input){
    return output;
 }
 
-void print_string_set(string_set in){
-	string_set::iterator it1;
+void print_string_set(StringsSet in){
+	StringsSet::iterator it1;
 	std::cout << "[ " ;
         for(it1 = in.begin();it1!=in.end();it1++){
 		std::cout << *it1 << " , ";   
@@ -907,8 +907,8 @@ void print_string_set(string_set in){
 	std::cout << "] " ;
 }
 
-void print_string_set_set(string_set_set in){
-	string_set_set::iterator it1;
+void print_string_set_set(StringSetsSet in){
+	StringSetsSet::iterator it1;
 	std::cout << "[ "; 
         for(it1 = in.begin();it1!=in.end();it1++){
  		 

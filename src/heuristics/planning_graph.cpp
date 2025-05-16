@@ -121,14 +121,14 @@ void pg_state_level::insert_subformula_bf(const formula_list & fl, short value)
 	}
 }
 
-void pg_state_level::insert_subformula_bf(const belief_formula & bf, short value)
+void pg_state_level::insert_subformula_bf(const BeliefFormula & bf, short value)
 {
 	//We set all the subformulas to be TRUE for initially. Maybe it is wrong
 	//Maybe we don't need the subformulas at all
 	switch ( bf.get_formula_type() ) {
 
 	case BELIEF_FORMULA:
-		if (m_pg_bf_map.insert(std::pair < belief_formula, short>(bf, value)).second) {
+		if (m_pg_bf_map.insert(std::pair < BeliefFormula, short>(bf, value)).second) {
 			insert_subformula_bf(bf.get_bf1(), value);
 		}
 		break;
@@ -137,18 +137,18 @@ void pg_state_level::insert_subformula_bf(const belief_formula & bf, short value
 		switch ( bf.get_operator() ) {
 		case BF_NOT:
 			//HERE ALWAYS TRUE BECAUSE IS MONOTONIC NOW
-			if (m_pg_bf_map.insert(std::pair < belief_formula, short>(bf, 0)).second) {
+			if (m_pg_bf_map.insert(std::pair < BeliefFormula, short>(bf, 0)).second) {
 				insert_subformula_bf(bf.get_bf1(), value);
 			}
 			break;
 		case BF_OR:
-			if (m_pg_bf_map.insert(std::pair < belief_formula, short>(bf, value)).second) {
+			if (m_pg_bf_map.insert(std::pair < BeliefFormula, short>(bf, value)).second) {
 				insert_subformula_bf(bf.get_bf1(), value);
 				insert_subformula_bf(bf.get_bf2(), value);
 			}
 			break;
 		case BF_AND:
-			if (m_pg_bf_map.insert(std::pair < belief_formula, short>(bf, value)).second) {
+			if (m_pg_bf_map.insert(std::pair < BeliefFormula, short>(bf, value)).second) {
 				insert_subformula_bf(bf.get_bf1(), value);
 				insert_subformula_bf(bf.get_bf2(), value);
 			}
@@ -160,7 +160,7 @@ void pg_state_level::insert_subformula_bf(const belief_formula & bf, short value
 		}
 		break;
 	case C_FORMULA:
-		if (m_pg_bf_map.insert(std::pair < belief_formula, short>(bf, value)).second) {
+		if (m_pg_bf_map.insert(std::pair < BeliefFormula, short>(bf, value)).second) {
 			insert_subformula_bf(bf.get_bf1(), value);
 		}
 		break;
@@ -234,7 +234,7 @@ short pg_state_level::get_fluent_value(const fluent & key) const
 	}
 }
 
-short pg_state_level::get_bf_value(const belief_formula & key) const
+short pg_state_level::get_bf_value(const BeliefFormula & key) const
 {
 	if (m_pg_bf_map.find(key) != m_pg_bf_map.end()) {
 		return m_pg_bf_map.at(key);
@@ -298,7 +298,7 @@ void pg_state_level::modify_fluent_value(const fluent & key, short value)
 	}
 }
 
-void pg_state_level::modify_bf_value(const belief_formula & key, short value)
+void pg_state_level::modify_bf_value(const BeliefFormula & key, short value)
 {
 	if (m_pg_bf_map.find(key) != m_pg_bf_map.end()) {
 		if (m_pg_bf_map.at(key) < 0) {
@@ -315,7 +315,7 @@ bool pg_state_level::pg_entailment(const fluent & f) const
 	return get_fluent_value(f) >= 0;
 }
 
-bool pg_state_level::pg_entailment(const belief_formula & bf) const
+bool pg_state_level::pg_entailment(const BeliefFormula & bf) const
 {
 	if (bf.get_formula_type() == BF_EMPTY) {
 		return true;
@@ -340,7 +340,7 @@ bool pg_state_level::pg_executable(const action & act) const
 	return pg_entailment(act.get_executability());
 }
 
-void pg_state_level::get_base_fluents(const belief_formula & bf, fluent_set & bf_base_fluents)
+void pg_state_level::get_base_fluents(const BeliefFormula & bf, fluent_set & bf_base_fluents)
 {
 	switch ( bf.get_formula_type() ) {
 
@@ -387,7 +387,7 @@ void pg_state_level::get_base_fluents(const belief_formula & bf, fluent_set & bf
 	}
 }
 
-bool pg_state_level::compute_succ(const action & act, const pg_state_level & predecessor, bformula_set & false_bf)
+bool pg_state_level::compute_succ(const action & act, const pg_state_level & predecessor, FormulaeSet & false_bf)
 {
 	switch ( act.get_type() ) {
 	case ONTIC:
@@ -401,7 +401,7 @@ bool pg_state_level::compute_succ(const action & act, const pg_state_level & pre
 	}
 }
 
-bool pg_state_level::exec_ontic(const action & act, const pg_state_level & predecessor, bformula_set & false_bf)
+bool pg_state_level::exec_ontic(const action & act, const pg_state_level & predecessor, FormulaeSet & false_bf)
 {
 	observability_map fully_observant_map = act.get_fully_observants();
 	AgentSet fully_obs;
@@ -442,7 +442,7 @@ bool pg_state_level::exec_ontic(const action & act, const pg_state_level & prede
 	}
 
 
-	bformula_set tmp_fl = false_bf;
+	FormulaeSet tmp_fl = false_bf;
 
 
 	for (auto it_false_bf = tmp_fl.begin(); it_false_bf != tmp_fl.end(); it_false_bf++) {
@@ -463,7 +463,7 @@ bool pg_state_level::exec_ontic(const action & act, const pg_state_level & prede
 
 }
 
-bool pg_state_level::exec_epistemic(const action & act, const pg_state_level & predecessor, bformula_set & false_bf)
+bool pg_state_level::exec_epistemic(const action & act, const pg_state_level & predecessor, FormulaeSet & false_bf)
 {
 	observability_map partially_observant_map = act.get_partially_observants();
 	observability_map fully_observant_map = act.get_fully_observants();
@@ -490,7 +490,7 @@ bool pg_state_level::exec_epistemic(const action & act, const pg_state_level & p
 	}
 
 	bool modified_pg = false;
-	bformula_set tmp_fl = false_bf;
+	FormulaeSet tmp_fl = false_bf;
 	for (auto it_false_bf = tmp_fl.begin(); it_false_bf != tmp_fl.end(); it_false_bf++) {
 		bool tmp_modified = false;
 		bf_base_fluents.clear();
@@ -518,7 +518,7 @@ bool pg_state_level::exec_epistemic(const action & act, const pg_state_level & p
 	return modified_pg;
 }
 
-bool pg_state_level::apply_ontic_effects(const belief_formula & bf, bformula_set & fl, const AgentSet & fully, bool & modified_pg)
+bool pg_state_level::apply_ontic_effects(const BeliefFormula & bf, FormulaeSet & fl, const AgentSet & fully, bool & modified_pg)
 {
 	if (pg_entailment(bf)) {
 		return true;
@@ -637,7 +637,7 @@ bool pg_state_level::apply_ontic_effects(const belief_formula & bf, bformula_set
 	return false;
 }
 
-bool pg_state_level::apply_epistemic_effects(fluent effect, const belief_formula & bf, bformula_set & fl, const AgentSet & fully, const AgentSet & partially, bool & modified_pg, unsigned short vis_cond)
+bool pg_state_level::apply_epistemic_effects(fluent effect, const BeliefFormula & bf, FormulaeSet & fl, const AgentSet & fully, const AgentSet & partially, bool & modified_pg, unsigned short vis_cond)
 {
 	if (pg_entailment(bf)) {
 		return true;
@@ -1123,7 +1123,7 @@ const action_set & planning_graph::get_never_executed() const
 	return m_never_executed;
 }
 
-const bformula_set & planning_graph::get_belief_formula_false() const
+const FormulaeSet & planning_graph::get_belief_formula_false() const
 {
 	return m_belief_formula_false;
 }

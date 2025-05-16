@@ -22,8 +22,8 @@
 #pragma once
 
 #include "Define.h"
-#include "../formulae/belief_formula.h"
-#include "../actions/Proposition.h"
+#include "formulae/BeliefFormula.h"
+#include "actions/Proposition.h"
 
 class reader
 {

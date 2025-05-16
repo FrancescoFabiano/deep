@@ -177,7 +177,7 @@ fluent_set state<T>::compute_succ2(const Action & act) const
 	ret.set_executed_actions(get_executed_actions());
 	ret.add_executed_action(act);
 
-	pworld_ptr repr = ret.get_representation();
+	KripkeWorldPointer repr = ret.get_representation();
 	fluent_set repr_set = repr.get_fluent_set();
 	ret.set_plan_length(get_plan_length() + 1);
 

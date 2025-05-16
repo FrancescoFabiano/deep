@@ -12,20 +12,21 @@ include_directories(
         src/actions
         src/argparse
         src/domain
-#        src/formulae
-#        src/heuristics
-#        src/parse
-#        src/states
-#        src/states/possibilities
-#        src/utilities
-#        src/search
-#        lib/bisimulation
+        src/formulae
+        src/heuristics
+        src/parse
+        src/states
+        src/states/kripke
+        src/utilities
+        src/search
+        lib/bisimulation
 )
 
 # Automatically include all source files
-set(SOURCES ""
-        src/utilities/Define.h
-        src/utilities/ExitHandler.h)
+set(SOURCES
+        src/utilities/SetHelper.h
+        src/parse/BeliefFormulaParsed.cpp #This is a header file, not a source file but it contains template functions
+)
 get_property(INCLUDE_DIRS DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY INCLUDE_DIRECTORIES)
 foreach(dir ${INCLUDE_DIRS})
     file(GLOB TMP_SOURCES CONFIGURE_DEPENDS "${dir}/*.cpp")

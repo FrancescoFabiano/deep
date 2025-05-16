@@ -12,6 +12,7 @@
 #include <ranges>
 
 #include "ArgumentParser.h"
+#include "HelperPrint.h"
 #include "utilities/FormulaHelper.h"
 
 
@@ -174,7 +175,7 @@ void Domain::build_actions() {
     }
 
     m_grounder.set_action_name_map(domain_action_name_map);
-    printer::get_instance().set_grounder(m_grounder);
+    HelperPrint::get_instance().set_grounder(m_grounder);
 
     build_propositions();
 
@@ -213,22 +214,24 @@ void Domain::build_initially() {
     /////@TODO This will be replaced by epddl parser. Reader needs to be changed and make sure to have getter and setter
     for (auto& formula : m_reader->m_bf_initially) {
         formula.ground();
+        //NEED TO CREATE AN EXTRA CLASS THAT WILL CONTAIN ALL THE STRING INFOMRATION OF THE BELIEF FORMUALE AND PASSES THEM TO THE GROUNDED BELIEF FORUMAL AND THEN GETS DESTROYED
+        //tHAT WAY WE DO NOT NEED TO CARRY OVER STRINGS IN BELIEF FORMULAE
 
         switch (formula.get_formula_type()) {
-        case FLUENT_FORMULA: {
+        case BeliefFormulaType::FLUENT_FORMULA: {
                 m_initial_description.add_pointed_condition(formula.get_fluent_formula());
                 if (ArgumentParser::get_instance().get_debug()) {
                     std::cout << "    Pointed world: ";
-                    printer::get_instance().print_list(formula.get_fluent_formula());
+                    HelperPrint::get_instance().print_list(formula.get_fluent_formula());
                     std::cout << std::endl;
                 }
                 break;
         }
-        case C_FORMULA:
-        case D_FORMULA:
-        case PROPOSITIONAL_FORMULA:
-        case BELIEF_FORMULA:
-        case E_FORMULA: {
+        case BeliefFormulaType::C_FORMULA:
+        case BeliefFormulaType::D_FORMULA:
+        case BeliefFormulaType::PROPOSITIONAL_FORMULA:
+        case BeliefFormulaType::BELIEF_FORMULA:
+        case BeliefFormulaType::E_FORMULA: {
                 m_initial_description.add_initial_condition(formula);
                 if (ArgumentParser::get_instance().get_debug()) {
                     std::cout << "Added to initial conditions: ";
@@ -237,7 +240,7 @@ void Domain::build_initially() {
                 }
                 break;
         }
-        case BF_EMPTY:
+        case BeliefFormulaType::BF_EMPTY:
             break;
         default:
             ExitHandler::exit_with_message(

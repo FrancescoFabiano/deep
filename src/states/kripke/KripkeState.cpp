@@ -1,5 +1,5 @@
 /*
- * \brief Implementation of \ref pstate.h
+ * \brief Implementation of \ref KripkeState.h
  *
  * \copyright GNU Public License.
  *
@@ -14,50 +14,49 @@
 #include <unordered_map>
 #include <set>
 
-#include "pstate.h"
-#include "../../utilities/FormulaHelper_t.ipp"
+#include "KripkeState.h"
 
-void pstate::set_worlds(const pworld_ptr_set & to_set)
+void KripkeState::set_worlds(const KripkeWorldPointersSet & to_set)
 {
 	m_worlds = to_set;
 }
 
-void pstate::set_pointed(const pworld_ptr & to_set)
+void KripkeState::set_pointed(const KripkeWorldPointer & to_set)
 {
 	m_pointed = to_set;
 }
 
-void pstate::set_beliefs(const pworld_transitive_map & to_set)
+void KripkeState::set_beliefs(const KripkeWorldPointersTransitiveMap & to_set)
 {
 	m_beliefs = to_set;
 }
 
-void pstate::set_max_depth(unsigned int to_set)
+void KripkeState::set_max_depth(unsigned int to_set)
 {
 	if (m_max_depth < to_set) m_max_depth = to_set;
 }
 
-const pworld_ptr_set & pstate::get_worlds() const
+const KripkeWorldPointersSet & KripkeState::get_worlds() const
 {
 	return m_worlds;
 }
 
-const pworld_ptr & pstate::get_pointed() const
+const KripkeWorldPointer & KripkeState::get_pointed() const
 {
 	return m_pointed;
 }
 
-const pworld_transitive_map & pstate::get_beliefs() const
+const KripkeWorldPointersTransitiveMap & KripkeState::get_beliefs() const
 {
 	return m_beliefs;
 }
 
-unsigned int pstate::get_max_depth() const
+unsigned int KripkeState::get_max_depth() const
 {
 	return m_max_depth;
 }
 
-bool pstate::operator=(const pstate & to_copy)
+bool KripkeState::operator=(const KripkeState & to_copy)
 {
 	set_worlds(to_copy.get_worlds());
 	set_beliefs(to_copy.get_beliefs());
@@ -67,7 +66,7 @@ bool pstate::operator=(const pstate & to_copy)
 	return true;
 }
 
-bool pstate::operator<(const pstate & to_compare) const
+bool KripkeState::operator<(const KripkeState & to_compare) const
 {
 
 	/*if (m_max_depth < to_compare.get_max_depth()) {
@@ -88,11 +87,11 @@ bool pstate::operator<(const pstate & to_compare) const
 		return false;
 	}
 
-	pworld_transitive_map::const_iterator it_tramap1;
-	pworld_transitive_map::const_iterator it_tramap2 = to_compare.get_beliefs().begin();
+	KripkeWorldPointersTransitiveMap::const_iterator it_tramap1;
+	KripkeWorldPointersTransitiveMap::const_iterator it_tramap2 = to_compare.get_beliefs().begin();
 
-	pworld_map tmp_pwmap1, tmp_pwmap2;
-	pworld_map::const_iterator it_pwmap1, it_pwmap2;
+	KripkeWorldPointersMap tmp_pwmap1, tmp_pwmap2;
+	KripkeWorldPointersMap::const_iterator it_pwmap1, it_pwmap2;
 	//The same size is assured by the same size of m_worlds
 	for (it_tramap1 = m_beliefs.begin(); it_tramap1 != m_beliefs.end(); it_tramap1++) {
 		if (it_tramap1->first < it_tramap2->first) {
@@ -128,44 +127,44 @@ bool pstate::operator<(const pstate & to_compare) const
 	return false;
 }
 
-bool pstate::entails(Fluent f) const
+bool KripkeState::entails(Fluent f) const
 {
 	return entails(f, m_pointed);
 }
 
-bool pstate::entails(Fluent f, const pworld_ptr & world) const
+bool KripkeState::entails(Fluent f, const KripkeWorldPointer & world) const
 {
 	return world.get_ptr()->entails(f);
 }
 
-bool pstate::entails(const FluentsSet & fl) const
+bool KripkeState::entails(const FluentsSet & fl) const
 {
 	return entails(fl, m_pointed);
 }
 
-bool pstate::entails(const FluentsSet & fl, const pworld_ptr & world) const
+bool KripkeState::entails(const FluentsSet & fl, const KripkeWorldPointer & world) const
 {
 	return world.get_ptr()->entails(fl);
 }
 
-bool pstate::entails(const FluentFormula & ff) const
+bool KripkeState::entails(const FluentFormula & ff) const
 {
 	return entails(ff, m_pointed);
 }
 
-bool pstate::entails(const FluentFormula & ff, const pworld_ptr & world) const
+bool KripkeState::entails(const FluentFormula & ff, const KripkeWorldPointer & world) const
 {
 	return world.get_ptr()->entails(ff);
 }
 
-bool pstate::entails(const belief_formula & bf) const
+bool KripkeState::entails(const BeliefFormula & bf) const
 {
 	return entails(bf, m_pointed);
 }
 
-bool pstate::entails(const belief_formula & to_check, const pworld_ptr_set & reachable) const
+bool KripkeState::entails(const BeliefFormula & to_check, const KripkeWorldPointersSet & reachable) const
 {
-	pworld_ptr_set::const_iterator it_pws;
+	KripkeWorldPointersSet::const_iterator it_pws;
 	for (it_pws = reachable.begin(); it_pws != reachable.end(); it_pws++) {
 		if (!entails(to_check, *it_pws))
 			return false;
@@ -173,19 +172,19 @@ bool pstate::entails(const belief_formula & to_check, const pworld_ptr_set & rea
 	return true;
 }
 
-bool pstate::entails(const belief_formula & bf, const pworld_ptr & world) const
+bool KripkeState::entails(const BeliefFormula & bf, const KripkeWorldPointer & world) const
 {
 	/*
-	 The entailment of a \ref belief_formula just call recursively the entailment on all the reachable world with that formula.
+	 The entailment of a \ref BeliefFormula just call recursively the entailment on all the reachable world with that formula.
 	 */
-	pworld_ptr_set D_reachable;
+	KripkeWorldPointersSet D_reachable;
 	switch ( bf.get_formula_type() ) {
 
 	case FLUENT_FORMULA:
 	{
-		/** \todo Make sure its grounded. Maybe add to \ref belief_formula a bool that store if grounded or not or maybe ground
+		/** \todo Make sure its grounded. Maybe add to \ref BeliefFormula a bool that store if grounded or not or maybe ground
 		 * when \ref domain created.
-		 * @see belief_formula::ground(const grounder &).*/
+		 * @see BeliefFormula::ground(const grounder &).*/
 		return entails(bf.get_fluent_formula(), world);
 		break;
 	}
@@ -246,7 +245,7 @@ bool pstate::entails(const belief_formula & bf, const pworld_ptr & world) const
 	return false;
 }
 
-bool pstate::entails(const formula_list & to_check, const pworld_ptr & world) const
+bool KripkeState::entails(const formula_list & to_check, const KripkeWorldPointer & world) const
 {
 	//formula_list expresses CNF formula
 	formula_list::const_iterator it_fl;
@@ -258,21 +257,21 @@ bool pstate::entails(const formula_list & to_check, const pworld_ptr & world) co
 	return true;
 }
 
-const pworld_ptr_set pstate::get_B_reachable_worlds(Agent ag, const pworld_ptr & world) const
+const KripkeWorldPointersSet KripkeState::get_B_reachable_worlds(Agent ag, const KripkeWorldPointer & world) const
 {
-	pworld_ptr_set ret;
+	KripkeWorldPointersSet ret;
 	auto pw_map = m_beliefs.find(world);
 
 	if (pw_map != m_beliefs.end()) {
 		auto pw_set = pw_map->second.find(ag);
 		if (pw_set != pw_map->second.end()) {
-			FormulaHelper_t::sum_set<pworld_ptr>(ret, pw_set->second);
+			FormulaHelper_t::sum_set<KripkeWorldPointer>(ret, pw_set->second);
 		}
 	}
 	return ret;
 }
 
-bool pstate::get_B_reachable_worlds_recoursive(Agent ag, const pworld_ptr & world, pworld_ptr_set& ret) const
+bool KripkeState::get_B_reachable_worlds_recoursive(Agent ag, const KripkeWorldPointer & world, KripkeWorldPointersSet& ret) const
 {
 	/** \todo check: If a--i-->b, b--i-->c then a--i-->c must be there*/
 	auto pw_map = m_beliefs.find(world);
@@ -281,7 +280,7 @@ bool pstate::get_B_reachable_worlds_recoursive(Agent ag, const pworld_ptr & worl
 		auto pw_set = pw_map->second.find(ag);
 		if (pw_set != pw_map->second.end()) {
 			unsigned long previous_size = ret.size();
-			FormulaHelper_t::sum_set<pworld_ptr>(ret, pw_set->second);
+			FormulaHelper_t::sum_set<KripkeWorldPointer>(ret, pw_set->second);
 			unsigned long current_size = ret.size();
 
 			return previous_size == current_size;
@@ -291,24 +290,24 @@ bool pstate::get_B_reachable_worlds_recoursive(Agent ag, const pworld_ptr & worl
 	return true;
 }
 
-const pworld_ptr_set pstate::get_E_reachable_worlds(const AgentsSet & ags, const pworld_ptr & world) const
+const KripkeWorldPointersSet KripkeState::get_E_reachable_worlds(const AgentsSet & ags, const KripkeWorldPointer & world) const
 {
 	/*The K^0 call of this function*/
-	pworld_ptr_set ret;
+	KripkeWorldPointersSet ret;
 	AgentsSet::const_iterator it_agset;
 	for (it_agset = ags.begin(); it_agset != ags.end(); it_agset++) {
-		FormulaHelper_t::sum_set<pworld_ptr>(ret, get_B_reachable_worlds(*it_agset, world));
+		FormulaHelper_t::sum_set<KripkeWorldPointer>(ret, get_B_reachable_worlds(*it_agset, world));
 	}
 
 	return ret;
 }
 
-bool pstate::get_E_reachable_worlds_recoursive(const AgentsSet & ags, const pworld_ptr_set & worlds, pworld_ptr_set & ret) const
+bool KripkeState::get_E_reachable_worlds_recoursive(const AgentsSet & ags, const KripkeWorldPointersSet & worlds, KripkeWorldPointersSet & ret) const
 {
 	/*The K^i (recoursive) call of this function*/
 
 	bool is_fixed_point = true;
-	pworld_ptr_set::const_iterator it_pwptr;
+	KripkeWorldPointersSet::const_iterator it_pwptr;
 	AgentsSet::const_iterator it_agset;
 	for (it_pwptr = worlds.begin(); it_pwptr != worlds.end(); it_pwptr++) {
 		for (it_agset = ags.begin(); it_agset != ags.end(); it_agset++) {
@@ -321,34 +320,34 @@ bool pstate::get_E_reachable_worlds_recoursive(const AgentsSet & ags, const pwor
 
 }
 
-const pworld_ptr_set pstate::get_C_reachable_worlds(const AgentsSet & ags, const pworld_ptr & world) const
+const KripkeWorldPointersSet KripkeState::get_C_reachable_worlds(const AgentsSet & ags, const KripkeWorldPointer & world) const
 {
 	//Use of fixed point to stop.
 	bool is_fixed_point = false;
-	pworld_ptr_set newly_reached = get_E_reachable_worlds(ags, world);
-	pworld_ptr_set already_reached;
-	pworld_ptr_set ret;
+	KripkeWorldPointersSet newly_reached = get_E_reachable_worlds(ags, world);
+	KripkeWorldPointersSet already_reached;
+	KripkeWorldPointersSet ret;
 	while (!is_fixed_point) {
-		FormulaHelper_t::sum_set<pworld_ptr>(newly_reached, ret);
-		FormulaHelper_t::minus_set<pworld_ptr>(newly_reached, already_reached);
+		FormulaHelper_t::sum_set<KripkeWorldPointer>(newly_reached, ret);
+		FormulaHelper_t::minus_set<KripkeWorldPointer>(newly_reached, already_reached);
 		is_fixed_point = get_E_reachable_worlds_recoursive(ags, newly_reached, ret);
 		already_reached = newly_reached;
 	}
 	return ret;
 }
 
-const pworld_ptr_set pstate::get_D_reachable_worlds(const AgentsSet & ags, const pworld_ptr & world) const
+const KripkeWorldPointersSet KripkeState::get_D_reachable_worlds(const AgentsSet & ags, const KripkeWorldPointer & world) const
 {
 	/**@bug: Notion of D-Reachable is correct (page 24 of Reasoning about Knowledge)*/
 	AgentsSet::const_iterator it_agset = ags.begin();
-	pworld_ptr_set ret = get_B_reachable_worlds((*it_agset), world);
+	KripkeWorldPointersSet ret = get_B_reachable_worlds((*it_agset), world);
 	it_agset++;
 
 	for (; it_agset != ags.end(); it_agset++) {
 
-		pworld_ptr_set::iterator it_pwset1 = ret.begin();
-		pworld_ptr_set to_intersect = get_B_reachable_worlds((*it_agset), world);
-		pworld_ptr_set::const_iterator it_pwset2 = to_intersect.begin();
+		KripkeWorldPointersSet::iterator it_pwset1 = ret.begin();
+		KripkeWorldPointersSet to_intersect = get_B_reachable_worlds((*it_agset), world);
+		KripkeWorldPointersSet::const_iterator it_pwset2 = to_intersect.begin();
 		while ((it_pwset1 != ret.end()) && (it_pwset2 != to_intersect.end())) {
 
 			if ((*it_pwset1 < *it_pwset2) && (((*it_pwset1).get_fluent_based_id()) == ((*it_pwset2).get_fluent_based_id()))) {
@@ -371,62 +370,62 @@ const pworld_ptr_set pstate::get_D_reachable_worlds(const AgentsSet & ags, const
 	return ret;
 }
 
-void pstate::add_world(const pworld & world)
+void KripkeState::add_world(const KripkeWorld & world)
 {
 
 	m_worlds.insert(pstore::get_instance().add_world(world));
 }
 
-pworld_ptr pstate::add_rep_world(const pworld & world, unsigned short repetition, bool& is_new)
+KripkeWorldPointer KripkeState::add_rep_world(const KripkeWorld & world, unsigned short repetition, bool& is_new)
 {
-	pworld_ptr tmp = pstore::get_instance().add_world(world);
+	KripkeWorldPointer tmp = pstore::get_instance().add_world(world);
 	tmp.set_repetition(repetition);
 	is_new = std::get<1>(m_worlds.insert(tmp));
 
 	return tmp;
 }
 
-pworld_ptr pstate::add_rep_world(const pworld & world, unsigned short old_repetition)
+KripkeWorldPointer KripkeState::add_rep_world(const KripkeWorld & world, unsigned short old_repetition)
 {
 	bool tmp = false;
 
 	return add_rep_world(world, get_max_depth() + old_repetition, tmp);
 }
 
-pworld_ptr pstate::add_rep_world(const pworld & world)
+KripkeWorldPointer KripkeState::add_rep_world(const KripkeWorld & world)
 {
 	bool tmp = false;
 
 	return add_rep_world(world, get_max_depth(), tmp);
 }
 
-void pstate::add_edge(const pworld_ptr &from, const pworld_ptr &to, Agent ag)
+void KripkeState::add_edge(const KripkeWorldPointer &from, const KripkeWorldPointer &to, Agent ag)
 {
-	pworld_transitive_map::iterator from_beliefs = m_beliefs.find(from);
+	KripkeWorldPointersTransitiveMap::iterator from_beliefs = m_beliefs.find(from);
 
 	if (from_beliefs != m_beliefs.end()) {
-		pworld_map::iterator ag_beliefs = from_beliefs->second.find(ag);
+		KripkeWorldPointersMap::iterator ag_beliefs = from_beliefs->second.find(ag);
 
 		if (ag_beliefs != from_beliefs->second.end()) {
 			ag_beliefs->second.insert(to);
 		} else {
-			from_beliefs->second.insert(pworld_map::value_type(ag,{to}));
+			from_beliefs->second.insert(KripkeWorldPointersMap::value_type(ag,{to}));
 		}
 	} else {
 
-		pworld_map pwm;
-		pwm.insert(pworld_map::value_type(ag,{to}));
-		m_beliefs.insert(pworld_transitive_map::value_type(from, pwm));
+		KripkeWorldPointersMap pwm;
+		pwm.insert(KripkeWorldPointersMap::value_type(ag,{to}));
+		m_beliefs.insert(KripkeWorldPointersTransitiveMap::value_type(from, pwm));
 	}
 }
 
-void pstate::add_pworld_beliefs(const pworld_ptr & world, const pworld_map & beliefs)
+void KripkeState::add_pworld_beliefs(const KripkeWorldPointer & world, const KripkeWorldPointersMap & beliefs)
 {
 
 	m_beliefs[world] = beliefs;
 }
 
-void pstate::build_initial()
+void KripkeState::build_initial()
 {
 
 	/** \todo for now prune building.*/
@@ -434,12 +433,12 @@ void pstate::build_initial()
 	build_initial_prune();
 }
 
-void pstate::build_initial_structural()
+void KripkeState::build_initial_structural()
 {
 
 }
 
-void pstate::build_initial_prune()
+void KripkeState::build_initial_prune()
 {
 
 	/*Building of all the possible consistent \ref pworld and setting the pointed world.
@@ -456,7 +455,7 @@ void pstate::build_initial_prune()
 }
 
 /*From https://www.geeksforgeeks.org/generate-all-the-binary-strings-of-n-bits/ since is like generating all the binary numbers.*/
-void pstate::generate_initial_pworlds(FluentsSet& permutation, int index, const FluentsSet & initially_known)
+void KripkeState::generate_initial_pworlds(FluentsSet& permutation, int index, const FluentsSet & initially_known)
 {
 	//todo non usare indici ma bitset prima positivo fluent poi negativo
 	int fluent_number = domain::get_instance().get_fluent_number();
@@ -464,7 +463,7 @@ void pstate::generate_initial_pworlds(FluentsSet& permutation, int index, const 
 	int bit_size = (domain::get_instance().get_size_fluent());
 
 	if (index == fluent_number) {
-		pworld to_add(permutation);
+		KripkeWorld to_add(permutation);
 		add_initial_pworld(to_add);
 
 		return;
@@ -489,7 +488,7 @@ void pstate::generate_initial_pworlds(FluentsSet& permutation, int index, const 
 
 }
 
-void pstate::add_initial_pworld(const pworld & possible_add)
+void KripkeState::add_initial_pworld(const KripkeWorld & possible_add)
 {
 	InitialStateInformation ini_conditions = domain::get_instance().get_initial_description();
 
@@ -503,7 +502,7 @@ void pstate::add_initial_pworld(const pworld & possible_add)
 		if (possible_add.entails(ini_conditions.get_ff_forS5())) {
 			add_world(possible_add);
 			if (possible_add.entails(ini_conditions.get_pointed_world_conditions())) {
-				m_pointed = pworld_ptr(possible_add);
+				m_pointed = KripkeWorldPointer(possible_add);
 				/*std::cout << "pointed world: ";
 				printer::get_instance().print_list(possible_add.get_fluent_set());
 				std::cout << std::endl;*/
@@ -537,11 +536,11 @@ void pstate::add_initial_pworld(const pworld & possible_add)
 	}
 }
 
-void pstate::generate_initial_pedges()
+void KripkeState::generate_initial_pedges()
 {
-	pworld_ptr_set::const_iterator it_pwps_1, it_pwps_2;
+	KripkeWorldPointersSet::const_iterator it_pwps_1, it_pwps_2;
 
-	pworld_ptr pwptr_tmp1, pwptr_tmp2;
+	KripkeWorldPointer pwptr_tmp1, pwptr_tmp2;
 
 	/*This for add to *this* all the possible edges.*/
 	for (it_pwps_1 = m_worlds.begin(); it_pwps_1 != m_worlds.end(); it_pwps_1++) {
@@ -571,7 +570,7 @@ void pstate::generate_initial_pedges()
 
 }
 
-void pstate::remove_edge(pworld_ptr &from, const pworld &to, const Agent ag)
+void KripkeState::remove_edge(KripkeWorldPointer &from, const KripkeWorld &to, const Agent ag)
 {
 	auto from_beliefs = m_beliefs.find(from);
 
@@ -585,11 +584,11 @@ void pstate::remove_edge(pworld_ptr &from, const pworld &to, const Agent ag)
 	}
 }
 
-void pstate::remove_initial_pedge(const FluentFormula &known_ff, Agent ag)
+void KripkeState::remove_initial_pedge(const FluentFormula &known_ff, Agent ag)
 {
-	pworld_ptr_set::const_iterator it_pwps_1, it_pwps_2;
+	KripkeWorldPointersSet::const_iterator it_pwps_1, it_pwps_2;
 
-	pworld_ptr pwptr_tmp1, pwptr_tmp2;
+	KripkeWorldPointer pwptr_tmp1, pwptr_tmp2;
 
 	/** \todo maybe don't loop twice on the world but exploit using it_pwps_2 = it_pwps_1:
 	 * - remove (_1, _2).
@@ -611,7 +610,7 @@ void pstate::remove_initial_pedge(const FluentFormula &known_ff, Agent ag)
 	}
 }
 
-void pstate::remove_initial_pedge_bf(const belief_formula & to_check)
+void KripkeState::remove_initial_pedge_bf(const BeliefFormula & to_check)
 {
 	switch ( domain::get_instance().get_initial_description().get_ini_restriction() ) {
 	case S5:
@@ -619,7 +618,7 @@ void pstate::remove_initial_pedge_bf(const belief_formula & to_check)
 		/* Just check whenever is B(--) \/ B(--) and remove that edge*/
 		if (to_check.get_formula_type() == C_FORMULA) {
 
-			belief_formula tmp = to_check.get_bf1();
+			BeliefFormula tmp = to_check.get_bf1();
 
 			switch ( tmp.get_formula_type() ) {
 
@@ -700,7 +699,7 @@ void pstate::remove_initial_pedge_bf(const belief_formula & to_check)
 }
 
 /** \warning executability should be check in \ref state (or \ref planner).*/
-pstate pstate::compute_succ(const Action & act) const
+KripkeState KripkeState::compute_succ(const Action & act) const
 {
 	//std::cerr << "\nDEBUG: Executing " << act.get_name();
 	switch ( act.get_type() ) {
@@ -733,22 +732,22 @@ pstate pstate::compute_succ(const Action & act) const
 	}
 }
 
-void pstate::maintain_oblivious_believed_pworlds(pstate &ret, const AgentsSet & oblivious_obs_agents) const
+void KripkeState::maintain_oblivious_believed_pworlds(KripkeState &ret, const AgentsSet & oblivious_obs_agents) const
 {
 	AgentsSet::const_iterator it_agset;
-	pworld_ptr_set world_oblivious;
-	pworld_ptr_set tmp_world_set;
+	KripkeWorldPointersSet world_oblivious;
+	KripkeWorldPointersSet tmp_world_set;
 
-	pworld_ptr_set::const_iterator it_wo_ob;
+	KripkeWorldPointersSet::const_iterator it_wo_ob;
 
 	if (!oblivious_obs_agents.empty()) {
 		tmp_world_set = get_E_reachable_worlds(oblivious_obs_agents, get_pointed());
 		for (it_agset = domain::get_instance().get_agents().begin(); it_agset != domain::get_instance().get_agents().end(); it_agset++) {
 			for (it_wo_ob = tmp_world_set.begin(); it_wo_ob != tmp_world_set.end(); it_wo_ob++) {
-				FormulaHelper_t::sum_set<pworld_ptr>(world_oblivious, get_B_reachable_worlds(*it_agset, *it_wo_ob));
+				FormulaHelper_t::sum_set<KripkeWorldPointer>(world_oblivious, get_B_reachable_worlds(*it_agset, *it_wo_ob));
 			}
 		}
-		FormulaHelper_t::sum_set<pworld_ptr>(world_oblivious, tmp_world_set);
+		FormulaHelper_t::sum_set<KripkeWorldPointer>(world_oblivious, tmp_world_set);
 		ret.set_max_depth(get_max_depth() + 1);
 		ret.set_worlds(world_oblivious);
 
@@ -763,7 +762,7 @@ void pstate::maintain_oblivious_believed_pworlds(pstate &ret, const AgentsSet & 
 	}
 }
 
-pworld_ptr pstate::execute_ontic_helper(const Action &act, pstate &ret, const pworld_ptr &current_pw, transition_map &calculated, AgentsSet & oblivious_obs_agents) const
+KripkeWorldPointer KripkeState::execute_ontic_helper(const Action &act, KripkeState &ret, const KripkeWorldPointer &current_pw, TransitionMap &calculated, AgentsSet & oblivious_obs_agents) const
 {
 	// Execute the all the effects
 	FluentFormula current_pw_effects = helper::get_effects_if_entailed(act.get_effects(), *this);
@@ -781,14 +780,14 @@ pworld_ptr pstate::execute_ontic_helper(const Action &act, pstate &ret, const pw
 	//		std::cerr << "\nDEBUG: Out the first ONTIC loop " << act.get_name();
 	//	}
 
-	pworld_ptr new_pw = ret.add_rep_world(pworld(world_description), current_pw.get_repetition()); // We add the corresponding pworld in ret
-	calculated.insert(transition_map::value_type(current_pw, new_pw)); // And we update the calculated map
+	KripkeWorldPointer new_pw = ret.add_rep_world(KripkeWorld(world_description), current_pw.get_repetition()); // We add the corresponding pworld in ret
+	calculated.insert(TransitionMap::value_type(current_pw, new_pw)); // And we update the calculated map
 
 	auto it_pwtm = get_beliefs().find(current_pw);
 
 	if (it_pwtm != get_beliefs().end()) {
-		pworld_map::const_iterator it_pwm;
-		pworld_ptr_set::const_iterator it_pws;
+		KripkeWorldPointersMap::const_iterator it_pwm;
+		KripkeWorldPointersSet::const_iterator it_pws;
 
 		for (it_pwm = it_pwtm->second.begin(); it_pwm != it_pwtm->second.end(); it_pwm++) {
 			Agent ag = it_pwm->first;
@@ -818,7 +817,7 @@ pworld_ptr pstate::execute_ontic_helper(const Action &act, pstate &ret, const pw
 						ret.add_edge(new_pw, calculated_pworld->second, ag); // Then we update agents' beliefs
 					} else {
 
-						pworld_ptr believed_pw = execute_ontic_helper(act, ret, *it_pws, calculated, oblivious_obs_agents);
+						KripkeWorldPointer believed_pw = execute_ontic_helper(act, ret, *it_pws, calculated, oblivious_obs_agents);
 						ret.add_edge(new_pw, believed_pw, ag);
 
 						ret.set_max_depth(ret.get_max_depth() + 1 + current_pw.get_repetition());
@@ -837,9 +836,9 @@ pworld_ptr pstate::execute_ontic_helper(const Action &act, pstate &ret, const pw
 	return new_pw;
 }
 
-pstate pstate::execute_ontic(const Action & act) const
+KripkeState KripkeState::execute_ontic(const Action & act) const
 {
-	pstate ret;
+	KripkeState ret;
 
 	//This finds all the worlds that are reachable from the initial state following
 	//the edges labeled with fully observant agents.
@@ -849,26 +848,26 @@ pstate pstate::execute_ontic(const Action & act) const
 	AgentsSet oblivious_obs_agents = agents;
     FormulaHelper_t::minus_set<Agent>(oblivious_obs_agents, fully_obs_agents);
 
-	transition_map calculated; // A map that links the pworlds of *this* to the corresponding ones of ret
+	TransitionMap calculated; // A map that links the pworlds of *this* to the corresponding ones of ret
 	maintain_oblivious_believed_pworlds(ret, oblivious_obs_agents);
 
-	pworld_ptr new_pointed = execute_ontic_helper(act, ret, get_pointed(), calculated, oblivious_obs_agents);
+	KripkeWorldPointer new_pointed = execute_ontic_helper(act, ret, get_pointed(), calculated, oblivious_obs_agents);
 	ret.set_pointed(new_pointed); // Updating the pointed world
 	//std::cerr << "\nDEBUG: Out ONTIC " << act.get_name();
 
 	return ret;
 }
 
-pworld_ptr pstate::execute_sensing_announcement_helper(const FluentFormula &effects, pstate &ret, const pworld_ptr &current_pw, transition_map &calculated, AgentsSet &partially_obs_agents, AgentsSet &oblivious_obs_agents, bool previous_entailment) const
+KripkeWorldPointer KripkeState::execute_sensing_announcement_helper(const FluentFormula &effects, KripkeState &ret, const KripkeWorldPointer &current_pw, TransitionMap &calculated, AgentsSet &partially_obs_agents, AgentsSet &oblivious_obs_agents, bool previous_entailment) const
 {
-	pworld_ptr new_pw = ret.add_rep_world(pworld(current_pw.get_fluent_set()), current_pw.get_repetition()); // We add the corresponding pworld in ret
-	calculated.insert(transition_map::value_type(current_pw, new_pw)); // And we update the calculated map
+	KripkeWorldPointer new_pw = ret.add_rep_world(KripkeWorld(current_pw.get_fluent_set()), current_pw.get_repetition()); // We add the corresponding pworld in ret
+	calculated.insert(TransitionMap::value_type(current_pw, new_pw)); // And we update the calculated map
 
 	auto it_pwtm = get_beliefs().find(current_pw);
 
 	if (it_pwtm != get_beliefs().end()) {
-		pworld_map::const_iterator it_pwm;
-		pworld_ptr_set::const_iterator it_pws;
+		KripkeWorldPointersMap::const_iterator it_pwm;
+		KripkeWorldPointersSet::const_iterator it_pws;
 
 		for (it_pwm = it_pwtm->second.begin(); it_pwm != it_pwtm->second.end(); it_pwm++) {
 			Agent ag = it_pwm->first;
@@ -901,11 +900,11 @@ pworld_ptr pstate::execute_sensing_announcement_helper(const FluentFormula &effe
 					} else { // If we did not already calculate the transition function
 						if (is_consistent_belief) { // We calculate it if it would result in a consistent belief...
 
-							pworld_ptr believed_pw = execute_sensing_announcement_helper(effects, ret, *it_pws, calculated, partially_obs_agents, oblivious_obs_agents, ent);
+							KripkeWorldPointer believed_pw = execute_sensing_announcement_helper(effects, ret, *it_pws, calculated, partially_obs_agents, oblivious_obs_agents, ent);
 							ret.add_edge(new_pw, believed_pw, ag);
 						}
 						//						else if (is_partially_obs && (ent != previous_entailment)) { // ...and when it does not entail the action effects, but a PARTIALLY OBS agent believes that it may be true
-						//							pworld_ptr believed_pw_neg = execute_sensing_announcement_helper(act, ret, *it_pws, calculated, partially_obs_agents, oblivious_obs_agents, ent);
+						//							KripkeWorldPointer believed_pw_neg = execute_sensing_announcement_helper(act, ret, *it_pws, calculated, partially_obs_agents, oblivious_obs_agents, ent);
 						//							ret.add_edge(new_pw, believed_pw_neg, ag);
 						//						}
 					}
@@ -916,9 +915,9 @@ pworld_ptr pstate::execute_sensing_announcement_helper(const FluentFormula &effe
 	return new_pw;
 }
 
-pstate pstate::execute_sensing(const Action & act) const
+KripkeState KripkeState::execute_sensing(const Action & act) const
 {
-	pstate ret;
+	KripkeState ret;
 
 	//This finds all the worlds that are reachable from the initial state following
 	//the edges labeled with fully observant agents.
@@ -934,12 +933,12 @@ pstate pstate::execute_sensing(const Action & act) const
 		ret.set_max_depth(get_max_depth() + 1);
 	}
 
-	transition_map calculated; // A map that links the pworlds of *this* to the corresponding ones of ret
+	TransitionMap calculated; // A map that links the pworlds of *this* to the corresponding ones of ret
 	maintain_oblivious_believed_pworlds(ret, oblivious_obs_agents);
 
 	FluentFormula effects = helper::get_effects_if_entailed(act.get_effects(), *this);
 
-	pworld_ptr new_pointed = execute_sensing_announcement_helper(effects, ret, get_pointed(), calculated, partially_obs_agents, oblivious_obs_agents, entails(effects));
+	KripkeWorldPointer new_pointed = execute_sensing_announcement_helper(effects, ret, get_pointed(), calculated, partially_obs_agents, oblivious_obs_agents, entails(effects));
 	ret.set_pointed(new_pointed); // Updating the pointed world
 
 	/*if (!check_properties(fully_obs_agents, partially_obs_agents, effects, ret)) {
@@ -950,9 +949,9 @@ pstate pstate::execute_sensing(const Action & act) const
 	return ret;
 }
 
-pstate pstate::execute_announcement(const Action & act) const
+KripkeState KripkeState::execute_announcement(const Action & act) const
 {
-	//	pstate ret;
+	//	KripkeState ret;
 	//
 	//	//This finds all the worlds that are reachable from the initial state following
 	//	//the edges labeled with fully observant agents.
@@ -968,12 +967,12 @@ pstate pstate::execute_announcement(const Action & act) const
 	//		ret.set_max_depth(get_max_depth() + 1);
 	//	}
 	//
-	//	transition_map calculated; // A map that links the pworlds of *this* to the corresponding ones of ret
+	//	TransitionMap calculated; // A map that links the pworlds of *this* to the corresponding ones of ret
 	//	maintain_oblivious_believed_pworlds(ret, oblivious_obs_agents);
 	//
 	//	fluent_formula effects = get_effects_if_entailed(act.get_effects(), get_pointed());
 	//
-	//	pworld_ptr new_pointed = execute_sensing_announcement_helper(act, ret, get_pointed(), calculated, partially_obs_agents, oblivious_obs_agents, entails(effects));
+	//	KripkeWorldPointer new_pointed = execute_sensing_announcement_helper(act, ret, get_pointed(), calculated, partially_obs_agents, oblivious_obs_agents, entails(effects));
 	//	ret.set_pointed(new_pointed); // Updating the pointed world
 	//
 	//	return ret;
@@ -981,13 +980,13 @@ pstate pstate::execute_announcement(const Action & act) const
 	return execute_sensing(act);
 }
 
-bool pstate::check_properties(const AgentsSet & fully, const AgentsSet & partially, const FluentFormula & effects, const pstate & updated) const
+bool KripkeState::check_properties(const AgentsSet & fully, const AgentsSet & partially, const FluentFormula & effects, const KripkeState & updated) const
 {
 
 	if (fully.size() > 0) {
 		/************Formulae Building************/
 		/******Formulae containing the effects of the sensing******/
-		belief_formula effects_formula;
+		BeliefFormula effects_formula;
 		effects_formula.set_formula_type(FLUENT_FORMULA);
 		effects_formula.set_fluent_formula(effects);
 		effects_formula.set_is_grounded(true);
@@ -995,7 +994,7 @@ bool pstate::check_properties(const AgentsSet & fully, const AgentsSet & partial
 
 
 		/******First Property C(Fully, eff)******/
-		belief_formula property1;
+		BeliefFormula property1;
 		property1.set_group_agents(fully);
 		property1.set_formula_type(C_FORMULA);
 		property1.set_bf1(effects_formula);
@@ -1013,7 +1012,7 @@ bool pstate::check_properties(const AgentsSet & fully, const AgentsSet & partial
 
 		if (partially.size() > 0) {
 			/******Second Property C(P, (C(Fully,eff) | C(Fully, -eff)))******/
-			belief_formula inner_nested2, nested2, disjunction, property2;
+			BeliefFormula inner_nested2, nested2, disjunction, property2;
 			//First nested formula is equal to First Property C(Fully, eff)
 			//Second nested formula C(Fully, -f) is comprised of two layer (the NOT and C)
 			inner_nested2.set_group_agents(fully);
@@ -1051,7 +1050,7 @@ bool pstate::check_properties(const AgentsSet & fully, const AgentsSet & partial
 
 			/******Third Property C(F, C(P, (C(Fully,eff) | C(Fully, -eff))))******/
 			//This formula is just C(Fully, property2)
-			belief_formula property3;
+			BeliefFormula property3;
 			property3.set_group_agents(fully);
 			property3.set_formula_type(C_FORMULA);
 			property3.set_bf1(property2);
@@ -1078,7 +1077,7 @@ bool pstate::check_properties(const AgentsSet & fully, const AgentsSet & partial
 	return true;
 }
 
-void pstate::print() const
+void KripkeState::print() const
 {
 	int counter = 1;
 	std::cout << std::endl;
@@ -1088,7 +1087,7 @@ void pstate::print() const
 	std::cout << std::endl;
 	std::cout << "*******************************************************************" << std::endl;
 
-	pworld_ptr_set::const_iterator it_pwset;
+	KripkeWorldPointersSet::const_iterator it_pwset;
 	std::cout << "World List:" << std::endl;
 
 	for (it_pwset = get_worlds().begin(); it_pwset != get_worlds().end(); it_pwset++) {
@@ -1101,20 +1100,20 @@ void pstate::print() const
 	counter = 1;
 	std::cout << std::endl;
 	std::cout << "*******************************************************************" << std::endl;
-	pworld_transitive_map::const_iterator it_pwtm;
-	pworld_map::const_iterator it_pwm;
+	KripkeWorldPointersTransitiveMap::const_iterator it_pwtm;
+	KripkeWorldPointersMap::const_iterator it_pwm;
 	std::cout << "Edge List:" << std::endl;
 	for (it_pwtm = get_beliefs().begin(); it_pwtm != get_beliefs().end(); it_pwtm++) {
-		pworld_ptr from = it_pwtm->first;
-		pworld_map from_map = it_pwtm->second;
+		KripkeWorldPointer from = it_pwtm->first;
+		KripkeWorldPointersMap from_map = it_pwtm->second;
 
 		for (it_pwm = from_map.begin(); it_pwm != from_map.end(); it_pwm++) {
 			Agent ag = it_pwm->first;
-			pworld_ptr_set to_set = it_pwm->second;
+			KripkeWorldPointersSet to_set = it_pwm->second;
 
 			for (it_pwset = to_set.begin(); it_pwset != to_set.end(); it_pwset++) {
 
-				pworld_ptr to = *it_pwset;
+				KripkeWorldPointer to = *it_pwset;
 
 				std::cout << "E-" << counter << ": (";
 				printer::get_instance().print_list(from.get_fluent_set());
@@ -1131,14 +1130,14 @@ void pstate::print() const
 	std::cout << "*******************************************************************" << std::endl;
 }
 
-/* void pstate::print_ML_dataset_unoptimized() const
+/* void KripkeState::print_ML_dataset_unoptimized() const
 {
 	//World list; Pointed world; Edges
 	// Mapping worlds using fluent set and repetition as unique key
 	std::map<std::pair<std::set<fluent>, int>, int> world_map;
 	int counter = 1;
 
-	pworld_ptr_set::const_iterator it_pwset;
+	KripkeWorldPointersSet::const_iterator it_pwset;
 	for (it_pwset = get_worlds().begin(); it_pwset != get_worlds().end(); it_pwset++) {
 		std::pair<std::set<fluent>, int> key = {it_pwset->get_fluent_set(), it_pwset->get_repetition()};
 		world_map[key] = counter; // Store W-number
@@ -1153,27 +1152,27 @@ void pstate::print() const
 	std::cout << ";" << std::endl;
 
 	// Print pointed world using W-number
-	pworld_ptr pointed = get_pointed();
+	KripkeWorldPointer pointed = get_pointed();
 	std::pair<std::set<fluent>, int> pointed_key = {pointed.get_fluent_set(), pointed.get_repetition()};
 	std::cout << "P:W" << world_map[pointed_key] << ";" << std::endl;
 
 	// Unifying edges by grouping agents
 	std::map<std::pair<int, int>, std::set<agent>> edge_map;
-	pworld_transitive_map::const_iterator it_pwtm;
-	pworld_map::const_iterator it_pwm;
+	KripkeWorldPointersTransitiveMap::const_iterator it_pwtm;
+	KripkeWorldPointersMap::const_iterator it_pwm;
 	for (it_pwtm = get_beliefs().begin(); it_pwtm != get_beliefs().end(); it_pwtm++) {
-		pworld_ptr from = it_pwtm->first;
-		pworld_map from_map = it_pwtm->second;
+		KripkeWorldPointer from = it_pwtm->first;
+		KripkeWorldPointersMap from_map = it_pwtm->second;
 
 		for (it_pwm = from_map.begin(); it_pwm != from_map.end(); it_pwm++) {
 			agent ag = it_pwm->first;
-			pworld_ptr_set to_set = it_pwm->second;
+			KripkeWorldPointersSet to_set = it_pwm->second;
 
 			for (it_pwset = to_set.begin(); it_pwset != to_set.end(); it_pwset++) {
-				pworld_ptr to = *it_pwset;
+				KripkeWorldPointer to = *it_pwset;
 				std::pair<std::set<fluent>, int> from_key = {from.get_fluent_set(), from.get_repetition()};
 				std::pair<std::set<fluent>, int> to_key = {to.get_fluent_set(), to.get_repetition()};
-				
+
 				std::pair<int, int> edge_key = {world_map[from_key], world_map[to_key]};
 				edge_map[edge_key].insert(ag);
 			}
@@ -1199,7 +1198,7 @@ void pstate::print() const
 }
  */
 
-void pstate::print_graphviz(std::ostream & graphviz) const
+void KripkeState::print_graphviz(std::ostream & graphviz) const
 {
 	StringsSet::const_iterator it_st_set;
 	FluentsSet::const_iterator it_fs;
@@ -1214,7 +1213,7 @@ void pstate::print_graphviz(std::ostream & graphviz) const
 	char tmp_unsh;
 	StringsSet tmp_stset;
 	bool print_first;
-	pworld_ptr_set::const_iterator it_pwset;
+	KripkeWorldPointersSet::const_iterator it_pwset;
 	for (it_pwset = get_worlds().begin(); it_pwset != get_worlds().end(); it_pwset++) {
 		if (*it_pwset == get_pointed())
 			graphviz << "	node [shape = doublecircle] ";
@@ -1248,12 +1247,12 @@ void pstate::print_graphviz(std::ostream & graphviz) const
 	graphviz << "\n\n";
 	graphviz << "//RANKS List:" << std::endl;
 
-	std::map<int, pworld_ptr_set> for_rank_print;
+	std::map<int, KripkeWorldPointersSet> for_rank_print;
 	for (it_pwset = get_worlds().begin(); it_pwset != get_worlds().end(); it_pwset++) {
 		for_rank_print[it_pwset->get_repetition()].insert(*it_pwset);
 	}
 
-	std::map<int, pworld_ptr_set>::const_iterator it_map_rank;
+	std::map<int, KripkeWorldPointersSet>::const_iterator it_map_rank;
 	for (it_map_rank = for_rank_print.begin(); it_map_rank != for_rank_print.end(); it_map_rank++) {
 		graphviz << "	{rank = same; ";
 		for (it_pwset = it_map_rank->second.begin(); it_pwset != it_map_rank->second.end(); it_pwset++) {
@@ -1268,21 +1267,21 @@ void pstate::print_graphviz(std::ostream & graphviz) const
 
 	std::map < std::tuple<std::string, std::string>, std::set<std::string> > edges;
 
-	pworld_transitive_map::const_iterator it_pwtm;
-	pworld_map::const_iterator it_pwm;
+	KripkeWorldPointersTransitiveMap::const_iterator it_pwtm;
+	KripkeWorldPointersMap::const_iterator it_pwm;
 	std::tuple<std::string, std::string> tmp_tuple;
 	std::string tmp_string = "";
 
 	for (it_pwtm = get_beliefs().begin(); it_pwtm != get_beliefs().end(); it_pwtm++) {
-		pworld_ptr from = it_pwtm->first;
-		pworld_map from_map = it_pwtm->second;
+		KripkeWorldPointer from = it_pwtm->first;
+		KripkeWorldPointersMap from_map = it_pwtm->second;
 
 		for (it_pwm = from_map.begin(); it_pwm != from_map.end(); it_pwm++) {
 			Agent ag = it_pwm->first;
-			pworld_ptr_set to_set = it_pwm->second;
+			KripkeWorldPointersSet to_set = it_pwm->second;
 
 			for (it_pwset = to_set.begin(); it_pwset != to_set.end(); it_pwset++) {
-				pworld_ptr to = *it_pwset;
+				KripkeWorldPointer to = *it_pwset;
 
 				tmp_string = "_" + std::to_string(map_world_to_index[from.get_fluent_set()]);
 				tmp_string.insert(0, 1, map_rep_to_name[from.get_repetition()]);
@@ -1405,7 +1404,7 @@ std::string to_base36(int num) {
     return std::to_string(num);
 }
 
-void pstate::print_ML_dataset(std::ostream & graphviz) const
+void KripkeState::print_ML_dataset(std::ostream & graphviz) const
 {
     graphviz << "digraph G {" << std::endl;
 
@@ -1472,7 +1471,7 @@ void pstate::print_ML_dataset(std::ostream & graphviz) const
 }
 
 
-void pstate::print_graphviz_explicit(std::ostream & graphviz) const
+void KripkeState::print_graphviz_explicit(std::ostream & graphviz) const
 {
 	StringsSet::const_iterator it_st_set;
 	FluentsSet::const_iterator it_fs;
@@ -1487,7 +1486,7 @@ void pstate::print_graphviz_explicit(std::ostream & graphviz) const
 	char tmp_unsh;
 	StringsSet tmp_stset;
 	bool print_first;
-	pworld_ptr_set::const_iterator it_pwset;
+	KripkeWorldPointersSet::const_iterator it_pwset;
 	for (it_pwset = get_worlds().begin(); it_pwset != get_worlds().end(); it_pwset++) {
 		if (*it_pwset == get_pointed())
 			graphviz << "	node [shape = doublecircle] ";
@@ -1498,7 +1497,7 @@ void pstate::print_graphviz_explicit(std::ostream & graphviz) const
 		tmp_fs = it_pwset->get_fluent_set();
 		std::string world_value = "";
 		if (map_world_to_index.count(tmp_fs) == 0) {
-			
+
 			tmp_stset = domain::get_instance().get_grounder().deground_fluent(tmp_fs);
 			for (it_st_set = tmp_stset.begin(); it_st_set != tmp_stset.end(); it_st_set++) {
 				if (print_first) {
@@ -1532,12 +1531,12 @@ void pstate::print_graphviz_explicit(std::ostream & graphviz) const
 	graphviz << "\n\n";
 	graphviz << "//RANKS List:" << std::endl;
 
-	std::map<int, pworld_ptr_set> for_rank_print;
+	std::map<int, KripkeWorldPointersSet> for_rank_print;
 	for (it_pwset = get_worlds().begin(); it_pwset != get_worlds().end(); it_pwset++) {
 		for_rank_print[it_pwset->get_repetition()].insert(*it_pwset);
 	}
 
-	std::map<int, pworld_ptr_set>::const_iterator it_map_rank;
+	std::map<int, KripkeWorldPointersSet>::const_iterator it_map_rank;
 	for (it_map_rank = for_rank_print.begin(); it_map_rank != for_rank_print.end(); it_map_rank++) {
 		graphviz << "	{rank = same; ";
 		for (it_pwset = it_map_rank->second.begin(); it_pwset != it_map_rank->second.end(); it_pwset++) {
@@ -1552,21 +1551,21 @@ void pstate::print_graphviz_explicit(std::ostream & graphviz) const
 
 	std::map < std::tuple<std::string, std::string>, std::set<std::string> > edges;
 
-	pworld_transitive_map::const_iterator it_pwtm;
-	pworld_map::const_iterator it_pwm;
+	KripkeWorldPointersTransitiveMap::const_iterator it_pwtm;
+	KripkeWorldPointersMap::const_iterator it_pwm;
 	std::tuple<std::string, std::string> tmp_tuple;
 	std::string tmp_string = "";
 
 	for (it_pwtm = get_beliefs().begin(); it_pwtm != get_beliefs().end(); it_pwtm++) {
-		pworld_ptr from = it_pwtm->first;
-		pworld_map from_map = it_pwtm->second;
+		KripkeWorldPointer from = it_pwtm->first;
+		KripkeWorldPointersMap from_map = it_pwtm->second;
 
 		for (it_pwm = from_map.begin(); it_pwm != from_map.end(); it_pwm++) {
 			Agent ag = it_pwm->first;
-			pworld_ptr_set to_set = it_pwm->second;
+			KripkeWorldPointersSet to_set = it_pwm->second;
 
 			for (it_pwset = to_set.begin(); it_pwset != to_set.end(); it_pwset++) {
-				pworld_ptr to = *it_pwset;
+				KripkeWorldPointer to = *it_pwset;
 
 				tmp_string = std::to_string(map_rep_to_name[from.get_repetition()]);
 				tmp_string += "_" + map_world_to_index[from.get_fluent_set()];
@@ -1644,10 +1643,10 @@ void pstate::print_graphviz_explicit(std::ostream & graphviz) const
 }
 
 /****************BISIMULATION********************/
-void pstate::get_all_reachable_worlds(const pworld_ptr & pw, pworld_ptr_set & reached_worlds, pworld_transitive_map & reached_edges) const
+void KripkeState::get_all_reachable_worlds(const KripkeWorldPointer & pw, KripkeWorldPointersSet & reached_worlds, KripkeWorldPointersTransitiveMap & reached_edges) const
 {
-	pworld_ptr_set::const_iterator it_pwps;
-	pworld_ptr_set pw_list;
+	KripkeWorldPointersSet::const_iterator it_pwps;
+	KripkeWorldPointersSet pw_list;
 
 	auto ag_set = domain::get_instance().get_agents();
 	auto ag_it = ag_set.begin();
@@ -1674,12 +1673,12 @@ void pstate::get_all_reachable_worlds(const pworld_ptr & pw, pworld_ptr_set & re
 	}
 }
 
-void pstate::clean_unreachable_pworlds()
+void KripkeState::clean_unreachable_pworlds()
 {
-	//std::cerr << "\nDEBUG: INIZIO CLEAN EXTRA PSTATE\n" << std::flush;
+	//std::cerr << "\nDEBUG: INIZIO CLEAN EXTRA KripkeState\n" << std::flush;
 
-	pworld_ptr_set reached_worlds;
-	pworld_transitive_map reached_edges;
+	KripkeWorldPointersSet reached_worlds;
+	KripkeWorldPointersTransitiveMap reached_edges;
 
 	reached_worlds.insert(get_pointed());
 	try {
@@ -1687,23 +1686,23 @@ void pstate::clean_unreachable_pworlds()
 	} catch (const std::out_of_range& e) {
 		//std::cerr << "[ERROR] Key not found in m_beliefs for pointed world: " << e.what() << std::endl;
 		//exit(1);
-	}	//std::cerr << "\nDEBUG: CLEAN 1 EXTRA PSTATE\n" << std::flush;
+	}	//std::cerr << "\nDEBUG: CLEAN 1 EXTRA KripkeState\n" << std::flush;
 
 	get_all_reachable_worlds(get_pointed(), reached_worlds, reached_edges);
 
-	//std::cerr << "\nDEBUG: CLEAN 2 EXTRA PSTATE\n" << std::flush;
+	//std::cerr << "\nDEBUG: CLEAN 2 EXTRA KripkeState\n" << std::flush;
 
 	set_worlds(reached_worlds);
 	set_beliefs(reached_edges);
 
-	//std::cerr << "\nDEBUG: FINE CLEAN EXTRA PSTATE\n" << std::flush;
+	//std::cerr << "\nDEBUG: FINE CLEAN EXTRA KripkeState\n" << std::flush;
 }
 
-const automa pstate::pstate_to_automaton(std::vector<pworld_ptr> & pworld_vec, const std::map<Agent, bis_label> & agent_to_label) const
+const automa KripkeState::pstate_to_automaton(std::vector<KripkeWorldPointer> & pworld_vec, const std::map<Agent, bis_label> & agent_to_label) const
 {
 
 	std::map<int, int> compact_indices;
-	std::map<pworld_ptr, int> index_map;
+	std::map<KripkeWorldPointer, int> index_map;
 	pbislabel_map label_map; // Map: from -> (to -> ag_set)
 
 	automa *a;
@@ -1715,11 +1714,11 @@ const automa pstate::pstate_to_automaton(std::vector<pworld_ptr> & pworld_vec, c
 	Vertex = (v_elem *) malloc(sizeof(v_elem) * Nvertex);
 
 	// Initializating vertices
-	pworld_ptr_set::const_iterator it_pwps;
-	pworld_transitive_map::const_iterator it_peps;
+	KripkeWorldPointersSet::const_iterator it_pwps;
+	KripkeWorldPointersTransitiveMap::const_iterator it_peps;
 	pbislabel_map::const_iterator it_plm;
 	bis_label_set::const_iterator it_bislab;
-	std::map<pworld_ptr, bis_label_set>::const_iterator it_pw_bislab;
+	std::map<KripkeWorldPointer, bis_label_set>::const_iterator it_pw_bislab;
 
 	//std::cerr << "\nDEBUG: Inizializzazione Edges\n";
 
@@ -1732,7 +1731,7 @@ const automa pstate::pstate_to_automaton(std::vector<pworld_ptr> & pworld_vec, c
 	//For the loop that identifies the id
 	//BIS_ADAPTATION For the loop that identifies the id (+1)
 	///@bug: If the pointed has no self-loop to add
-	//pworld_ptr_set pointed_adj = adj_list.at(get_pointed());
+	//KripkeWorldPointersSet pointed_adj = adj_list.at(get_pointed());
 
 	Vertex[0].ne = 0; // pointed_adj.size(); // edge_counter[get_pointed()];
 	//	if (pointed_adj.find(get_pointed()) == pointed_adj.end()) {
@@ -1833,11 +1832,11 @@ const automa pstate::pstate_to_automaton(std::vector<pworld_ptr> & pworld_vec, c
 	return *a;
 }
 
-void pstate::automaton_to_pstate(const automa & a, const std::vector<pworld_ptr> & pworld_vec, const std::map<bis_label, Agent> & label_to_agent)
+void KripkeState::automaton_to_pstate(const automa & a, const std::vector<KripkeWorldPointer> & pworld_vec, const std::map<bis_label, Agent> & label_to_agent)
 {
-	//std::cerr << "\nDEBUG: INIZIO BISIMULATION TO PSTATE\n" << std::flush;
+	//std::cerr << "\nDEBUG: INIZIO BISIMULATION TO KripkeState\n" << std::flush;
 
-	pworld_ptr_set worlds;
+	KripkeWorldPointersSet worlds;
 	m_beliefs.clear();
 	// The pointed world does not change when we calculate the minimum bisimilar state
 	// Hence we do not need to update it
@@ -1861,20 +1860,20 @@ void pstate::automaton_to_pstate(const automa & a, const std::vector<pworld_ptr>
 
 
 	set_worlds(worlds);
-	//std::cerr << "\nDEBUG: FINE BISIMULATION TO PSTATE\n" << std::flush;
+	//std::cerr << "\nDEBUG: FINE BISIMULATION TO KripkeState\n" << std::flush;
 
 	//set_edges(edges);
 }
 
-void pstate::calc_min_bisimilar()
+void KripkeState::calc_min_bisimilar()
 {
-	//std::cerr << "\nDEBUG: INIZIO BISIMULATION IN PSTATE\n" << std::flush;
+	//std::cerr << "\nDEBUG: INIZIO BISIMULATION IN KripkeState\n" << std::flush;
 
 	// ************* Cleaning unreachable pworlds *************
 
 	clean_unreachable_pworlds();
 
-	std::vector<pworld_ptr> pworld_vec; // Vector of all pworld_ptr
+	std::vector<KripkeWorldPointer> pworld_vec; // Vector of all KripkeWorldPointer
 	//std::cerr << "\nDEBUG: PRE-ALLOCAZIONE AUTOMA\n" << std::flush;
 
 
@@ -1934,13 +1933,13 @@ void pstate::calc_min_bisimilar()
 /*********************END BISIMILUATION***********************/
 
 
-//int pstate::get_edges() const
+//int KripkeState::get_edges() const
 //{
 //	std::cerr << "\nYou are playing with debug only options-1.\n";
 //	exit(1);
 //}
 //
-//void pstate::debug_print(pstate tmp)
+//void KripkeState::debug_print(KripkeState tmp)
 //{
 //	std::cerr << "\nYou are playing with debug only options-2.\n";
 //	exit(1);

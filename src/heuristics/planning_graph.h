@@ -20,7 +20,7 @@
 
 #include "../utilities/Define.h"
 #include "../actions/Action.h"
-#include "../formulae/belief_formula.h"
+#include "../formulae/BeliefFormula.h"
 #include "../domain/Domain.h"
 
 /**
@@ -116,7 +116,7 @@ public:
  */
 
 typedef std::map<fluent, short> pg_f_map;
-typedef std::map<belief_formula, short> pg_bf_map;
+typedef std::map<BeliefFormula, short> pg_bf_map;
 
 class pg_state_level
 {
@@ -124,7 +124,7 @@ private:
 
     /*\brief The map that associates each "grounded" \ref fluent to TRUE or FALSE**/
     pg_f_map m_pg_f_map;
-    /*\brief The map that associates each "grounded" \ref belief_formula to TRUE or FALSE**/
+    /*\brief The map that associates each "grounded" \ref BeliefFormula to TRUE or FALSE**/
     pg_bf_map m_pg_bf_map;
 
     /*\brief The depth of *this* (which state layer it is)*/
@@ -151,12 +151,12 @@ private:
      */
     short get_fluent_value(const fluent & key) const;
 
-    /*Function that return the truth value of a belief_formula in *this*
+    /*Function that return the truth value of a BeliefFormula in *this*
      *
      * @param[in] key: the key of the pair.
      *   @return: the value of the pair with key \ref key.
      */
-    short get_bf_value(const belief_formula & key) const;
+    short get_bf_value(const BeliefFormula & key) const;
 
     void build_init_f_map();
 
@@ -164,7 +164,7 @@ private:
 
     void insert_subformula_bf(const FormulaeList & fl, short value);
 
-    void insert_subformula_bf(const belief_formula & bf, short value);
+    void insert_subformula_bf(const BeliefFormula & bf, short value);
 
 
     template <class T>
@@ -177,18 +177,18 @@ private:
     void insert_subformula_bf(const FormulaeList & fl, T & eState);
 
     template <class T>
-    void insert_subformula_bf(const belief_formula & bf, T & eState);
+    void insert_subformula_bf(const BeliefFormula & bf, T & eState);
 
 
-    void get_base_fluents(const belief_formula & bf, FluentsSet & bf_base_fluents);
+    void get_base_fluents(const BeliefFormula & bf, FluentsSet & bf_base_fluents);
 
-    bool exec_ontic(const Action & act, const pg_state_level & predecessor, bformula_set & false_bf);
+    bool exec_ontic(const Action & act, const pg_state_level & predecessor, FormulaeSet & false_bf);
 
-    bool exec_epistemic(const Action & act, const pg_state_level & predecessor, bformula_set & false_bf);
+    bool exec_epistemic(const Action & act, const pg_state_level & predecessor, FormulaeSet & false_bf);
 
-    bool apply_ontic_effects(const belief_formula & bf, bformula_set & fl, const AgentSet & fully, bool & modified_pg);
+    bool apply_ontic_effects(const BeliefFormula & bf, FormulaeSet & fl, const AgentSet & fully, bool & modified_pg);
 
-    bool apply_epistemic_effects(fluent effect, const belief_formula & bf, bformula_set & fl, const AgentSet & fully, const AgentSet & partially, bool & modified_pg, unsigned short vis_cond);
+    bool apply_epistemic_effects(fluent effect, const BeliefFormula & bf, FormulaeSet & fl, const AgentSet & fully, const AgentSet & partially, bool & modified_pg, unsigned short vis_cond);
 
 public:
 
@@ -246,12 +246,12 @@ public:
      */
     void modify_fluent_value(const fluent & key, short value);
 
-    /*Function that modifies a pair belief_formula,bool in the field m_pg_bf_map
+    /*Function that modifies a pair BeliefFormula,bool in the field m_pg_bf_map
      *
      * @param[in] key: the key of the pair.
      * @param[in] value: the value of the pair.
      */
-    void modify_bf_value(const belief_formula & key, short value);
+    void modify_bf_value(const BeliefFormula & key, short value);
 
 
     /*Function that checks satisfaction of a fluent on *this*.
@@ -263,17 +263,17 @@ public:
      */
     bool pg_entailment(const fluent & f) const;
 
-    /*Function that checks satisfaction of a belief_formula on *this*.
+    /*Function that checks satisfaction of a BeliefFormula on *this*.
      * 
-     * @param[in] bf: The belief_formula to check for entailment.
+     * @param[in] bf: The BeliefFormula to check for entailment.
      * 
      * @return: true if the formula is entailed.
      * @return: false otherwise.
      */
-    bool pg_entailment(const belief_formula & bf) const;
-    /*Function that checks satisfaction of a CNF of belief_formula on *this*.
+    bool pg_entailment(const BeliefFormula & bf) const;
+    /*Function that checks satisfaction of a CNF of BeliefFormula on *this*.
      * 
-     * @param[in] fl: The CNF of belief_formula to check for entailment.
+     * @param[in] fl: The CNF of BeliefFormula to check for entailment.
      * @return: true if the formula is entailed.
      * @return: false otherwise.
      */
@@ -287,7 +287,7 @@ public:
      */
     bool pg_executable(const Action & act) const;
 
-    bool compute_succ(const Action & act, const pg_state_level & predecessor, bformula_set & false_bf);
+    bool compute_succ(const Action & act, const pg_state_level & predecessor, FormulaeSet & false_bf);
 
     short get_score_from_depth() const;
 
@@ -331,7 +331,7 @@ private:
     action_set m_never_executed;
 
 
-    bformula_set m_belief_formula_false;
+    FormulaeSet m_belief_formula_false;
 
     /*Setter of the field m_satisfiable
      *
@@ -440,7 +440,7 @@ public:
 
     const FormulaeList & get_goal() const;
     const action_set & get_never_executed() const;
-    const bformula_set & get_belief_formula_false() const;
+    const FormulaeSet & get_belief_formula_false() const;
 
 
     void set_pg(const planning_graph & to_assign);

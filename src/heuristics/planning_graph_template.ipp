@@ -69,7 +69,7 @@ void pg_state_level::insert_subformula_bf(const formula_list & fl, T & eState)
 }
 
 template <class T>
-void pg_state_level::insert_subformula_bf(const belief_formula & bf, T & eState)
+void pg_state_level::insert_subformula_bf(const BeliefFormula & bf, T & eState)
 {
 	//We set all the subformulas to be TRUE for initially. Maybe it is wrong
 	//Maybe we don't need the subformulas at all
@@ -84,7 +84,7 @@ void pg_state_level::insert_subformula_bf(const belief_formula & bf, T & eState)
 	switch ( bf.get_formula_type() ) {
 
 	case BELIEF_FORMULA:
-		if (m_pg_bf_map.insert(std::pair < belief_formula, short>(bf, value)).second) {
+		if (m_pg_bf_map.insert(std::pair < BeliefFormula, short>(bf, value)).second) {
 			insert_subformula_bf(bf.get_bf1(), eState);
 		}
 		break;
@@ -93,13 +93,13 @@ void pg_state_level::insert_subformula_bf(const belief_formula & bf, T & eState)
 		switch ( bf.get_operator() ) {
 		case BF_NOT:
 			//HERE ALWAYS TRUE BECAUSE IS MONOTONIC NOW
-			if (m_pg_bf_map.insert(std::pair < belief_formula, short>(bf, value)).second) {
+			if (m_pg_bf_map.insert(std::pair < BeliefFormula, short>(bf, value)).second) {
 				insert_subformula_bf(bf.get_bf1(), eState);
 			}
 			break;
 		case BF_OR:
 		case BF_AND:
-			if (m_pg_bf_map.insert(std::pair < belief_formula, short>(bf, value)).second) {
+			if (m_pg_bf_map.insert(std::pair < BeliefFormula, short>(bf, value)).second) {
 				insert_subformula_bf(bf.get_bf1(), eState);
 				insert_subformula_bf(bf.get_bf2(), eState);
 			}
@@ -111,7 +111,7 @@ void pg_state_level::insert_subformula_bf(const belief_formula & bf, T & eState)
 		}
 		break;
 	case C_FORMULA:
-		if (m_pg_bf_map.insert(std::pair < belief_formula, short>(bf, value)).second) {
+		if (m_pg_bf_map.insert(std::pair < BeliefFormula, short>(bf, value)).second) {
 			insert_subformula_bf(bf.get_bf1(), eState);
 		}
 		break;

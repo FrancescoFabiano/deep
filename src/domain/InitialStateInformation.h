@@ -28,7 +28,7 @@ public:
      * \brief Adds a belief condition for the initial state.
      * \param[in] to_add Belief formula that the initial state must entail.
      */
-    void add_initial_condition(const belief_formula& to_add);
+    void add_initial_condition(const BeliefFormula& to_add);
 
     /**
      * \brief Returns the pointed world conditions.
@@ -66,9 +66,9 @@ private:
     FluentFormula m_pointed_world_conditions;
 
     /// List of belief formulas describing the initial beliefs conditions.
-    FormulaeList m_bf_intial_conditions;
+    FormulaeList m_bf_initial_conditions;
 
-    /// Fluent formula representation of m_bf_intial_conditions for finitary-S5.
+    /// Fluent formula representation of m_bf_initial_conditions for finitary-S5.
     FluentFormula m_ff_forS5;
 
     /// Set of fluents known by formulas of the type C([ags], f).
@@ -79,5 +79,5 @@ private:
      * \param[in] to_check The belief formula to check.
      * \return true if the formula respects the restriction, false otherwise.
      */
-    [[nodiscard]] static bool check_restriction(const belief_formula& to_check);
+    [[nodiscard]] static bool check_restriction(const BeliefFormula& to_check);
 };

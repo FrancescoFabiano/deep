@@ -113,7 +113,7 @@ public:
      * 
      * @return true: if the two \ref belief_formula contain \ref fluent_formula that are the negation of each other.
      * @return false: otherwise.*/
-    static bool check_Bff_notBff(const belief_formula& to_check_1, const belief_formula& to_check_2, const std::shared_ptr<FluentFormula>& ret);
+    static bool check_Bff_notBff(const BeliefFormula& to_check_1, const BeliefFormula& to_check_2, const std::shared_ptr<FluentFormula>& ret);
 
 
     /** \brief Function that check that the \ref ONTIC effect doesn't have uncertainty (OR).
@@ -136,14 +136,14 @@ public:
      * @param[in] map: the map that contains the tuples to check for entailment.
      * @param[in] state: the state in which to check the entailment.
      * @return the effects that are feasible in *this* with \p start as pointed world*.*/
-    static AgentsSet get_agents_if_entailed(const observability_map & map, const pstate & state);
+    static AgentsSet get_agents_if_entailed(const observability_map & map, const KripkeState & state);
 
     /** \brief Function that return the \ref fluent_formula (effect) that entails the exe condition.
      *
      * @param[in] map: the map that contains the tuples to check for entailment.
      * @param[in] state: the state in which to check the entailment.
      * @return the effects that are feasible in \p state.*/
-    static FluentFormula get_effects_if_entailed(const effects_map & map, const pstate & state);
+    static FluentFormula get_effects_if_entailed(const effects_map & map, const KripkeState & state);
 };
 
 

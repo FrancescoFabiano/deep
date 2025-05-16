@@ -15,15 +15,15 @@
  */
 #pragma once
 
-#include "pworld.h"
-#include "pstore.h"
+#include "KripkeWorld.h"
+#include "KripkeStorage.h"
 
 #include "../../utilities/Define.h"
 #include "../../domain/InitialStateInformation.h"
 #include "../../actions/Action.h"
 #include "../../../lib/bisimulation/bisimulation.h"
 
-class pstate
+class KripkeState
 {
 private:
 
@@ -34,15 +34,15 @@ private:
      *  \todo: forse basta solo m_pointed.
      *
      * @see pworld and pstore.*/
-    pworld_ptr_set m_worlds;
+    KripkeWorldPointersSet m_worlds;
     /** \brief The pointer to the *pointed world*.
      * 
      * @see pworld and pstore.*/
-    pworld_ptr m_pointed;
+    KripkeWorldPointer m_pointed;
     /** \brief The beliefs of each \ref agent in every \ref pworld.
      *
      * @see pworld.*/
-    pworld_transitive_map m_beliefs;
+    KripkeWorldPointersTransitiveMap m_beliefs;
 
     /** \brief Function that returns all the reachable \ref pworld given the \ref agent and the staring \ref pworld.
      * 
@@ -59,12 +59,12 @@ private:
      *
      * 
      * \todo self-loop?*/
-    const pworld_ptr_set get_B_reachable_worlds(Agent ag, const pworld_ptr & world) const;
+    const KripkeWorldPointersSet get_B_reachable_worlds(Agent ag, const KripkeWorldPointer & world) const;
 
     /** \brief Function that returns all the reachable \ref pworld given the \ref agent and the staring \ref pworld.
      * 
      * This function modify the parameter so it's easy to check if a fixed point is reached.
-     * This is useful for the operator C. Otherwise its better to use \ref get_B_reachable_worlds(agent, pworld_ptr) const.
+     * This is useful for the operator C. Otherwise its better to use \ref get_B_reachable_worlds(agent, KripkeWorldPointer) const.
      * 
      * @see belief_formula, get_B_reachable_worlds(agent, pworld_ptr) const and get_C_reachable_worlds(const agent_set &, pworld_ptr world) const.
      * 
@@ -75,11 +75,11 @@ private:
      *
      * 
      * \todo self-loop?*/
-    bool get_B_reachable_worlds_recoursive(Agent ag, const pworld_ptr & world, pworld_ptr_set & reached) const;
+    bool get_B_reachable_worlds_recoursive(Agent ag, const KripkeWorldPointer & world, KripkeWorldPointersSet & reached) const;
 
     /** \brief Function that returns all the reachable \ref pworld given a set of \ref agent and the staring \ref pworld.
      * 
-     * This function applies get_E_reachable_worlds(agent , pworld_ptr) with all the agents inside the
+     * This function applies get_E_reachable_worlds(agent , KripkeWorldPointer) with all the agents inside the
      * given set and return the union of the reached \ref pworld. It returns all the worlds where is necessary to check if
      * *phi* is entailed in order to verify E(\p ags, *phi*) and \p world is the starting point.
      * 
@@ -92,12 +92,12 @@ private:
      *
      * 
      * \todo self-loop?*/
-    const pworld_ptr_set get_E_reachable_worlds(const AgentsSet & ags, const pworld_ptr & world) const;
+    const KripkeWorldPointersSet get_E_reachable_worlds(const AgentsSet & ags, const KripkeWorldPointer & world) const;
 
     /** \brief Function that returns all the reachable \ref pworld given a set of \ref agent and the staring \ref pworld.
      * 
      * This function modify the parameter so it's easy to check if a fixed point is reached.
-     * This is useful for the operator C. Otherwise its better to use \ref get_E_reachable_worlds(const agent_set &, pworld_ptr) const.
+     * This is useful for the operator C. Otherwise its better to use \ref get_E_reachable_worlds(const agent_set &, KripkeWorldPointer) const.
      * 
      * @see \ref belief_formula, get_B_reachable_worlds(agent, pworld_ptr, pworld_ptr_set) const and get_C_reachable_worlds(const agent_set &, pworld_ptr world) const.
      * 
@@ -108,7 +108,7 @@ private:
      *
      * 
      * \todo self-loop?*/
-    bool get_E_reachable_worlds_recoursive(const AgentsSet &ags, const pworld_ptr_set & worlds, pworld_ptr_set & reached) const;
+    bool get_E_reachable_worlds_recoursive(const AgentsSet &ags, const KripkeWorldPointersSet & worlds, KripkeWorldPointersSet & reached) const;
 
     /** \brief Function that returns all the Distributed reachable \ref pworld given a set of \ref agent and the staring \ref pworld.
      * 
@@ -120,11 +120,11 @@ private:
      *
      * 
      * \todo self-loop?*/
-    const pworld_ptr_set get_D_reachable_worlds(const AgentsSet & ags, const pworld_ptr & world) const;
+    const KripkeWorldPointersSet get_D_reachable_worlds(const AgentsSet & ags, const KripkeWorldPointer & world) const;
 
     /** \brief Function that returns all the reachable \ref pworld (in the *Common Knowledge* sense) given a \ref agent and the staring \ref pworld.
      * 
-     * This function applies get_E_reachable_worlds(const agent_set &, pworld_ptr) on its on result until a fixed point is found.
+     * This function applies get_E_reachable_worlds(const agent_set &, KripkeWorldPointer) on its on result until a fixed point is found.
      * It returns all the worlds where is necessary to check if *phi* is entailed in order to verify C(\p ags, *phi*) and \p world is the starting point.
      * 
      * @see \ref belief_formula, and get_E_reachable_worlds(const agent_set &, pworld_ptr world).
@@ -135,7 +135,7 @@ private:
      * @return a set of pointers to all the reachable worlds.
      * 
      * \todo self-loop?*/
-    const pworld_ptr_set get_C_reachable_worlds(const AgentsSet & ags, const pworld_ptr & world) const;
+    const KripkeWorldPointersSet get_C_reachable_worlds(const AgentsSet & ags, const KripkeWorldPointer & world) const;
 
     /** \brief Function that builds the initial Kripke structure given the initial conditions in a structural way.
      *
@@ -175,7 +175,7 @@ private:
      * - If it doesn't the \ref pworld is added only to \ref pstore.
      * 
      * @param[in] possible_add: the \ref pworld to check.*/
-    void add_initial_pworld(const pworld & possible_add);
+    void add_initial_pworld(const KripkeWorld & possible_add);
 
     /** \brief Function used to build the \ref kedge of the initial \ref pstate.
      *  
@@ -187,7 +187,7 @@ private:
      * @param[in] from: the \ref pworld in which \ref agent "ag" currently is
      * @param[in] to: the \ref pworld to remove
      * @param[in] ag: the \ref agent.*/
-    void remove_edge(pworld_ptr & from, const pworld & to, const Agent ag);
+    void remove_edge(KripkeWorldPointer & from, const KripkeWorld & to, const Agent ag);
     /** \brief Function that removes the \ref pedge(s) that imply that \p ag is ignorant about \p known_ff from *this*.
      *  
      * @param[in] known_ff: the \ref fluent_formula known by \p ag.
@@ -199,19 +199,19 @@ private:
      * labeled with i that link \ref pworld that entails *phi* and \ref pworld -*phi*.
      * 
      * @param[in] to_check: the \ref belief_formula to check.*/
-    void remove_initial_pedge_bf(const belief_formula &to_check);
+    void remove_initial_pedge_bf(const BeliefFormula &to_check);
 
     /** \brief Function that adds the given beliefs to the \ref pworld "world".
      *
      * @param[in] world: the \ref pworld.
      * @param[in] beliefs: a \ref pworld_map containing the beliefs.*/
-    void add_pworld_beliefs(const pworld_ptr & world, const pworld_map & beliefs);
+    void add_pworld_beliefs(const KripkeWorldPointer & world, const KripkeWorldPointersMap & beliefs);
 
     /** \brief Function that copies the \ref pworld(s) and the beliefs of the oblivious agents in the new \ref pstate.
      *
      * @param[in] ret: the new \ref pstate.
      * @param[in] oblivious_obs_agents: the oblivious \ref agent(s).*/
-    void maintain_oblivious_believed_pworlds(pstate &ret, const AgentsSet &oblivious_obs_agents) const;
+    void maintain_oblivious_believed_pworlds(KripkeState &ret, const AgentsSet &oblivious_obs_agents) const;
     /** \brief Function that recursively calculates the \ref pworld resulting from the transition function.
      *
      * @param[in] act: the \ref ONTIC \ref action to be applied on *this*.
@@ -220,7 +220,7 @@ private:
      * @param[in] calculated: a map that keeps track of the results of the transition function.
      * @param[in] oblivious_obs_agents: the oblivious \ref agent set.
      * @return the \ref pworld resulting from the application of the transition function on "current_pw".*/
-    pworld_ptr execute_ontic_helper(const Action &act, pstate &ret, const pworld_ptr &current_pw, transition_map &calculated, AgentsSet &oblivious_obs_agents) const;
+    KripkeWorldPointer execute_ontic_helper(const Action &act, KripkeState &ret, const KripkeWorldPointer &current_pw, TransitionMap &calculated, AgentsSet &oblivious_obs_agents) const;
     /** \brief Function that recursively calculates the \ref pworld resulting from the transition function.
      *
      * @param[in] effects: the effects of the \ref SENSING/\ref ANNOUNCEMENT \ref action to be applied on *this*.
@@ -231,7 +231,7 @@ private:
      * @param[in] oblivious_obs_agents: the oblivious \ref agent set.
      * @param[in] previous_entailment: the value of the coming state entailment (if first is pointed).
      * @return the \ref pworld resulting from the application of the transition function on "current_pw".*/
-    pworld_ptr execute_sensing_announcement_helper(const FluentFormula &effects, pstate &ret, const pworld_ptr &current_pw, transition_map &calculated, AgentsSet &partially_obs_agents, AgentsSet &oblivious_obs_agents, bool previous_entailment) const;
+    KripkeWorldPointer execute_sensing_announcement_helper(const FluentFormula &effects, KripkeState &ret, const KripkeWorldPointer &current_pw, TransitionMap &calculated, AgentsSet &partially_obs_agents, AgentsSet &oblivious_obs_agents, bool previous_entailment) const;
     /** \brief Function that applies the transition function for a \ref ONTIC \ref action effect on *this* implementing the possibilities semantic.
      *
      * The transition function is applied accordingly to mA^rho. Check the paper for more information.
@@ -240,7 +240,7 @@ private:
      *
      * @param[in] act: the \ref ONTIC action to be applied on *this*.
      * @return the \ref pstate that results after the execution.*/
-    pstate execute_ontic(const Action &act) const;
+    KripkeState execute_ontic(const Action &act) const;
     /** \brief Function that applies the transition function for a \ref SENSING \ref action effect on *this* implementing the possibilities semantic.
      *
      * The transition function is applied accordingly to mA^rho. Check the paper for more information.
@@ -249,7 +249,7 @@ private:
      *
      * @param[in] act: the \ref SENSING action to be applied on *this*.
      * @return the \ref pstate that results after the execution.*/
-    pstate execute_sensing(const Action &act) const;
+    KripkeState execute_sensing(const Action &act) const;
     /** \brief Function that applies the transition function for a \ref ANNOUNCEMENT \ref action effect on *this* implementing the possibilities semantic.
      *
      * The transition function is applied accordingly to mA^rho. Check the paper for more information.
@@ -258,32 +258,32 @@ private:
      *
      * @param[in] act: the \ref ANNOUNCEMENT action to be applied on *this*.
      * @return the \ref pstate that results after the execution.*/
-    pstate execute_announcement(const Action &act) const;
+    KripkeState execute_announcement(const Action &act) const;
 
-    void get_all_reachable_worlds(const pworld_ptr & pw, pworld_ptr_set & reached_worlds, pworld_transitive_map & reached_edges) const;
+    void get_all_reachable_worlds(const KripkeWorldPointer & pw, KripkeWorldPointersSet & reached_worlds, KripkeWorldPointersTransitiveMap & reached_edges) const;
 
     void clean_unreachable_pworlds();
 
-    const automa pstate_to_automaton(std::vector<pworld_ptr> & pworld_vec, const std::map<Agent, bis_label> & agent_to_label) const;
+    const automa pstate_to_automaton(std::vector<KripkeWorldPointer> & pworld_vec, const std::map<Agent, bis_label> & agent_to_label) const;
 
-    void automaton_to_pstate(const automa & a, const std::vector<pworld_ptr> & pworld_vec, const std::map<bis_label, Agent> & label_to_agent);
+    void automaton_to_pstate(const automa & a, const std::vector<KripkeWorldPointer> & pworld_vec, const std::map<bis_label, Agent> & label_to_agent);
 
-    //  bool check_reached(agent ag, const pworld_ptr & start, const pworld_ptr & end) const;
+    //  bool check_reached(agent ag, const KripkeWorldPointer & start, const KripkeWorldPointer & end) const;
 
 public:
 
     /** \brief Setter of the field \ref m_worlds.
      *
      * @param[in] to_set: the \ref pworld_ptr_set to assign to \ref m_worlds.*/
-    void set_worlds(const pworld_ptr_set & to_set);
+    void set_worlds(const KripkeWorldPointersSet & to_set);
     /** \brief Setter of the field \ref m_pointed.
      *
      * @param[in] to_set: the \ref pworld_ptr to assign to \ref m_pointed.*/
-    void set_pointed(const pworld_ptr & to_set);
+    void set_pointed(const KripkeWorldPointer & to_set);
     /** \brief Setter of the field \ref m_beliefs.
      *
      * @param[in] to_set: the \ref pworld_transitive_map to assign to \ref m_beliefs.*/
-    void set_beliefs(const pworld_transitive_map & to_set);
+    void set_beliefs(const KripkeWorldPointersTransitiveMap & to_set);
     /** \brief Setter of the field \ref m_max_depth.
      *
      * @param[in] to_set: the unsigned int to assign to \ref m_max_depth.*/
@@ -292,15 +292,15 @@ public:
     /** \brief Getter of the field \ref m_worlds.
      *
      * @return: the value of \ref m_worlds.*/
-    const pworld_ptr_set & get_worlds() const;
+    const KripkeWorldPointersSet & get_worlds() const;
     /** \brief Getter of the field \ref m_pointed.
      *
      * @return: the value of \ref m_pointed.*/
-    const pworld_ptr & get_pointed() const;
+    const KripkeWorldPointer & get_pointed() const;
     /** \brief Getter of the field \ref m_beliefs.
      *
      * @return: the value of \ref m_beliefs.*/
-    const pworld_transitive_map & get_beliefs() const;
+    const KripkeWorldPointersTransitiveMap & get_beliefs() const;
     /** \brief Getter of the field \ref m_max_depth.
      *
      * @return: the value of \ref m_max_depth.*/
@@ -314,7 +314,7 @@ public:
      *
      * @return true: \p to_check is entailed in \p world;
      * @return false: \p -to_check is entailed in \p world.*/
-    bool entails(Fluent to_check, const pworld_ptr & world) const;
+    bool entails(Fluent to_check, const KripkeWorldPointer & world) const;
     /**
      *\brief Function that checks the entailment of a conjunctive set of \ref fluent in a given \ref pworld.
      *     @see \ref pworld::entails(const fluent_set &) const
@@ -324,7 +324,7 @@ public:
      *
      * @return true: \p to_check is entailed in \p world;
      * @return false: \p -to_check is entailed in \p world.*/
-    bool entails(const FluentsSet & to_check, const pworld_ptr & world) const;
+    bool entails(const FluentsSet & to_check, const KripkeWorldPointer & world) const;
     /**
      *\brief Function that checks the entailment of a conjunctive set of \ref fluent in a given \ref pworld.
      *     @see \ref pworld::entails(const fluent_formula &) const
@@ -334,7 +334,7 @@ public:
      *
      * @return true: \p to_check is entailed in \p world;
      * @return false: \p -to_check is entailed in \p world.*/
-    bool entails(const FluentFormula & to_check, const pworld_ptr & world) const;
+    bool entails(const FluentFormula & to_check, const KripkeWorldPointer & world) const;
 
     /** \brief Function that checks the entailment of a \ref belief_formula.
      *
@@ -355,7 +355,7 @@ public:
      * @return false: \p -to_check is entailed starting from \p world.
      *
      * \todo self-loop?*/
-    bool entails(const belief_formula & to_check, const pworld_ptr & world) const;
+    bool entails(const BeliefFormula & to_check, const KripkeWorldPointer & world) const;
     /** \brief Function that checks the entailment of a \ref belief_formula on several possible starting points.
      *
      * This function eases the task to check the entailment from several starting \ref pworld simultaneously.
@@ -370,7 +370,7 @@ public:
      * @return false: \p -to_check is entailed starting from all the \ref pworld in \p worlds.
      *
      * \todo self-loop?*/
-    bool entails(const belief_formula & to_check, const pworld_ptr_set & worlds) const;
+    bool entails(const BeliefFormula & to_check, const KripkeWorldPointersSet & worlds) const;
     /** \brief Function that checks the entailment of a \ref formula_list (CNF of \ref belief_formula).
      *
      *
@@ -381,16 +381,16 @@ public:
      * @return false: \p -to_check is entailed starting from \p world.
      *
      * \todo self-loop?*/
-    bool entails(const formula_list & to_check, const pworld_ptr & world) const;
+    bool entails(const formula_list & to_check, const KripkeWorldPointer & world) const;
 
-    void add_world(const pworld & to_add);
+    void add_world(const KripkeWorld & to_add);
 
     /** \brief Function that adds the belief of agent "ag" for the \ref pworld "pw" *this*.
      *
      * @param[in] from: the \ref pworld in which \ref agent "ag" currently is
      * @param[in] to: the \ref pworld believed from \ref agent "ag"
      * @param[in] ag: the \ref agent.*/
-    void add_edge(const pworld_ptr & from, const pworld_ptr & to, Agent ag);
+    void add_edge(const KripkeWorldPointer & from, const KripkeWorldPointer & to, Agent ag);
 
     /** \brief Function that adds a \ref pworld to the Kripke structure represented by *this*.
      *
@@ -403,7 +403,7 @@ public:
      *  
      * @param[in] to_add: the \ref pworld that has to be added to *this*.
      * @return The a \ref pworld_ptr to the newly inserted \ref pworld.*/
-    pworld_ptr add_rep_world(const pworld & to_add);
+    KripkeWorldPointer add_rep_world(const KripkeWorld & to_add);
     /** \brief Function that adds a \ref pworld to the Kripke structure represented by *this* setting its repetition.
      *
      * The \ref pworld is added. The structure only stores the pointer to the \ref pworld so
@@ -416,7 +416,7 @@ public:
      * @param[in] to_add: the \ref pworld that has to be added to *this*.
      * @param[in] old_repetition: used to distinguish from same level of the structure but derived from different levels of the old structure.
      * @return The a \ref pworld_ptr to the newly inserted \ref pworld.*/
-    pworld_ptr add_rep_world(const pworld & to_add, unsigned short old_repetition);
+    KripkeWorldPointer add_rep_world(const KripkeWorld & to_add, unsigned short old_repetition);
     /** \brief Function that adds a \ref pworld to the Kripke structure represented by *this* setting its repetition.
      *
      * The \ref pworld is added. The structure only stores the pointer to the \ref pworld so
@@ -430,7 +430,7 @@ public:
      * @param[in] repetition: the is to distinguish from other levels of the structure.
      * @param[out] is_new: used to inidcate if the world was already present in the *this*.
      * @return The a \ref pworld_ptr to the newly inserted \ref pworld.*/
-    pworld_ptr add_rep_world(const pworld & to_add, unsigned short repetition, bool& is_new);
+    KripkeWorldPointer add_rep_world(const KripkeWorld & to_add, unsigned short repetition, bool& is_new);
 
     /** \brief Function that checks the entailment of a \ref fluent in *this*.
      *
@@ -482,7 +482,7 @@ public:
      *
      * @return true: \p to_check is entailed in *this*;
      * @return false: \p -to_check is entailed in *this*.*/
-    bool entails(const belief_formula & to_check) const;
+    bool entails(const BeliefFormula & to_check) const;
 
     /** \brief Function that builds the initial Kripke structure given the initial conditions.
      *
@@ -506,7 +506,7 @@ public:
      * @return the \ref pstate that results after the execution.
      * 
      * \todo The action must be executable on *this* otherwise it will return a null_ptr.*/
-    pstate compute_succ(const Action & act) const;
+    KripkeState compute_succ(const Action & act) const;
 
     /** \brief sub-Function of \ref compute_succ that checks if the successor respects the epistemic properties after an \ref action execution.
      * 
@@ -519,7 +519,7 @@ public:
      * @param updated: the e-state after the action execution.
      * @return true: \p *this* respects all the properties.
      * @return false: \p *this* does not respect all the properties.*/
-    bool check_properties(const AgentsSet & fully, const AgentsSet & partially, const FluentFormula & effects, const pstate & updated) const;
+    bool check_properties(const AgentsSet & fully, const AgentsSet & partially, const FluentFormula & effects, const KripkeState & updated) const;
 
     /** \brief Function that makes *this* the mimimum \ref poss that is bisimilar to the current one.
      *
@@ -531,7 +531,7 @@ public:
      * @param [in] to_copy: the \ref pstate to assign to *this*.
      * @return true: if \p the assignment went ok.
      * @return false: otherwise.*/
-    bool operator=(const pstate & to_copy);
+    bool operator=(const KripkeState & to_copy);
 
     /**\brief The operator < for set operation in \ref planning_graph.
      *
@@ -541,7 +541,7 @@ public:
      * 
      * @return true: if *this* is smaller than \p to_compare.
      * @return false: otherwise.*/
-    bool operator<(const pstate & to_compare) const;
+    bool operator<(const KripkeState & to_compare) const;
 
     /** \brief Function that prints the information of *this*.*/
     void print() const;

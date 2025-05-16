@@ -4,7 +4,7 @@
  * \copyright GNU Public License.
  *
  * \author Francesco Fabiano.
- * \date April 1, 2019
+ * \date May 12, 2025
  */
 
 #include "ArgumentParser.h"

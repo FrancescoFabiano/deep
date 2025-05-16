@@ -1,5 +1,5 @@
 /*
- * \brief Implementation of \ref pworld.h and \ref pworld_ptr.h.
+ * \brief Implementation of \ref pworld.h and \ref KripkeWorldPointer.h.
  *
  * \copyright GNU Public License.
  *
@@ -7,24 +7,24 @@
  * \date September 14, 2019
  */
 #include <boost/dynamic_bitset.hpp>
-#include "pworld.h"
+#include "KripkeWorld.h"
 
 #include "pstore.h"
 
 #include <stdexcept>
 #include "../../utilities/helper.h"
-pworld::pworld()
+KripkeWorld::KripkeWorld()
 {
 }
 
-pworld::pworld(const fluent_set & description)
+KripkeWorld::KripkeWorld(const fluent_set & description)
 {
 	set_fluent_set(description);
 	set_id();
 }
 //generate an unique id given the state information -> the literals
 
-pworld::pworld(const pworld & world)
+KripkeWorld::KripkeWorld(const KripkeWorld & world)
 {
 	set_fluent_set(world.get_fluent_set());
 	set_id();
@@ -64,7 +64,7 @@ boost::dynamic_bitset<> concatLoopDyn( const boost::dynamic_bitset<>& bs1,const 
     return res;
 }
 
-pworld_id pworld::hash_fluents_into_id(const fluent_set& fl)
+KripkeWorldId KripkeWorld::hash_fluents_into_id(const fluent_set& fl)
 {
     fluent_set fl2 = fl;
     std::size_t hash;
@@ -73,12 +73,12 @@ pworld_id pworld::hash_fluents_into_id(const fluent_set& fl)
 
 }
 
-pworld_id pworld::hash_fluents_into_id()
+KripkeWorldId KripkeWorld::hash_fluents_into_id()
 {
 	return hash_fluents_into_id(m_fluent_set);
 }
 
-void pworld::set_fluent_set(const fluent_set & description)
+void KripkeWorld::set_fluent_set(const fluent_set & description)
 {
 	/*
 	 * \throw std::invalid_argument whenever \p description is not consistent.
@@ -89,7 +89,7 @@ void pworld::set_fluent_set(const fluent_set & description)
 		throw std::invalid_argument("Non consistent set of fluent");*/
 }
 
-bool pworld::consistent(const fluent_set & to_check)
+bool KripkeWorld::consistent(const fluent_set & to_check)
 {
 	fluent_set::const_iterator it_flset;
 	fluent_set::const_iterator it_flset_tmp;
@@ -115,22 +115,22 @@ bool pworld::consistent(const fluent_set & to_check)
 	return true;
 }
 
-void pworld::set_id()
+void KripkeWorld::set_id()
 {
 	m_id = hash_fluents_into_id();
 }
 
-const fluent_set & pworld::get_fluent_set() const
+const fluent_set & KripkeWorld::get_fluent_set() const
 {
 	return m_fluent_set;
 }
 
-pworld_id pworld::get_id() const
+KripkeWorldId KripkeWorld::get_id() const
 {
 	return m_id;
 }
 
-bool pworld::entails(Fluent to_check) const
+bool KripkeWorld::entails(Fluent to_check) const
 {
 	return(m_fluent_set.find(to_check) != m_fluent_set.end());
 }
@@ -138,7 +138,7 @@ bool pworld::entails(Fluent to_check) const
 /**
  * \todo Check for the size = 0?
  */
-bool pworld::entails(const fluent_set & to_check) const
+bool KripkeWorld::entails(const fluent_set & to_check) const
 {
 	//fluent_set expresses conjunctive set of \ref fluent
 	if (to_check.size() == 0) {
@@ -156,7 +156,7 @@ bool pworld::entails(const fluent_set & to_check) const
 /**
  * \todo Check for the size = 0?
  */
-bool pworld::entails(const fluent_formula & to_check) const
+bool KripkeWorld::entails(const fluent_formula & to_check) const
 {
 	if (to_check.size() == 0) {
 		return true;
@@ -170,7 +170,7 @@ bool pworld::entails(const fluent_formula & to_check) const
 	return false;
 }
 
-bool pworld::operator<(const pworld& to_compare) const
+bool KripkeWorld::operator<(const KripkeWorld& to_compare) const
 {
 
 	if (m_id < to_compare.get_id())
@@ -179,14 +179,14 @@ bool pworld::operator<(const pworld& to_compare) const
 	return false;
 }
 
-bool pworld::operator>(const pworld& to_compare) const
+bool KripkeWorld::operator>(const KripkeWorld& to_compare) const
 {
 	if (m_id > (to_compare.get_id()))
 		return true;
 	return false;
 }
 
-bool pworld::operator==(const pworld& to_compare) const
+bool KripkeWorld::operator==(const KripkeWorld& to_compare) const
 {
 	/**std way*/
 	if (!((*this) < to_compare) && !(to_compare < (*this))) {
@@ -195,14 +195,14 @@ bool pworld::operator==(const pworld& to_compare) const
 	return false;
 }
 
-bool pworld::operator=(const pworld & to_assign)
+bool KripkeWorld::operator=(const KripkeWorld & to_assign)
 {
 	set_fluent_set(to_assign.get_fluent_set());
 	set_id();
 	return true;
 }
 
-void pworld::print() const
+void KripkeWorld::print() const
 {
 	std::cout << "\nFluents: " << get_id();
 	printer::get_instance().print_list(m_fluent_set);
@@ -210,120 +210,120 @@ void pworld::print() const
 
 /*-***************************************************************************************************************-*/
 
-pworld_ptr::pworld_ptr()
+KripkeWorldPointer::KripkeWorldPointer()
 {
 }
 
-pworld_ptr::pworld_ptr(const std::shared_ptr<const pworld> & ptr, unsigned short repetition)
-{
-	set_ptr(ptr);
-	set_repetition(repetition);
-}
-
-pworld_ptr::pworld_ptr(std::shared_ptr<const pworld>&& ptr, unsigned short repetition)
+KripkeWorldPointer::KripkeWorldPointer(const std::shared_ptr<const KripkeWorld> & ptr, unsigned short repetition)
 {
 	set_ptr(ptr);
 	set_repetition(repetition);
-
 }
 
-pworld_ptr::pworld_ptr(const pworld & world, unsigned short repetition)
+KripkeWorldPointer::KripkeWorldPointer(std::shared_ptr<const KripkeWorld>&& ptr, unsigned short repetition)
 {
-	m_ptr = std::make_shared<pworld>(world);
+	set_ptr(ptr);
 	set_repetition(repetition);
 
 }
 
-void pworld_ptr::set_ptr(const std::shared_ptr<const pworld> & ptr)
+KripkeWorldPointer::KripkeWorldPointer(const KripkeWorld & world, unsigned short repetition)
+{
+	m_ptr = std::make_shared<KripkeWorld>(world);
+	set_repetition(repetition);
+
+}
+
+void KripkeWorldPointer::set_ptr(const std::shared_ptr<const KripkeWorld> & ptr)
 {
 	m_ptr = ptr;
 }
 
-void pworld_ptr::set_ptr(std::shared_ptr<const pworld>&& ptr)
+void KripkeWorldPointer::set_ptr(std::shared_ptr<const KripkeWorld>&& ptr)
 {
 	m_ptr = ptr;
 }
 
-std::shared_ptr<const pworld> pworld_ptr::get_ptr() const
+std::shared_ptr<const KripkeWorld> KripkeWorldPointer::get_ptr() const
 {
 	return m_ptr;
 }
 
-const fluent_set & pworld_ptr::get_fluent_set() const
+const fluent_set & KripkeWorldPointer::get_fluent_set() const
 {
 	if (m_ptr != nullptr) {
 		return get_ptr()->get_fluent_set();
 	}
-	std::cerr << "Error in creating a pworld_ptr\n";
+	std::cerr << "Error in creating a KripkeWorldPointer\n";
 	exit(1);
 }
 
-pworld_id pworld_ptr::get_fluent_based_id() const
+KripkeWorldId KripkeWorldPointer::get_fluent_based_id() const
 {
 	if (m_ptr != nullptr) {
 		return(get_ptr()->get_id());
 	}
-	std::cerr << "\nError in creating a pworld_ptr\n";
+	std::cerr << "\nError in creating a KripkeWorldPointer\n";
 	exit(1);
 }
 
-pworld_id pworld_ptr::get_id() const
+KripkeWorldId KripkeWorldPointer::get_id() const
 {
 	if (m_ptr != nullptr) {
-	    pworld_id id = (get_ptr()->get_id());
+	    KripkeWorldId id = (get_ptr()->get_id());
 
 	    //moltiplico * 10 id + get_repetion() TODO test con shift 
         return boost::hash_value((1000*id)+get_repetition());
 	}
-	std::cerr << "\nError in creating a pworld_ptr\n";
+	std::cerr << "\nError in creating a KripkeWorldPointer\n";
 	exit(1);
 }
 
 
-pworld_id pworld_ptr::get_numerical_id() const
+KripkeWorldId KripkeWorldPointer::get_numerical_id() const
 {
 	if (m_ptr != nullptr) {
-	    pworld_id id = (get_ptr()->get_id());
+	    KripkeWorldId id = (get_ptr()->get_id());
 
         return boost::hash_value(id);
 	}
-	std::cerr << "\nError in creating a pworld_ptr\n";
+	std::cerr << "\nError in creating a KripkeWorldPointer\n";
 	exit(1);
 }
 
-void pworld_ptr::set_repetition(unsigned short to_set)
+void KripkeWorldPointer::set_repetition(unsigned short to_set)
 {
 	m_repetition = to_set;
 }
 
-void pworld_ptr::increase_repetition(unsigned short to_increase)
+void KripkeWorldPointer::increase_repetition(unsigned short to_increase)
 {
 	m_repetition = m_repetition + to_increase;
 	//m_repetition = m_repetition;
 }
 
-unsigned short pworld_ptr::get_repetition() const
+unsigned short KripkeWorldPointer::get_repetition() const
 {
 	return m_repetition;
 
 }
 
-bool pworld_ptr::entails(Fluent to_check) const
+bool KripkeWorldPointer::entails(Fluent to_check) const
 {
 	return m_ptr->entails(to_check);
 }
 
-bool pworld_ptr::entails(const fluent_set& to_check) const
+bool KripkeWorldPointer::entails(const fluent_set& to_check) const
 {
 	return m_ptr->entails(to_check);
 }
 
-bool pworld_ptr::entails(const fluent_formula & to_check) const
+bool KripkeWorldPointer::entails(const fluent_formula & to_check) const
 {
 	return m_ptr->entails(to_check);
 }
 
-bool pworld_ptr::operator<(const pworld_ptr & to_compare) const
+bool KripkeWorldPointer::operator<(const KripkeWorldPointer & to_compare) const
 {
 	if (get_id() < (to_compare.get_id())) {
 		return true;
@@ -331,7 +331,7 @@ bool pworld_ptr::operator<(const pworld_ptr & to_compare) const
 	return false;
 }
 
-bool pworld_ptr::operator>(const pworld_ptr & to_compare) const
+bool KripkeWorldPointer::operator>(const KripkeWorldPointer & to_compare) const
 {
 	if (get_id() > to_compare.get_id()) {
 		return true;
@@ -339,7 +339,7 @@ bool pworld_ptr::operator>(const pworld_ptr & to_compare) const
 	return false;
 }
 
-bool pworld_ptr::operator==(const pworld_ptr & to_compare) const
+bool KripkeWorldPointer::operator==(const KripkeWorldPointer & to_compare) const
 {
 	/**std way*/
 	if (!((*this) < to_compare) && !(to_compare < (*this))) {
@@ -348,7 +348,7 @@ bool pworld_ptr::operator==(const pworld_ptr & to_compare) const
 	return false;
 }
 
-bool pworld_ptr::operator=(const pworld_ptr & to_copy)
+bool KripkeWorldPointer::operator=(const KripkeWorldPointer & to_copy)
 {
 	set_ptr(to_copy.get_ptr());
 	set_repetition(to_copy.get_repetition());

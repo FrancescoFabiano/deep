@@ -21,7 +21,7 @@ public:
      * \enum ExitCode
      * \brief Enumerates exit codes for program termination.
      *
-     * Includes codes related to \ref ArgumentParser.
+     * Includes codes related to \ref ArgumentParser and BeliefFormula.
      */
     enum class ExitCode : int {
         Success = 0,         ///< Program completed successfully.
@@ -50,6 +50,17 @@ public:
         FormulaBadDeclaration = 401,      ///< Bad formula declaration.
         FormulaEmptyEffect = 402,         ///< Empty action effect.
 
+        // HelperPrint Related
+        PrintUnsetGrounderError = 500, ///< Attempted to print with unset grounder.
+        PrintNullPointerError = 501,   ///< Null pointer encountered during print.
+
+        // BeliefFormula Related
+        BeliefFormulaTypeUnset = 600,         ///< BeliefFormula type not set properly.
+        BeliefFormulaEmptyFluent = 601,       ///< BeliefFormula has empty fluent formula.
+        BeliefFormulaNotGrounded = 602,       ///< BeliefFormula not grounded when required.
+        BeliefFormulaMissingNested = 603,     ///< BeliefFormula missing nested formula.
+        BeliefFormulaOperatorUnset = 604,     ///< BeliefFormula operator not set properly.
+        BeliefFormulaEmptyAgentGroup = 605    ///< BeliefFormula has empty agent group.
     };
 
     // ArgumentParser Related
