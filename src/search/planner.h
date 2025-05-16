@@ -105,10 +105,10 @@ private:
     bool dataset_launcher(const std::string& fpath, int max_depth, bool useDFS, const std::string& goal_str);
 
     /** Serial DFS dataset generation worker. */
-    bool dataset_DFS_serial(T& initial_state, int max_depth, action_set* actions, const std::string& goal_str, std::vector<std::string>& global_dataset, bool bisimulation);
+    bool dataset_DFS_serial(T& initial_state, int max_depth, ActionsSet* actions, const std::string& goal_str, std::vector<std::string>& global_dataset, bool bisimulation);
 
     /** DFS recursive worker to explore states for dataset generation. */
-    int dataset_DFS_worker(T& state, int depth, int max_depth, action_set* actions, const std::string& goal_str, std::vector<std::string>& local_dataset, bool bisimulation);
+    int dataset_DFS_worker(T& state, int depth, int max_depth, ActionsSet* actions, const std::string& goal_str, std::vector<std::string>& local_dataset, bool bisimulation);
 
     /** Formats a single row of the dataset CSV file. */
     std::string format_row(T& state, int depth, int score, const std::string& goal_str);

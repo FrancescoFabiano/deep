@@ -160,10 +160,10 @@ void printer::print_list(const action_id_list& to_print) const
 	}
 }
 
-void printer::print_list_ag(const agent_set& to_print) const
+void printer::print_list_ag(const AgentSet& to_print) const
 {
 	bool first_print = true;
-	agent_set::const_iterator it_sll;
+	AgentSet::const_iterator it_sll;
 	//Iterate on the \p to_print and print its content using ::to_print(const string_set&) seprated by a OR to represent a DNF.
 
 	for (it_sll = to_print.begin(); it_sll != to_print.end(); it_sll++) {

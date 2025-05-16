@@ -5,7 +5,7 @@
 #include "initially.h"
 #include "../utilities/define.h"
 #include "../utilities/reader.h"
-#include "../actions/action.h"
+#include "../actions/Action.h"
 #include <boost/shared_ptr.hpp>
 #include <boost/make_shared.hpp>
 
@@ -43,15 +43,15 @@ public:
     /** \brief Getter of the field \ref m_grounder. */
     [[nodiscard]] const grounder& get_grounder() const noexcept;
     /** \brief Getter of the field \ref m_fluents. */
-    [[nodiscard]] const fluent_set& get_fluents() const noexcept;
+    [[nodiscard]] const FluentsSet& get_fluents() const noexcept;
     /** \brief Function that returns the number of \ref fluent in the domain. */
     [[nodiscard]] unsigned int get_fluent_number() const noexcept;
     /** \brief Function that returns the size of the fluent set (which also include negations). */
     [[nodiscard]] unsigned int get_size_fluent() const noexcept;
     /** \brief Getter of the field \ref m_actions. */
-    [[nodiscard]] const action_set& get_actions() const noexcept;
+    [[nodiscard]] const ActionsSet& get_actions() const noexcept;
     /** \brief Getter of the field \ref m_agents. */
-    [[nodiscard]] const agent_set& get_agents() const noexcept;
+    [[nodiscard]] const AgentsSet& get_agents() const noexcept;
     /** \brief Function that returns the number of agents in the domain. */
     [[nodiscard]] unsigned int get_agent_number() const noexcept;
     /** \brief Getter of the field \ref m_name. */
@@ -70,9 +70,9 @@ private:
     std::string m_name; ///< The name of the file that contains the description of *this*.
     boost::shared_ptr<reader> m_reader; ///< The pointer to a \ref reader object.
     grounder m_grounder; ///< A \ref grounder object used to store the name of the information.
-    fluent_set m_fluents; ///< Set containing all the (grounded) \ref fluent of the domain.
-    action_set m_actions; ///< Set containing all the \ref action (with effects, conditions, obsv etc.) of the domain.
-    agent_set m_agents; ///< Set containing all the (grounded) \ref agent of the domain.
+    FluentsSet m_fluents; ///< Set containing all the (grounded) \ref fluent of the domain.
+    ActionsSet m_actions; ///< Set containing all the \ref action (with effects, conditions, obsv etc.) of the domain.
+    AgentsSet m_agents; ///< Set containing all the (grounded) \ref agent of the domain.
     initially m_intial_description; ///< The description of the initial state.
     formula_list m_goal_description; ///< The formula that describes the goal.
 

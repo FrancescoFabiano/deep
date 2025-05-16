@@ -79,10 +79,10 @@ void heuristics_manager::expand_goals(unsigned short nesting)
 	//	}
 }
 
-void heuristics_manager::produce_subgoals(unsigned short nesting, unsigned short depth, const belief_formula & to_explore, const agent_set & agents)
+void heuristics_manager::produce_subgoals(unsigned short nesting, unsigned short depth, const belief_formula & to_explore, const AgentSet & agents)
 {
 
-	agent_set::const_iterator it_agset;
+	AgentSet::const_iterator it_agset;
 
 	//unsigned short added_subgoals = 0;
 

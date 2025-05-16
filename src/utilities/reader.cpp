@@ -67,7 +67,7 @@ void reader::print() const
 {
 
 	//Printing of all the agent with the \ref kstore::get_instance().print functions
-	proposition_list::const_iterator it_porplist;
+	PropositionsList::const_iterator it_porplist;
 	std::cout << std::endl << std::endl;
 	std::cout << "AGENT DECLARATION" << std::endl;
 	std::cout << "---------------------------" << std::endl;

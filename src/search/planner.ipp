@@ -698,7 +698,7 @@ template <class T>
 void planner<T>::check_actions_names(std::vector<std::string>& act_name)
 {
 
-	string_set domain_act;
+	StringsSet domain_act;
 	action_set::const_iterator it_acset;
 
 	std::vector<std::string>::iterator it_stset;

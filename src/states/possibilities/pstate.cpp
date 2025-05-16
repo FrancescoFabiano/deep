@@ -128,32 +128,32 @@ bool pstate::operator<(const pstate & to_compare) const
 	return false;
 }
 
-bool pstate::entails(fluent f) const
+bool pstate::entails(Fluent f) const
 {
 	return entails(f, m_pointed);
 }
 
-bool pstate::entails(fluent f, const pworld_ptr & world) const
+bool pstate::entails(Fluent f, const pworld_ptr & world) const
 {
 	return world.get_ptr()->entails(f);
 }
 
-bool pstate::entails(const fluent_set & fl) const
+bool pstate::entails(const FluentsSet & fl) const
 {
 	return entails(fl, m_pointed);
 }
 
-bool pstate::entails(const fluent_set & fl, const pworld_ptr & world) const
+bool pstate::entails(const FluentsSet & fl, const pworld_ptr & world) const
 {
 	return world.get_ptr()->entails(fl);
 }
 
-bool pstate::entails(const fluent_formula & ff) const
+bool pstate::entails(const FluentFormula & ff) const
 {
 	return entails(ff, m_pointed);
 }
 
-bool pstate::entails(const fluent_formula & ff, const pworld_ptr & world) const
+bool pstate::entails(const FluentFormula & ff, const pworld_ptr & world) const
 {
 	return world.get_ptr()->entails(ff);
 }
@@ -258,7 +258,7 @@ bool pstate::entails(const formula_list & to_check, const pworld_ptr & world) co
 	return true;
 }
 
-const pworld_ptr_set pstate::get_B_reachable_worlds(agent ag, const pworld_ptr & world) const
+const pworld_ptr_set pstate::get_B_reachable_worlds(Agent ag, const pworld_ptr & world) const
 {
 	pworld_ptr_set ret;
 	auto pw_map = m_beliefs.find(world);
@@ -272,7 +272,7 @@ const pworld_ptr_set pstate::get_B_reachable_worlds(agent ag, const pworld_ptr &
 	return ret;
 }
 
-bool pstate::get_B_reachable_worlds_recoursive(agent ag, const pworld_ptr & world, pworld_ptr_set& ret) const
+bool pstate::get_B_reachable_worlds_recoursive(Agent ag, const pworld_ptr & world, pworld_ptr_set& ret) const
 {
 	/** \todo check: If a--i-->b, b--i-->c then a--i-->c must be there*/
 	auto pw_map = m_beliefs.find(world);
@@ -291,11 +291,11 @@ bool pstate::get_B_reachable_worlds_recoursive(agent ag, const pworld_ptr & worl
 	return true;
 }
 
-const pworld_ptr_set pstate::get_E_reachable_worlds(const agent_set & ags, const pworld_ptr & world) const
+const pworld_ptr_set pstate::get_E_reachable_worlds(const AgentsSet & ags, const pworld_ptr & world) const
 {
 	/*The K^0 call of this function*/
 	pworld_ptr_set ret;
-	agent_set::const_iterator it_agset;
+	AgentsSet::const_iterator it_agset;
 	for (it_agset = ags.begin(); it_agset != ags.end(); it_agset++) {
 		helper_t::sum_set<pworld_ptr>(ret, get_B_reachable_worlds(*it_agset, world));
 	}
@@ -303,13 +303,13 @@ const pworld_ptr_set pstate::get_E_reachable_worlds(const agent_set & ags, const
 	return ret;
 }
 
-bool pstate::get_E_reachable_worlds_recoursive(const agent_set & ags, const pworld_ptr_set & worlds, pworld_ptr_set & ret) const
+bool pstate::get_E_reachable_worlds_recoursive(const AgentsSet & ags, const pworld_ptr_set & worlds, pworld_ptr_set & ret) const
 {
 	/*The K^i (recoursive) call of this function*/
 
 	bool is_fixed_point = true;
 	pworld_ptr_set::const_iterator it_pwptr;
-	agent_set::const_iterator it_agset;
+	AgentsSet::const_iterator it_agset;
 	for (it_pwptr = worlds.begin(); it_pwptr != worlds.end(); it_pwptr++) {
 		for (it_agset = ags.begin(); it_agset != ags.end(); it_agset++) {
 			if (!get_B_reachable_worlds_recoursive(*it_agset, *it_pwptr, ret)) {
@@ -321,7 +321,7 @@ bool pstate::get_E_reachable_worlds_recoursive(const agent_set & ags, const pwor
 
 }
 
-const pworld_ptr_set pstate::get_C_reachable_worlds(const agent_set & ags, const pworld_ptr & world) const
+const pworld_ptr_set pstate::get_C_reachable_worlds(const AgentsSet & ags, const pworld_ptr & world) const
 {
 	//Use of fixed point to stop.
 	bool is_fixed_point = false;
@@ -337,10 +337,10 @@ const pworld_ptr_set pstate::get_C_reachable_worlds(const agent_set & ags, const
 	return ret;
 }
 
-const pworld_ptr_set pstate::get_D_reachable_worlds(const agent_set & ags, const pworld_ptr & world) const
+const pworld_ptr_set pstate::get_D_reachable_worlds(const AgentsSet & ags, const pworld_ptr & world) const
 {
 	/**@bug: Notion of D-Reachable is correct (page 24 of Reasoning about Knowledge)*/
-	agent_set::const_iterator it_agset = ags.begin();
+	AgentsSet::const_iterator it_agset = ags.begin();
 	pworld_ptr_set ret = get_B_reachable_worlds((*it_agset), world);
 	it_agset++;
 
@@ -400,7 +400,7 @@ pworld_ptr pstate::add_rep_world(const pworld & world)
 	return add_rep_world(world, get_max_depth(), tmp);
 }
 
-void pstate::add_edge(const pworld_ptr &from, const pworld_ptr &to, agent ag)
+void pstate::add_edge(const pworld_ptr &from, const pworld_ptr &to, Agent ag)
 {
 	pworld_transitive_map::iterator from_beliefs = m_beliefs.find(from);
 
@@ -444,7 +444,7 @@ void pstate::build_initial_prune()
 
 	/*Building of all the possible consistent \ref pworld and setting the pointed world.
 	 * Creation of all the \ref fluent combinations. All the consistent ones are added to \ref pstore.*/
-	fluent_set permutation;
+	FluentsSet permutation;
 	initially ini_conditions = domain::get_instance().get_initial_description();
 	//	std::cerr << "\nDEBUG: Initially known fluents: ";
 	//	printer::get_instance().print_list(domain::get_instance().get_grounder().deground_fluent(ini_conditions.get_initially_known_fluents()));
@@ -456,7 +456,7 @@ void pstate::build_initial_prune()
 }
 
 /*From https://www.geeksforgeeks.org/generate-all-the-binary-strings-of-n-bits/ since is like generating all the binary numbers.*/
-void pstate::generate_initial_pworlds(fluent_set& permutation, int index, const fluent_set & initially_known)
+void pstate::generate_initial_pworlds(FluentsSet& permutation, int index, const FluentsSet & initially_known)
 {
 	//todo non usare indici ma bitset prima positivo fluent poi negativo
 	int fluent_number = domain::get_instance().get_fluent_number();
@@ -470,7 +470,7 @@ void pstate::generate_initial_pworlds(fluent_set& permutation, int index, const 
 		return;
 	}
 
-	fluent_set permutation_2 = permutation;
+	FluentsSet permutation_2 = permutation;
 	//Add the \ref fluent in positive version
 	boost::dynamic_bitset<> bitSetToFindPositve(bit_size, index);
 	boost::dynamic_bitset<> bitSetToFindNegative(bit_size, index);
@@ -571,7 +571,7 @@ void pstate::generate_initial_pedges()
 
 }
 
-void pstate::remove_edge(pworld_ptr &from, const pworld &to, const agent ag)
+void pstate::remove_edge(pworld_ptr &from, const pworld &to, const Agent ag)
 {
 	auto from_beliefs = m_beliefs.find(from);
 
@@ -585,7 +585,7 @@ void pstate::remove_edge(pworld_ptr &from, const pworld &to, const agent ag)
 	}
 }
 
-void pstate::remove_initial_pedge(const fluent_formula &known_ff, agent ag)
+void pstate::remove_initial_pedge(const FluentFormula &known_ff, Agent ag)
 {
 	pworld_ptr_set::const_iterator it_pwps_1, it_pwps_2;
 
@@ -630,7 +630,7 @@ void pstate::remove_initial_pedge_bf(const belief_formula & to_check)
 				if (tmp.get_operator() == BF_OR) {
 
 					//fluent_formula known_ff;
-					auto known_ff_ptr = std::make_shared<fluent_formula>();
+					auto known_ff_ptr = std::make_shared<FluentFormula>();
 					helper::check_Bff_notBff(tmp.get_bf1(), tmp.get_bf2(), known_ff_ptr);
 					if (known_ff_ptr != nullptr) {
 						//printer::get_instance().print_list(*known_ff_ptr);
@@ -700,7 +700,7 @@ void pstate::remove_initial_pedge_bf(const belief_formula & to_check)
 }
 
 /** \warning executability should be check in \ref state (or \ref planner).*/
-pstate pstate::compute_succ(const action & act) const
+pstate pstate::compute_succ(const Action & act) const
 {
 	//std::cerr << "\nDEBUG: Executing " << act.get_name();
 	switch ( act.get_type() ) {
@@ -733,9 +733,9 @@ pstate pstate::compute_succ(const action & act) const
 	}
 }
 
-void pstate::maintain_oblivious_believed_pworlds(pstate &ret, const agent_set & oblivious_obs_agents) const
+void pstate::maintain_oblivious_believed_pworlds(pstate &ret, const AgentsSet & oblivious_obs_agents) const
 {
-	agent_set::const_iterator it_agset;
+	AgentsSet::const_iterator it_agset;
 	pworld_ptr_set world_oblivious;
 	pworld_ptr_set tmp_world_set;
 
@@ -763,12 +763,12 @@ void pstate::maintain_oblivious_believed_pworlds(pstate &ret, const agent_set & 
 	}
 }
 
-pworld_ptr pstate::execute_ontic_helper(const action &act, pstate &ret, const pworld_ptr &current_pw, transition_map &calculated, agent_set & oblivious_obs_agents) const
+pworld_ptr pstate::execute_ontic_helper(const Action &act, pstate &ret, const pworld_ptr &current_pw, transition_map &calculated, AgentsSet & oblivious_obs_agents) const
 {
 	// Execute the all the effects
-	fluent_formula current_pw_effects = helper::get_effects_if_entailed(act.get_effects(), *this);
-	fluent_set world_description = current_pw.get_fluent_set();
-	fluent_formula::const_iterator it_eff;
+	FluentFormula current_pw_effects = helper::get_effects_if_entailed(act.get_effects(), *this);
+	FluentsSet world_description = current_pw.get_fluent_set();
+	FluentFormula::const_iterator it_eff;
 
 	for (it_eff = current_pw_effects.begin(); it_eff != current_pw_effects.end(); it_eff++) {
 		helper::apply_effect(*it_eff, world_description);
@@ -791,7 +791,7 @@ pworld_ptr pstate::execute_ontic_helper(const action &act, pstate &ret, const pw
 		pworld_ptr_set::const_iterator it_pws;
 
 		for (it_pwm = it_pwtm->second.begin(); it_pwm != it_pwtm->second.end(); it_pwm++) {
-			agent ag = it_pwm->first;
+			Agent ag = it_pwm->first;
 
 			//			if (act.get_name().compare("distract_c_a") == 0) {
 			//				std::cerr << "\nDEBUG: Inside the SECOND ONTIC loop " << act.get_name();
@@ -837,17 +837,17 @@ pworld_ptr pstate::execute_ontic_helper(const action &act, pstate &ret, const pw
 	return new_pw;
 }
 
-pstate pstate::execute_ontic(const action & act) const
+pstate pstate::execute_ontic(const Action & act) const
 {
 	pstate ret;
 
 	//This finds all the worlds that are reachable from the initial state following
 	//the edges labeled with fully observant agents.
-	agent_set agents = domain::get_instance().get_agents();
-	agent_set fully_obs_agents = helper::get_agents_if_entailed(act.get_fully_observants(), *this);
+	AgentsSet agents = domain::get_instance().get_agents();
+	AgentsSet fully_obs_agents = helper::get_agents_if_entailed(act.get_fully_observants(), *this);
 
-	agent_set oblivious_obs_agents = agents;
-    helper_t::minus_set<agent>(oblivious_obs_agents, fully_obs_agents);
+	AgentsSet oblivious_obs_agents = agents;
+    helper_t::minus_set<Agent>(oblivious_obs_agents, fully_obs_agents);
 
 	transition_map calculated; // A map that links the pworlds of *this* to the corresponding ones of ret
 	maintain_oblivious_believed_pworlds(ret, oblivious_obs_agents);
@@ -859,7 +859,7 @@ pstate pstate::execute_ontic(const action & act) const
 	return ret;
 }
 
-pworld_ptr pstate::execute_sensing_announcement_helper(const fluent_formula &effects, pstate &ret, const pworld_ptr &current_pw, transition_map &calculated, agent_set &partially_obs_agents, agent_set &oblivious_obs_agents, bool previous_entailment) const
+pworld_ptr pstate::execute_sensing_announcement_helper(const FluentFormula &effects, pstate &ret, const pworld_ptr &current_pw, transition_map &calculated, AgentsSet &partially_obs_agents, AgentsSet &oblivious_obs_agents, bool previous_entailment) const
 {
 	pworld_ptr new_pw = ret.add_rep_world(pworld(current_pw.get_fluent_set()), current_pw.get_repetition()); // We add the corresponding pworld in ret
 	calculated.insert(transition_map::value_type(current_pw, new_pw)); // And we update the calculated map
@@ -871,7 +871,7 @@ pworld_ptr pstate::execute_sensing_announcement_helper(const fluent_formula &eff
 		pworld_ptr_set::const_iterator it_pws;
 
 		for (it_pwm = it_pwtm->second.begin(); it_pwm != it_pwtm->second.end(); it_pwm++) {
-			agent ag = it_pwm->first;
+			Agent ag = it_pwm->first;
 
 			bool is_oblivious_obs = oblivious_obs_agents.find(ag) != oblivious_obs_agents.end();
 			bool is_partially_obs = partially_obs_agents.find(ag) != partially_obs_agents.end();
@@ -916,19 +916,19 @@ pworld_ptr pstate::execute_sensing_announcement_helper(const fluent_formula &eff
 	return new_pw;
 }
 
-pstate pstate::execute_sensing(const action & act) const
+pstate pstate::execute_sensing(const Action & act) const
 {
 	pstate ret;
 
 	//This finds all the worlds that are reachable from the initial state following
 	//the edges labeled with fully observant agents.
-	agent_set agents = domain::get_instance().get_agents();
-	agent_set fully_obs_agents = helper::get_agents_if_entailed(act.get_fully_observants(), *this);
-	agent_set partially_obs_agents = helper::get_agents_if_entailed(act.get_partially_observants(), *this);
+	AgentsSet agents = domain::get_instance().get_agents();
+	AgentsSet fully_obs_agents = helper::get_agents_if_entailed(act.get_fully_observants(), *this);
+	AgentsSet partially_obs_agents = helper::get_agents_if_entailed(act.get_partially_observants(), *this);
 
-	agent_set oblivious_obs_agents = agents;
-	helper_t::minus_set<agent>(oblivious_obs_agents, fully_obs_agents);
-	helper_t::minus_set<agent>(oblivious_obs_agents, partially_obs_agents);
+	AgentsSet oblivious_obs_agents = agents;
+	helper_t::minus_set<Agent>(oblivious_obs_agents, fully_obs_agents);
+	helper_t::minus_set<Agent>(oblivious_obs_agents, partially_obs_agents);
 
 	if (!oblivious_obs_agents.empty()) {
 		ret.set_max_depth(get_max_depth() + 1);
@@ -937,7 +937,7 @@ pstate pstate::execute_sensing(const action & act) const
 	transition_map calculated; // A map that links the pworlds of *this* to the corresponding ones of ret
 	maintain_oblivious_believed_pworlds(ret, oblivious_obs_agents);
 
-	fluent_formula effects = helper::get_effects_if_entailed(act.get_effects(), *this);
+	FluentFormula effects = helper::get_effects_if_entailed(act.get_effects(), *this);
 
 	pworld_ptr new_pointed = execute_sensing_announcement_helper(effects, ret, get_pointed(), calculated, partially_obs_agents, oblivious_obs_agents, entails(effects));
 	ret.set_pointed(new_pointed); // Updating the pointed world
@@ -950,7 +950,7 @@ pstate pstate::execute_sensing(const action & act) const
 	return ret;
 }
 
-pstate pstate::execute_announcement(const action & act) const
+pstate pstate::execute_announcement(const Action & act) const
 {
 	//	pstate ret;
 	//
@@ -981,7 +981,7 @@ pstate pstate::execute_announcement(const action & act) const
 	return execute_sensing(act);
 }
 
-bool pstate::check_properties(const agent_set & fully, const agent_set & partially, const fluent_formula & effects, const pstate & updated) const
+bool pstate::check_properties(const AgentsSet & fully, const AgentsSet & partially, const FluentFormula & effects, const pstate & updated) const
 {
 
 	if (fully.size() > 0) {
@@ -1109,7 +1109,7 @@ void pstate::print() const
 		pworld_map from_map = it_pwtm->second;
 
 		for (it_pwm = from_map.begin(); it_pwm != from_map.end(); it_pwm++) {
-			agent ag = it_pwm->first;
+			Agent ag = it_pwm->first;
 			pworld_ptr_set to_set = it_pwm->second;
 
 			for (it_pwset = to_set.begin(); it_pwset != to_set.end(); it_pwset++) {
@@ -1201,18 +1201,18 @@ void pstate::print() const
 
 void pstate::print_graphviz(std::ostream & graphviz) const
 {
-	string_set::const_iterator it_st_set;
-	fluent_set::const_iterator it_fs;
+	StringsSet::const_iterator it_st_set;
+	FluentsSet::const_iterator it_fs;
 
 
 	graphviz << "//WORLDS List:" << std::endl;
-	std::map<fluent_set, int> map_world_to_index;
+	std::map<FluentsSet, int> map_world_to_index;
 	std::map<unsigned short, char> map_rep_to_name;
 	char found_rep = (char) ((char) domain::get_instance().get_agents().size() + 'A');
 	int found_fs = 0;
-	fluent_set tmp_fs;
+	FluentsSet tmp_fs;
 	char tmp_unsh;
-	string_set tmp_stset;
+	StringsSet tmp_stset;
 	bool print_first;
 	pworld_ptr_set::const_iterator it_pwset;
 	for (it_pwset = get_worlds().begin(); it_pwset != get_worlds().end(); it_pwset++) {
@@ -1278,7 +1278,7 @@ void pstate::print_graphviz(std::ostream & graphviz) const
 		pworld_map from_map = it_pwtm->second;
 
 		for (it_pwm = from_map.begin(); it_pwm != from_map.end(); it_pwm++) {
-			agent ag = it_pwm->first;
+			Agent ag = it_pwm->first;
 			pworld_ptr_set to_set = it_pwm->second;
 
 			for (it_pwset = to_set.begin(); it_pwset != to_set.end(); it_pwset++) {
@@ -1383,7 +1383,7 @@ void pstate::print_graphviz(std::ostream & graphviz) const
 
 
 struct WorldHash {
-    std::size_t operator()(const std::pair<std::set<fluent>, int>& p) const {
+    std::size_t operator()(const std::pair<std::set<Fluent>, int>& p) const {
         std::size_t seed = 0;
         for (const auto& f : p.first) {
             boost::hash_combine(seed, boost::hash_value(f));
@@ -1414,7 +1414,7 @@ void pstate::print_ML_dataset(std::ostream & graphviz) const
 
     // Assign IDs
     for (const auto& pw : get_worlds()) {
-        std::pair<std::set<fluent>, int> world_key = {pw.get_fluent_set(), pw.get_repetition()};
+        std::pair<std::set<Fluent>, int> world_key = {pw.get_fluent_set(), pw.get_repetition()};
         std::size_t hash_value = WorldHash{}(world_key);
 
         if (world_map.find(hash_value) == world_map.end()) {
@@ -1429,18 +1429,18 @@ void pstate::print_ML_dataset(std::ostream & graphviz) const
 
     // (Optional) Pointed world node decoration
     {
-        std::pair<std::set<fluent>, int> pointed_key = {get_pointed().get_fluent_set(), get_pointed().get_repetition()};
+        std::pair<std::set<Fluent>, int> pointed_key = {get_pointed().get_fluent_set(), get_pointed().get_repetition()};
         std::size_t pointed_hash = WorldHash{}(pointed_key);
         graphviz <<  to_base36(world_map[pointed_hash]) << " [shape=doublecircle];" << std::endl;
     }
 
     // Belief edges
-    std::map<std::pair<int, int>, std::set<agent>> edge_map;
+    std::map<std::pair<int, int>, std::set<Agent>> edge_map;
     for (const auto& [from_pw, from_map] : get_beliefs()) {
         for (const auto& [ag, to_set] : from_map) {
             for (const auto& to_pw : to_set) {
-                std::pair<std::set<fluent>, int> from_key = {from_pw.get_fluent_set(), from_pw.get_repetition()};
-                std::pair<std::set<fluent>, int> to_key = {to_pw.get_fluent_set(), to_pw.get_repetition()};
+                std::pair<std::set<Fluent>, int> from_key = {from_pw.get_fluent_set(), from_pw.get_repetition()};
+                std::pair<std::set<Fluent>, int> to_key = {to_pw.get_fluent_set(), to_pw.get_repetition()};
 
                 std::size_t from_hash = WorldHash{}(from_key);
                 std::size_t to_hash = WorldHash{}(to_key);
@@ -1474,18 +1474,18 @@ void pstate::print_ML_dataset(std::ostream & graphviz) const
 
 void pstate::print_graphviz_explicit(std::ostream & graphviz) const
 {
-	string_set::const_iterator it_st_set;
-	fluent_set::const_iterator it_fs;
+	StringsSet::const_iterator it_st_set;
+	FluentsSet::const_iterator it_fs;
 
 
 	graphviz << "//WORLDS List:" << std::endl;
-	std::map<fluent_set, std::string> map_world_to_index;
+	std::map<FluentsSet, std::string> map_world_to_index;
 	std::map<unsigned short, int> map_rep_to_name;
 	int found_rep = 0;
 	int found_fs = 0;
-	fluent_set tmp_fs;
+	FluentsSet tmp_fs;
 	char tmp_unsh;
-	string_set tmp_stset;
+	StringsSet tmp_stset;
 	bool print_first;
 	pworld_ptr_set::const_iterator it_pwset;
 	for (it_pwset = get_worlds().begin(); it_pwset != get_worlds().end(); it_pwset++) {
@@ -1562,7 +1562,7 @@ void pstate::print_graphviz_explicit(std::ostream & graphviz) const
 		pworld_map from_map = it_pwtm->second;
 
 		for (it_pwm = from_map.begin(); it_pwm != from_map.end(); it_pwm++) {
-			agent ag = it_pwm->first;
+			Agent ag = it_pwm->first;
 			pworld_ptr_set to_set = it_pwm->second;
 
 			for (it_pwset = to_set.begin(); it_pwset != to_set.end(); it_pwset++) {
@@ -1699,7 +1699,7 @@ void pstate::clean_unreachable_pworlds()
 	//std::cerr << "\nDEBUG: FINE CLEAN EXTRA PSTATE\n" << std::flush;
 }
 
-const automa pstate::pstate_to_automaton(std::vector<pworld_ptr> & pworld_vec, const std::map<agent, bis_label> & agent_to_label) const
+const automa pstate::pstate_to_automaton(std::vector<pworld_ptr> & pworld_vec, const std::map<Agent, bis_label> & agent_to_label) const
 {
 
 	std::map<int, int> compact_indices;
@@ -1833,7 +1833,7 @@ const automa pstate::pstate_to_automaton(std::vector<pworld_ptr> & pworld_vec, c
 	return *a;
 }
 
-void pstate::automaton_to_pstate(const automa & a, const std::vector<pworld_ptr> & pworld_vec, const std::map<bis_label, agent> & label_to_agent)
+void pstate::automaton_to_pstate(const automa & a, const std::vector<pworld_ptr> & pworld_vec, const std::map<bis_label, Agent> & label_to_agent)
 {
 	//std::cerr << "\nDEBUG: INIZIO BISIMULATION TO PSTATE\n" << std::flush;
 
@@ -1884,14 +1884,14 @@ void pstate::calc_min_bisimilar()
 	automa a;
 	pworld_vec.reserve(get_worlds().size());
 
-	std::map<bis_label, agent> label_to_agent;
-	std::map<agent, bis_label> agent_to_label;
+	std::map<bis_label, Agent> label_to_agent;
+	std::map<Agent, bis_label> agent_to_label;
 
 
 	auto agents = domain::get_instance().get_agents();
 	auto it_ag = agents.begin();
 	bis_label ag_label = 0;
-	agent lab_agent;
+	Agent lab_agent;
 	for (; it_ag != agents.end(); it_ag++) {
 		lab_agent = *it_ag;
 		label_to_agent.insert(std::make_pair(ag_label, lab_agent));

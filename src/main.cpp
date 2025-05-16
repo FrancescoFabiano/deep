@@ -14,6 +14,7 @@
 #include <boost/make_shared.hpp>
 
 #include "argparse/ArgumentParser.h"
+#include "domain/Domain.h"
 //#include "../src/search/planner.ipp"
 
 
@@ -51,6 +52,7 @@ int main(int argc, char** argv)
 
 
 	ArgumentParser::create_instance(argc, argv);
+	Domain::create_instance();
 
 	return 0;
 

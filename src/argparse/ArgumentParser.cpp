@@ -24,7 +24,10 @@ void ArgumentParser::create_instance(int argc, char** argv) {
 
 ArgumentParser& ArgumentParser::get_instance() {
     if (!instance) {
-        throw std::runtime_error("ArgumentParser instance not created. Call create_instance(argc, argv) first.");
+        ExitHandler::exit_with_message(
+            ExitHandler::ExitCode::ArgParseInstanceError,
+            "ArgumentParser instance not created. Call create_instance(argc, argv) first."
+        );
     }
     return *instance;
 }

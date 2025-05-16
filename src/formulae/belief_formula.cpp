@@ -62,7 +62,7 @@ void belief_formula::set_fluent_formula(const fluent_formula & to_set)
 	m_fluent_formula = to_set;
 }
 
-void belief_formula::set_fluent_formula_from_fluent(fluent to_set)
+void belief_formula::set_fluent_formula_from_fluent(Fluent to_set)
 {
 	fluent_set tmp;
 	tmp.insert(to_set);
@@ -80,12 +80,12 @@ const fluent_formula & belief_formula::get_fluent_formula() const
 	return m_fluent_formula;
 }
 
-void belief_formula::set_agent(agent to_set)
+void belief_formula::set_agent(Agent to_set)
 {
 	m_agent = to_set;
 }
 
-agent belief_formula::get_agent() const
+Agent belief_formula::get_agent() const
 {
 	if (!m_is_grounded) {
 		std::cerr << "\nError in reading a belief_formula, it must be grounded";
@@ -134,7 +134,7 @@ bf_operator belief_formula::get_operator() const
 	return m_operator;
 }
 
-void belief_formula::set_group_agents(const agent_set & to_set)
+void belief_formula::set_group_agents(const AgentSet & to_set)
 {
 	if (to_set.size() < 1) {
 		std::cerr << "\nError in declaring a belief_formula ";
@@ -145,7 +145,7 @@ void belief_formula::set_group_agents(const agent_set & to_set)
 	m_group_agents = to_set;
 }
 
-const agent_set & belief_formula::get_group_agents() const
+const AgentSet & belief_formula::get_group_agents() const
 {
 	if (!m_is_grounded) {
 		std::cerr << "\nError in reading a belief_formula, it must be grounded";

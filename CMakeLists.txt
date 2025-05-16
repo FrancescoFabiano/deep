@@ -9,9 +9,9 @@ set(BIN_DIR ${CMAKE_BINARY_DIR}/bin)
 # Include directories
 include_directories(
         src
-#        src/actions
+        src/actions
         src/argparse
-#        src/domain
+        src/domain
 #        src/formulae
 #        src/heuristics
 #        src/parse
@@ -24,6 +24,7 @@ include_directories(
 
 # Automatically include all source files
 set(SOURCES ""
+        src/utilities/Define.h
         src/utilities/ExitHandler.h)
 get_property(INCLUDE_DIRS DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY INCLUDE_DIRECTORIES)
 foreach(dir ${INCLUDE_DIRS})

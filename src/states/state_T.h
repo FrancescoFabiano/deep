@@ -24,9 +24,9 @@
 
 #include "possibilities/pstate.h"
 
-#include "../utilities/define.h"
+#include "../utilities/Define.h"
 #include "../formulae/belief_formula.h"
-#include "../actions/action.h"
+#include "../actions/Action.h"
 #include "../domain/initially.h"
 
 /**
@@ -64,7 +64,7 @@ private:
     /** \brief Function that add and \ref action_id to \ref m_executed_actions_id.
      *
      * @param[in] to_add: the \ref action_id to ad to \ref m_executed_actions_id.*/
-    void add_executed_action(const action & to_add);
+    void add_executed_action(const Action & to_add);
 
     /** \brief Setter for the field \ref m_plan_length.
      *
@@ -95,7 +95,7 @@ public:
      *  @param act: the \ref action applied to \p prev_state.
      *
      * \todo what if the action is not executable?*/
-    state<T>(const state<T> & prev_state, const action & act);
+    state<T>(const state<T> & prev_state, const Action & act);
     /*state<T>(const action_id_list &, unsigned short);
     state<T>(const action_id_list &, unsigned short, int);*/
 
@@ -135,7 +135,7 @@ public:
      * \todo add in see also the other state m_representations.
      * 
      * \bug Is not supposed to override the method but it does.*/
-    bool entails(const fluent & to_check) const;
+    bool entails(const Fluent & to_check) const;
 
     /** \brief Function that checks if *this* entails a conjunctive set of \ref fluent.
      * 
@@ -222,7 +222,7 @@ public:
      * @param[in] act: The action to be checked on *this*.
      * @return true: \p act is executable in *this*.
      * @return false: \p act is not executable in *this*.*/
-    bool is_executable(const action & act) const;
+    bool is_executable(const Action & act) const;
 
     /** \brief Function that checks if *this* is a goal state.
      *
@@ -243,9 +243,9 @@ public:
      * \todo add in see also the other state m_representations.
      *
      * \bug Is not supposed to override the method but it does.*/
-    state<T> compute_succ(const action & act) const;
+    state<T> compute_succ(const Action & act) const;
 
-    fluent_set compute_succ2(const action & act) const;
+    fluent_set compute_succ2(const Action & act) const;
 
     /** \brief Function that determines the mimimum \ref e-state that is bisimilar to the current one.
      *

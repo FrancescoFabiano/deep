@@ -25,7 +25,7 @@ state<T>::state(const state<T> & given_state)
 }*/
 
 template <class T>
-state<T>::state(const state<T> & prev_state, const action & executed_action)
+state<T>::state(const state<T> & prev_state, const Action & executed_action)
 {
 	(*this) = prev_state.compute_succ(executed_action);
 }
@@ -97,7 +97,7 @@ void state<T>::set_executed_actions(const action_id_list & executed)
 }
 
 template <class T>
-void state<T>::add_executed_action(const action & executed)
+void state<T>::add_executed_action(const Action & executed)
 {
 	m_executed_actions_id.push_back(executed.get_id());
 }
@@ -121,7 +121,7 @@ void state<T>::set_representation(const T & to_set)
 }
 
 template <class T>
-bool state<T>::entails(const fluent & to_check) const
+bool state<T>::entails(const Fluent & to_check) const
 {
 	return m_representation.entails(to_check);
 }
@@ -169,7 +169,7 @@ void state<T>::build_initial()
 }
 
 template <class T>
-fluent_set state<T>::compute_succ2(const action & act) const
+fluent_set state<T>::compute_succ2(const Action & act) const
 {
 	state<T> ret;
 	//if (is_executable(act)) {
@@ -186,7 +186,7 @@ fluent_set state<T>::compute_succ2(const action & act) const
 }
 
 template <class T>
-state<T> state<T>::compute_succ(const action & act) const
+state<T> state<T>::compute_succ(const Action & act) const
 {
 	/**\todo Myabe is better if used in \ref planner or \ref domain (myabe a bool as **param[out]**.*/
 	state<T> ret;
@@ -215,7 +215,7 @@ void state<T>::calc_min_bisimilar()
 }
 
 template <class T>
-bool state<T>::is_executable(const action & act) const
+bool state<T>::is_executable(const Action & act) const
 {
 	return entails(act.get_executability());
 }

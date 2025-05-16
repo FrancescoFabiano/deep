@@ -22,7 +22,7 @@
 #include <cstring>
 
 #include "../../src/domain/Domain.h"
-#include "../../src/utilities/define.h"
+#include "../../src/utilities/Define.h"
 
 //STRUCTURE DECLARATION
 //index is the type of the implicit pointers to the array

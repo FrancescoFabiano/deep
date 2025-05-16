@@ -18,8 +18,8 @@
 #include <utility>
 
 
-#include "../utilities/define.h"
-#include "../actions/action.h"
+#include "../utilities/Define.h"
+#include "../actions/Action.h"
 #include "../formulae/belief_formula.h"
 #include "../domain/Domain.h"
 
@@ -84,7 +84,7 @@ public:
      *
      * @param[in] act: the \ref action to add to m_actions if not present.
      */
-    void add_action(const action & act);
+    void add_action(const Action & act);
 
     /*Getter of the field m_actions
      *
@@ -180,15 +180,15 @@ private:
     void insert_subformula_bf(const belief_formula & bf, T & eState);
 
 
-    void get_base_fluents(const belief_formula & bf, fluent_set & bf_base_fluents);
+    void get_base_fluents(const belief_formula & bf, FluentsSet & bf_base_fluents);
 
-    bool exec_ontic(const action & act, const pg_state_level & predecessor, bformula_set & false_bf);
+    bool exec_ontic(const Action & act, const pg_state_level & predecessor, bformula_set & false_bf);
 
-    bool exec_epistemic(const action & act, const pg_state_level & predecessor, bformula_set & false_bf);
+    bool exec_epistemic(const Action & act, const pg_state_level & predecessor, bformula_set & false_bf);
 
-    bool apply_ontic_effects(const belief_formula & bf, bformula_set & fl, const agent_set & fully, bool & modified_pg);
+    bool apply_ontic_effects(const belief_formula & bf, bformula_set & fl, const AgentSet & fully, bool & modified_pg);
 
-    bool apply_epistemic_effects(fluent effect, const belief_formula & bf, bformula_set & fl, const agent_set & fully, const agent_set & partially, bool & modified_pg, unsigned short vis_cond);
+    bool apply_epistemic_effects(fluent effect, const belief_formula & bf, bformula_set & fl, const AgentSet & fully, const AgentSet & partially, bool & modified_pg, unsigned short vis_cond);
 
 public:
 
@@ -285,9 +285,9 @@ public:
      * @return: true if the action's executability conditions are entailed.
      * @return: false otherwise.
      */
-    bool pg_executable(const action & act) const;
+    bool pg_executable(const Action & act) const;
 
-    bool compute_succ(const action & act, const pg_state_level & predecessor, bformula_set & false_bf);
+    bool compute_succ(const Action & act, const pg_state_level & predecessor, bformula_set & false_bf);
 
     short get_score_from_depth() const;
 

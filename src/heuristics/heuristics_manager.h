@@ -12,7 +12,7 @@
 #pragma once
 
 
-#include "../utilities/define.h"
+#include "../utilities/Define.h"
 #include "../domain/Domain.h"
 #include "satisfied_goals.h"
 #include "planning_graph.h"
@@ -53,7 +53,7 @@ private:
      * @param[in] to_explore: The belief formula from which generate the next subgoal.
      * @param[in] agents: The agents for whom the new subgoals have to be generated.
      */
-    void produce_subgoals(unsigned short nesting, unsigned short depth, const belief_formula & to_explore, const agent_set & agents);
+    void produce_subgoals(unsigned short nesting, unsigned short depth, const belief_formula & to_explore, const AgentsSet & agents);
 
 
 

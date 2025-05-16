@@ -404,7 +404,7 @@ bool pg_state_level::compute_succ(const action & act, const pg_state_level & pre
 bool pg_state_level::exec_ontic(const action & act, const pg_state_level & predecessor, bformula_set & false_bf)
 {
 	observability_map fully_observant_map = act.get_fully_observants();
-	agent_set fully_obs;
+	AgentSet fully_obs;
 	effects_map effects_map = act.get_effects();
 	fluent_set verified_fluents;
 	fluent_set bf_base_fluents;
@@ -467,8 +467,8 @@ bool pg_state_level::exec_epistemic(const action & act, const pg_state_level & p
 {
 	observability_map partially_observant_map = act.get_partially_observants();
 	observability_map fully_observant_map = act.get_fully_observants();
-	agent_set fully_obs;
-	agent_set partially_obs;
+	AgentSet fully_obs;
+	AgentSet partially_obs;
 	effects_map effects_map = act.get_effects();
 	fluent_set bf_base_fluents;
 	fluent_formula ff_temp;
@@ -518,7 +518,7 @@ bool pg_state_level::exec_epistemic(const action & act, const pg_state_level & p
 	return modified_pg;
 }
 
-bool pg_state_level::apply_ontic_effects(const belief_formula & bf, bformula_set & fl, const agent_set & fully, bool & modified_pg)
+bool pg_state_level::apply_ontic_effects(const belief_formula & bf, bformula_set & fl, const AgentSet & fully, bool & modified_pg)
 {
 	if (pg_entailment(bf)) {
 		return true;
@@ -637,7 +637,7 @@ bool pg_state_level::apply_ontic_effects(const belief_formula & bf, bformula_set
 	return false;
 }
 
-bool pg_state_level::apply_epistemic_effects(fluent effect, const belief_formula & bf, bformula_set & fl, const agent_set & fully, const agent_set & partially, bool & modified_pg, unsigned short vis_cond)
+bool pg_state_level::apply_epistemic_effects(fluent effect, const belief_formula & bf, bformula_set & fl, const AgentSet & fully, const AgentSet & partially, bool & modified_pg, unsigned short vis_cond)
 {
 	if (pg_entailment(bf)) {
 		return true;

@@ -11,7 +11,7 @@ grounder::grounder()
 {
 }
 
-grounder::grounder(const fluent_map & fluent_map, const agent_map & agent_map, const action_name_map & action_name_map)
+grounder::grounder(const FluentMap & fluent_map, const AgentsMap & agent_map, const ActionNamesMap & action_name_map)
 {
 	set_fluent_map(fluent_map);
 	set_agent_map(agent_map);
@@ -31,61 +31,61 @@ grounder::grounder(const fluent_map & fluent_map, const agent_map & agent_map, c
 
 void grounder::create_reverse_fl()
 {
-	fluent_map::iterator it;
+	FluentMap::iterator it;
 	for (it = m_fluent_map.begin(); it != m_fluent_map.end(); it++)
 		r_fluent_map[it->second] = it->first;
 }
 
 void grounder::create_reverse_ag()
 {
-	agent_map::iterator it;
+	AgentsMap::iterator it;
 	for (it = m_agent_map.begin(); it != m_agent_map.end(); it++)
 		r_agent_map[it->second] = it->first;
 }
 
 void grounder::create_reverse_ac()
 {
-	action_name_map::iterator it;
+	ActionNamesMap::iterator it;
 	for (it = m_action_name_map.begin(); it != m_action_name_map.end(); it++)
 		r_action_name_map[it->second] = it->first;
 }
 
-void grounder::set_fluent_map(const fluent_map & fluent_map)
+void grounder::set_fluent_map(const FluentMap & fluent_map)
 {
 	m_fluent_map = fluent_map;
 	create_reverse_fl();
 }
 
-void grounder::set_agent_map(const agent_map & agent_map)
+void grounder::set_agent_map(const AgentsMap & agent_map)
 {
 	m_agent_map = agent_map;
 	create_reverse_ag();
 }
 
-void grounder::set_action_name_map(const action_name_map & action_name_map)
+void grounder::set_action_name_map(const ActionNamesMap & action_name_map)
 {
 	m_action_name_map = action_name_map;
 	create_reverse_ac();
 }
 
-const fluent_map & grounder::get_fluent_map() const
+const FluentMap & grounder::get_fluent_map() const
 {
 	return m_fluent_map;
 }
 
-const agent_map & grounder::get_agent_map() const
+const AgentsMap & grounder::get_agent_map() const
 {
 	return m_agent_map;
 }
 
-const action_name_map & grounder::get_action_name_map() const
+const ActionNamesMap & grounder::get_action_name_map() const
 {
 	return m_action_name_map;
 }
 
-fluent grounder::ground_fluent(const std::string& x) const
+Fluent grounder::ground_fluent(const std::string& x) const
 {
-	fluent_map::const_iterator p = m_fluent_map.find(x);
+	FluentMap::const_iterator p = m_fluent_map.find(x);
 
 	if (p != m_fluent_map.end()) {
 		return(p->second);
@@ -95,10 +95,10 @@ fluent grounder::ground_fluent(const std::string& x) const
 	exit(1);
 }
 
-fluent_set grounder::ground_fluent(const string_set& x) const
+FluentsSet grounder::ground_fluent(const StringsSet& x) const
 {
-	string_set::iterator it;
-	fluent_set y;
+	StringsSet::iterator it;
+	FluentsSet y;
 
 	for (it = x.begin(); it != x.end(); it++) {
 		y.insert(ground_fluent(*it));
@@ -107,10 +107,10 @@ fluent_set grounder::ground_fluent(const string_set& x) const
 	return y;
 }
 
-fluent_formula grounder::ground_fluent(const string_set_set& x) const
+FluentFormula grounder::ground_fluent(const StringSetsSet& x) const
 {
-	string_set_set::iterator it;
-	fluent_formula y;
+	StringSetsSet::iterator it;
+	FluentFormula y;
 
 	for (it = x.begin(); it != x.end(); it++) {
 		y.insert(ground_fluent(*it));
@@ -119,9 +119,9 @@ fluent_formula grounder::ground_fluent(const string_set_set& x) const
 	return y;
 }
 
-agent grounder::ground_agent(const std::string& x) const
+Agent grounder::ground_agent(const std::string& x) const
 {
-	agent_map::const_iterator p = m_agent_map.find(x);
+	AgentsMap::const_iterator p = m_agent_map.find(x);
 
 	if (p != m_agent_map.end()) {
 		return(p->second);
@@ -131,10 +131,10 @@ agent grounder::ground_agent(const std::string& x) const
 	exit(1);
 }
 
-agent_set grounder::ground_agent(const string_set& x) const
+AgentsSet grounder::ground_agent(const StringsSet& x) const
 {
-	string_set::iterator it;
-	agent_set y;
+	StringsSet::iterator it;
+	AgentsSet y;
 
 	for (it = x.begin(); it != x.end(); it++) {
 		y.insert(ground_agent(*it));
@@ -143,9 +143,9 @@ agent_set grounder::ground_agent(const string_set& x) const
 	return y;
 }
 
-action_id grounder::ground_action(const std::string& x) const
+ActionId grounder::ground_action(const std::string& x) const
 {
-	action_name_map::const_iterator p = m_action_name_map.find(x);
+	ActionNamesMap::const_iterator p = m_action_name_map.find(x);
 
 	if (p != m_action_name_map.end()) {
 		return(p->second);
@@ -155,7 +155,7 @@ action_id grounder::ground_action(const std::string& x) const
 	exit(1);
 }
 
-std::string grounder::deground_fluent(fluent x) const
+std::string grounder::deground_fluent(Fluent x) const
 {
 	reverse_fluent_map::const_iterator p = r_fluent_map.find(x);
 
@@ -167,11 +167,11 @@ std::string grounder::deground_fluent(fluent x) const
 	exit(1);
 }
 
-string_set grounder::deground_fluent(const fluent_set& x) const
+StringsSet grounder::deground_fluent(const FluentsSet& x) const
 {
 
-	fluent_set::iterator it;
-	string_set y;
+	FluentsSet::iterator it;
+	StringsSet y;
 
 	for (it = x.begin(); it != x.end(); it++) {
 		y.insert(deground_fluent(*it));
@@ -180,10 +180,10 @@ string_set grounder::deground_fluent(const fluent_set& x) const
 	return y;
 }
 
-string_set_set grounder::deground_fluent(const fluent_formula& x) const
+StringSetsSet grounder::deground_fluent(const FluentFormula& x) const
 {
-	fluent_formula::iterator it;
-	string_set_set y;
+	FluentFormula::iterator it;
+	StringSetsSet y;
 
 	for (it = x.begin(); it != x.end(); it++) {
 		y.insert(deground_fluent(*it));
@@ -192,7 +192,7 @@ string_set_set grounder::deground_fluent(const fluent_formula& x) const
 	return y;
 }
 
-std::string grounder::deground_agent(agent x) const
+std::string grounder::deground_agent(Agent x) const
 {
 	reverse_agent_map::const_iterator p = r_agent_map.find(x);
 
@@ -204,10 +204,10 @@ std::string grounder::deground_agent(agent x) const
 	exit(1);
 }
 
-string_set grounder::deground_agents(const agent_set & x) const
+StringsSet grounder::deground_agents(const AgentsSet & x) const
 {
-	agent_set::iterator it;
-	string_set y;
+	AgentsSet::iterator it;
+	StringsSet y;
 
 	for (it = x.begin(); it != x.end(); it++) {
 		y.insert(deground_agent(*it));
@@ -216,7 +216,7 @@ string_set grounder::deground_agents(const agent_set & x) const
 	return y;
 }
 
-std::string grounder::deground_action(action_id x) const
+std::string grounder::deground_action(ActionId x) const
 {
 	reverse_action_name_map::const_iterator p = r_action_name_map.find(x);
 

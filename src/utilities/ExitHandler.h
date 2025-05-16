@@ -29,7 +29,20 @@ public:
         Success = 0,         ///< Program completed successfully.
 
         // ArgumentParser Related
-        ArgParseError = 1    ///< Error occurred during argument parsing in \ref ArgumentParser.
+        ArgParseError = 100,    ///< Error occurred during argument parsing in \ref ArgumentParser.
+        ArgParseInstanceError = 101,    ///< Error occurred during argument parsing in \ref ArgumentParser.
+
+        // Domain Related
+        DomainFileOpenError = 200,   ///< Failed to open domain input file.
+        DomainInstanceError = 201,   ///< Domain singleton instance error.
+        DomainBuildError = 202,      ///< Error during domain build process.
+
+        // Action Related
+        ActionTypeConflict = 300,    ///< Conflicting action types detected.
+        ActionInvalidExecutor = 301, ///< Invalid executor for action.
+        ActionEffectError = 302,      ///< Error adding or processing action effect.
+
+
     };
 
     // ArgumentParser Related
@@ -38,6 +51,14 @@ public:
      * \details Shown to the user when argument parsing fails in \ref ArgumentParser.
      */
     static constexpr std::string_view arg_parse_suggestion = "\n  Tip: Use -h or --help for usage information.";
+
+
+    // Domain Related
+    /**
+    * \brief Suggestion message for domain creation errors.
+    * \details Shown to the user when opening a domain file fails in \ref Domain.
+    */
+    static constexpr std::string_view domain_file_error = "\n  Tip: Check if the domain file exists and is accessible.";
 
     /**
      * \brief Exits the program with a message and exit code.

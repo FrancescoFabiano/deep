@@ -16,7 +16,7 @@
 #pragma once
 #include <fstream>
 
-#include "define.h"
+#include "Define.h"
 
 #include "../domain/grounder.h"
 #include "../formulae/belief_formula.h"
@@ -53,7 +53,7 @@ public:
      * @param[in] to_print: the \ref string_set to be printed.
      *
      * \todo   Is the const reference the best type of parameter passing?*/
-    void print_list(const string_set& to_print) const;
+    void print_list(const StringsSet& to_print) const;
 
     /** \brief Function used to print all the std::string inside \p to_print.
      *
@@ -62,7 +62,7 @@ public:
      * @param[in] to_print: the \ref string_set_set to be printed.
      *
      *  \todo   Is the const reference the best type of parameter passing?*/
-    void print_list(const string_set_set& to_print) const;
+    void print_list(const StringSetsSet& to_print) const;
 
     /** \brief Function used to print all the \ref fluent inside \p to_print.
      *
@@ -71,14 +71,14 @@ public:
      * @param[in] to_print: the \ref fluent_set to be printed.
      *
      * \todo   Is the const reference the best type of parameter passing?*/
-    void print_list(const fluent_set& to_print) const;
+    void print_list(const FluentsSet& to_print) const;
 
     /** \brief Function used to print all the \ref fluent inside \p to_print.
      *
      * A \ref fluent_formula represents a formula in DNF format so the printing is executed accordingly.
      *
      * @param[in] to_print: the \ref fluent_formula to be printed.*/
-    void print_list(const fluent_formula& to_print) const;
+    void print_list(const FluentFormula& to_print) const;
 
     /** \brief Function used to print all the \ref belief_formula inside \p to_print.
      *
@@ -101,12 +101,12 @@ public:
     /** \brief Function used to print all the \ref action name inside \p to_print.
      * 
      * @param[in] to_print: the \ref action_id_list to be printed.*/
-    void print_list(const action_id_list& to_print) const;
+    void print_list(const ActionIdsList& to_print) const;
 
     /** \brief Function used to print all the \ref agent name inside \p to_print.
      * 
      * @param[in] to_print: the \ref agent_set to be printed.*/
-    void print_list_ag(const agent_set& to_print) const;
+    void print_list_ag(const AgentsSet& to_print) const;
 
     /** \brief Function used to print the map of the transition function for attitudes.
      * 

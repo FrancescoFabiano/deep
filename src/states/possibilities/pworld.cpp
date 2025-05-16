@@ -130,7 +130,7 @@ pworld_id pworld::get_id() const
 	return m_id;
 }
 
-bool pworld::entails(fluent to_check) const
+bool pworld::entails(Fluent to_check) const
 {
 	return(m_fluent_set.find(to_check) != m_fluent_set.end());
 }
@@ -308,7 +308,7 @@ unsigned short pworld_ptr::get_repetition() const
 
 }
 
-bool pworld_ptr::entails(fluent to_check) const
+bool pworld_ptr::entails(Fluent to_check) const
 {
 	return m_ptr->entails(to_check);
 }

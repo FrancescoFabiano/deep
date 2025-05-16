@@ -17,7 +17,7 @@
  */
 #pragma once
 
-#include "../utilities/define.h"
+#include "utilities/Define.h"
 #include <string>
 
 
@@ -28,13 +28,13 @@ class grounder
 {
 private:
     /** \brief A map that links each \ref fluent name to its grounded value.*/
-    fluent_map m_fluent_map;
+    FluentMap m_fluent_map;
 
     /** \brief A map that links each \ref agent name to its grounded value.*/
-    agent_map m_agent_map;
+    AgentsMap m_agent_map;
 
     /** \brief A map that links each \ref action name to its grounded value.*/
-    action_name_map m_action_name_map;
+    ActionNamesMap m_action_name_map;
 
     /** \brief A map that links each \ref fluent grounded value to its name (printing value)*/
     reverse_fluent_map r_fluent_map;
@@ -76,45 +76,45 @@ public:
      * 
      * \todo Is parameter passing the best one? Is maybe better to use const reference?
      */
-    grounder(const fluent_map & given_fluent_map, const agent_map & given_agent_map, const action_name_map & given_action_name_map);
+    grounder(const FluentMap & given_fluent_map, const AgentsMap & given_agent_map, const ActionNamesMap & given_action_name_map);
 
     /** \brief Setter for the parameter \ref m_fluent_map.
      *
      * @param[in] given_fluent_map: the map to copy into \ref m_fluent_map.
      *
      * \todo Is parameter passing the best one? Is maybe better to use const reference?*/
-    void set_fluent_map(const fluent_map & given_fluent_map);
+    void set_fluent_map(const FluentMap & given_fluent_map);
     /** \brief Setter for the parameter \ref m_agent_map.
      *
      * @param[in] given_agent_map: the map to copy into \ref m_agent_map.
      * 
      * \todo Is parameter passing the best one? Is maybe better to use const reference?*/
-    void set_agent_map(const agent_map & given_agent_map);
+    void set_agent_map(const AgentsMap & given_agent_map);
     /** \brief Setter for the parameter \ref m_action_name_map.
      *
      * @param[in] given_action_name_map: the map to copy into \ref m_action_name_map.
      * 
      * \todo Is parameter passing the best one? Is maybe better to use const reference?*/
-    void set_action_name_map(const action_name_map & given_action_name_map);
+    void set_action_name_map(const ActionNamesMap & given_action_name_map);
 
     /** \brief Getter for the parameter \ref m_fluent_map.
      *
      * @return the map \ref m_fluent_map.
      *
      * \todo Is return the best one? Is maybe better to use const reference?*/
-    const fluent_map & get_fluent_map() const;
+    const FluentMap & get_fluent_map() const;
     /** \brief Getter for the parameter \ref m_agent_map.
      *
      * @return the map \ref m_agent_map.
      *
      * \todo Is return the best one? Is maybe better to use const reference?*/
-    const agent_map & get_agent_map() const;
+    const AgentsMap & get_agent_map() const;
     /** \brief Getter for the parameter \ref m_action_name_map.
      *
      * @return the map \ref m_action_name_map.
      *
      * \todo Is return the best one? Is maybe better to use const reference?*/
-    const action_name_map & get_action_name_map() const;
+    const ActionNamesMap & get_action_name_map() const;
 
     /** \brief Function that given a \ref fluent name returns its grounded value.
      * 
@@ -122,7 +122,7 @@ public:
      *
      * @param[in] to_ground: the \ref fluent name to ground.
      * @return: the \p to_ground grounded value.*/
-    fluent ground_fluent(const std::string& to_ground) const;
+    Fluent ground_fluent(const std::string& to_ground) const;
     /** \brief Function that given a \ref fluent set returns its grounded value.
      *
      * This function calls recursively \ref ground_fluent(const std::string&) const.
@@ -131,7 +131,7 @@ public:
      * @return: \p to_ground grounded.
      * 
      * \todo Is the return type the best one? Is maybe better to use const reference?*/
-    fluent_set ground_fluent(const string_set& to_ground) const;
+    FluentsSet ground_fluent(const StringsSet& to_ground) const;
     /** \brief Function that given a \ref string_set_set returns its grounded value.
      *
      * This function calls recursively \ref ground_fluent(const string_set&) const.
@@ -140,7 +140,7 @@ public:
      * @return: \p to_ground grounded.
      * 
      * \todo Is the return type the best one? Is maybe better to use const reference?*/
-    fluent_formula ground_fluent(const string_set_set& to_ground) const;
+    FluentFormula ground_fluent(const StringSetsSet& to_ground) const;
 
     /** \brief Function that given an \ref agent name returns its grounded value.
      * 
@@ -148,14 +148,14 @@ public:
      *
      * @param[in] to_ground: the \ref agent name to ground.
      * @return: the \p to_ground grounded value.*/
-    agent ground_agent(const std::string& to_ground) const;
+    Agent ground_agent(const std::string& to_ground) const;
     /** \brief Function that given an \ref agent set returns its grounded value.
      * 
      * This function calls recursively \ref ground_agent(const std::string&) const.
      *
      * @param[in] to_ground: the set of \ref agent name to ground.
      * @return: the \p to_ground grounded value.*/
-    agent_set ground_agent(const string_set& to_ground) const;
+    AgentsSet ground_agent(const StringsSet& to_ground) const;
 
 
     /** \brief Function that given an \ref action name returns its grounded value.
@@ -164,7 +164,7 @@ public:
      *
      * @param[in] to_ground: the \ref action name to ground.
      * @return: the \p to_ground grounded value.*/
-    action_id ground_action(const std::string& to_ground) const;
+    ActionId ground_action(const std::string& to_ground) const;
 
     /** \brief Function that given a \ref fluent grounded value returns its name. 
      * 
@@ -172,21 +172,21 @@ public:
      *
      * @param[in] to_deground: the \ref fluent name to deground.
      * @return: the name of \p to_deground.*/
-    std::string deground_fluent(fluent to_deground) const;
+    std::string deground_fluent(Fluent to_deground) const;
     /** \brief Function that given a set of \ref fluent grounded value returns the set with their names. 
      * 
      * The function uses \ref deground_fluent(fluent) const.
      *
      * @param[in] to_deground: the set of \ref fluent names to deground.
      * @return: the set with the name of the element of \p to_deground.*/
-    string_set deground_fluent(const fluent_set& to_deground) const;
+    StringsSet deground_fluent(const FluentsSet& to_deground) const;
     /** \brief Function that given a grounded \ref fluent_formula returns the same formula in string format. 
      * 
      * The function uses \ref deground_fluent(const fluent_set &) const.
      *
      * @param[in] to_deground: the \ref fluent_formula to deground.
      * @return: the \ref fluent_formula in string format.*/
-    string_set_set deground_fluent(const fluent_formula& to_deground) const;
+    StringSetsSet deground_fluent(const FluentFormula& to_deground) const;
 
     /** \brief Function that given an \ref agent grounded value returns its name. 
      * 
@@ -194,7 +194,7 @@ public:
      *
      * @param[in] to_deground: the \ref agent name to deground.
      * @return: the name of \p to_deground.*/
-    std::string deground_agent(agent to_deground) const;
+    std::string deground_agent(Agent to_deground) const;
 
     /** \brief Function that given an \ref agent_set grounded value returns the set of names. 
      * 
@@ -202,7 +202,7 @@ public:
      *
      * @param[in] to_deground: the \ref agent_set names to deground.
      * @return: the set with the names of \p to_deground.*/
-    string_set deground_agents(const agent_set & to_deground) const;
+    StringsSet deground_agents(const AgentsSet & to_deground) const;
 
     /** \brief Function that given an \ref action grounded value returns its name. 
      * 
@@ -210,7 +210,7 @@ public:
      *
      * @param[in] to_deground: the \ref action name to deground.
      * @return: the name of \p to_deground.*/
-    std::string deground_action(action_id to_deground) const;
+    std::string deground_action(ActionId to_deground) const;
 
     /* \brief Function that print a \ref fluent_set in string format. 
      *

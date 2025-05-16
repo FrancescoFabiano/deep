@@ -17,9 +17,9 @@ void pg_state_level::build_init_f_map(T & eState)
 	fluent_set fluents = domain::get_instance().get_fluents();
 	for (auto it_fls = fluents.begin(); it_fls != fluents.end(); it_fls++) {
 		if (eState.entails(*it_fls)) {
-			m_pg_f_map.insert(std::pair<fluent, short>(*it_fls, 0));
+			m_pg_f_map.insert(std::pair<Fluent, short>(*it_fls, 0));
 		} else {
-			m_pg_f_map.insert(std::pair<fluent, short>(*it_fls, -1));
+			m_pg_f_map.insert(std::pair<Fluent, short>(*it_fls, -1));
 		}
 	}
 }
@@ -33,7 +33,7 @@ void pg_state_level::build_init_bf_map(const formula_list & goals, T & eState)
 
 	insert_subformula_bf(goals, eState);
 	
-	action_set actions = domain::get_instance().get_actions();
+	ActionsSet actions = domain::get_instance().get_actions();
 	for (auto it_acs = actions.begin(); it_acs != actions.end(); it_acs++) {
 
 		for (auto it_mapeff = it_acs->get_effects().begin(); it_mapeff != it_acs->get_effects().end(); it_mapeff++) {

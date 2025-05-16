@@ -21,25 +21,25 @@
 
 #pragma once
 
-#include "define.h"
+#include "Define.h"
 #include "../formulae/belief_formula.h"
-#include "../actions/proposition.h"
+#include "../actions/Proposition.h"
 
 class reader
 {
 public:
     /** \brief Name of all the fluents (only positive) in the domain.*/
-    string_set m_fluents;
+    StringsSet m_fluents;
     /** \brief Name of all the actions in the domain.*/
-    string_set m_actions;
+    StringsSet m_actions;
     /** \brief String description of all the agents in the domain.*/
-    string_set m_agents;
+    StringsSet m_agents;
 
     /** \brief String description of all the initial conditions (initially in the domain).*/
-    string_set_set m_initially;
+    StringSetsSet m_initially;
 
     /** \brief String description of all the goal conditions.*/
-    string_set m_goal;
+    StringsSet m_goal;
 
     /** \brief \ref m_initially conditions described as \ref belief_formula (yet to ground).*/
     formula_list m_bf_initially;
@@ -48,7 +48,7 @@ public:
     formula_list m_bf_goal;
 
     /** \brief String description of propositions, each one of these specifies an action conditions (yet to ground).*/
-    proposition_list m_propositions;
+    PropositionsList m_propositions;
 
     /** \brief Function that reads the info from the domain file.
      * 

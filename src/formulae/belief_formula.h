@@ -24,7 +24,7 @@
 
 #include <memory>
 
-#include "../utilities/define.h"
+#include "../utilities/Define.h"
 
 #include "../domain/grounder.h"
 
@@ -77,7 +77,7 @@ private:
     /*-******STRING FIELDs (private GETTER (for the grounding) and SETTER public for the reading)*************-*/
     /** \brief If *this* is a \ref FLUENT_FORMULA in this field is contained the 
      * string description of the actual \ref fluent_formula.*/
-    string_set_set m_string_fluent_formula;
+    StringSetsSet m_string_fluent_formula;
 
     /** \brief If *this* is a \ref BELIEF_FORMULA in this field is contained the
      *  string description of the \ref agent of the formula.*/
@@ -85,14 +85,14 @@ private:
 
     /** \brief If this is a \ref E_FORMULA, \ref C_FORMULA or a \ref D_FORMULA here is contained the
      *  string description of the relative set of \ref agent.*/
-    string_set m_string_group_agents;
+    StringsSet m_string_group_agents;
 
     /** \brief Getter of the field \ref m_string_fluent_formula.
      * 
      * Only used inside *this* for the grounding process, so it's private.
      * 
      * @return the value of \ref m_string_fluent_formula.*/
-    const string_set_set & get_string_fluent_formula() const;
+    const StringSetsSet & get_string_fluent_formula() const;
     /** \brief Getter of the field \ref m_string_agent.
      * 
      * Only used inside *this* for the grounding process, so it's private.
@@ -104,17 +104,17 @@ private:
      * Only used inside *this* for the grounding process, so it's private.
      * 
      * @return the value of \ref m_string_group_agents.*/
-    const string_set & get_string_group_agents() const;
+    const StringsSet & get_string_group_agents() const;
 
     /*-******GROUNDED FIELDs (private SETTER (for the grounding/reading part) and GETTER public)*************-*/
     /**\brief The \ref bf_type of *this*.*/
     bf_type m_formula_type = BF_EMPTY; // = BF_TYPE_FAIL; //Which case of belief formula this is
     /**\brief If *this* is a \ref FLUENT_FORMULA in this field is contained the actual \ref fluent_formula.*/
-    fluent_formula m_fluent_formula;
+    FluentFormula m_fluent_formula;
     /** \brief If *this* is a \ref BELIEF_FORMULA in this field is contained the \ref agent of the formula.
      *
      * Given the \ref belief_formula B(**ag**, *phi*) this field contains **ag**.*/
-    agent m_agent;
+    Agent m_agent;
     /** \brief In this field is contained the operator if *this* is \ref PROPOSITIONAL_FORMULA.
      *
      * - Given the \ref PROPOSITIONAL_FORMULA *phi_1* **op** *phi_2* \ref m_operator contains **op**.*/
@@ -124,7 +124,7 @@ private:
      * - If *this* is \ref E_FORMULA, i.e., E(**ags**, *phi*), \ref m_group_agents contains **ags**;
      * - if *this* is \ref C_FORMULA, i.e., C(**ags**, *phi*), \ref m_group_agents contains **ags**;
      * - If *this* is \ref D_FORMULA, i.e., E(**ags**, *phi*), \ref m_group_agents contains **ags**.*/
-    agent_set m_group_agents;
+    AgentsSet m_group_agents;
 
 
     /*-******RECOURSIVE FIELDs (private SETTER (for the reading part) and GETTER public)*************-*/
@@ -170,12 +170,12 @@ public:
     /** \brief Setter for the field \ref m_fluent_formula.
      *
      * @param[in] to_set: the \ref fluent_formula object to copy in \ref m_fluent_formula.*/
-    void set_fluent_formula(const fluent_formula& to_set);
+    void set_fluent_formula(const FluentFormula& to_set);
 
     /** \brief Setter for the field \ref m_fluent_formula.
      *
      * @param[in] to_set: the \ref fluent object to insert in \ref m_fluent_formula.*/
-    void set_fluent_formula_from_fluent(fluent to_set);
+    void set_fluent_formula_from_fluent(Fluent to_set);
 
     /** \brief Setter of the field \ref m_string_fluent_formula.
      * 
@@ -183,18 +183,18 @@ public:
      * fields of *this*. We don't have public getters because we want to able to retrieve only the grounded values.
      * 
      * @param[in] to_set: the \ref string_set_set to set as *this* \ref fluent_formula in string description.*/
-    void set_string_fluent_formula(const string_set_set & to_set);
+    void set_string_fluent_formula(const StringSetsSet & to_set);
 
 
     /** \brief Setter for the field \ref m_agent.
      *
      * @param[in] to_set: the \ref agent object to copy in \ref m_agent.*/
-    void set_agent(agent to_set);
+    void set_agent(Agent to_set);
 
     /** \brief Setter for the field \ref m_group_agents.
      *
      * @param[in] to_set: the \ref agent_set object to copy in \ref m_group_agents.*/
-    void set_group_agents(const agent_set& to_set);
+    void set_group_agents(const AgentsSet& to_set);
 
     /** \brief Setter of the field \ref m_string_agent.
      * 
@@ -210,7 +210,7 @@ public:
      * fields of *this*. We don't have public getters because we want to able to retrieve only the grounded values.
      * 
      * @param[in] to_set: the \ref string_set to set as *this* \ref agent_set in string description.*/
-    void set_string_group_agents(const string_set & to_set);
+    void set_string_group_agents(const StringsSet & to_set);
 
 
     /** \brief Setter of the field \ref m_bf1.
@@ -245,11 +245,11 @@ public:
     /** \brief Getter for the field \ref m_fluent_formula.
      *
      * @return the value of the field \ref m_fluent_formula.*/
-    const fluent_formula& get_fluent_formula() const;
+    const FluentFormula& get_fluent_formula() const;
     /** \brief Getter for the field \ref m_agent.
      *
      * @return the value of the field \ref m_agent.*/
-    agent get_agent() const;
+    Agent get_agent() const;
     /** \brief Getter of the \ref belief_formula pointed by \ref m_bf1.
      *
      * @return the \ref belief_formula pointed by \ref m_bf1.*/
@@ -265,10 +265,10 @@ public:
     /** \brief Getter for the field \ref m_group_agents.
      *
      * @return the value of the field \ref m_group_agents.*/
-    const agent_set& get_group_agents() const;
+    const AgentsSet& get_group_agents() const;
 
     /**Setter from a fluent_formula*/
-    void set_from_ff(const fluent_formula & to_build);
+    void set_from_ff(const FluentFormula & to_build);
 
 
     /** \brief Function that print *this* (std::string parameters representation).

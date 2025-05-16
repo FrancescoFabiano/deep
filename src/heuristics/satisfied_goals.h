@@ -17,7 +17,7 @@
  */
 
 #pragma once
-#include "../utilities/define.h"
+#include "../utilities/Define.h"
 #include "../formulae/belief_formula.h"
 
 class satisfied_goals

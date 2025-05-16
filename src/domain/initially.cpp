@@ -157,7 +157,7 @@ bool initially::check_restriction(const belief_formula & bf) //Apply the restric
 }
 //This type of parameter is fine because of we add the return value and not ff
 
-void initially::add_pointed_condition(const fluent_formula & ff)
+void initially::add_pointed_condition(const FluentFormula & ff)
 {
 	//Is in DNF form so you have to add these to the fluent of before (all of them)
 	m_pointed_world_conditions = helper::and_ff(m_pointed_world_conditions, ff);
@@ -180,7 +180,7 @@ void initially::add_initial_condition(const belief_formula & bf)
 
 }
 
-const fluent_formula & initially::get_pointed_world_conditions() const
+const FluentFormula & initially::get_pointed_world_conditions() const
 {
 	return m_pointed_world_conditions;
 }
@@ -190,7 +190,7 @@ const formula_list & initially::get_initial_conditions() const
 	return m_bf_intial_conditions;
 }
 
-const fluent_formula & initially::get_ff_forS5() const
+const FluentFormula & initially::get_ff_forS5() const
 {
 	return m_ff_forS5;
 }
@@ -199,7 +199,7 @@ void initially::set_ff_forS5()
 {
 	if (m_ini_restriction == S5) {
 		//The consistency with S5 is already checked
-		fluent_formula ret;
+		FluentFormula ret;
 		formula_list::const_iterator it_fl;
 		for (it_fl = m_bf_intial_conditions.begin(); it_fl != m_bf_intial_conditions.end(); it_fl++) {
 			switch ( (*it_fl).get_formula_type() ) {
@@ -218,10 +218,10 @@ void initially::set_ff_forS5()
 				case FLUENT_FORMULA:
 				{
 					ret = helper::and_ff(ret, tmp.get_fluent_formula());
-					fluent_formula tmp_ff = tmp.get_fluent_formula();
+					FluentFormula tmp_ff = tmp.get_fluent_formula();
 					if (tmp_ff.size() == 1) {
-						fluent_set tmp_fs = *tmp_ff.begin();
-						fluent_set::const_iterator it_fs_tmp;
+						FluentsSet tmp_fs = *tmp_ff.begin();
+						FluentsSet::const_iterator it_fs_tmp;
 						for (it_fs_tmp = tmp_fs.begin(); it_fs_tmp != tmp_fs.end(); it_fs_tmp++) {
 							m_initially_known_fluents.insert(*it_fs_tmp);
 							//std::cerr << "\nDEBUG: "<< *it_fs_tmp << std::endl;
@@ -268,7 +268,7 @@ void initially::set_ff_forS5()
 	}
 }
 
-const fluent_set & initially::get_initially_known_fluents() const
+const FluentsSet & initially::get_initially_known_fluents() const
 {
 	return m_initially_known_fluents;
 }

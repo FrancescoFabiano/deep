@@ -18,7 +18,7 @@
 
 #include <set>
 
-#include "../../utilities/define.h"
+#include "../../utilities/Define.h"
 #include "../../utilities/printer.h"
 
 class pworld
@@ -27,7 +27,7 @@ class pworld
 
 private:
     /** \brief The set of  \ref fluent that describes how these are interpreted in *this*.*/
-    fluent_set m_fluent_set;
+    FluentsSet m_fluent_set;
     /** \brief The unique id of *this* computed with \ref hash_fluents_into_id().*/
     pworld_id m_id;
 
@@ -37,7 +37,7 @@ private:
      * @return the unique id of the pworld.
      * 
      * @warning Useless if not moved to \ref pstore.*/
-    pworld_id hash_fluents_into_id(const fluent_set& description);
+    pworld_id hash_fluents_into_id(const FluentsSet& description);
 
     /** \brief Function used to hash the the info of *this* in a unique id.
      *
@@ -52,7 +52,7 @@ private:
      *
      * \todo is the parameter passing the best one? Copy?
      * \todo is the consistency useless?*/
-    void set_fluent_set(const fluent_set & description);
+    void set_fluent_set(const FluentsSet & description);
 
     /**
      * \brief Function that checks if the given \ref fluent_set is consistent.
@@ -64,7 +64,7 @@ private:
      * 
      * \todo Add \ref static_law as static class and use it to check.
      */
-    bool consistent(const fluent_set & to_check);
+    bool consistent(const FluentsSet & to_check);
 
     /** \brief Function that uses the info of *this* to set its \ref m_id.*/
     void set_id();
@@ -75,7 +75,7 @@ private:
      * Only accessible by the \ref pworld_ptr.
      *     
      * @return the \ref pworld_ptr to the pworld where *this* is from.*/
-    const fluent_set & get_fluent_set() const;
+    const FluentsSet & get_fluent_set() const;
 
     /** \brief Getter of \ref m_id.
      *     
@@ -95,7 +95,7 @@ public:
      * @param[in] description: the set of \ref fluent to set as \ref m_fluent_set.
      *
      * \todo is the parameter passing the best one? Copy?*/
-    pworld(const fluent_set & description);
+    pworld(const FluentsSet & description);
 
     /** \brief Copy constructor.
      * 
@@ -114,7 +114,7 @@ public:
      * 
      * \todo To implement also whit \ref pworld_ptr to the \ref pworld?
      * \todo check consistency on constructor?*/
-    bool entails(fluent to_check) const;
+    bool entails(Fluent to_check) const;
     /**
      *\brief Function that check the entailment of a conjunctive set of \ref fluent in *this*.
      * 
@@ -126,7 +126,7 @@ public:
      *
      * @return true: \p to_check is entailed;
      * @return false: \p -to_check is entailed.*/
-    bool entails(const fluent_set& to_check) const;
+    bool entails(const FluentsSet& to_check) const;
     /**
      *\brief Function that check the entailment of a DNF \ref fluent_formula in *this*.
      * 
@@ -138,7 +138,7 @@ public:
      *
      * @return true: \p to_check is entailed;
      * @return false: \p -to_check is entailed.*/
-    bool entails(const fluent_formula & to_check) const;
+    bool entails(const FluentFormula & to_check) const;
 
     /**
      *\brief The < operator based on the field \ref m_id.
@@ -269,7 +269,7 @@ public:
     /** \brief Function that return the field m_fluent_set of the pointed \ref pworld.
      *     
      * @return the \ref fluent_set that is the description of the \ref pworld pointed by \ref m_ptr.*/
-    const fluent_set & get_fluent_set() const;
+    const FluentsSet & get_fluent_set() const;
 
     /** \brief Function that return the field m_id of the pointed \ref pworld + \ref m_repetition.
      *     
@@ -294,7 +294,7 @@ public:
      *
      * @return true: \p to_check is entailed;
      * @return false: \p -to_check is entailed.*/
-    bool entails(fluent to_check) const;
+    bool entails(Fluent to_check) const;
     /**
      *\brief Function that check the entailment of a conjunctive set of \ref fluent in \ref m_ptr.
      * 
@@ -302,7 +302,7 @@ public:
      *
      * @return true: \p to_check is entailed;
      * @return false: \p -to_check is entailed.*/
-    bool entails(const fluent_set& to_check) const;
+    bool entails(const FluentsSet& to_check) const;
     /**
      *\brief Function that check the entailment of a DNF \ref fluent_formula in \ref m_ptr.
      * 
@@ -310,7 +310,7 @@ public:
      *
      * @return true: \p to_check is entailed;
      * @return false: \p -to_check is entailed.*/
-    bool entails(const fluent_formula & to_check) const;
+    bool entails(const FluentFormula & to_check) const;
 
     /**\brief The operator =.
      *

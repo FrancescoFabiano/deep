@@ -10,7 +10,7 @@
  */
 #pragma once
 
-#include "../utilities/define.h"
+#include "../utilities/Define.h"
 #include "../formulae/belief_formula.h"
 #include "../utilities/helper.h"
 
@@ -18,20 +18,15 @@ class initially
 {
 private:
     /** \brief Formula containing all the \ref fluent that are required by the possible initial pointed \ref state.*/
-    fluent_formula m_pointed_world_conditions;
+    FluentFormula m_pointed_world_conditions;
 
     /** \brief \ref belief_formula list containing all the \ref belief_formula that describe the initial beliefs conditions.*/
     formula_list m_bf_intial_conditions;
 
-    /** \brief The restriction to apply to the initial state
-     * 
-     * @see domain_restriction.*/
-    domain_restriction m_ini_restriction;
-
     /**
      * \brief The \ref fluent_formula representation of \ref m_bf_intial_conditions if finitary-S5 is required.
      */
-    fluent_formula m_ff_forS5;
+    FluentFormula m_ff_forS5;
 
     /** \brief Function that check if a \ref belief_formula respects \ref m_ini_restriction.
      * 
@@ -44,7 +39,7 @@ private:
     /**
      * \brief The set of \ref fluent know by formulae of the type C([ags], f).
      */
-    fluent_set m_initially_known_fluents;
+    FluentsSet m_initially_known_fluents;
 
 
 public:
@@ -70,7 +65,7 @@ public:
      * @param[in] to_add: a \ref fluent_formula that the initial pointed \ref state must entail.
      *
      * \todo is parameter passing ok?*/
-    void add_pointed_condition(const fluent_formula & to_add);
+    void add_pointed_condition(const FluentFormula & to_add);
 
     /** \brief  Function that adds a condition for the initial \ref state.
      *
@@ -85,7 +80,7 @@ public:
      * @return the field m_pointed_world_conditions.
      * 
      * \todo is return type ok?*/
-    const fluent_formula& get_pointed_world_conditions() const;
+    const FluentFormula& get_pointed_world_conditions() const;
 
     /**
      * \brief getter for the field m_bf_intial_conditions.
@@ -99,7 +94,7 @@ public:
      * \brief getter for the field m_initially_known_fluents.
      * 
      * @return the field m_initially_known_fluents.*/
-    const fluent_set& get_initially_known_fluents() const;
+    const FluentsSet& get_initially_known_fluents() const;
 
     /** \brief Setter for the field \ref m_ff_forS5.
      * 
@@ -125,7 +120,7 @@ public:
      * - C(-B(i,*phi*) \ref BF_AND -B(i,-*phi*)) -> only edges conditions.
      * 
      * @return the \ref fluent_formula that all the initial worlds must entail if S5(\ref m_ff_forS5).*/
-    const fluent_formula & get_ff_forS5() const;
+    const FluentFormula & get_ff_forS5() const;
 
 };
 
