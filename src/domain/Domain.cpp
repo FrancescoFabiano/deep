@@ -124,6 +124,7 @@ void Domain::build_fluents() {
     int i = 0;
     int bit_size = helper::lenght_to_power_two(static_cast<int>(m_reader->m_fluents.size()));
 
+    /////@TODO This will be replaced by epddl parser. Reader needs to be changed and make sure to have getter and setter
     for (const auto& fluent_name : m_reader->m_fluents) {
         boost::dynamic_bitset<> fluentReal(bit_size + 1, i);
         fluentReal.set(fluentReal.size() - 1, false);
@@ -152,6 +153,7 @@ void Domain::build_actions() {
     int number_of_actions = static_cast<int>(m_reader->m_actions.size());
     int bit_size = helper::lenght_to_power_two(number_of_actions);
 
+    /////@TODO This will be replaced by epddl parser. Reader needs to be changed and make sure to have getter and setter
     for (const auto& action_name : m_reader->m_actions) {
         boost::dynamic_bitset<> action_bitset(bit_size, i);
         action tmp_action(action_name, action_bitset);
@@ -180,6 +182,8 @@ void Domain::build_actions() {
 
 void Domain::build_propositions() {
     std::cout << "\nAdding propositions to actions..." << std::endl;
+
+    /////@TODO This will be replaced by epddl parser. Reader needs to be changed and make sure to have getter and setter
     for (auto& prop : m_reader->m_propositions) {
         auto action_to_modify = m_grounder.ground_action(prop.get_action_name());
         for (auto it = m_actions.begin(); it != m_actions.end(); ++it) {
@@ -199,6 +203,7 @@ void Domain::build_propositions() {
 void Domain::build_initially() {
     std::cout << "\nAdding to pointed world and initial conditions..." << std::endl;
 
+    /////@TODO This will be replaced by epddl parser. Reader needs to be changed and make sure to have getter and setter
     for (auto& formula : m_reader->m_bf_initially) {
         formula.ground();
 
@@ -236,6 +241,8 @@ void Domain::build_initially() {
 
 void Domain::build_goal() {
     std::cout << "\nAdding to Goal..." << std::endl;
+
+    /////@TODO This will be replaced by epddl parser. Reader needs to be changed and make sure to have getter and setter
     for (auto& formula : m_reader->m_bf_goal) {
         formula.ground();
         m_goal_description.push_back(formula);
