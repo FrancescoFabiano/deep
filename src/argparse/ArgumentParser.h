@@ -2,7 +2,6 @@
 
 #include <string>
 #include <vector>
-#include <memory>
 #include <CLI/CLI.hpp>
 #include "utilities/ExitHandler.h"
 

@@ -1,17 +1,14 @@
 #pragma once
 
 #include <string>
-#include <iostream>
 #include <vector>
 #include <set>
 #include <map>
 #include <queue>
-#include <stack>
 #include <memory>
 #include <list>
 #include <boost/dynamic_bitset.hpp>
-#include <pthread.h>
-#include <unistd.h>
+
 
 /**
  * \def NEGATION_SYMBOL
@@ -42,9 +39,9 @@ using FluentMap = std::map<std::string, Fluent>; ///< Map from fluent name to gr
 using AgentsMap = std::map<std::string, Agent>;
 using ActionNamesMap = std::map<std::string, ActionId>;
 
-using reverse_fluent_map = std::map<Fluent, std::string>;
-using reverse_agent_map = std::map<Agent, std::string>;
-using reverse_action_name_map = std::map<ActionId, std::string>;
+using ReverseFluentsMap = std::map<Fluent, std::string>;
+using ReverseAgentsMap = std::map<Agent, std::string>;
+using ReverseActionNamesMap = std::map<ActionId, std::string>;
 ///@}
 
 /**
@@ -117,7 +114,7 @@ struct ML_Dataset_Params {
 /// \name Actions Related
 ///@{
 class belief_formula;
-using formula_list = std::list<belief_formula>; ///< CNF formula of belief_formula.
+using FormulaeList = std::list<belief_formula>; ///< CNF formula of belief_formula.
 using bformula_set = std::set<belief_formula>;
 using observability_map = std::map<Agent, belief_formula>; ///< Agent to observability conditions.
 using effects_map = std::map<FluentFormula, belief_formula>; ///< Action effect to its conditions.

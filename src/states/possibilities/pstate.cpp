@@ -15,7 +15,7 @@
 #include <set>
 
 #include "pstate.h"
-#include "../../utilities/helper_t.ipp"
+#include "../../utilities/FormulaHelper_t.ipp"
 
 void pstate::set_worlds(const pworld_ptr_set & to_set)
 {
@@ -266,7 +266,7 @@ const pworld_ptr_set pstate::get_B_reachable_worlds(Agent ag, const pworld_ptr &
 	if (pw_map != m_beliefs.end()) {
 		auto pw_set = pw_map->second.find(ag);
 		if (pw_set != pw_map->second.end()) {
-			helper_t::sum_set<pworld_ptr>(ret, pw_set->second);
+			FormulaHelper_t::sum_set<pworld_ptr>(ret, pw_set->second);
 		}
 	}
 	return ret;
@@ -281,7 +281,7 @@ bool pstate::get_B_reachable_worlds_recoursive(Agent ag, const pworld_ptr & worl
 		auto pw_set = pw_map->second.find(ag);
 		if (pw_set != pw_map->second.end()) {
 			unsigned long previous_size = ret.size();
-			helper_t::sum_set<pworld_ptr>(ret, pw_set->second);
+			FormulaHelper_t::sum_set<pworld_ptr>(ret, pw_set->second);
 			unsigned long current_size = ret.size();
 
 			return previous_size == current_size;
@@ -297,7 +297,7 @@ const pworld_ptr_set pstate::get_E_reachable_worlds(const AgentsSet & ags, const
 	pworld_ptr_set ret;
 	AgentsSet::const_iterator it_agset;
 	for (it_agset = ags.begin(); it_agset != ags.end(); it_agset++) {
-		helper_t::sum_set<pworld_ptr>(ret, get_B_reachable_worlds(*it_agset, world));
+		FormulaHelper_t::sum_set<pworld_ptr>(ret, get_B_reachable_worlds(*it_agset, world));
 	}
 
 	return ret;
@@ -329,8 +329,8 @@ const pworld_ptr_set pstate::get_C_reachable_worlds(const AgentsSet & ags, const
 	pworld_ptr_set already_reached;
 	pworld_ptr_set ret;
 	while (!is_fixed_point) {
-		helper_t::sum_set<pworld_ptr>(newly_reached, ret);
-		helper_t::minus_set<pworld_ptr>(newly_reached, already_reached);
+		FormulaHelper_t::sum_set<pworld_ptr>(newly_reached, ret);
+		FormulaHelper_t::minus_set<pworld_ptr>(newly_reached, already_reached);
 		is_fixed_point = get_E_reachable_worlds_recoursive(ags, newly_reached, ret);
 		already_reached = newly_reached;
 	}
@@ -445,7 +445,7 @@ void pstate::build_initial_prune()
 	/*Building of all the possible consistent \ref pworld and setting the pointed world.
 	 * Creation of all the \ref fluent combinations. All the consistent ones are added to \ref pstore.*/
 	FluentsSet permutation;
-	initially ini_conditions = domain::get_instance().get_initial_description();
+	InitialStateInformation ini_conditions = domain::get_instance().get_initial_description();
 	//	std::cerr << "\nDEBUG: Initially known fluents: ";
 	//	printer::get_instance().print_list(domain::get_instance().get_grounder().deground_fluent(ini_conditions.get_initially_known_fluents()));
 	generate_initial_pworlds(permutation, 0, ini_conditions.get_initially_known_fluents());
@@ -491,7 +491,7 @@ void pstate::generate_initial_pworlds(FluentsSet& permutation, int index, const 
 
 void pstate::add_initial_pworld(const pworld & possible_add)
 {
-	initially ini_conditions = domain::get_instance().get_initial_description();
+	InitialStateInformation ini_conditions = domain::get_instance().get_initial_description();
 
 	switch ( ini_conditions.get_ini_restriction() ) {
 	case S5:
@@ -558,7 +558,7 @@ void pstate::generate_initial_pedges()
 
 	//std::cout << "Tot edges: " << m_edges.size() << std::endl;
 
-	initially ini_conditions = domain::get_instance().get_initial_description();
+	InitialStateInformation ini_conditions = domain::get_instance().get_initial_description();
 
 	formula_list::const_iterator it_fl;
 	for (it_fl = ini_conditions.get_initial_conditions().begin(); it_fl != ini_conditions.get_initial_conditions().end(); it_fl++) {
@@ -745,10 +745,10 @@ void pstate::maintain_oblivious_believed_pworlds(pstate &ret, const AgentsSet & 
 		tmp_world_set = get_E_reachable_worlds(oblivious_obs_agents, get_pointed());
 		for (it_agset = domain::get_instance().get_agents().begin(); it_agset != domain::get_instance().get_agents().end(); it_agset++) {
 			for (it_wo_ob = tmp_world_set.begin(); it_wo_ob != tmp_world_set.end(); it_wo_ob++) {
-				helper_t::sum_set<pworld_ptr>(world_oblivious, get_B_reachable_worlds(*it_agset, *it_wo_ob));
+				FormulaHelper_t::sum_set<pworld_ptr>(world_oblivious, get_B_reachable_worlds(*it_agset, *it_wo_ob));
 			}
 		}
-		helper_t::sum_set<pworld_ptr>(world_oblivious, tmp_world_set);
+		FormulaHelper_t::sum_set<pworld_ptr>(world_oblivious, tmp_world_set);
 		ret.set_max_depth(get_max_depth() + 1);
 		ret.set_worlds(world_oblivious);
 
@@ -847,7 +847,7 @@ pstate pstate::execute_ontic(const Action & act) const
 	AgentsSet fully_obs_agents = helper::get_agents_if_entailed(act.get_fully_observants(), *this);
 
 	AgentsSet oblivious_obs_agents = agents;
-    helper_t::minus_set<Agent>(oblivious_obs_agents, fully_obs_agents);
+    FormulaHelper_t::minus_set<Agent>(oblivious_obs_agents, fully_obs_agents);
 
 	transition_map calculated; // A map that links the pworlds of *this* to the corresponding ones of ret
 	maintain_oblivious_believed_pworlds(ret, oblivious_obs_agents);
@@ -927,8 +927,8 @@ pstate pstate::execute_sensing(const Action & act) const
 	AgentsSet partially_obs_agents = helper::get_agents_if_entailed(act.get_partially_observants(), *this);
 
 	AgentsSet oblivious_obs_agents = agents;
-	helper_t::minus_set<Agent>(oblivious_obs_agents, fully_obs_agents);
-	helper_t::minus_set<Agent>(oblivious_obs_agents, partially_obs_agents);
+	FormulaHelper_t::minus_set<Agent>(oblivious_obs_agents, fully_obs_agents);
+	FormulaHelper_t::minus_set<Agent>(oblivious_obs_agents, partially_obs_agents);
 
 	if (!oblivious_obs_agents.empty()) {
 		ret.set_max_depth(get_max_depth() + 1);

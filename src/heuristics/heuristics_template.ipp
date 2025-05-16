@@ -114,7 +114,7 @@ unsigned short satisfied_goals::get_unsatisfied_goals(const T & eState) const
 {
 	unsigned short ret = m_goals_number;
 
-	formula_list::const_iterator it_fl;
+	FormulaeList::const_iterator it_fl;
 	for (it_fl = m_goals.begin(); it_fl != m_goals.end(); it_fl++) {
 		if (eState.entails(*it_fl)) {
 			ret--;

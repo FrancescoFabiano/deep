@@ -160,9 +160,9 @@ private:
 
     void build_init_f_map();
 
-    void build_init_bf_map(const formula_list & goals);
+    void build_init_bf_map(const FormulaeList & goals);
 
-    void insert_subformula_bf(const formula_list & fl, short value);
+    void insert_subformula_bf(const FormulaeList & fl, short value);
 
     void insert_subformula_bf(const belief_formula & bf, short value);
 
@@ -171,10 +171,10 @@ private:
     void build_init_f_map(T & eState);
 
     template <class T>
-    void build_init_bf_map(const formula_list & goals, T & eState);
+    void build_init_bf_map(const FormulaeList & goals, T & eState);
 
     template <class T>
-    void insert_subformula_bf(const formula_list & fl, T & eState);
+    void insert_subformula_bf(const FormulaeList & fl, T & eState);
 
     template <class T>
     void insert_subformula_bf(const belief_formula & bf, T & eState);
@@ -198,10 +198,10 @@ public:
     pg_state_level(const pg_state_level & to_assign);
 
     //*Constructor that sets the depth to 0 and correctly initialize the maps*/
-    void initialize(const formula_list & goal);
+    void initialize(const FormulaeList & goal);
 
     template <class T>
-    void initialize(const formula_list & goal, T & eState);
+    void initialize(const FormulaeList & goal, T & eState);
 
 
     /*Constructor of this that set the depth and the maps.
@@ -277,7 +277,7 @@ public:
      * @return: true if the formula is entailed.
      * @return: false otherwise.
      */
-    bool pg_entailment(const formula_list & fl) const;
+    bool pg_entailment(const FormulaeList & fl) const;
 
     /*Function that checks if an action is executable on *this*.
      * 
@@ -323,7 +323,7 @@ private:
     bool m_satisfiable;
 
     /*\brief The list of the subgoals (possibly enanched by \ref heuristics_manager)*/
-    formula_list m_goal;
+    FormulaeList m_goal;
     //pg_worlds_score m_worlds_score; FOR FUTURE USE
     /*\brief A map that contains the first level of encounter (if any) of a belief formula calculated by list_bf_classical*/
     pg_bfs_score m_bfs_score;
@@ -364,7 +364,7 @@ public:
      *  This version should be used when a single planning graph is created from the initial state
      * @param[in] goal: The formula_list that describes the given goals.
      */
-    planning_graph(const formula_list & goal);
+    planning_graph(const FormulaeList & goal);
 
 
     planning_graph(const planning_graph & pg);
@@ -383,14 +383,14 @@ public:
      * @param[in] eState: The initial eState from which we should extract the first state level.
      */
     template <class T>
-    planning_graph(const formula_list & goal, T & eState);
+    planning_graph(const FormulaeList & goal, T & eState);
 
     /*Function used by the constructors to properly initialize the various fields of the planning graph
      * 
      * @param[in] goal: The formula_list that describes the given goals.
      * @param[in] pg_init: the initial State level.
      */
-    void init(const formula_list & goal, const pg_state_level & pg_init);
+    void init(const FormulaeList & goal, const pg_state_level & pg_init);
 
 
 
@@ -408,7 +408,7 @@ public:
      *
      * @param[in] goal: the value to assign to m_goal. 
      */
-    void set_goal(const formula_list & goal);
+    void set_goal(const FormulaeList & goal);
 
 
 
@@ -438,7 +438,7 @@ public:
     const std::vector< pg_state_level > & get_state_levels() const;
     const std::vector< pg_action_level > & get_action_levels() const;
 
-    const formula_list & get_goal() const;
+    const FormulaeList & get_goal() const;
     const action_set & get_never_executed() const;
     const bformula_set & get_belief_formula_false() const;
 

@@ -26,7 +26,7 @@
 
 #include "../utilities/Define.h"
 
-#include "../domain/grounder.h"
+#include "../domain/Grounder.h"
 
 /** \brief The possible types of \ref belief_formula.*/
 enum bf_type

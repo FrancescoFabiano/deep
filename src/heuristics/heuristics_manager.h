@@ -23,7 +23,7 @@ private:
     /**The type of heuristic used*/
     heuristics m_used_heur;
     /*The goal description, possibly expanded to exploit the heuristic even more*/
-    formula_list m_goals;
+    FormulaeList m_goals;
     pg_f_map m_fluents_score;
     pg_bf_map m_bf_score;
     /*A map which contains the value of each "grounded" bf w.r.t. the classical planning graph.*/
@@ -88,13 +88,13 @@ public:
      *
      * @param[in] to_set: the cnf of expanded sub goals to set as \ref m_goals.
      */
-    void set_goals(const formula_list & to_set);
+    void set_goals(const FormulaeList & to_set);
 
     /**Getter of the field \ref m_goals
      *
      * @return: the cnf of expanded sub goals.
      */
-    const formula_list & get_goals() const;
+    const FormulaeList & get_goals() const;
 
     /** \brief The = operator.
      *   

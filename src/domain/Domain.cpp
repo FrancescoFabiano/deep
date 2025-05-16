@@ -12,6 +12,7 @@
 #include <ranges>
 
 #include "ArgumentParser.h"
+#include "utilities/FormulaHelper.h"
 
 
 Domain* Domain::instance = nullptr;
@@ -55,7 +56,7 @@ void Domain::create_instance() {
         instance = new Domain();
     }
 }
-const grounder& Domain::get_grounder() const noexcept {
+const Grounder& Domain::get_grounder() const noexcept {
     return m_grounder;
 }
 
@@ -88,11 +89,11 @@ const std::string& Domain::get_name() const noexcept {
     return m_name;
 }
 
-const initially& Domain::get_initial_description() const noexcept {
-    return m_intial_description;
+const InitialStateInformation& Domain::get_initial_description() const noexcept {
+    return m_initial_description;
 }
 
-const formula_list& Domain::get_goal_description() const noexcept {
+const FormulaeList& Domain::get_goal_description() const noexcept {
     return m_goal_description;
 }
 
@@ -108,7 +109,7 @@ void Domain::build_agents() {
     AgentsMap domain_agent_map;
     std::cout << "\nBuilding agent list..." << std::endl;
     int i = 0;
-    int agents_length = helper::lenght_to_power_two(static_cast<int>(m_reader->m_agents.size()));
+    int agents_length = FormulaHelper::length_to_power_two(static_cast<int>(m_reader->m_agents.size()));
 
     /////@TODO This will be replaced by epddl parser. Reader needs to be changed and make sure to have getter and setter
     for (const auto& agent_name : m_reader->m_agents) {
@@ -128,7 +129,7 @@ void Domain::build_fluents() {
     FluentMap domain_fluent_map;
     std::cout << "\nBuilding fluent literals..." << std::endl;
     int i = 0;
-    int bit_size = helper::lenght_to_power_two(static_cast<int>(m_reader->m_fluents.size()));
+    int bit_size = FormulaHelper::length_to_power_two(static_cast<int>(m_reader->m_fluents.size()));
 
     /////@TODO This will be replaced by epddl parser. Reader needs to be changed and make sure to have getter and setter
     for (const auto& fluent_name : m_reader->m_fluents) {
@@ -157,7 +158,7 @@ void Domain::build_actions() {
     std::cout << "\nBuilding action list..." << std::endl;
     int i = 0;
     int number_of_actions = static_cast<int>(m_reader->m_actions.size());
-    int bit_size = helper::lenght_to_power_two(number_of_actions);
+    int bit_size = FormulaHelper::length_to_power_two(number_of_actions);
 
     /////@TODO This will be replaced by epddl parser. Reader needs to be changed and make sure to have getter and setter
     for (const auto& action_name : m_reader->m_actions) {
@@ -215,7 +216,7 @@ void Domain::build_initially() {
 
         switch (formula.get_formula_type()) {
         case FLUENT_FORMULA: {
-                m_intial_description.add_pointed_condition(formula.get_fluent_formula());
+                m_initial_description.add_pointed_condition(formula.get_fluent_formula());
                 if (ArgumentParser::get_instance().get_debug()) {
                     std::cout << "    Pointed world: ";
                     printer::get_instance().print_list(formula.get_fluent_formula());
@@ -228,7 +229,7 @@ void Domain::build_initially() {
         case PROPOSITIONAL_FORMULA:
         case BELIEF_FORMULA:
         case E_FORMULA: {
-                m_intial_description.add_initial_condition(formula);
+                m_initial_description.add_initial_condition(formula);
                 if (ArgumentParser::get_instance().get_debug()) {
                     std::cout << "Added to initial conditions: ";
                     formula.print();

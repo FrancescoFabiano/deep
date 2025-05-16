@@ -42,10 +42,10 @@ public:
     StringsSet m_goal;
 
     /** \brief \ref m_initially conditions described as \ref belief_formula (yet to ground).*/
-    formula_list m_bf_initially;
+    FormulaeList m_bf_initially;
 
     /** \brief \ref m_goal conditions described as \ref belief_formula (yet to ground).*/
-    formula_list m_bf_goal;
+    FormulaeList m_bf_goal;
 
     /** \brief String description of propositions, each one of these specifies an action conditions (yet to ground).*/
     PropositionsList m_propositions;

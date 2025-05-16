@@ -44,7 +44,7 @@ void ArgumentParser::parse(int argc, char** argv) {
 
     try {
         app.parse(argc, argv);
-    } catch (const CLI::CallForHelp& e) {
+    } catch (const CLI::CallForHelp&) {
         print_usage();
         std::exit(static_cast<int>(ExitHandler::ExitCode::Success));
     } catch (const CLI::ParseError& e) {

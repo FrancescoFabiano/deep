@@ -11,14 +11,13 @@
  * \copyright GNU Public License.
  *
  * \author Francesco Fabiano.
- * \date April 7, 2019
+ * \date May 16, 2025
  */
 #pragma once
 
 #include "Define.h"
-#include "../formulae/belief_formula.h"
 
-class helper
+class FormulaHelper
 {
 public:
 
@@ -48,7 +47,7 @@ public:
      * @return the normalized of fluent.*/
     static Fluent normalize_fluent(const Fluent & to_normalize);
 
-    static bool is_negate(const Fluent & f);
+    static bool is_negated(const Fluent & f);
 
 
 
@@ -57,7 +56,7 @@ public:
      *   
      * @param[in] effect: the fluent to set.
      * @param[out] world_description: the \ref fluent_set contained inside a single world to modify.*/
-    static void apply_effect(Fluent effect, FluentsSet& world_description);
+    static void apply_effect(const Fluent& effect, FluentsSet& world_description);
 
     /** \brief Function to merge the results of an \ref ONTIC \ref action with a world description.
      *   
@@ -73,17 +72,17 @@ public:
      * @param[in]  to_check_1: the first \ref fluent to check.
      * @param[in]  to_check_2: the second \ref fluent to check.
      * 
-     * @return true: if each \ref fluent in \p to_check_1 exists in \p to_check_2 and vice-versa.
+     * @return true: if each \ref fluent in \p to_check_1 exists in \p to_check_2 and vice versa.
      * @return false: otherwise.*/
     /*  static bool is_the_same_ff(const fluent_set& to_check_1, const fluent_set& to_check_2);*/
-    /* \brief Function that checks if two \ref fluent_formula are syntacticly the same.
+    /* \brief Function that checks if two \ref fluent_formula are syntactically the same.
      * 
      * This function uses recursively \ref is_the_same_ff(const fluent_set&, const fluent_set&).
      * 
      * @param[in]  to_check_1: the first \ref fluent_formula to check.
      * @param[in]  to_check_2: the second \ref fluent_formula to check.
      * 
-     * @return true: if each \ref fluent_set in \p to_check_1 exists in \p to_check_2 and vice-versa.
+     * @return true: if each \ref fluent_set in \p to_check_1 exists in \p to_check_2 and vice versa.
      * @return false: otherwise.*/
     /* static bool is_the_same_ff(const fluent_formula& to_check_1, const fluent_formula& to_check_2);*/
 
@@ -105,7 +104,7 @@ public:
 
     /** \brief Function that checks if two \ref belief_formula are of the form B(i, *phi*) -- B(i, -*phi*) where *phi* is a \ref fluent_formula.
      * 
-     * This function is useful to identify when an agent \p i knows the true value of *phi*. 
+     * This function is useful to identify when an agent \p knows the true value of *phi*.
      * Is one of the accepted formulae in \ref S5.
      * 
      * @param[in] to_check_1: the first \ref belief_formula to check.
@@ -114,7 +113,7 @@ public:
      * 
      * @return true: if the two \ref belief_formula contain \ref fluent_formula that are the negation of each other.
      * @return false: otherwise.*/
-    static bool check_Bff_notBff(const belief_formula& to_check_1, const belief_formula& to_check_2, std::shared_ptr<FluentFormula> ret);
+    static bool check_Bff_notBff(const belief_formula& to_check_1, const belief_formula& to_check_2, const std::shared_ptr<FluentFormula>& ret);
 
 
     /** \brief Function that check that the \ref ONTIC effect doesn't have uncertainty (OR).
@@ -127,7 +126,7 @@ public:
      * @return the description of the world after \p effect has been applied to \p world_description.*/
     static void apply_effect(const FluentFormula& effect, FluentsSet& world_description);
 
-    static int lenght_to_power_two(int length);
+    static int length_to_power_two(int length);
 
     static bool fluentset_empty_intersection(const FluentsSet & set1, const FluentsSet & set2);
     static bool fluentset_negated_empty_intersection(const FluentsSet & set1, const FluentsSet & set2);

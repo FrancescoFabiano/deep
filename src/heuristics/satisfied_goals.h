@@ -27,7 +27,7 @@ private:
     unsigned short m_goals_number;
 
     /** \brief A local copy of the goal that is possibly modified (Added more subgoals).*/
-    formula_list m_goals;
+    FormulaeList m_goals;
 
     /**Private constructor because is a Singleton class*/
     satisfied_goals();
@@ -36,7 +36,7 @@ private:
      *
      * @param[in] to_set: the cnf of expanded sub goals to set as \ref m_goals.
      */
-    void set_goals(const formula_list & to_set);
+    void set_goals(const FormulaeList & to_set);
     /**Setter of the field \ref m_goals_number
      *
      * @return: the number of expanded sub goals to set.
@@ -52,7 +52,7 @@ public:
      *
      * @param[in] goals: The goal description, expanded by \ref heuristics_manager.
      */
-    void set(const formula_list & goals);
+    void set(const FormulaeList & goals);
 
     /** \brief Function that return the number of unsatisifed goals of \ref eState
      * 
@@ -73,7 +73,7 @@ public:
      *
      * @return: the cnf of expanded sub goals.
      */
-    const formula_list & get_goals() const;
+    const FormulaeList & get_goals() const;
 
     /**Getter of the field \ref m_goals_number
      *

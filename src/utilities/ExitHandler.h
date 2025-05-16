@@ -5,8 +5,6 @@
 #include <iostream>
 #include <cstdlib>
 
-#include "../argparse/ArgumentParser.h"
-
 /**
  * \class ExitHandler
  * \brief Utility class for handling program exits with error codes and messages.
@@ -36,12 +34,21 @@ public:
         DomainFileOpenError = 200,   ///< Failed to open domain input file.
         DomainInstanceError = 201,   ///< Domain singleton instance error.
         DomainBuildError = 202,      ///< Error during domain build process.
+        DomainUndeclaredFluent = 203,   ///< Undeclared fluent error.
+        DomainUndeclaredAgent = 204,    ///< Undeclared agent error.
+        DomainUndeclaredAction = 205,   ///< Undeclared action error.
+        DomainInitialStateRestrictionError = 206, ///< Initial state restriction error.
+        DomainInitialStateTypeError = 207,        ///< Initial state type error.
 
         // Action Related
         ActionTypeConflict = 300,    ///< Conflicting action types detected.
         ActionInvalidExecutor = 301, ///< Invalid executor for action.
         ActionEffectError = 302,      ///< Error adding or processing action effect.
 
+        // Formula/Helper Related
+        FormulaNonDeterminismError = 400, ///< Non-determinism in formula not supported.
+        FormulaBadDeclaration = 401,      ///< Bad formula declaration.
+        FormulaEmptyEffect = 402,         ///< Empty action effect.
 
     };
 

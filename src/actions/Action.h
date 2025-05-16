@@ -3,7 +3,6 @@
 #include <set>
 #include <vector>
 #include <string>
-#include <utility>
 
 #include "Proposition.h"
 #include "utilities/define.h"
@@ -65,7 +64,7 @@ public:
     void set_type(PropositionType type);
 
     /** \brief Gets the executability conditions of this action. */
-    [[nodiscard]] const formula_list& get_executability() const;
+    [[nodiscard]] const FormulaeList& get_executability() const;
 
     /** \brief Gets the effects of this action. */
     [[nodiscard]] const effects_map& get_effects() const;
@@ -104,9 +103,9 @@ private:
     std::string m_name;                ///< The name of this action.
     ActionId m_id;                     ///< The unique id of this action (calculated with grounder).
     Agent m_executor;                  ///< The agent that executes the action.
-    PropositionType m_type = NOTSET;  ///< The proposition type of this action.
+    PropositionType m_type = PropositionType::NOTSET;  ///< The proposition type of this action.
 
-    formula_list m_executability;      ///< Executability conditions.
+    FormulaeList m_executability;      ///< Executability conditions.
     observability_map m_fully_observants;    ///< Fully observant agents and their conditions.
     observability_map m_partially_observants;///< Partially observant agents and their conditions.
     effects_map m_effects;             ///< Effects and their conditions.

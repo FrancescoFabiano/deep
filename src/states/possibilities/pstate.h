@@ -19,7 +19,7 @@
 #include "pstore.h"
 
 #include "../../utilities/Define.h"
-#include "../../domain/initially.h"
+#include "../../domain/InitialStateInformation.h"
 #include "../../actions/Action.h"
 #include "../../../lib/bisimulation/bisimulation.h"
 

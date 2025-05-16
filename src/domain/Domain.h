@@ -1,12 +1,10 @@
 #pragma once
-#include <memory>
 #include <string>
-#include "grounder.h"
-#include "initially.h"
+#include "Grounder.h"
+#include "InitialStateInformation.h"
 #include "../utilities/define.h"
 #include "../utilities/reader.h"
 #include "../actions/Action.h"
-#include <boost/shared_ptr.hpp>
 #include <boost/make_shared.hpp>
 
 /**
@@ -41,7 +39,7 @@ public:
     void build();
 
     /** \brief Getter of the field \ref m_grounder. */
-    [[nodiscard]] const grounder& get_grounder() const noexcept;
+    [[nodiscard]] const Grounder& get_grounder() const noexcept;
     /** \brief Getter of the field \ref m_fluents. */
     [[nodiscard]] const FluentsSet& get_fluents() const noexcept;
     /** \brief Function that returns the number of \ref fluent in the domain. */
@@ -56,10 +54,10 @@ public:
     [[nodiscard]] unsigned int get_agent_number() const noexcept;
     /** \brief Getter of the field \ref m_name. */
     [[nodiscard]] const std::string& get_name() const noexcept;
-    /** \brief Getter of the field \ref m_intial_description. */
-    [[nodiscard]] const initially& get_initial_description() const noexcept;
+    /** \brief Getter of the field \ref m_initial_description. */
+    [[nodiscard]] const InitialStateInformation& get_initial_description() const noexcept;
     /** \brief Getter of the field \ref m_goal_description. */
-    [[nodiscard]] const formula_list& get_goal_description() const noexcept;
+    [[nodiscard]] const FormulaeList& get_goal_description() const noexcept;
 
     /** \brief Copy constructor removed since is Singleton class. */
     Domain(const Domain&) = delete;
@@ -69,18 +67,18 @@ public:
 private:
     std::string m_name; ///< The name of the file that contains the description of *this*.
     boost::shared_ptr<reader> m_reader; ///< The pointer to a \ref reader object.
-    grounder m_grounder; ///< A \ref grounder object used to store the name of the information.
+    Grounder m_grounder; ///< A \ref grounder object used to store the name of the information.
     FluentsSet m_fluents; ///< Set containing all the (grounded) \ref fluent of the domain.
     ActionsSet m_actions; ///< Set containing all the \ref action (with effects, conditions, obsv etc.) of the domain.
     AgentsSet m_agents; ///< Set containing all the (grounded) \ref agent of the domain.
-    initially m_intial_description; ///< The description of the initial state.
-    formula_list m_goal_description; ///< The formula that describes the goal.
+    InitialStateInformation m_initial_description; ///< The description of the initial state.
+    FormulaeList m_goal_description; ///< The formula that describes the goal.
 
     void build_agents(); ///< Function that from the file stores the \ref agent information.
     void build_fluents(); ///< Function that from the file stores the \ref fluent information.
     void build_actions(); ///< Function that from the file stores the \ref action information.
     void build_propositions(); ///< Function that adds to the right \ref action each \ref proposition.
-    void build_initially(); ///< Function that builds \ref m_intial_description.
+    void build_initially(); ///< Function that builds \ref m_initial_description.
     void build_goal(); ///< Function that builds \ref m_goal_description.
 
     Domain(); ///< Private constructor since it is a Singleton class.

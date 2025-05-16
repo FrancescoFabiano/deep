@@ -4,7 +4,7 @@ satisfied_goals::satisfied_goals()
 {
 }
 
-void satisfied_goals::set(const formula_list & goals)
+void satisfied_goals::set(const FormulaeList & goals)
 {
 	set_goals(goals);
 	set_goals_number(goals.size());
@@ -16,12 +16,12 @@ satisfied_goals& satisfied_goals::get_instance()
 	return instance;
 }
 
-const formula_list & satisfied_goals::get_goals() const
+const FormulaeList & satisfied_goals::get_goals() const
 {
 	return m_goals;
 }
 
-void satisfied_goals::set_goals(const formula_list & to_set)
+void satisfied_goals::set_goals(const FormulaeList & to_set)
 {
 	m_goals = to_set;
 }

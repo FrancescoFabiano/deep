@@ -27,7 +27,7 @@
 #include "../utilities/Define.h"
 #include "../formulae/belief_formula.h"
 #include "../actions/Action.h"
-#include "../domain/initially.h"
+#include "../domain/InitialStateInformation.h"
 
 /**
  * @tparam T:

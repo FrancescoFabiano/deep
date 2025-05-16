@@ -18,7 +18,7 @@
 
 #include "Define.h"
 
-#include "../domain/grounder.h"
+#include "../domain/Grounder.h"
 #include "../formulae/belief_formula.h"
 #include "../states/possibilities/pworld.h"
 
@@ -27,7 +27,7 @@ class printer
 private:
 
     /** \brief A \ref grounder to deground the \ref fluent to print.*/
-    grounder m_grounder;
+    Grounder m_grounder;
     /** \brief A check if \ref m_grounder has been setted.*/
     bool setted_grounder;
 
@@ -44,7 +44,7 @@ public:
      * @param[in] gr: the \ref grounder to set as \ref m_grounder.
      *
      * \todo   Is the const reference the best type of parameter passing?*/
-    void set_grounder(const grounder & gr);
+    void set_grounder(const Grounder & gr);
 
     /** \brief Function used to print all the std::string inside \p to_print.
      *
@@ -85,7 +85,7 @@ public:
      * A \ref formula_list represents a formula in CNF format so the printing is executed accordingly.
      *
      * @param[in] to_print: the \ref formula_list to be printed.*/
-    void print_list(const formula_list& to_print) const;
+    void print_list(const FormulaeList& to_print) const;
 
     /** \brief Function used to print all the \ref kworld_ptr inside \p to_print.
      *

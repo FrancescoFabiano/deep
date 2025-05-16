@@ -73,7 +73,7 @@ void Action::set_type(PropositionType type)
     }
 }
 
-const formula_list& Action::get_executability() const
+const FormulaeList& Action::get_executability() const
 {
     return m_executability;
 }
@@ -173,7 +173,7 @@ Action& Action::operator=(const Action& act)
 
 void Action::print() const
 {
-    grounder grounder = Domain::get_instance().get_grounder();
+    Grounder grounder = Domain::get_instance().get_grounder();
     std::cout << "\nAction " << get_name() << ":" << std::endl;
     std::cout << "    ID: " << get_id() << ":" << std::endl;
     std::cout << "    Type: " << Proposition::type_to_string(get_type()) << std::endl;
