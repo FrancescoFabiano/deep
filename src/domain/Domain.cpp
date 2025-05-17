@@ -19,7 +19,7 @@
 Domain* Domain::instance = nullptr;
 
 
-Domain::Domain()
+Domain::Domain(std::ostream& os)
 {
     auto& arg_parser = ArgumentParser::get_instance();
     std::string input_file = arg_parser.get_input_file();
@@ -29,16 +29,18 @@ Domain::Domain()
             ExitHandler::ExitCode::DomainFileOpenError,
             "File " + input_file + " cannot be opened." + std::string(ExitHandler::domain_file_error)
         );
+        // Just to please the compiler
+        exit(static_cast<int>(ExitHandler::ExitCode::ExitForCompiler));
     }
 
     instance->m_name = input_file.substr(input_file.find_last_of("\\/") + 1);
     instance->m_name = instance->m_name.substr(0, instance->m_name.find_last_of('.'));
 
     /////@TODO This will be replaced by epddl parser
-    auto domain_reader = boost::make_shared<reader>(reader());
+    auto domain_reader = boost::make_shared<Reader>(Reader());
     domain_reader->read();
     instance->m_reader = domain_reader;
-    instance->build();
+    instance->build(os);
 }
 
 Domain& Domain::get_instance() {
@@ -47,14 +49,16 @@ Domain& Domain::get_instance() {
             ExitHandler::ExitCode::DomainInstanceError,
             "Domain instance not created. Call create_instance() first."
         );
+        // Just to please the compiler
+        exit(static_cast<int>(ExitHandler::ExitCode::ExitForCompiler));
     }
     return *instance;
 }
 
 
-void Domain::create_instance() {
+void Domain::create_instance(std::ostream& os) {
     if (!instance) {
-        instance = new Domain();
+        instance = new Domain(os);
     }
 }
 const Grounder& Domain::get_grounder() const noexcept {
@@ -98,17 +102,17 @@ const FormulaeList& Domain::get_goal_description() const noexcept {
     return m_goal_description;
 }
 
-void Domain::build() {
-    build_agents();
-    build_fluents();
-    build_actions();
-    build_initially();
-    build_goal();
+void Domain::build(std::ostream& os) {
+    build_agents(os);
+    build_fluents(os);
+    build_actions(os);
+    build_initially(os);
+    build_goal(os);
 }
 
-void Domain::build_agents() {
+void Domain::build_agents(std::ostream& os) {
     AgentsMap domain_agent_map;
-    std::cout << "\nBuilding agent list..." << std::endl;
+    os << "\nBuilding agent list..." << std::endl;
     int i = 0;
     int agents_length = FormulaHelper::length_to_power_two(static_cast<int>(m_reader->m_agents.size()));
 
@@ -120,15 +124,15 @@ void Domain::build_agents() {
         ++i;
 
         if (ArgumentParser::get_instance().get_debug()) {
-            std::cout << "Agent " << agent_name << " is " << agent << std::endl;
+            os << "Agent " << agent_name << " is " << agent << std::endl;
         };
     }
     m_grounder.set_agent_map(domain_agent_map);
 }
 
-void Domain::build_fluents() {
+void Domain::build_fluents(std::ostream& os) {
     FluentMap domain_fluent_map;
-    std::cout << "\nBuilding fluent literals..." << std::endl;
+    os << "\nBuilding fluent literals..." << std::endl;
     int i = 0;
     int bit_size = FormulaHelper::length_to_power_two(static_cast<int>(m_reader->m_fluents.size()));
 
@@ -146,17 +150,17 @@ void Domain::build_fluents() {
         ++i;
 
         if (ArgumentParser::get_instance().get_debug()) {
-            std::cout << "Literal " << fluent_name << " is " << " " << fluentReal << std::endl;
-            std::cout << "Literal not " << fluent_name << " is " << (i - 1) << " " << fluent_negate_real << std::endl;
+            os << "Literal " << fluent_name << " is " << " " << fluentReal << std::endl;
+            os << "Literal not " << fluent_name << " is " << (i - 1) << " " << fluent_negate_real << std::endl;
         }
 
     }
     m_grounder.set_fluent_map(domain_fluent_map);
 }
 
-void Domain::build_actions() {
+void Domain::build_actions(std::ostream& os) {
     ActionNamesMap domain_action_name_map;
-    std::cout << "\nBuilding action list..." << std::endl;
+    os << "\nBuilding action list..." << std::endl;
     int i = 0;
     int number_of_actions = static_cast<int>(m_reader->m_actions.size());
     int bit_size = FormulaHelper::length_to_power_two(number_of_actions);
@@ -170,7 +174,7 @@ void Domain::build_actions() {
         ++i;
 
         if (ArgumentParser::get_instance().get_debug()) {
-            std::cout << "Action " << tmp_action.get_name() << " is " << tmp_action.get_id() << std::endl;
+            os << "Action " << tmp_action.get_name() << " is " << tmp_action.get_id() << std::endl;
         }
     }
 
@@ -181,15 +185,15 @@ void Domain::build_actions() {
 
 
     if (ArgumentParser::get_instance().get_debug()) {
-        std::cout << "\nPrinting complete action list..." << std::endl;
+        os << "\nPrinting complete action list..." << std::endl;
         for (const auto& action : m_actions) {
             action.print();
         }
     }
 }
 
-void Domain::build_propositions() {
-    std::cout << "\nAdding propositions to actions..." << std::endl;
+void Domain::build_propositions(std::ostream& os) {
+    os << "\nAdding propositions to actions..." << std::endl;
 
     /////@TODO This will be replaced by epddl parser. Reader needs to be changed and make sure to have getter and setter
     for (auto& prop : m_reader->m_propositions) {
@@ -208,8 +212,8 @@ void Domain::build_propositions() {
     }
 }
 
-void Domain::build_initially() {
-    std::cout << "\nAdding to pointed world and initial conditions..." << std::endl;
+void Domain::build_initially(std::ostream& os) {
+    os << "\nAdding to pointed world and initial conditions..." << std::endl;
 
     /////@TODO This will be replaced by epddl parser. Reader needs to be changed and make sure to have getter and setter
     for (auto& formula_parsed : m_reader->m_bf_initially) {
@@ -220,9 +224,9 @@ void Domain::build_initially() {
         case BeliefFormulaType::FLUENT_FORMULA: {
                 m_initial_description.add_pointed_condition(formula.get_fluent_formula());
                 if (ArgumentParser::get_instance().get_debug()) {
-                    std::cout << "    Pointed world: ";
+                    os << "    Pointed world: ";
                     HelperPrint::get_instance().print_list(formula.get_fluent_formula());
-                    std::cout << std::endl;
+                    os << std::endl;
                 }
                 break;
         }
@@ -233,9 +237,9 @@ void Domain::build_initially() {
         case BeliefFormulaType::E_FORMULA: {
                 m_initial_description.add_initial_condition(formula);
                 if (ArgumentParser::get_instance().get_debug()) {
-                    std::cout << "Added to initial conditions: ";
+                    os << "Added to initial conditions: ";
                     formula.print();
-                    std::cout << std::endl;
+                    os << std::endl;
                 }
                 break;
         }
@@ -250,17 +254,17 @@ void Domain::build_initially() {
     }
 }
 
-void Domain::build_goal() {
-    std::cout << "\nAdding to Goal..." << std::endl;
+void Domain::build_goal(std::ostream& os) {
+    os << "\nAdding to Goal..." << std::endl;
 
     /////@TODO This will be replaced by epddl parser. Reader needs to be changed and make sure to have getter and setter
     for (auto& formula_parsed : m_reader->m_bf_goal) {
         const auto formula = BeliefFormula(formula_parsed);
         m_goal_description.push_back(formula);
         if (ArgumentParser::get_instance().get_debug()) {
-            std::cout << "    ";
+            os << "    ";
             formula.print();
-            std::cout << std::endl;
+            os << std::endl;
         }
     }
 }

@@ -85,10 +85,13 @@ public:
      * to add the appropriate behavior to this action.
      * \param[in] to_add The proposition to add.
      */
-    void add_proposition(Proposition& to_add);
+    void add_proposition(const Proposition& to_add);
 
-    /** \brief Prints this action. */
-    void print() const;
+    /** \brief Prints this action.
+     *
+     * \param os The output stream to print to (default: std::cout).
+     */
+    void print(std::ostream& os = std::cout) const;
 
     /** \brief Operator < implemented to use Action in std::set. */
     bool operator<(const Action&) const;

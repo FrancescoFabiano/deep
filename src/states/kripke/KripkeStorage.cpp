@@ -1,45 +1,33 @@
 /*
- * \brief Implementation of \ref KripkeStorage.h
+ * \file KripkeStorage.cpp
+ * \brief Implementation of KripkeStorage.
  * \copyright GNU Public License.
  *
  * \author Francesco Fabiano.
- * \date September 14, 2019
+ * \date May 17, 2025
  */
 
-
 #include "KripkeStorage.h"
+#include "utilities/ExitHandler.h"
+#include <memory>
 
-KripkeStorage::KripkeStorage()
+KripkeStorage& KripkeStorage::get_instance() noexcept
 {
+    static KripkeStorage instance;
+    return instance;
 }
 
-KripkeStorage& KripkeStorage::get_instance()
+KripkeWorldPointer KripkeStorage::add_world(const KripkeWorld& to_add)
 {
-	static KripkeStorage instance;
-	return instance;
-}
-
-const KripkeWorldPointer KripkeStorage::add_world(const eStateWorld & to_add)
-{
-	//It returns the pointer to the newly inserted element if it doesn't exit (The old one otherwise)
-	//The pair is <iterator,bool>
-	//@TODO: Make sure is a shared_ptr
-	//return *((m_created_worlds.insert(world))->first);
-
-
-
-	// \bug No need to create the pworld pp or the iterator.
-	/*  pworld_set::iterator it_pwset;
-	  it_pwset = std::get<0>(m_created_worlds.insert(to_add));
-	  //pworld pp = *it_kpset;
-	  return std::shared_ptr<const pworld>(&pp);*/
-
-	//return std::shared_ptr<const pworld>(&(*(std::get<0>(m_created_worlds.insert(to_add)))));
-	//return std::make_shared<const pworld>(*(std::get<0>(m_created_worlds.insert(to_add))));
-	//*tmp_ptr = tmp;
-	//return tmp_ptr;
-
-    auto tmp_ptr = std::make_shared<const eStateWorld>(*(std::get<0>(m_created_worlds.insert(to_add))));
-    //*tmp_ptr = tmp;
-    return tmp_ptr;
+    // Try to insert the world. If it already exists, get the existing one.
+    auto [it, inserted] = m_created_worlds.insert(to_add);
+    if (it == m_created_worlds.end()) {
+        ExitHandler::exit_with_message(
+            ExitHandler::ExitCode::KripkeStorageInsertError,
+            "Error: Failed to insert or find KripkeWorld in KripkeStorage.\n"
+            "This should never happen. Please check the integrity of KripkeWorld comparison and hashing."
+        );
+    }
+    // Return a shared pointer to the (possibly existing) KripkeWorld.
+    return std::make_shared<const KripkeWorld>(*it);
 }

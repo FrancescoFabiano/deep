@@ -129,6 +129,18 @@ public:
     [[nodiscard]] bool get_check_visited() const noexcept;
 
     /**
+     * \brief Checks if logging to a file is enabled.
+     * \return true if logging is enabled, false otherwise.
+     */
+    [[nodiscard]] bool get_log_enabled() const noexcept;
+
+    /**
+     * \brief Returns the log file path to use if logging is enabled.
+     * \return The log file path (empty if logging is not enabled).
+     */
+    [[nodiscard]] const std::string& get_log_file_path() const noexcept;
+
+    /**
      * \brief Prints the usage of the application (command-line arguments).
      */
     void print_usage() const;
@@ -171,25 +183,6 @@ private:
     std::vector<std::string> m_exec_actions;  ///< Actions to execute instead of planning.
     bool m_output_results_file = false;  ///< Flag to enable results file logging.
     std::string m_plan_file = "plan.txt";  ///< Plan file path.
+    bool m_log_enabled = false; ///< True if --log is enabled.
+    std::string m_log_file_path; ///< The log file path if logging is enabled.
 };
-
-//@TODO Add these
-// Getter for file_counter
-//int domain::get_file_counter() const {
-//    return m_file_counter;
-//}
-//
-//// Increments file_counter and returns the new value
-//int domain::increment_file_counter() {
-//    return ++m_file_counter;
-//}
-//
-//// Getter for gnn_both
-//bool domain::is_gnn_both_enabled() const {
-//    return m_gnn_both;
-//}
-//
-//// Getter for gnn_mapped
-//bool domain::is_gnn_mapped_enabled() const {
-//    return m_gnn_mapped;
-//}

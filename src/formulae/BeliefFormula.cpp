@@ -206,10 +206,10 @@ void BeliefFormula::set_bf2(const BeliefFormulaParsed & to_set)
     m_bf2 = std::make_shared<BeliefFormula>(to_set);
 }
 
-void BeliefFormula::print() const
+void BeliefFormula::print(std::ostream& os) const
 {
     HelperPrint::get_instance().print_belief_formula(*this);
-    std::cout << std::endl;
+    os << std::endl;
 }
 
 bool BeliefFormula::operator==(const BeliefFormula & to_compare) const

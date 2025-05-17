@@ -1726,7 +1726,7 @@ const automa KripkeState::pstate_to_automaton(std::vector<KripkeWorldPointer> & 
 	// is always chosen as the first of its block. Therefore, we do not need to update it when converting back to a kstate
 	index_map[get_pointed()] = 0;
 	pworld_vec.push_back(get_pointed());
-	compact_indices[get_pointed().get_numerical_id()] = 0;
+	compact_indices[get_pointed().get_internal_world_id()] = 0;
 
 	//For the loop that identifies the id
 	//BIS_ADAPTATION For the loop that identifies the id (+1)
@@ -1748,9 +1748,9 @@ const automa KripkeState::pstate_to_automaton(std::vector<KripkeWorldPointer> & 
 			index_map[*it_pwps] = i;
 			pworld_vec.push_back(*it_pwps);
 
-			// if (compact_indices.find(it_pwps->get_numerical_id()) == compact_indices.end()) {
-			if (compact_indices.insert({it_pwps->get_numerical_id(), c}).second) {
-				// compact_indices[it_pwps->get_numerical_id()] = c;
+			// if (compact_indices.find(it_pwps->get_internal_world_id()) == compact_indices.end()) {
+			if (compact_indices.insert({it_pwps->get_internal_world_id(), c}).second) {
+				// compact_indices[it_pwps->get_internal_world_id()] = c;
 				c++;
 				//std::cerr << "\nDEBUG: Added:" << it_pwps->get_id() << "\n";
 			}
@@ -1758,8 +1758,8 @@ const automa KripkeState::pstate_to_automaton(std::vector<KripkeWorldPointer> & 
 			i++;
 		}
 		//BIS_ADAPTATION (Added self-loop)
-		label_map[*it_pwps][*it_pwps].insert(compact_indices[it_pwps->get_numerical_id()] + ag_set_size);
-		//std::cerr << "\nDEBUG: Added to " << it_pwps->get_numerical_id() << " the label " << compact_indices[it_pwps->get_numerical_id()] + ag_set_size << std::endl;
+		label_map[*it_pwps][*it_pwps].insert(compact_indices[it_pwps->get_internal_world_id()] + ag_set_size);
+		//std::cerr << "\nDEBUG: Added to " << it_pwps->get_internal_world_id() << " the label " << compact_indices[it_pwps->get_internal_world_id()] + ag_set_size << std::endl;
 	}
 
 

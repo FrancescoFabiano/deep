@@ -4,7 +4,7 @@
  * \copyright GNU Public License.
  *
  * \author Francesco Fabiano.
- * \date Aprile 1, 2019
+ * \date May 12, 2025
  */
 
 
@@ -52,7 +52,8 @@ int main(int argc, char** argv)
 
 
 	ArgumentParser::create_instance(argc, argv);
-	Domain::create_instance();
+	auto output = ArgumentParser::get_instance().get_log_enabled() ? ArgumentParser::get_instance().get_log_file_path() : std::cout;
+	Domain::create_instance(output);
 
 	return 0;
 

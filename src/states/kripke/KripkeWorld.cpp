@@ -1,356 +1,253 @@
 /*
- * \brief Implementation of \ref pworld.h and \ref KripkeWorldPointer.h.
- *
+ * \file KripkeWorld.cpp
+ * \brief Implementation of KripkeWorld and KripkeWorldPointer.
  * \copyright GNU Public License.
- *
  * \author Francesco Fabiano.
  * \date September 14, 2019
  */
 #include <boost/dynamic_bitset.hpp>
 #include "KripkeWorld.h"
 
-#include "pstore.h"
+#include <iostream>
 
-#include <stdexcept>
-#include "../../utilities/helper.h"
-KripkeWorld::KripkeWorld()
-{
+#include "FormulaHelper.h"
+#include "HelperPrint.h"
+#include "utilities/ExitHandler.h"
+
+KripkeWorld::KripkeWorld(const FluentsSet& description) {
+    set_fluent_set(description);
+    set_id();
 }
 
-KripkeWorld::KripkeWorld(const fluent_set & description)
-{
-	set_fluent_set(description);
-	set_id();
-}
-//generate an unique id given the state information -> the literals
-
-KripkeWorld::KripkeWorld(const KripkeWorld & world)
-{
-	set_fluent_set(world.get_fluent_set());
-	set_id();
+KripkeWorld::KripkeWorld(const KripkeWorld& world) {
+    set_fluent_set(world.get_fluent_set());
+    set_id();
 }
 
-boost::dynamic_bitset<> concatStringDyn( const boost::dynamic_bitset<>& bs1,const boost::dynamic_bitset<>& bs2)
-{
-    std::string s1;
-    std::string s2;
-
-    to_string(bs1,s1);
-    to_string(bs2,s2);
-    boost::dynamic_bitset<> res(s1+s2);
-    return res;
+KripkeWorldId KripkeWorld::hash_fluents_into_id() const {
+    return FormulaHelper::hash_fluents_into_id(m_fluent_set);
 }
 
-boost::dynamic_bitset<> concatOperatorsDyn( const boost::dynamic_bitset<>& bs1,const boost::dynamic_bitset<>& bs2)
-{
-    boost::dynamic_bitset<> bs1Copy(bs1);
-    boost::dynamic_bitset<> bs2Copy(bs2);
-    size_t totalSize=bs1.size()+bs2.size();
-    bs1Copy.resize(totalSize);
-    bs2Copy.resize(totalSize);
-    bs1Copy<<=bs2.size();
-    bs1Copy|=bs2Copy;
-    return bs1Copy;
+void KripkeWorld::set_fluent_set(const FluentsSet& description) {
+    if (!FormulaHelper::consistent(description)) {
+        std::cerr << "  Fluent set: ";
+        HelperPrint::get_instance().print_list(description,std::cerr);
+        std::cerr << std::endl;
+        ExitHandler::exit_with_message(
+            ExitHandler::ExitCode::DomainInitialStateRestrictionError,
+            "Error: Attempted to set an inconsistent set of fluents in KripkeWorld (printed above).\n"
+        );
+    }
+    m_fluent_set = description;
 }
 
-boost::dynamic_bitset<> concatLoopDyn( const boost::dynamic_bitset<>& bs1,const boost::dynamic_bitset<>& bs2)
-{
-    boost::dynamic_bitset<> res(bs1);
-    res.resize(bs1.size()+bs2.size());
-    size_t bs1Size=bs1.size();
-
-    for(size_t i=0;i<bs2.size();i++)
-        res[i+bs1Size]=bs2[i];
-    return res;
+void KripkeWorld::set_id() {
+    m_id = hash_fluents_into_id();
 }
 
-KripkeWorldId KripkeWorld::hash_fluents_into_id(const fluent_set& fl)
-{
-    fluent_set fl2 = fl;
-    std::size_t hash;
-    hash = boost::hash_range(fl2.begin(),fl2.end());
-    return hash;
-
+const FluentsSet& KripkeWorld::get_fluent_set() const noexcept {
+    return m_fluent_set;
 }
 
-KripkeWorldId KripkeWorld::hash_fluents_into_id()
-{
-	return hash_fluents_into_id(m_fluent_set);
+KripkeWorldId KripkeWorld::get_id() const noexcept {
+    return m_id;
 }
 
-void KripkeWorld::set_fluent_set(const fluent_set & description)
-{
-	/*
-	 * \throw std::invalid_argument whenever \p description is not consistent.
-	 *
-	if (consistent(description))*/
-	m_fluent_set = description;
-	/*else
-		throw std::invalid_argument("Non consistent set of fluent");*/
+bool KripkeWorld::entails(const Fluent &to_check) const {
+    return m_fluent_set.contains(to_check);
 }
 
-bool KripkeWorld::consistent(const fluent_set & to_check)
-{
-	fluent_set::const_iterator it_flset;
-	fluent_set::const_iterator it_flset_tmp;
-
-	for (it_flset = to_check.begin(); it_flset != to_check.end(); it_flset++) {
-		/* If the pointed fluent is in modulo 2 it means is the positive and if
-		 * its successor (the negative version) is in the set then is not consistent.*/
-		if (it_flset->test(it_flset->size()-1)) {
-			//The std::set has is elements ordered so we can just check its successor.
-			it_flset_tmp = it_flset;
-			it_flset_tmp++;
-		}
-		if (it_flset_tmp != to_check.end()) {
-			if (it_flset_tmp == ++((it_flset))) {
-				std::cout << "\nCheck: " << *it_flset_tmp << " and " << (*(++it_flset)) << std::endl;
-				return false;
-			}
-		}
-		/**\todo check that all the possible \ref fluent are there.
-		 * \bug change and use find.
-		 */
-	}
-	return true;
+bool KripkeWorld::entails(const FluentsSet& to_check) const {
+    //Maybe just set to True (It was like this in EFP)
+    if (to_check.empty()) {
+        ExitHandler::exit_with_message(
+            ExitHandler::ExitCode::KripkeWorldEntailmentError,
+            "Error: Attempted to check entailment of an empty FluentFormula in KripkeWorld::entails().\n"
+        );
+    }
+    for (const auto& fl : to_check) {
+        if (!entails(fl)) return false;
+    }
+    return true;
 }
 
-void KripkeWorld::set_id()
-{
-	m_id = hash_fluents_into_id();
+bool KripkeWorld::entails(const FluentFormula& to_check) const {
+    //Maybe just set to True (It was like this in EFP)
+    if (to_check.empty()) {
+        ExitHandler::exit_with_message(
+            ExitHandler::ExitCode::KripkeWorldEntailmentError,
+            "Error: Attempted to check entailment of an empty FluentFormula in KripkeWorld::entails().\n"
+        );
+    }
+    for (const auto& fl : to_check) {
+        if (entails(fl)) return true;
+    }
+    return false;
 }
 
-const fluent_set & KripkeWorld::get_fluent_set() const
-{
-	return m_fluent_set;
+bool KripkeWorld::operator<(const KripkeWorld& to_compare) const noexcept {
+    return m_id < to_compare.get_id();
 }
 
-KripkeWorldId KripkeWorld::get_id() const
-{
-	return m_id;
+bool KripkeWorld::operator>(const KripkeWorld& to_compare) const noexcept {
+    return m_id > to_compare.get_id();
 }
 
-bool KripkeWorld::entails(Fluent to_check) const
-{
-	return(m_fluent_set.find(to_check) != m_fluent_set.end());
+bool KripkeWorld::operator==(const KripkeWorld& to_compare) const noexcept {
+    /**std way*/
+    if (!((*this) < to_compare) && !(to_compare < (*this))) {
+        return true;
+    }
+    return false;
 }
 
-/**
- * \todo Check for the size = 0?
- */
-bool KripkeWorld::entails(const fluent_set & to_check) const
-{
-	//fluent_set expresses conjunctive set of \ref fluent
-	if (to_check.size() == 0) {
-		return true;
-	}
-	fluent_set::const_iterator it_fl;
-	for (it_fl = to_check.begin(); it_fl != to_check.end(); it_fl++) {
-		if (!entails(*it_fl)) {
-			return false;
-		}
-	}
-	return true;
+KripkeWorld& KripkeWorld::operator=(const KripkeWorld& to_assign) {
+    if (this != &to_assign) {
+        set_fluent_set(to_assign.get_fluent_set());
+        set_id();
+    }
+    return *this;
 }
 
-/**
- * \todo Check for the size = 0?
- */
-bool KripkeWorld::entails(const fluent_formula & to_check) const
-{
-	if (to_check.size() == 0) {
-		return true;
-	}
-	fluent_formula::const_iterator it_fl;
-	for (it_fl = to_check.begin(); it_fl != to_check.end(); it_fl++) {
-		if (entails(*it_fl)) {
-			return true;
-		}
-	}
-	return false;
+void KripkeWorld::print(std::ostream& os) const {
+    os << "\nFluents: " << get_id();
+    HelperPrint::get_instance().print_list(m_fluent_set,os);
 }
 
-bool KripkeWorld::operator<(const KripkeWorld& to_compare) const
-{
+// *************************************************************************************************************** //
 
-	if (m_id < to_compare.get_id())
-		return true;
-
-	return false;
+KripkeWorldPointer::KripkeWorldPointer(const std::shared_ptr<const KripkeWorld>& ptr, unsigned short repetition) {
+    set_ptr(ptr);
+    set_repetition(repetition);
 }
 
-bool KripkeWorld::operator>(const KripkeWorld& to_compare) const
-{
-	if (m_id > (to_compare.get_id()))
-		return true;
-	return false;
+KripkeWorldPointer::KripkeWorldPointer(std::shared_ptr<const KripkeWorld>&& ptr, unsigned short repetition) {
+    set_ptr(std::move(ptr));
+    set_repetition(repetition);
 }
 
-bool KripkeWorld::operator==(const KripkeWorld& to_compare) const
-{
-	/**std way*/
-	if (!((*this) < to_compare) && !(to_compare < (*this))) {
-		return true;
-	}
-	return false;
+KripkeWorldPointer::KripkeWorldPointer(const KripkeWorld& world, unsigned short repetition) {
+    m_ptr = std::make_shared<KripkeWorld>(world);
+    set_repetition(repetition);
 }
 
-bool KripkeWorld::operator=(const KripkeWorld & to_assign)
-{
-	set_fluent_set(to_assign.get_fluent_set());
-	set_id();
-	return true;
+KripkeWorldPointer& KripkeWorldPointer::operator=(const KripkeWorldPointer& to_copy) {
+    if (this != &to_copy) {
+        set_ptr(to_copy.get_ptr());
+        set_repetition(to_copy.get_repetition());
+    }
+    return *this;
 }
 
-void KripkeWorld::print() const
-{
-	std::cout << "\nFluents: " << get_id();
-	printer::get_instance().print_list(m_fluent_set);
+std::shared_ptr<const KripkeWorld> KripkeWorldPointer::get_ptr() const noexcept {
+    return m_ptr;
 }
 
-/*-***************************************************************************************************************-*/
-
-KripkeWorldPointer::KripkeWorldPointer()
-{
+void KripkeWorldPointer::set_ptr(const std::shared_ptr<const KripkeWorld>& ptr) {
+    m_ptr = ptr;
 }
 
-KripkeWorldPointer::KripkeWorldPointer(const std::shared_ptr<const KripkeWorld> & ptr, unsigned short repetition)
-{
-	set_ptr(ptr);
-	set_repetition(repetition);
+void KripkeWorldPointer::set_ptr(std::shared_ptr<const KripkeWorld>&& ptr) {
+    m_ptr = std::move(ptr);
 }
 
-KripkeWorldPointer::KripkeWorldPointer(std::shared_ptr<const KripkeWorld>&& ptr, unsigned short repetition)
-{
-	set_ptr(ptr);
-	set_repetition(repetition);
-
+void KripkeWorldPointer::set_repetition(const unsigned short to_set) noexcept {
+    m_repetition = to_set;
 }
 
-KripkeWorldPointer::KripkeWorldPointer(const KripkeWorld & world, unsigned short repetition)
-{
-	m_ptr = std::make_shared<KripkeWorld>(world);
-	set_repetition(repetition);
-
+void KripkeWorldPointer::increase_repetition(const unsigned short to_increase) noexcept {
+    m_repetition += to_increase;
 }
 
-void KripkeWorldPointer::set_ptr(const std::shared_ptr<const KripkeWorld> & ptr)
-{
-	m_ptr = ptr;
+unsigned short KripkeWorldPointer::get_repetition() const noexcept {
+    return m_repetition;
 }
 
-void KripkeWorldPointer::set_ptr(std::shared_ptr<const KripkeWorld>&& ptr)
-{
-	m_ptr = ptr;
+const FluentsSet& KripkeWorldPointer::get_fluent_set() const {
+    if (m_ptr) {
+        return m_ptr->get_fluent_set();
+    }
+    ExitHandler::exit_with_message(
+        ExitHandler::ExitCode::KripkeWorldPointerNullError,
+        "Error: Null KripkeWorldPointer in get_fluent_set().\n  Tip: Ensure all KripkeWorldPointer objects are properly initialized before use."
+    );
+    static FluentsSet dummy;
+    return dummy;
 }
 
-std::shared_ptr<const KripkeWorld> KripkeWorldPointer::get_ptr() const
-{
-	return m_ptr;
+KripkeWorldId KripkeWorldPointer::get_fluent_based_id() const noexcept {
+    if (m_ptr) {
+        return m_ptr->get_id();
+    }
+    ExitHandler::exit_with_message(
+        ExitHandler::ExitCode::KripkeWorldPointerNullError,
+        "Error: Null KripkeWorldPointer in get_fluent_based_id().\n  Tip: Ensure all KripkeWorldPointer objects are properly initialized before use."
+    );
+    return 0;
 }
 
-const fluent_set & KripkeWorldPointer::get_fluent_set() const
-{
-	if (m_ptr != nullptr) {
-		return get_ptr()->get_fluent_set();
-	}
-	std::cerr << "Error in creating a KripkeWorldPointer\n";
-	exit(1);
+KripkeWorldId KripkeWorldPointer::get_id() const noexcept {
+    if (m_ptr) {
+        const KripkeWorldId id = m_ptr->get_id();
+        return boost::hash_value((1000 * id) + get_repetition());
+    }
+    ExitHandler::exit_with_message(
+        ExitHandler::ExitCode::KripkeWorldPointerNullError,
+        "Error: Null KripkeWorldPointer in get_id().\n  Tip: Ensure all KripkeWorldPointer objects are properly initialized before use."
+    );
+    return 0;
 }
 
-KripkeWorldId KripkeWorldPointer::get_fluent_based_id() const
-{
-	if (m_ptr != nullptr) {
-		return(get_ptr()->get_id());
-	}
-	std::cerr << "\nError in creating a KripkeWorldPointer\n";
-	exit(1);
+KripkeWorldId KripkeWorldPointer::get_internal_world_id() const noexcept {
+    if (m_ptr) {
+        /*OLD CODE
+        const KripkeWorldId id = m_ptr->get_id();
+        boost::hash_value(id);*/
+        return m_ptr->get_id();
+    }
+    ExitHandler::exit_with_message(
+        ExitHandler::ExitCode::KripkeWorldPointerNullError,
+        "Error: Null KripkeWorldPointer in get_internal_world_id().\n  Tip: Ensure all KripkeWorldPointer objects are properly initialized before use."
+    );
+    return 0;
 }
 
-KripkeWorldId KripkeWorldPointer::get_id() const
-{
-	if (m_ptr != nullptr) {
-	    KripkeWorldId id = (get_ptr()->get_id());
-
-	    //moltiplico * 10 id + get_repetion() TODO test con shift 
-        return boost::hash_value((1000*id)+get_repetition());
-	}
-	std::cerr << "\nError in creating a KripkeWorldPointer\n";
-	exit(1);
+bool KripkeWorldPointer::entails(const Fluent &to_check) const {
+    if (!m_ptr) {
+        ExitHandler::exit_with_message(
+            ExitHandler::ExitCode::KripkeWorldPointerNullError,
+            "Error: Null KripkeWorldPointer in entails(const Fluent&).\n  Tip: Ensure all KripkeWorldPointer objects are properly initialized before use."
+        );
+    }
+    return m_ptr->entails(to_check);
+}
+bool KripkeWorldPointer::entails(const FluentsSet& to_check) const {
+    if (!m_ptr) {
+        ExitHandler::exit_with_message(
+            ExitHandler::ExitCode::KripkeWorldPointerNullError,
+            "Error: Null KripkeWorldPointer in entails(const FluentsSet&).\n  Tip: Ensure all KripkeWorldPointer objects are properly initialized before use."
+        );
+    }
+    return m_ptr->entails(to_check);
+}
+bool KripkeWorldPointer::entails(const FluentFormula& to_check) const {
+    if (!m_ptr) {
+        ExitHandler::exit_with_message(
+            ExitHandler::ExitCode::KripkeWorldPointerNullError,
+            "Error: Null KripkeWorldPointer in entails(const FluentFormula&).\n  Tip: Ensure all KripkeWorldPointer objects are properly initialized before use."
+        );
+    }
+    return m_ptr->entails(to_check);
 }
 
-
-KripkeWorldId KripkeWorldPointer::get_numerical_id() const
-{
-	if (m_ptr != nullptr) {
-	    KripkeWorldId id = (get_ptr()->get_id());
-
-        return boost::hash_value(id);
-	}
-	std::cerr << "\nError in creating a KripkeWorldPointer\n";
-	exit(1);
+bool KripkeWorldPointer::operator<(const KripkeWorldPointer& to_compare) const noexcept {
+    return get_id() < to_compare.get_id();
 }
 
-void KripkeWorldPointer::set_repetition(unsigned short to_set)
-{
-	m_repetition = to_set;
+bool KripkeWorldPointer::operator>(const KripkeWorldPointer& to_compare) const noexcept {
+    return get_id() > to_compare.get_id();
 }
 
-void KripkeWorldPointer::increase_repetition(unsigned short to_increase)
-{
-	m_repetition = m_repetition + to_increase;
-	//m_repetition = m_repetition;
-}
-
-unsigned short KripkeWorldPointer::get_repetition() const
-{
-	return m_repetition;
-
-}
-
-bool KripkeWorldPointer::entails(Fluent to_check) const
-{
-	return m_ptr->entails(to_check);
-}
-
-bool KripkeWorldPointer::entails(const fluent_set& to_check) const
-{
-	return m_ptr->entails(to_check);
-}
-
-bool KripkeWorldPointer::entails(const fluent_formula & to_check) const
-{
-	return m_ptr->entails(to_check);
-}
-
-bool KripkeWorldPointer::operator<(const KripkeWorldPointer & to_compare) const
-{
-	if (get_id() < (to_compare.get_id())) {
-		return true;
-	}
-	return false;
-}
-
-bool KripkeWorldPointer::operator>(const KripkeWorldPointer & to_compare) const
-{
-	if (get_id() > to_compare.get_id()) {
-		return true;
-	}
-	return false;
-}
-
-bool KripkeWorldPointer::operator==(const KripkeWorldPointer & to_compare) const
-{
-	/**std way*/
-	if (!((*this) < to_compare) && !(to_compare < (*this))) {
-		return true;
-	}
-	return false;
-}
-
-bool KripkeWorldPointer::operator=(const KripkeWorldPointer & to_copy)
-{
-	set_ptr(to_copy.get_ptr());
-	set_repetition(to_copy.get_repetition());
-	return true;
+bool KripkeWorldPointer::operator==(const KripkeWorldPointer& to_compare) const noexcept {
+    return get_id() == to_compare.get_id();
 }

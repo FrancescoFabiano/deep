@@ -8,12 +8,12 @@
  */
 
 #include "ArgumentParser.h"
+#include "HelperPrint.h"
 #include <iostream>
 #include <stdexcept>
 
+
 ArgumentParser* ArgumentParser::instance = nullptr;
-
-
 
 void ArgumentParser::create_instance(int argc, char** argv) {
     if (!instance) {
@@ -23,11 +23,13 @@ void ArgumentParser::create_instance(int argc, char** argv) {
 }
 
 ArgumentParser& ArgumentParser::get_instance() {
-    if (!instance) {
+    if (instance == nullptr) {
         ExitHandler::exit_with_message(
             ExitHandler::ExitCode::ArgParseInstanceError,
             "ArgumentParser instance not created. Call create_instance(argc, argv) first."
         );
+        //Jut To please the compiler
+        exit(static_cast<int>(ExitHandler::ExitCode::ExitForCompiler));
     }
     return *instance;
 }
@@ -44,6 +46,10 @@ void ArgumentParser::parse(int argc, char** argv) {
 
     try {
         app.parse(argc, argv);
+        // After parsing, if log is enabled, generate the log file path using HelperPrint
+        if (m_log_enabled) {
+            m_log_file_path = HelperPrint::get_instance().generate_log_file_path(m_input_file);
+        }
     } catch (const CLI::CallForHelp&) {
         print_usage();
         std::exit(static_cast<int>(ExitHandler::ExitCode::Success));
@@ -105,6 +111,8 @@ ArgumentParser::ArgumentParser() : app("deep") {
     app.add_flag("--execute", m_exec_plan, "Execute the plan in the '--plan_file' file");
     app.add_option("--plan-file", m_plan_file, "Specify file for saving/loading plan")
         ->default_val("plan.txt");
+
+    app.add_flag("--log", m_log_enabled, "Enable logging to a file in the log folder");
 }
 
 // Getters
@@ -122,6 +130,8 @@ bool ArgumentParser::get_results_file() const noexcept { return m_output_results
 const std::string& ArgumentParser::get_parallel_type() const noexcept { return m_parallel_type; }
 const std::string& ArgumentParser::get_parallel_wait() const noexcept { return m_parallel_wait; }
 bool ArgumentParser::get_check_visited() const noexcept { return m_check_visited; }
+bool ArgumentParser::get_log_enabled() const noexcept { return m_log_enabled; }
+const std::string& ArgumentParser::get_log_file_path() const noexcept { return m_log_file_path; }
 
 void ArgumentParser::print_usage() const {
     std::cout << app.help() << std::endl;

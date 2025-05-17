@@ -25,8 +25,9 @@ public:
      */
     enum class ExitCode : int {
         Success = 0,         ///< Program completed successfully.
+        ExitForCompiler = -1,         ///< Used after calling this class to satisfy the compiler when it does not recognize that the branch will exit.
 
-        // ArgumentParser Related
+        //ArgumentParser Related
         ArgParseError = 100,    ///< Error occurred during argument parsing in \ref ArgumentParser.
         ArgParseInstanceError = 101,    ///< Error occurred during argument parsing in \ref ArgumentParser.
 
@@ -49,6 +50,7 @@ public:
         FormulaNonDeterminismError = 400, ///< Non-determinism in formula not supported.
         FormulaBadDeclaration = 401,      ///< Bad formula declaration.
         FormulaEmptyEffect = 402,         ///< Empty action effect.
+        FormulaConsistencyError = 403,    ///< Consistency check failed in formula helper.
 
         // HelperPrint Related
         PrintUnsetGrounderError = 500, ///< Attempted to print with unset grounder.
@@ -60,7 +62,12 @@ public:
         BeliefFormulaNotGrounded = 602,       ///< BeliefFormula not grounded when required.
         BeliefFormulaMissingNested = 603,     ///< BeliefFormula missing nested formula.
         BeliefFormulaOperatorUnset = 604,     ///< BeliefFormula operator not set properly.
-        BeliefFormulaEmptyAgentGroup = 605    ///< BeliefFormula has empty agent group.
+        BeliefFormulaEmptyAgentGroup = 605,    ///< BeliefFormula has empty agent group.
+
+        // KripkeWorldPointer Related
+        KripkeWorldPointerNullError = 700,      ///< Null pointer dereference in KripkeWorldPointer.
+        KripkeStorageInsertError = 701,         ///< Failed to insert or find KripkeWorld in KripkeStorage.
+        KripkeWorldEntailmentError = 702,       ///< Failed to check for entailment of something in KripkeWorld.
     };
 
     // ArgumentParser Related

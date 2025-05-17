@@ -1,6 +1,6 @@
 /**
  * \file InitialStateInformation.cpp
- * \brief Implementation of \ref IntialStateInformation.
+ * \brief Implementation of \ref InitialStateInformation.
  * \copyright GNU Public License.
  * \author Francesco Fabiano
  * \date May 16, 2025
@@ -22,44 +22,44 @@
      * - *phi* -> all worlds must entail *phi*.
      * - C(B(i,*phi*)) -> all worlds must entail *phi*.
      * - C(B(i,*phi*) \ref BF_OR B(i,-*phi*)) -> only edges conditions.
-     * - C(-B(i,*phi*) \ref BF_AND -B(i,-*phi*)) -> only edges conditions.*/
+     * - C(-B(i,*phi*) \ref BeliefFormulaOperator::BF_AND -B(i,-*phi*)) -> only edges conditions.*/
     bool ret = false;
     switch (bf.get_formula_type()) {
-        case PROPOSITIONAL_FORMULA:
-            if (bf.get_operator() != BF_AND) {
+        case BeliefFormulaType::PROPOSITIONAL_FORMULA:
+            if (bf.get_operator() != BeliefFormulaOperator::BF_AND) {
                 ret = false;
             } else {
                 ret = check_restriction(bf.get_bf1()) && check_restriction(bf.get_bf2());
             }
             break;
-        case FLUENT_FORMULA:
+        case BeliefFormulaType::FLUENT_FORMULA:
             ret = true;
             break;
-        case C_FORMULA: {
+        case BeliefFormulaType::C_FORMULA: {
             switch (const auto& tmp = bf.get_bf1(); tmp.get_formula_type()) {
-                case FLUENT_FORMULA:
+                case BeliefFormulaType::FLUENT_FORMULA:
                     ret = true;
                     break;
-                case BELIEF_FORMULA:
-                    ret = (tmp.get_bf1().get_formula_type() == FLUENT_FORMULA);
+                case BeliefFormulaType::BELIEF_FORMULA:
+                    ret = (tmp.get_bf1().get_formula_type() == BeliefFormulaType::FLUENT_FORMULA);
                     break;
-                case PROPOSITIONAL_FORMULA:
-                    if (tmp.get_operator() == BF_OR) {
+                case BeliefFormulaType::PROPOSITIONAL_FORMULA:
+                    if (tmp.get_operator() == BeliefFormulaOperator::BF_OR) {
                         ret = FormulaHelper::check_Bff_notBff(tmp.get_bf1(), tmp.get_bf2(), nullptr);
-                    } else if (tmp.get_operator() == BF_AND) {
+                    } else if (tmp.get_operator() == BeliefFormulaOperator::BF_AND) {
                         const auto& tmp_nested1 = tmp.get_bf1();
                         const auto& tmp_nested2 = tmp.get_bf2();
-                        if (tmp_nested1.get_formula_type() == PROPOSITIONAL_FORMULA &&
-                            tmp_nested2.get_formula_type() == PROPOSITIONAL_FORMULA &&
-                            tmp_nested1.get_operator() == BF_NOT &&
-                            tmp_nested2.get_operator() == BF_NOT) {
+                        if (tmp_nested1.get_formula_type() == BeliefFormulaType::PROPOSITIONAL_FORMULA &&
+                            tmp_nested2.get_formula_type() == BeliefFormulaType::PROPOSITIONAL_FORMULA &&
+                            tmp_nested1.get_operator() == BeliefFormulaOperator::BF_NOT &&
+                            tmp_nested2.get_operator() == BeliefFormulaOperator::BF_NOT) {
                             ret = FormulaHelper::check_Bff_notBff(tmp_nested1.get_bf1(), tmp_nested2.get_bf1(), nullptr);
                         }
                     } else {
                         ret = false;
                     }
                     break;
-                case BF_EMPTY:
+                case BeliefFormulaType::BF_EMPTY:
                     ret = true;
                     break;
                 default:
@@ -68,7 +68,7 @@
             }
             break;
         }
-        case BF_EMPTY:
+        case BeliefFormulaType::BF_EMPTY:
             ret = true;
             break;
         default:
@@ -87,7 +87,7 @@ void InitialStateInformation::add_pointed_condition(const FluentFormula& to_add)
 void InitialStateInformation::add_initial_condition(const BeliefFormula& to_add)
 {
     // Keep only bf_1, bf_2 and not (bf_1 AND bf_2)
-    if (to_add.get_formula_type() == PROPOSITIONAL_FORMULA && to_add.get_operator() == BF_AND) {
+    if (to_add.get_formula_type() == BeliefFormulaType::PROPOSITIONAL_FORMULA && to_add.get_operator() == BeliefFormulaOperator::BF_AND) {
         add_initial_condition(to_add.get_bf1());
         add_initial_condition(to_add.get_bf2());
     } else if (check_restriction(to_add)) {
@@ -121,12 +121,12 @@ void InitialStateInformation::set_ff_forS5()
     FluentFormula ret;
     for (const auto& bf : m_bf_initial_conditions) {
         switch (bf.get_formula_type()) {
-            case FLUENT_FORMULA:
+            case BeliefFormulaType::FLUENT_FORMULA:
                 ret = FormulaHelper::and_ff(ret, bf.get_fluent_formula());
                 break;
-            case C_FORMULA: {
+            case BeliefFormulaType::C_FORMULA: {
                 switch (const auto tmp = bf.get_bf1(); tmp.get_formula_type()) {
-                    case FLUENT_FORMULA: {
+                    case BeliefFormulaType::FLUENT_FORMULA: {
                         ret = FormulaHelper::and_ff(ret, tmp.get_fluent_formula());
                         if (const auto& tmp_ff = tmp.get_fluent_formula(); tmp_ff.size() == 1) {
                             const auto& tmp_fs = *tmp_ff.begin();
@@ -135,8 +135,8 @@ void InitialStateInformation::set_ff_forS5()
                         }
                         break;
                     }
-                    case BELIEF_FORMULA:
-                        if (tmp.get_bf1().get_formula_type() == FLUENT_FORMULA) {
+                    case BeliefFormulaType::BELIEF_FORMULA:
+                        if (tmp.get_bf1().get_formula_type() == BeliefFormulaType::FLUENT_FORMULA) {
                             ret = FormulaHelper::and_ff(ret, tmp.get_bf1().get_fluent_formula());
                         } else {
                             ExitHandler::exit_with_message(
@@ -145,7 +145,7 @@ void InitialStateInformation::set_ff_forS5()
                             );
                         }
                         break;
-                    case PROPOSITIONAL_FORMULA:
+                    case BeliefFormulaType::PROPOSITIONAL_FORMULA:
                         break; // Only for edges -- expresses that someone is ignorant - just edges.
                     default:
                         ExitHandler::exit_with_message(

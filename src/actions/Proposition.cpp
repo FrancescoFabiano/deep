@@ -8,7 +8,6 @@
  * \date May 16, 2025
  */
 
-#include <iostream>
 #include "Proposition.h"
 
 #include "HelperPrint.h"
@@ -79,38 +78,38 @@ std::string Proposition::type_to_string(PropositionType type) {
     }
 }
 
-void Proposition::print() const {
+void Proposition::print(std::ostream& os) const {
     switch (m_type) {
         case PropositionType::ONTIC:
-            std::cout << m_action_name << " causes ";
+            os << m_action_name << " causes ";
             break;
         case PropositionType::EXECUTABILITY:
-            std::cout << m_action_name << " executable ";
+            os << m_action_name << " executable ";
             break;
         case PropositionType::SENSING:
-            std::cout << m_action_name << " determines ";
+            os << m_action_name << " determines ";
             break;
         case PropositionType::ANNOUNCEMENT:
-            std::cout << m_action_name << " announces ";
+            os << m_action_name << " announces ";
             break;
         case PropositionType::OBSERVANCE:
-            std::cout << m_agent << " observes " << m_action_name;
+            os << m_agent << " observes " << m_action_name;
             break;
         case PropositionType::AWARENESS:
-            std::cout << m_agent << " aware of " << m_action_name;
+            os << m_agent << " aware of " << m_action_name;
             break;
         default:
             break;
     }
 
-    std::cout << "\n Effects:\n";
+    os << "\n Effects:\n";
     HelperPrint::print_list(m_action_effect);
 
     // Uncomment and adapt if you want to print observability/executability conditions
-    // std::cout << "\nObservability conditions:\n";
+    // os << "\nObservability conditions:\n";
     // m_observability_conditions.print();
-    // std::cout << "\nExecutability conditions:\n";
+    // os << "\nExecutability conditions:\n";
     // m_executability_conditions.print();
 
-    std::cout << std::endl;
+    os << std::endl;
 }

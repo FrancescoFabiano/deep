@@ -1,61 +1,63 @@
 /**
  * \class KripkeStorage
- * \brief Singleton class that stores the unique copy of each \ref pworld created.
- * 
- * \details All the other class only store pointers of \ref pworld and this class takes care of creating new
- * one in case the requested one doesn't exist.
- * 
- * @see pworld.
- * 
- * \copyright GNU Public License.
+ * \brief Singleton class that stores the unique copy of each \ref KripkeWorld created.
  *
+ * \details All other classes only store pointers to \ref KripkeWorld, and this class manages creation and uniqueness.
+ *          This is done for efficiency, as \ref KripkeWorld objects are used in many places. Follows the Dynamic Programming principle.
+ *
+ * \see KripkeWorld
+ * \copyright GNU Public License.
  * \author Francesco Fabiano.
- * \date September 14, 2019
+ * \date May 17, 2025
  */
-
 #pragma once
 
 #include <set>
 #include "KripkeWorld.h"
 
-typedef std::set<KripkeWorld> pworld_set; /**< \brief A set of \ref pworld, used to store all the created ones.*/
+/// \brief Alias for a set of KripkeWorlds, used to store all created worlds.
+using KripkeWorldsSet = std::set<KripkeWorld>;
 
 class KripkeStorage
 {
-private:
-    /** \brief All the created \ref pworld, all the other class only have pointers to elements of this set.
-     * 
-     * \todo should it be static?*/
-    pworld_set m_created_worlds;
-
-    /** \brief Private constructor since it is a Singleton class.*/
-    KripkeStorage();
 public:
+    /// \name Singleton Access
+    ///@{
+    /**
+     * \brief Get the singleton instance of KripkeStorage.
+     * \return Reference to the singleton instance.
+     */
+    static KripkeStorage& get_instance() noexcept;
+    ///@}
 
-    /** \brief To get always (the same instance of) *this* and the same instantiated fields.*/
-    static KripkeStorage& get_instance();
-    
-    /** \brief Function that return the pointer to the given \ref pworld.
-     * 
-     * If the \ref pworld didn't exist then it is inserted to \ref m_created_worlds and then the pointer is returned;
-     * if it existed a pointer to the already existing version is returned.
-     * 
-     * @param[in] to_add: the \ref pworld to add to the collection of created worlds.
-     * 
-     * @return the \ref pworld_ptr to \p to_add.
-     * 
-     * \todo Param ok because set makes copy?*/
-    const KripkeWorldPointer add_world(const KripkeWorld & to_add);
+    /// \name World Management
+    ///@{
+    /**
+     * \brief Add a KripkeWorld to the storage and return its pointer.
+     *
+     * If the world does not exist, it is inserted and a pointer is returned.
+     * If it already exists, a pointer to the existing world is returned.
+     *
+     * \param[in] to_add The KripkeWorld to add.
+     * \return A KripkeWorldPointer to the stored world.
+     */
+    [[nodiscard]] KripkeWorldPointer add_world(const KripkeWorld &to_add);
+    ///@}
 
-    /*\brief Function that add a created \ref pworld without returning its pointer.
-     * 
-     * @param[in] to_add: the \ref pworld to add to the collection of created worlds. */
-    /*void add_world_no_ret(const pworld & to_add);*/
+    /// \name Deleted Special Members
+    ///@{
+    KripkeStorage(const KripkeStorage&) = delete;
+    KripkeStorage& operator=(const KripkeStorage&) = delete;
+    ///@}
 
-    /** \brief Copy constructor removed since is Singleton class. */
-    KripkeStorage(KripkeStorage const&) = delete;
-    /** \brief Copy operator removed since Singleton class. */
-    void operator=(KripkeStorage const&) = delete;
+private:
+    /**
+     * \brief Private constructor for singleton pattern.
+     */
+    KripkeStorage() = default;
 
+    /**
+     * \brief Set of all created KripkeWorlds. All other classes only have pointers to elements of this set.
+     */
+    KripkeWorldsSet m_created_worlds;
 };
-

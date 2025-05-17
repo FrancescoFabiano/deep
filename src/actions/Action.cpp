@@ -13,6 +13,7 @@
 #include <utility>
 
 #include "Domain.h"
+#include "HelperPrint.h"
 #include "utilities/ExitHandler.h"
 #include "actions/Proposition.h"
 
@@ -119,32 +120,32 @@ void Action::add_partially_observant(const Agent& partial, const BeliefFormula& 
     m_partially_observants.insert(observability_map::value_type(partial, condition));
 }
 
-void Action::add_proposition(Proposition& to_add)
+void Action::add_proposition(const Proposition& to_add)
 {
     switch (to_add.get_type()) {
         case PropositionType::ONTIC:
             set_type(PropositionType::ONTIC);
-            add_effect(to_add.get_action_effect(), to_add.get_grounded_executability_conditions());
+            add_effect(to_add.get_action_effect(), to_add.get_executability_conditions());
             break;
         case PropositionType::SENSING:
             set_type(PropositionType::SENSING);
-            add_effect(to_add.get_action_effect(), to_add.get_grounded_executability_conditions());
+            add_effect(to_add.get_action_effect(), to_add.get_executability_conditions());
             break;
         case PropositionType::ANNOUNCEMENT:
             set_type(PropositionType::ANNOUNCEMENT);
-            add_effect(to_add.get_action_effect(), to_add.get_grounded_executability_conditions());
+            add_effect(to_add.get_action_effect(), to_add.get_executability_conditions());
             break;
         case PropositionType::OBSERVANCE:
             set_type(PropositionType::NOTSET);
-            add_fully_observant(to_add.get_agent(), to_add.get_grounded_observability_conditions());
+            add_fully_observant(to_add.get_agent(), to_add.get_observability_conditions());
             break;
         case PropositionType::AWARENESS:
             set_type(PropositionType::NOTSET);
-            add_partially_observant(to_add.get_agent(), to_add.get_grounded_observability_conditions());
+            add_partially_observant(to_add.get_agent(), to_add.get_observability_conditions());
             break;
         case PropositionType::EXECUTABILITY:
             set_type(PropositionType::NOTSET);
-            add_executability(to_add.get_grounded_executability_conditions());
+            add_executability(to_add.get_executability_conditions());
             break;
         default:
             break;
@@ -171,37 +172,37 @@ Action& Action::operator=(const Action& act)
     return *this;
 }
 
-void Action::print() const
+void Action::print(std::ostream& os) const
 {
     Grounder grounder = Domain::get_instance().get_grounder();
-    std::cout << "\nAction " << get_name() << ":" << std::endl;
-    std::cout << "    ID: " << get_id() << ":" << std::endl;
-    std::cout << "    Type: " << Proposition::type_to_string(get_type()) << std::endl;
+    os << "\nAction " << get_name() << ":" << std::endl;
+    os << "    ID: " << get_id() << ":" << std::endl;
+    os << "    Type: " << Proposition::type_to_string(get_type()) << std::endl;
 
-    std::cout << "    Executability:";
+    os << "    Executability:";
     for (const auto& exec : m_executability) {
-        std::cout << " | ";
+        os << " | ";
         exec.print();
     }
 
-    std::cout << "\n    Effects:";
+    os << "\n    Effects:";
     for (const auto& [effect, condition] : m_effects) {
-        std::cout << " | ";
-        HelperPrint::get_instance().print_list(effect);
-        std::cout << " if ";
+        os << " | ";
+        HelperPrint::get_instance().print_list(effect,os);
+        os << " if ";
         condition.print();
     }
 
-    std::cout << "\n    Fully Observant:";
+    os << "\n    Fully Observant:";
     for (const auto& [agent, condition] : m_fully_observants) {
-        std::cout << " | " << grounder.deground_agent(agent) << " if ";
+        os << " | " << grounder.deground_agent(agent) << " if ";
         condition.print();
     }
 
-    std::cout << "\n    Partially Observant:";
+    os << "\n    Partially Observant:";
     for (const auto& [agent, condition] : m_partially_observants) {
-        std::cout << " | " << grounder.deground_agent(agent) << " if ";
+        os << " | " << grounder.deground_agent(agent) << " if ";
         condition.print();
     }
-    std::cout << std::endl;
+    os << std::endl;
 }

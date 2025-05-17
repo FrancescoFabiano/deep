@@ -21,6 +21,7 @@
  */
 #pragma once
 
+#include <iostream>
 #include <memory>
 
 #include "BeliefFormulaParsed.h"
@@ -195,8 +196,9 @@ public:
     [[nodiscard]] bool is_bf2_null() const;
 
     /** \brief Function that prints *this* (std::string parameters representation).
+     * \param os The output stream to print to (default: std::cout).
      */
-    void print() const;
+    void print( std::ostream& os = std::cout) const;
 
     /** \brief The equality operator for \ref BeliefFormula.
      *  \param[in] to_compare The \ref BeliefFormula to compare with *this*.

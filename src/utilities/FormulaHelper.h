@@ -6,8 +6,7 @@
  *
  * \see fluent_formula, belief_formula.
  * 
- * \todo public fields into private and getter and setter.
- * 
+ *
  * \copyright GNU Public License.
  *
  * \author Francesco Fabiano.
@@ -49,9 +48,6 @@ public:
 
     static bool is_negated(const Fluent & f);
 
-
-
-
     /** \brief Function to set the truth value of a fluent in a world description.
      *   
      * @param[in] effect: the fluent to set.
@@ -65,26 +61,6 @@ public:
      * 
      * @return the description of the world after \p effect has been applied to \p world_description.*/
     static void apply_effect(const FluentsSet& effect, FluentsSet& world_description);
-
-    /* Set has == operator
-     * \brief Function that checks if two \ref fluent_set are the same.
-     * 
-     * @param[in]  to_check_1: the first \ref fluent to check.
-     * @param[in]  to_check_2: the second \ref fluent to check.
-     * 
-     * @return true: if each \ref fluent in \p to_check_1 exists in \p to_check_2 and vice versa.
-     * @return false: otherwise.*/
-    /*  static bool is_the_same_ff(const fluent_set& to_check_1, const fluent_set& to_check_2);*/
-    /* \brief Function that checks if two \ref fluent_formula are syntactically the same.
-     * 
-     * This function uses recursively \ref is_the_same_ff(const fluent_set&, const fluent_set&).
-     * 
-     * @param[in]  to_check_1: the first \ref fluent_formula to check.
-     * @param[in]  to_check_2: the second \ref fluent_formula to check.
-     * 
-     * @return true: if each \ref fluent_set in \p to_check_1 exists in \p to_check_2 and vice versa.
-     * @return false: otherwise.*/
-    /* static bool is_the_same_ff(const fluent_formula& to_check_1, const fluent_formula& to_check_2);*/
 
     /** \brief Function that merges two conjunctive set of \ref fluent into one.
      *   
@@ -115,7 +91,6 @@ public:
      * @return false: otherwise.*/
     static bool check_Bff_notBff(const BeliefFormula& to_check_1, const BeliefFormula& to_check_2, const std::shared_ptr<FluentFormula>& ret);
 
-
     /** \brief Function that check that the \ref ONTIC effect doesn't have uncertainty (OR).
      * 
      * Then it calls apply_effect(const fluent_set&, const fluent_set&);
@@ -144,7 +119,45 @@ public:
      * @param[in] state: the state in which to check the entailment.
      * @return the effects that are feasible in \p state.*/
     static FluentFormula get_effects_if_entailed(const effects_map & map, const KripkeState & state);
+
+    /**
+     * \brief Concatenate two dynamic_bitsets as strings.
+     * \param[in] bs1 The first bitset.
+     * \param[in] bs2 The second bitset.
+     * \return The concatenated bitset.
+     */
+    static boost::dynamic_bitset<> concatStringDyn(const boost::dynamic_bitset<>& bs1, const boost::dynamic_bitset<>& bs2);
+
+    /**
+     * \brief Concatenate two dynamic_bitsets using bitwise operators.
+     * \param[in] bs1 The first bitset.
+     * \param[in] bs2 The second bitset.
+     * \return The concatenated bitset.
+     */
+    static boost::dynamic_bitset<> concatOperatorsDyn(const boost::dynamic_bitset<>& bs1, const boost::dynamic_bitset<>& bs2);
+
+    /**
+     * \brief Concatenate two dynamic_bitsets using a loop.
+     * \param[in] bs1 The first bitset.
+     * \param[in] bs2 The second bitset.
+     * \return The concatenated bitset.
+     */
+    static boost::dynamic_bitset<> concatLoopDyn(const boost::dynamic_bitset<>& bs1, const boost::dynamic_bitset<>& bs2);
+
+    /**
+     * \brief Hash a set of fluents into a unique id.
+     * \param[in] fl The set of fluents.
+     * \return The unique id.
+     */
+    static KripkeWorldId hash_fluents_into_id(const FluentsSet& fl);
+
+    /**
+     * \brief Check if a set of fluents is consistent.
+     * \param[in] to_check The set to check.
+     * \details Exits with an error if the set is not consistent.
+     * \return true if consistent (never returns false, will exit on failure).
+     *
+     *  \todo Integrate static_law for consistency checking.
+     */
+    static bool consistent(const FluentsSet& to_check);
 };
-
-
-

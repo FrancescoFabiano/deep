@@ -1,22 +1,19 @@
 /**
  * \class KripkeWorld
- * 
- * \brief Class that describes a possible interpretation of the world and of the agents' beliefs.
+ * \brief Represents a possible interpretation of the world and agents' beliefs.
  *
- * \details   A pworld represent a consistent set of \ref fluent (AKA a \ref fluent_set), alongside
- *            with an information set which is the set of the possibilities that the agents consider true.
- * 
- * @see pstate, and pstore.
- *
- *
+ * \details A KripkeWorld is a consistent set of \ref fluent (a \ref FluentsSet), with an information set
+ *          representing the possibilities agents consider true.
+ * \see KripkeState, KripkeStorage
  * \copyright GNU Public License.
- *
  * \author Francesco Fabiano.
- * \date September 14, 2019
+ * \date May 17, 2025
  */
 #pragma once
 
+#include <iostream>
 #include <set>
+#include <memory>
 
 #include "utilities/Define.h"
 
@@ -24,328 +21,270 @@ class KripkeWorld
 {
     friend class KripkeWorldPointer;
 
-private:
-    /** \brief The set of  \ref fluent that describes how these are interpreted in *this*.*/
-    FluentsSet m_fluent_set;
-    /** \brief The unique id of *this* computed with \ref hash_fluents_into_id().*/
-    KripkeWorldId m_id;
-
-    /** \brief Function used to hash the the info of an edge in a unique id.
-     * 
-     * @param[in] description: the interpretation of the \ref fluent in the world.
-     * @return the unique id of the pworld.
-     * 
-     * @warning Useless if not moved to \ref pstore.*/
-    KripkeWorldId hash_fluents_into_id(const FluentsSet& description);
-
-    /** \brief Function used to hash the the info of *this* in a unique id.
-     *
-     * @return the unique id of *this*. */
-    KripkeWorldId hash_fluents_into_id();
-
-    /** \brief Setter for the field \ref m_fluent_set.
-     *
-     * This function also guarantees consistency.
-     *
-     * @param[in] description: the set of \ref fluent to set as \ref m_fluent_set.
-     *
-     * \todo is the parameter passing the best one? Copy?
-     * \todo is the consistency useless?*/
-    void set_fluent_set(const FluentsSet & description);
-
-    /**
-     * \brief Function that checks if the given \ref fluent_set is consistent.
-     * 
-     * @param[in] to_check: the set of \ref fluent to check.
-     * 
-     * @return true if \p to_check is consistent.
-     * @return false if \p to_check is not consistent.
-     * 
-     * \todo Add \ref static_law as static class and use it to check.
-     */
-    bool consistent(const FluentsSet & to_check);
-
-    /** \brief Function that uses the info of *this* to set its \ref m_id.*/
-    void set_id();
-
-
-    /** \brief Getter of \ref m_fluent_set.
-     * 
-     * Only accessible by the \ref pworld_ptr.
-     *     
-     * @return the \ref pworld_ptr to the pworld where *this* is from.*/
-    const FluentsSet & get_fluent_set() const;
-
-    /** \brief Getter of \ref m_id.
-     *     
-     * Only accessible by the \ref pworld_ptr.
-     * 
-     * @return the int that is the unique id of *this*.*/
-    KripkeWorldId get_id() const;
-
 public:
-    /** \brief Empty constructor, call the default constructor of all the fields.*/
-    KripkeWorld();
+    /// \name Constructors & Destructor
+    ///@{
+    /** \brief Default constructor. */
+    KripkeWorld() = default;
 
-    /** \brief Constructor with parameters.
-     * Construct an object with the given info and then set the unique id.
-     * the set of \ref fluent to set as \ref m_fluent_set.
-     *
-     * @param[in] description: the set of \ref fluent to set as \ref m_fluent_set.
-     *
-     * \todo is the parameter passing the best one? Copy?*/
-    KripkeWorld(const FluentsSet & description);
+    /** \brief Construct from a set of fluents.
+     *  \param[in] description The set of fluents to initialize this world.
+     */
+    explicit KripkeWorld(const FluentsSet& description);
 
     /** \brief Copy constructor.
-     * 
-     * @param[in] world: the \ref pworld to copy into *this*.*/
-    KripkeWorld(const KripkeWorld & world);
+     *  \param[in] world The KripkeWorld to copy.
+     */
+    KripkeWorld(const KripkeWorld& world);
 
-    /** \brief Function that check the entailment of a single \ref fluent in *this*.
-     * 
-     * A single \ref fluent is entailed if is present in *this*. Given that the each pworld
-     * should only admit consistent set of \ref fluent if the \ref fluent itself is presented in *this*.
-     * 
-     * @param[in] to_check: the \ref fluent that has to be checked if entailed by *this* (if is present in *this*).
-     *
-     * @return true: \p to_check is entailed;
-     * @return false: \p -to_check is entailed.
-     * 
-     * \todo To implement also whit \ref pworld_ptr to the \ref pworld?
-     * \todo check consistency on constructor?*/
-    bool entails(Fluent to_check) const;
-    /**
-     *\brief Function that check the entailment of a conjunctive set of \ref fluent in *this*.
-     * 
-     * This is checked by calling recursively \ref entails(fluent) const on all the element
-     * of \p to_check and returning true only if all the elements are entailed (conjunctive set of \ref fluent).
-     *  
-     * @param[in] to_check: the conjunctive set of \ref fluent that has to be checked if entailed by *this*.
-     * 
-     *
-     * @return true: \p to_check is entailed;
-     * @return false: \p -to_check is entailed.*/
-    bool entails(const FluentsSet& to_check) const;
-    /**
-     *\brief Function that check the entailment of a DNF \ref fluent_formula in *this*.
-     * 
-     * This is checked by calling recursively \ref entails(const fluent_set &) const on all the element
-     * of \p to_check and returning true only if at least one element is entailed (DNF).
-     *  
-     * @param[in] to_check: the DNF formula that has to be checked if entailed by *this*.
-     * 
-     *
-     * @return true: \p to_check is entailed;
-     * @return false: \p -to_check is entailed.*/
-    bool entails(const FluentFormula & to_check) const;
+    /** \brief Destructor. */
+    ~KripkeWorld() = default;
 
-    /**
-     *\brief The < operator based on the field \ref m_id.
-     * Implemented to allow the ordering on set of \ref pworld (used in \ref pstore).
-     * 
-     * @see pstore.
-     *     
-     * @param [in] to_compare: the \ref pworld to compare with *this*.
-     * @return true: if \p to_compare is smaller than *this*
-     * @return false: otherwise.*/
-    bool operator<(const KripkeWorld& to_compare) const;
-    /**
-     *\brief The > operator based on the field \ref m_id.
-     * 
-     * @see pstore.
-     *     
-     * @param [in] to_compare: the \ref pworld to compare with *this*.
-     * @return true: if \p to_compare is bigger than *this*
-     * @return false: otherwise.*/
-    bool operator>(const KripkeWorld& to_compare) const;
+    /** \brief Copy assignment operator.
+     *  \param[in] to_assign The KripkeWorld to assign from.
+     *  \return Reference to this.
+     */
+    KripkeWorld& operator=(const KripkeWorld& to_assign);
+    ///@}
 
-    /** \brief The == operator based on the field \ref m_id.
-     *     
-     * @param [in] to_compare: the \ref pworld to compare with *this*.
-     * @return true: if \p to_compare is equal to *this*
-     * @return false: otherwise.*/
-    bool operator==(const KripkeWorld& to_compare) const;
+    /// \name Getters
+    ///@{
+    /** \brief Get the set of fluents describing this world.
+     *  \return Reference to the set of fluents.
+     */
+    [[nodiscard]] const FluentsSet& get_fluent_set() const noexcept;
 
-    /** \brief The copy operator.
-     *   
-     * @param [in] to_assign: the \ref pworld to assign to *this*.
-     * @return true: if \p the assignment went ok.
-     * @return false: otherwise.*/
-    bool operator=(const KripkeWorld& to_assign);
+    /** \brief Get the unique id of this world.
+     *  \return The unique id.
+     */
+    [[nodiscard]] KripkeWorldId get_id() const noexcept;
+    ///@}
 
-    /** \brief Function used to print all the information of *this*.*/
-    void print() const;
+    /// \name Entailment
+    ///@{
+    /** \brief Check if a fluent is entailed by this world.
+     *  \param[in] to_check The fluent to check.
+     *  \return True if entailed, false otherwise.
+     */
+    [[nodiscard]] bool entails(const Fluent &to_check) const;
+
+    /** \brief Check if a conjunctive set of fluents is entailed.
+     *  \param[in] to_check The set of fluents.
+     *  \return True if all are entailed, false otherwise.
+     */
+    [[nodiscard]] bool entails(const FluentsSet& to_check) const;
+
+    /** \brief Check if a DNF fluent formula is entailed.
+     *  \param[in] to_check The formula to check.
+     *  \return True if entailed, false otherwise.
+     */
+    [[nodiscard]] bool entails(const FluentFormula& to_check) const;
+    ///@}
+
+    /// \name Comparison Operators
+    ///@{
+    /** \brief Less-than operator based on unique id.
+     *  \param[in] to_compare The KripkeWorld to compare.
+     *  \return True if this < to_compare.
+     */
+    [[nodiscard]] bool operator<(const KripkeWorld& to_compare) const noexcept;
+
+    /** \brief Greater-than operator based on unique id.
+     *  \param[in] to_compare The KripkeWorld to compare.
+     *  \return True if this > to_compare.
+     */
+    [[nodiscard]] bool operator>(const KripkeWorld& to_compare) const noexcept;
+
+    /** \brief Equality operator based on unique id.
+     *  \param[in] to_compare The KripkeWorld to compare.
+     *  \return True if equal.
+     */
+    [[nodiscard]] bool operator==(const KripkeWorld& to_compare) const noexcept;
+    ///@}
+
+    /// \name Utility
+    ///@{
+    /** \brief Print all information about this world.
+     * \param os The output stream to print to (default: std::cout).
+     */
+    void print(std::ostream& os = std::cout) const;
+    ///@}
+
+private:
+    /// \name Data Members
+    ///@{
+    /** \brief The set of fluents describing this world. */
+    FluentsSet m_fluent_set;
+    /** \brief The unique id of this world. */
+    KripkeWorldId m_id;
+    ///@}
+
+    /// \name Internal Methods
+    ///@{
+    /** \brief Hash this world's fluents into a unique id.
+     *  \return The unique id.
+     */
+    KripkeWorldId hash_fluents_into_id() const;
+
+    /** \brief Set the fluent set, ensuring consistency.
+     *  \param[in] description The set of fluents.
+     */
+    void set_fluent_set(const FluentsSet& description);
+
+    /** \brief Set the unique id for this world. */
+    void set_id();
+    ///@}
 };
 
 /**
  * \class KripkeWorldPointer
- * 
- * \brief A wrapper class for a std::shared_pointer to a \ref pworld usually stored in \ref pstore.
- * 
- * This class is necessary so we can use the < operator in the set of \ref pworld_ptr.
- * If we dom't use the wrapper pointers to the same elements are different.
+ * \brief Wrapper for std::shared_ptr<const KripkeWorld> for use in KripkeStorage.
  *
- *
+ * \details Enables set operations and pointer comparison by world content.
  * \copyright GNU Public License.
- *
  * \author Francesco Fabiano.
- * \date April 29, 2019
+ * \date May 17, 2025
  */
 class KripkeWorldPointer
 {
-private:
-    /**\brief the pointer that is wrapped by *this*.*/
-    std::shared_ptr<const KripkeWorld> m_ptr;
-
-    /** \brief The number of repetition of *this* in a \ref pstate due to oblivious obsv.*/
-    unsigned short m_repetition = 0;
-
 public:
-    /**\brief Constructor without parameters.*/
-    KripkeWorldPointer();
-    /**\brief Constructor with parameters.
-     *
-     * This constructor uses const pointer, this means that the pointer is copied
-     * and the counter of the shared pointer is increased (std implementation).
-     * 
-     * @param[in] ptr: the pointer to assign to \ref m_ptr.
-     * @param[in] repetition: the value to give to \ref m_repetition, default to 0.
+    /// \name Constructors & Destructor
+    ///@{
+    /** \brief Default constructor. */
+    KripkeWorldPointer() = default;
+
+    /** \brief Construct from shared_ptr (copy).
+     *  \param[in] ptr The pointer to assign.
+     *  \param[in] repetition The repetition count (default 0).
      */
-    KripkeWorldPointer(const std::shared_ptr<const KripkeWorld> & ptr, unsigned short repetition = 0);
-    /**\brief Constructor with parameters.
-     *
-     * This constructor uses non-const pointer, this means that the pointer is copied
-     * in \ref m_ptr and \p ptr becomes empty (std implementation).
-     *  
-     * @param[in] ptr: the pointer to assign to \ref m_ptr.
-     * @param[in] repetition: the value to give to \ref m_repetition, default to 0.
+    KripkeWorldPointer(const std::shared_ptr<const KripkeWorld>& ptr, unsigned short repetition = 0);
+
+    /** \brief Construct from shared_ptr (move).
+     *  \param[in] ptr The pointer to move.
+     *  \param[in] repetition The repetition count (default 0).
      */
     KripkeWorldPointer(std::shared_ptr<const KripkeWorld>&& ptr, unsigned short repetition = 0);
 
-    /** \brief Constructor with parameters.
-     *
-     * This constructor build a pointer to the given parameter.
-     *  
-     * @param[in] world: the \ref pworld that *this* (\ref m_ptr) should point.
-     * @param[in] repetition: the value to give to \ref m_repetition, default to 0.*/
-    KripkeWorldPointer(const KripkeWorld & world, unsigned short repetition = 0);
+    /** \brief Construct from KripkeWorld by value.
+     *  \param[in] world The world to point to.
+     *  \param[in] repetition The repetition count (default 0).
+     */
+    explicit KripkeWorldPointer(const KripkeWorld& world, unsigned short repetition = 0);
 
-    /**\brief Getter for the field \ref m_ptr.
-     *  
-     * @return a copy of the pointer \ref m_ptr.*/
-    std::shared_ptr<const KripkeWorld> get_ptr() const;
+    /** \brief Destructor. */
+    ~KripkeWorldPointer() = default;
 
-    /**\brief Setter for the field \ref m_ptr.
-     *
-     * This setter uses const parameter, this means that the pointer is copied
-     * and the counter of the shared pointer is increased (std implementation).
-     * 
-     * @param[in] ptr: the pointer to assign to \ref m_ptr.*/
-    void set_ptr(const std::shared_ptr<const KripkeWorld> & ptr);
-    /**\brief Setter for the field \ref m_ptr (move constructor).
-     * 
-     * This setter uses non-const parameter, this means that the pointer is copied
-     * in \ref m_ptr and \p ptr becomes empty (std implementation).
-     *  
-     * @param[in] ptr: the pointer to assign to \ref m_ptr.*/
+    /** \brief Copy assignment operator.
+     *  \param[in] to_copy The pointer to assign from.
+     *  \return Reference to this.
+     */
+    KripkeWorldPointer& operator=(const KripkeWorldPointer& to_copy);
+    ///@}
+
+    /// \name Getters & Setters
+    ///@{
+    /** \brief Get the underlying pointer.
+     *  \return Copy of the shared pointer.
+     */
+    [[nodiscard]] std::shared_ptr<const KripkeWorld> get_ptr() const noexcept;
+
+    /** \brief Set the underlying pointer (copy).
+     *  \param[in] ptr The pointer to assign.
+     */
+    void set_ptr(const std::shared_ptr<const KripkeWorld>& ptr);
+
+    /** \brief Set the underlying pointer (move).
+     *  \param[in] ptr The pointer to move.
+     */
     void set_ptr(std::shared_ptr<const KripkeWorld>&& ptr);
 
-    /** \brief Setter for the field \ref m_repetition.
-     * 
-     * @param[in] repetition: the value to give to \ref m_repetition.*/
-    void set_repetition(unsigned short repetition);
+    /** \brief Set the repetition count.
+     *  \param[in] repetition The value to set.
+     */
+    void set_repetition(unsigned short repetition) noexcept;
 
-    /** \brief Function that increases the value for the field \ref m_repetition.
-     * 
-     * @param[in] increase: the value to add to \ref m_repetition.*/
-    void increase_repetition(unsigned short increase);
+    /** \brief Increase the repetition count.
+     *  \param[in] increase The value to add.
+     */
+    void increase_repetition(unsigned short increase) noexcept;
 
-    /** \brief Getter of the field \ref m_repetition.
-     * 
-     * @return the value to of \ref m_repetition.*/
-    unsigned short get_repetition() const;
+    /** \brief Get the repetition count.
+     *  \return The repetition count.
+     */
+    [[nodiscard]] unsigned short get_repetition() const noexcept;
+    ///@}
 
-    /** \brief Function that return the field m_fluent_set of the pointed \ref pworld.
-     *     
-     * @return the \ref fluent_set that is the description of the \ref pworld pointed by \ref m_ptr.*/
-    const FluentsSet & get_fluent_set() const;
+    /// \name World Info Access
+    ///@{
+    /** \brief Get the fluent set of the pointed world.
+     *  \return Reference to the fluent set.
+     */
+    [[nodiscard]] const FluentsSet& get_fluent_set() const;
 
-    /** \brief Function that return the field m_id of the pointed \ref pworld + \ref m_repetition.
-     *     
-     * @return the \ref pworld_id that is the id of the \ref pworld pointed by \ref m_ptr + \ref m_repetition.*/
-    KripkeWorldId get_id() const;
+    /** \brief Get the id of the pointed world plus repetition.
+     *  \return The id.
+     */
+    [[nodiscard]] KripkeWorldId get_id() const noexcept;
 
-    /** \brief Function that return the field m_id of \ref pworld.
-     *     
-     * @return the \ref pworld_id that is the id of the \ref pworld pointed by \ref m_ptr.*/
-    KripkeWorldId get_numerical_id() const;
+    /** \brief Get the numerical id of the pointed world.
+     *  \return The id.
+     */
+    [[nodiscard]] KripkeWorldId get_internal_world_id() const noexcept;
 
+    /** \brief Get the fluent-based id of the pointed world.
+     *  \return The id.
+     */
+    [[nodiscard]] KripkeWorldId get_fluent_based_id() const noexcept;
+    ///@}
 
-    /** \brief Function that return the field m_id of the pointed \ref pworld.
-     *     
-     * @return the \ref pworld_id that is the id of the \ref pworld pointed by \ref m_ptr.*/
-    KripkeWorldId get_fluent_based_id() const;
+    /// \name Entailment
+    ///@{
+    /** \brief Check if a fluent is entailed by the pointed world.
+     *  \param[in] to_check The fluent to check.
+     *  \return True if entailed.
+     */
+    [[nodiscard]] bool entails(const Fluent &to_check) const;
 
-    /** \brief Function that check the entailment of a single \ref fluent in \ref m_ptr.
-     * 
-     * 
-     * @param[in] to_check: the \ref fluent that has to be checked if entailed by \ref m_ptr (if is present in \ref m_ptr).
-     *
-     * @return true: \p to_check is entailed;
-     * @return false: \p -to_check is entailed.*/
-    bool entails(Fluent to_check) const;
-    /**
-     *\brief Function that check the entailment of a conjunctive set of \ref fluent in \ref m_ptr.
-     * 
-     * @param[in] to_check: the conjunctive set of \ref fluent that has to be checked if entailed by \ref m_ptr.
-     *
-     * @return true: \p to_check is entailed;
-     * @return false: \p -to_check is entailed.*/
-    bool entails(const FluentsSet& to_check) const;
-    /**
-     *\brief Function that check the entailment of a DNF \ref fluent_formula in \ref m_ptr.
-     * 
-     * @param[in] to_check: the DNF formula that has to be checked if entailed by \ref m_ptr.
-     *
-     * @return true: \p to_check is entailed;
-     * @return false: \p -to_check is entailed.*/
-    bool entails(const FluentFormula & to_check) const;
+    /** \brief Check if a set of fluents is entailed by the pointed world.
+     *  \param[in] to_check The set to check.
+     *  \return True if all are entailed.
+     */
+    [[nodiscard]] bool entails(const FluentsSet& to_check) const;
 
-    /**\brief The operator =.
-     *
-     * This operator assign the parameter without destroying \p to_copy.
-     * 
-     * @param[in] to_copy: the \ref pworld_ptr to assign to *this*.
-     * @return true: if the assignment went through.
-     * @return false: otherwise.*/
-    bool operator=(const KripkeWorldPointer & to_copy);
-    /**\brief The operator < for set operation.
-     *
-     * The ordering is based on the pointed object and not on the pointer itself so we have one
-     * copy of each pointed object.
-     * 
-     * @param[in] to_compare: the \ref pworld_ptr to check for odering.
-     * 
-     * @return true: if *this* is smaller than \p to_compare.
-     * @return false: otherwise.*/
+    /** \brief Check if a DNF formula is entailed by the pointed world.
+     *  \param[in] to_check The formula to check.
+     *  \return True if entailed.
+     */
+    [[nodiscard]] bool entails(const FluentFormula& to_check) const;
+    ///@}
 
-    bool operator<(const KripkeWorldPointer & to_compare) const;
-    /**\brief The operator > for \ref pstate < comparison.
-     *
-     * The ordering is based on the pointed object and not on the pointer itself so we have one
-     * copy of each pointed object.
-     * 
-     * @param[in] to_compare: the \ref pworld_ptr to check for odering.
-     * 
-     * @return true: if *this* is bigger than \p to_compare.
-     * @return false: otherwise.*/
+    /// \name Comparison Operators
+    ///@{
+    /** \brief Less-than operator for set operations.
+     *  \param[in] to_compare The pointer to compare.
+     *  \return True if this < to_compare.
+     */
+    [[nodiscard]] bool operator<(const KripkeWorldPointer& to_compare) const noexcept;
 
-    bool operator>(const KripkeWorldPointer & to_compare) const;
-    /**\brief The operator ==.
-     * 
-     * @param[in] to_compare: the \ref pworld_ptr to confront with *this*.
-     * @return true: if *this* is equal to \p to_compare.
-     * @return false: otherwise.*/
-    bool operator==(const KripkeWorldPointer & to_compare) const;
+    /** \brief Greater-than operator for set operations.
+     *  \param[in] to_compare The pointer to compare.
+     *  \return True if this > to_compare.
+     */
+    [[nodiscard]] bool operator>(const KripkeWorldPointer& to_compare) const noexcept;
+
+    /** \brief Equality operator.
+     *  \param[in] to_compare The pointer to compare.
+     *  \return True if equal.
+     */
+    [[nodiscard]] bool operator==(const KripkeWorldPointer& to_compare) const noexcept;
+    ///@}
+
+private:
+    /// \name Data Members
+    ///@{
+    /** \brief The wrapped pointer. */
+    std::shared_ptr<const KripkeWorld> m_ptr;
+    /** \brief The repetition count for oblivious observations. */
+    unsigned short m_repetition = 0;
+    ///@}
 };
-

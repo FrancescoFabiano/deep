@@ -2,6 +2,7 @@
 #include <cmath>
 #include "states/kripke/KripkeState.h"
 #include "ExitHandler.h"
+#include "HelperPrint.h"
 
 /**
  * \file FormualaHelper.cpp
@@ -107,12 +108,13 @@ FluentFormula FormulaHelper::and_ff(const FluentFormula& to_merge_1, const Fluen
 
 bool FormulaHelper::check_Bff_notBff(const BeliefFormula& to_check_1, const BeliefFormula& to_check_2, const std::shared_ptr<FluentFormula>& ret)
 {
-    if (to_check_1.get_formula_type() == BELIEF_FORMULA && to_check_2.get_formula_type() == BELIEF_FORMULA) {
+    if (to_check_1.get_formula_type() == BeliefFormulaType::BELIEF_FORMULA && to_check_2.get_formula_type() == BeliefFormulaType::BELIEF_FORMULA) {
         const auto to_check_nested_1 = to_check_1.get_bf1();
         const auto to_check_nested_2 = to_check_2.get_bf1();
 
-        if (to_check_nested_1.get_formula_type() == FLUENT_FORMULA && to_check_nested_2.get_formula_type() == PROPOSITIONAL_FORMULA) {
-            if (to_check_nested_2.get_operator() == BF_NOT) {
+        if (to_check_nested_1.get_formula_type() == BeliefFormulaType::FLUENT_FORMULA && to_check_nested_2.
+            get_formula_type() == BeliefFormulaType::PROPOSITIONAL_FORMULA) {
+            if (to_check_nested_2.get_operator() == BeliefFormulaOperator::BF_NOT) {
                 auto tmp = *to_check_nested_1.get_fluent_formula().begin();
                 const auto f1 = *tmp.begin();
                 tmp = *to_check_nested_2.get_bf1().get_fluent_formula().begin();
@@ -122,8 +124,9 @@ bool FormulaHelper::check_Bff_notBff(const BeliefFormula& to_check_1, const Beli
                     return true;
                 }
             }
-        } else if (to_check_nested_2.get_formula_type() == FLUENT_FORMULA && to_check_nested_1.get_formula_type() == PROPOSITIONAL_FORMULA) {
-            if (to_check_nested_1.get_operator() == BF_NOT) {
+        } else if (to_check_nested_2.get_formula_type() == BeliefFormulaType::FLUENT_FORMULA && to_check_nested_1.
+                   get_formula_type() == BeliefFormulaType::PROPOSITIONAL_FORMULA) {
+            if (to_check_nested_1.get_operator() == BeliefFormulaOperator::BF_NOT) {
                 auto tmp = *to_check_nested_1.get_bf1().get_fluent_formula().begin();
                 const auto  f1 = *tmp.begin();
                 tmp = *to_check_nested_2.get_fluent_formula().begin();
@@ -227,4 +230,62 @@ FluentFormula FormulaHelper::get_effects_if_entailed(const effects_map& map, con
         );
     }
     return ret;
+}
+
+boost::dynamic_bitset<> FormulaHelper::concatStringDyn(const boost::dynamic_bitset<>& bs1, const boost::dynamic_bitset<>& bs2) {
+    std::string s1;
+    std::string s2;
+
+    to_string(bs1, s1);
+    to_string(bs2, s2);
+    boost::dynamic_bitset<> res(s1 + s2);
+    return res;
+}
+
+boost::dynamic_bitset<> FormulaHelper::concatOperatorsDyn(const boost::dynamic_bitset<>& bs1, const boost::dynamic_bitset<>& bs2) {
+    boost::dynamic_bitset<> bs1Copy(bs1);
+    boost::dynamic_bitset<> bs2Copy(bs2);
+    size_t totalSize = bs1.size() + bs2.size();
+    bs1Copy.resize(totalSize);
+    bs2Copy.resize(totalSize);
+    bs1Copy <<= bs2.size();
+    bs1Copy |= bs2Copy;
+    return bs1Copy;
+}
+
+boost::dynamic_bitset<> FormulaHelper::concatLoopDyn(const boost::dynamic_bitset<>& bs1, const boost::dynamic_bitset<>& bs2) {
+    boost::dynamic_bitset<> res(bs1);
+    res.resize(bs1.size() + bs2.size());
+    size_t bs1Size = bs1.size();
+
+    for (size_t i = 0; i < bs2.size(); i++)
+        res[i + bs1Size] = bs2[i];
+    return res;
+}
+
+KripkeWorldId FormulaHelper::hash_fluents_into_id(const FluentsSet& fl) {
+    FluentsSet fl2 = fl;
+    return boost::hash_range(fl2.begin(), fl2.end());
+}
+
+bool FormulaHelper::consistent(const FluentsSet& to_check) {
+    for (auto it = to_check.begin(); it != to_check.end(); ++it) {
+        /* If the pointed fluent is in modulo 2 it means is the positive and if
+        * its successor (the negative version) is in the set then is not consistent.*/
+        Fluent neg = negate_fluent(*it);
+        auto clash = to_check.find(neg);
+        if (clash != to_check.end()) {
+            std::ostringstream oss;
+            oss << "Consistency check failed in FormulaHelper::consistent: set contains a fluent and its negation.\n";
+            oss << "Clashing fluents: \"" << Domain::get_instance().get_grounder().deground_fluent(*it) << "\" and \""
+                    << Domain::get_instance().get_grounder().deground_fluent(neg);
+            oss << "\nFull set: ";
+            HelperPrint::get_instance().print_list(to_check, oss);
+            ExitHandler::exit_with_message(
+                ExitHandler::ExitCode::FormulaConsistencyError,
+                oss.str()
+            );
+        }
+    }
+    return true;
 }

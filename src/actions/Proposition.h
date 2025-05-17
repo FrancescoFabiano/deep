@@ -93,8 +93,11 @@ public:
 
     /// \name Utilities
     ///@{
-    /** \brief Prints this proposition. */
-    void print() const;
+    /** \brief Prints this proposition.
+     *
+     * \param os The output stream to print to (default: std::cout).
+     */
+    auto print(std::ostream &os = std::cout) const -> void;
 
     /** \brief Grounds this proposition. */
     //void ground();

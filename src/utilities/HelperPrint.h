@@ -1,5 +1,6 @@
 #pragma once
 
+#include <iostream>
 #include "Define.h"
 #include "domain/Grounder.h"
 
@@ -45,56 +46,72 @@ public:
     /**
      * \brief Print all std::string in a set (conjunctive set of fluents).
      * \param to_print The set to print.
+     * \param os The output stream to print to (default: std::cout).
      */
-    static void print_list(const StringsSet& to_print);
+    static void print_list(const StringsSet& to_print, std::ostream& os = std::cout);
 
     /**
      * \brief Print all std::string sets in a set (DNF formula).
      * \param to_print The set of sets to print.
+     * \param os The output stream to print to (default: std::cout).
      */
-    static void print_list(const StringSetsSet& to_print);
+    static void print_list(const StringSetsSet& to_print, std::ostream& os = std::cout);
 
     /**
      * \brief Print all fluents in a set (conjunctive set).
      * \param to_print The set to print.
+     * \param os The output stream to print to (default: std::cout).
      */
-    void print_list(const FluentsSet& to_print) const;
+    void print_list(const FluentsSet& to_print, std::ostream& os = std::cout) const;
 
     /**
      * \brief Print all fluent sets in a formula (DNF).
      * \param to_print The formula to print.
+     * \param os The output stream to print to (default: std::cout).
      */
-    void print_list(const FluentFormula& to_print) const;
+    void print_list(const FluentFormula& to_print, std::ostream& os = std::cout) const;
 
     /**
      * \brief Print all belief formulas in a list (CNF).
      * \param to_print The list to print.
+     * \param os The output stream to print to (default: std::cout).
      */
-    static void print_list(const FormulaeList& to_print) ;
+    static void print_list(const FormulaeList& to_print, std::ostream& os = std::cout);
 
     /**
-     * \brief Print all pworld pointers in a set.
+     * \brief Print all KripkeWorld pointers in a set.
      * \param to_print The set to print.
+     * \param os The output stream to print to (default: std::cout).
      */
-    static void print_list(const KripkeWorldPointersSet& to_print);
+    static void print_list(const KripkeWorldPointersSet& to_print, std::ostream& os = std::cout);
 
     /**
      * \brief Print all action names in a list.
      * \param to_print The list to print.
+     * \param os The output stream to print to (default: std::cout).
      */
-    void print_list(const ActionIdsList& to_print) const;
+    void print_list(const ActionIdsList& to_print, std::ostream& os = std::cout) const;
 
     /**
      * \brief Print all agent names in a set.
      * \param to_print The set to print.
+     * \param os The output stream to print to (default: std::cout).
      */
-    void print_list_ag(const AgentsSet& to_print) const;
+    void print_list_ag(const AgentsSet& to_print, std::ostream& os = std::cout) const;
 
     /**
      * \brief Print all agent names in a set.
      * \param to_print The BeliefFormula to print.
+     * \param os The output stream to print to (default: std::cout).
      */
-    void print_belief_formula(const BeliefFormula& to_print) const;
+    void print_belief_formula(const BeliefFormula& to_print, std::ostream& os = std::cout) const;
+
+    /**
+     * \brief Generate a log file path based on domain name, date, time, and repetition.
+     * \param domain_file The domain file name.
+     * \return The generated log file path.
+     */
+    static std::string generate_log_file_path(const std::string& domain_file);
 
 private:
     Grounder m_grounder;           ///< Used to de-ground fluents for printing.
