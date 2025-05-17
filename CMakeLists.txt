@@ -24,8 +24,7 @@ include_directories(
 
 # Automatically include all source files
 set(SOURCES
-        src/utilities/SetHelper.h
-        src/parse/BeliefFormulaParsed.cpp #This is a header file, not a source file but it contains template functions
+        src/utilities/SetHelper.h #This is a header file, not a source file but it contains template functions
 )
 get_property(INCLUDE_DIRS DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY INCLUDE_DIRECTORIES)
 foreach(dir ${INCLUDE_DIRS})

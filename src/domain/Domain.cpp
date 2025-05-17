@@ -212,10 +212,9 @@ void Domain::build_initially() {
     std::cout << "\nAdding to pointed world and initial conditions..." << std::endl;
 
     /////@TODO This will be replaced by epddl parser. Reader needs to be changed and make sure to have getter and setter
-    for (auto& formula : m_reader->m_bf_initially) {
-        formula.ground();
-        //NEED TO CREATE AN EXTRA CLASS THAT WILL CONTAIN ALL THE STRING INFOMRATION OF THE BELIEF FORMUALE AND PASSES THEM TO THE GROUNDED BELIEF FORUMAL AND THEN GETS DESTROYED
-        //tHAT WAY WE DO NOT NEED TO CARRY OVER STRINGS IN BELIEF FORMULAE
+    for (auto& formula_parsed : m_reader->m_bf_initially) {
+        const auto formula = BeliefFormula(formula_parsed);
+
 
         switch (formula.get_formula_type()) {
         case BeliefFormulaType::FLUENT_FORMULA: {
@@ -255,8 +254,8 @@ void Domain::build_goal() {
     std::cout << "\nAdding to Goal..." << std::endl;
 
     /////@TODO This will be replaced by epddl parser. Reader needs to be changed and make sure to have getter and setter
-    for (auto& formula : m_reader->m_bf_goal) {
-        formula.ground();
+    for (auto& formula_parsed : m_reader->m_bf_goal) {
+        const auto formula = BeliefFormula(formula_parsed);
         m_goal_description.push_back(formula);
         if (ArgumentParser::get_instance().get_debug()) {
             std::cout << "    ";

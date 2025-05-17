@@ -1,6 +1,8 @@
 /**
  * \class BeliefFormulaParsed
  * \brief Class that implements a parsed Belief Formula (string-based fields).
+ * This is just used to get the parsed information and then build the grounded version of the \ref BeliefFormula.
+ * We do not want strings in the \ref BeliefFormula class for optimization purposes.
  *
  * \details A \ref BeliefFormulaParsed can have several forms:
  *    - \ref FLUENT_FORMULA -- \ref fluent_formula;
@@ -11,8 +13,6 @@
  *    - \ref D_FORMULA -- D([set of \ref agent], *phi*);
  *
  * \see reader, domain
- *
- * \todo Maybe implement the "move" so the reader actually moves the object instead of copying them.
  *
  * \copyright GNU Public License.
  *
@@ -32,7 +32,6 @@ public:
     /// \name Constructors
     ///@{
     BeliefFormulaParsed() = default;
-    ~BeliefFormulaParsed() = default;
     ///@}
 
     /// \name Setters

@@ -2,7 +2,7 @@
  * \class BeliefFormula
  * \brief Class that implements a Belief Formula.
  *
- * \details A \ref belief_formula can have several forms:
+ * \details A \ref BeliefFormula can have several forms:
  *    - \ref FLUENT_FORMULA -- \ref fluent_formula;
  *    - \ref BELIEF_FORMULA -- B(\ref agent, *phi*);
  *    - \ref PROPOSITIONAL_FORMULA -- \ref BF_NOT(*phi*) or (*phi_1* \ref BF_AND *phi_2*) or (*phi_1* \ref BF_OR *phi_2*);
@@ -23,10 +23,11 @@
 
 #include <memory>
 
+#include "BeliefFormulaParsed.h"
 #include "utilities/Define.h"
 
 /**
- * \brief The possible types of \ref belief_formula.
+ * \brief The possible types of \ref BeliefFormula.
  */
 enum class BeliefFormulaType
 {
@@ -41,9 +42,9 @@ enum class BeliefFormulaType
 };
 
 /**
- * \brief The logical operator for \ref belief_formula(e).
+ * \brief The logical operator for \ref BeliefFormula(e).
  *
- * These are used in the case that the \ref bf_type of a \ref belief_formula is \ref PROPOSITIONAL_FORMULA.
+ * These are used in the case that the \ref bf_type of a \ref BeliefFormula is \ref PROPOSITIONAL_FORMULA.
  */
 enum class BeliefFormulaOperator
 {
@@ -62,8 +63,15 @@ public:
     /** \brief Empty Constructor */
     BeliefFormula() = default;
 
+    /** \brief Constructor that takes a \ref BeliefFormulaParsed object.
+     *  \details This constructor is used to create a \ref BeliefFormula from a parsed one.
+     *
+     *  \param[in] to_ground The \ref BeliefFormulaParsed to copy in *this*.
+    */
+    explicit BeliefFormula(const BeliefFormulaParsed& to_ground);
+
     /** \brief Copy Constructor
-     *  \param[in] to_copy The \ref belief_formula to copy in *this*.
+     *  \param[in] to_copy The \ref BeliefFormula to copy in *this*.
      */
     BeliefFormula(const BeliefFormula & to_copy);
 
@@ -103,16 +111,28 @@ public:
     void set_group_agents(const AgentsSet& to_set);
 
     /** \brief Setter of the field m_bf1.
-     *  This setter takes a \ref belief_formula and sets m_bf1 to be its pointer.
-     *  \param[in] to_set The \ref belief_formula to be pointed by m_bf1.
+     *  This setter takes a \ref BeliefFormula and sets m_bf1 to be its pointer.
+     *  \param[in] to_set The \ref BeliefFormula to be pointed by m_bf1.
      */
     void set_bf1(const BeliefFormula & to_set);
 
     /** \brief Setter of the field m_bf2.
-     *  This setter takes a \ref belief_formula and sets m_bf2 to be its pointer.
-     *  \param[in] to_set The \ref belief_formula to be pointed by m_bf2.
+     *  This setter takes a \ref BeliefFormula and sets m_bf2 to be its pointer.
+     *  \param[in] to_set The \ref BeliefFormula to be pointed by m_bf2.
      */
     void set_bf2(const BeliefFormula & to_set);
+
+    /** \brief Setter of the field m_bf1 given a \ref BeliefFormulaParsed.
+     *  This setter takes a \ref BeliefFormulaParsed and sets m_bf1 to be its pointer.
+     *  \param[in] to_set The \ref BeliefFormulaParsed to be pointed by m_bf1.
+     */
+    void set_bf1(const BeliefFormulaParsed & to_set);
+
+    /** \brief Setter of the field m_bf2 given a \ref BeliefFormulaParsed.
+     *  This setter takes a \ref BeliefFormulaParsed and sets m_bf2 to be its pointer.
+     *  \param[in] to_set The \ref BeliefFormulaParsed to be pointed by m_bf2.
+     */
+    void set_bf2(const BeliefFormulaParsed & to_set);
 
     /** \brief Setter for the field m_formula_type.
      *  \param[in] to_set The \ref bf_type object to copy in m_formula_type.
@@ -145,13 +165,13 @@ public:
      */
     [[nodiscard]] const Agent & get_agent() const noexcept;
 
-    /** \brief Getter of the \ref belief_formula pointed by m_bf1.
-     *  \return The \ref belief_formula pointed by m_bf1.
+    /** \brief Getter of the \ref BeliefFormula pointed by m_bf1.
+     *  \return The \ref BeliefFormula pointed by m_bf1.
      */
     [[nodiscard]] const BeliefFormula & get_bf1() const;
 
-    /** \brief Getter of the \ref belief_formula pointed by m_bf2.
-     *  \return The \ref belief_formula pointed by m_bf2.
+    /** \brief Getter of the \ref BeliefFormula pointed by m_bf2.
+     *  \return The \ref BeliefFormula pointed by m_bf2.
      */
     [[nodiscard]] const BeliefFormula & get_bf2() const;
 
@@ -178,9 +198,9 @@ public:
      */
     void print() const;
 
-    /** \brief The equality operator for \ref belief_formula.
-     *  \param[in] to_compare The \ref belief_formula to compare with *this*.
-     *  \return true if the given \ref belief_formula is syntactically equal to *this*, false otherwise.
+    /** \brief The equality operator for \ref BeliefFormula.
+     *  \param[in] to_compare The \ref BeliefFormula to compare with *this*.
+     *  \return true if the given \ref BeliefFormula is syntactically equal to *this*, false otherwise.
      */
     [[nodiscard]] bool operator==(const BeliefFormula& to_compare) const;
 

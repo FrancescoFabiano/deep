@@ -1,7 +1,10 @@
-//
-// Created by fraano on 16/05/2025.
-//
-
+/**
+* \file BeliefFormulaParsed.cpp
+ * \brief Implementation of the \ref BeliefFormulaParsed class.
+ *
+ * \author Francesco Fabiano.
+ * \date May 2025
+ */
 #include "BeliefFormulaParsed.h"
 
 void BeliefFormulaParsed::set_string_fluent_formula(const StringSetsSet & to_set)

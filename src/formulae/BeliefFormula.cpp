@@ -17,6 +17,56 @@ void BeliefFormula::set_from_ff(const FluentFormula & to_build)
     set_fluent_formula(to_build);
 }
 
+BeliefFormula::BeliefFormula(const BeliefFormulaParsed &to_ground) {
+    const auto grounder = Domain::get_instance().get_grounder();
+    set_formula_type(to_ground.get_formula_type());
+    switch (m_formula_type) {
+        case BeliefFormulaType::FLUENT_FORMULA:
+            set_fluent_formula(grounder.ground_fluent(to_ground.get_string_fluent_formula()));
+            break;
+        case BeliefFormulaType::BELIEF_FORMULA:
+            set_agent(grounder.ground_agent(to_ground.get_string_agent()));
+            set_bf1(to_ground.get_bf1());
+            break;
+        case BeliefFormulaType::PROPOSITIONAL_FORMULA:
+            set_operator(to_ground.get_operator());
+            set_bf1(to_ground.get_bf1());
+            switch (m_operator) {
+                case BeliefFormulaOperator::BF_AND:
+                case BeliefFormulaOperator::BF_OR:
+                    set_bf2(to_ground.get_bf2());
+                    break;
+                case BeliefFormulaOperator::BF_NOT:
+                    break;
+                case BeliefFormulaOperator::BF_INPAREN:
+                    (*this) = BeliefFormula(get_bf1());
+                    break;
+                case BeliefFormulaOperator::BF_FAIL:
+                default:
+                    ExitHandler::exit_with_message(
+                        ExitHandler::ExitCode::BeliefFormulaOperatorUnset,
+                        "Error in creating a BeliefFormula from a parsed one."
+                    );
+                    break;
+            }
+            break;
+        case BeliefFormulaType::E_FORMULA:
+        case BeliefFormulaType::C_FORMULA:
+        case BeliefFormulaType::D_FORMULA:
+            set_group_agents(grounder.ground_agent(to_ground.get_group_agents()));
+            set_bf1(to_ground.get_bf1());
+            break;
+        case BeliefFormulaType::BF_EMPTY:
+        case BeliefFormulaType::BF_TYPE_FAIL:
+        default:
+            ExitHandler::exit_with_message(
+                ExitHandler::ExitCode::BeliefFormulaTypeUnset,
+                "Error in creating a BeliefFormula from a parsed one."
+            );
+            break;
+    }
+}
+
 BeliefFormula::BeliefFormula(const BeliefFormula & to_copy)
 {
     (*this) = to_copy;
@@ -142,6 +192,16 @@ void BeliefFormula::set_bf1(const BeliefFormula & to_set)
 }
 
 void BeliefFormula::set_bf2(const BeliefFormula & to_set)
+{
+    m_bf2 = std::make_shared<BeliefFormula>(to_set);
+}
+
+void BeliefFormula::set_bf1(const BeliefFormulaParsed & to_set)
+{
+    m_bf1 = std::make_shared<BeliefFormula>(to_set);
+}
+
+void BeliefFormula::set_bf2(const BeliefFormulaParsed & to_set)
 {
     m_bf2 = std::make_shared<BeliefFormula>(to_set);
 }
