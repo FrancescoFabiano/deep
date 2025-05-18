@@ -52,10 +52,6 @@ BeliefFormula::BeliefFormula(const BeliefFormulaParsed &to_ground) {
             break;
         case BeliefFormulaType::E_FORMULA:
         case BeliefFormulaType::C_FORMULA:
-        case BeliefFormulaType::D_FORMULA:
-            set_group_agents(grounder.ground_agent(to_ground.get_group_agents()));
-            set_bf1(to_ground.get_bf1());
-            break;
         case BeliefFormulaType::BF_EMPTY:
         case BeliefFormulaType::BF_TYPE_FAIL:
         default:
@@ -212,7 +208,7 @@ void BeliefFormula::print(std::ostream& os) const
     os << std::endl;
 }
 
-bool BeliefFormula::operator==(const BeliefFormula & to_compare) const
+bool BeliefFormula::operator==(const BeliefFormula & to_compare) const // NOLINT(*-no-recursion)
 {
     if (m_formula_type != to_compare.m_formula_type) {
         return false;
@@ -244,7 +240,6 @@ bool BeliefFormula::operator==(const BeliefFormula & to_compare) const
 
     case BeliefFormulaType::E_FORMULA:
     case BeliefFormulaType::C_FORMULA:
-    case BeliefFormulaType::D_FORMULA:
         return m_group_agents == to_compare.get_group_agents() &&
                get_bf1() == to_compare.get_bf1();
 
@@ -260,7 +255,7 @@ bool BeliefFormula::operator==(const BeliefFormula & to_compare) const
     }
 }
 
-BeliefFormula& BeliefFormula::operator=(const BeliefFormula & to_copy)
+BeliefFormula& BeliefFormula::operator=(const BeliefFormula & to_copy) // NOLINT(*-no-recursion, *-unhandled-self-assignment)
 {
     set_formula_type(to_copy.get_formula_type());
     switch (m_formula_type) {
@@ -297,7 +292,6 @@ BeliefFormula& BeliefFormula::operator=(const BeliefFormula & to_copy)
         break;
     case BeliefFormulaType::E_FORMULA:
     case BeliefFormulaType::C_FORMULA:
-    case BeliefFormulaType::D_FORMULA:
             set_group_agents(to_copy.get_group_agents());
         set_bf1(to_copy.get_bf1());
         break;
@@ -315,7 +309,7 @@ BeliefFormula& BeliefFormula::operator=(const BeliefFormula & to_copy)
     return *this;
 }
 
-bool BeliefFormula::operator<(const BeliefFormula & to_compare) const
+bool BeliefFormula::operator<(const BeliefFormula & to_compare) const // NOLINT(*-no-recursion)
 {
     // Compare formula types first
     if (get_formula_type() < to_compare.get_formula_type()) {
@@ -369,7 +363,6 @@ bool BeliefFormula::operator<(const BeliefFormula & to_compare) const
 
     case BeliefFormulaType::E_FORMULA:
     case BeliefFormulaType::C_FORMULA:
-    case BeliefFormulaType::D_FORMULA:
         if (get_group_agents() < to_compare.get_group_agents()) {
             return true;
         }

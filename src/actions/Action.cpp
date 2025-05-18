@@ -79,17 +79,17 @@ const FormulaeList& Action::get_executability() const
     return m_executability;
 }
 
-const effects_map& Action::get_effects() const
+const EffectsMap& Action::get_effects() const
 {
     return m_effects;
 }
 
-const observability_map& Action::get_fully_observants() const
+const ObservabilitiesMap& Action::get_fully_observants() const
 {
     return m_fully_observants;
 }
 
-const observability_map& Action::get_partially_observants() const
+const ObservabilitiesMap& Action::get_partially_observants() const
 {
     return m_partially_observants;
 }
@@ -101,7 +101,7 @@ void Action::add_executability(const BeliefFormula& exec)
 
 void Action::add_effect(const FluentFormula& effect, const BeliefFormula& condition)
 {
-    auto [it, inserted] = m_effects.insert(effects_map::value_type(effect, condition));
+    auto [it, inserted] = m_effects.insert(EffectsMap::value_type(effect, condition));
     if (!inserted) {
         ExitHandler::exit_with_message(
             ExitHandler::ExitCode::ActionEffectError,
@@ -112,12 +112,12 @@ void Action::add_effect(const FluentFormula& effect, const BeliefFormula& condit
 
 void Action::add_fully_observant(const Agent& fully, const BeliefFormula& condition)
 {
-    m_fully_observants.insert(observability_map::value_type(fully, condition));
+    m_fully_observants.insert(ObservabilitiesMap::value_type(fully, condition));
 }
 
 void Action::add_partially_observant(const Agent& partial, const BeliefFormula& condition)
 {
-    m_partially_observants.insert(observability_map::value_type(partial, condition));
+    m_partially_observants.insert(ObservabilitiesMap::value_type(partial, condition));
 }
 
 void Action::add_proposition(const Proposition& to_add)

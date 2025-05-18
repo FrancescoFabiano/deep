@@ -67,13 +67,13 @@ public:
     [[nodiscard]] const FormulaeList& get_executability() const;
 
     /** \brief Gets the effects of this action. */
-    [[nodiscard]] const effects_map& get_effects() const;
+    [[nodiscard]] const EffectsMap& get_effects() const;
 
     /** \brief Gets the fully observant agents and their conditions. */
-    [[nodiscard]] const observability_map& get_fully_observants() const;
+    [[nodiscard]] const ObservabilitiesMap& get_fully_observants() const;
 
     /** \brief Gets the partially observant agents and their conditions. */
-    [[nodiscard]] const observability_map& get_partially_observants() const;
+    [[nodiscard]] const ObservabilitiesMap& get_partially_observants() const;
     ///@}
 
     /// \name Main Methods
@@ -109,9 +109,9 @@ private:
     PropositionType m_type = PropositionType::NOTSET;  ///< The proposition type of this action.
 
     FormulaeList m_executability;      ///< Executability conditions.
-    observability_map m_fully_observants;    ///< Fully observant agents and their conditions.
-    observability_map m_partially_observants;///< Partially observant agents and their conditions.
-    effects_map m_effects;             ///< Effects and their conditions.
+    ObservabilitiesMap m_fully_observants;    ///< Fully observant agents and their conditions.
+    ObservabilitiesMap m_partially_observants;///< Partially observant agents and their conditions.
+    EffectsMap m_effects;             ///< Effects and their conditions.
     ///@}
 
     /// \name Private Methods

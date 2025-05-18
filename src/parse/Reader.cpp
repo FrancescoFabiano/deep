@@ -7,7 +7,7 @@
  */
 
 #include "Reader.h"
-#include "HelperPrint.h" // Used in \ref print as a support
+#include "../utilities/HelperPrint.h"
 
 // prototype of bison-generated parser function
 int yyparse();

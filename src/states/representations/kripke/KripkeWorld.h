@@ -60,27 +60,6 @@ public:
     [[nodiscard]] KripkeWorldId get_id() const noexcept;
     ///@}
 
-    /// \name Entailment
-    ///@{
-    /** \brief Check if a fluent is entailed by this world.
-     *  \param[in] to_check The fluent to check.
-     *  \return True if entailed, false otherwise.
-     */
-    [[nodiscard]] bool entails(const Fluent &to_check) const;
-
-    /** \brief Check if a conjunctive set of fluents is entailed.
-     *  \param[in] to_check The set of fluents.
-     *  \return True if all are entailed, false otherwise.
-     */
-    [[nodiscard]] bool entails(const FluentsSet& to_check) const;
-
-    /** \brief Check if a DNF fluent formula is entailed.
-     *  \param[in] to_check The formula to check.
-     *  \return True if entailed, false otherwise.
-     */
-    [[nodiscard]] bool entails(const FluentFormula& to_check) const;
-    ///@}
-
     /// \name Comparison Operators
     ///@{
     /** \brief Less-than operator based on unique id.
@@ -116,7 +95,7 @@ private:
     /** \brief The set of fluents describing this world. */
     FluentsSet m_fluent_set;
     /** \brief The unique id of this world. */
-    KripkeWorldId m_id;
+    KripkeWorldId m_id = 0;
     ///@}
 
     /// \name Internal Methods
@@ -124,7 +103,7 @@ private:
     /** \brief Hash this world's fluents into a unique id.
      *  \return The unique id.
      */
-    KripkeWorldId hash_fluents_into_id() const;
+    [[nodiscard]] KripkeWorldId hash_fluents_into_id() const;
 
     /** \brief Set the fluent set, ensuring consistency.
      *  \param[in] description The set of fluents.
@@ -157,13 +136,13 @@ public:
      *  \param[in] ptr The pointer to assign.
      *  \param[in] repetition The repetition count (default 0).
      */
-    KripkeWorldPointer(const std::shared_ptr<const KripkeWorld>& ptr, unsigned short repetition = 0);
+    explicit KripkeWorldPointer(const std::shared_ptr<const KripkeWorld>& ptr, unsigned short repetition = 0);
 
     /** \brief Construct from shared_ptr (move).
      *  \param[in] ptr The pointer to move.
      *  \param[in] repetition The repetition count (default 0).
      */
-    KripkeWorldPointer(std::shared_ptr<const KripkeWorld>&& ptr, unsigned short repetition = 0);
+    explicit KripkeWorldPointer(std::shared_ptr<const KripkeWorld>&& ptr, unsigned short repetition = 0);
 
     /** \brief Construct from KripkeWorld by value.
      *  \param[in] world The world to point to.
@@ -235,27 +214,6 @@ public:
      *  \return The id.
      */
     [[nodiscard]] KripkeWorldId get_fluent_based_id() const noexcept;
-    ///@}
-
-    /// \name Entailment
-    ///@{
-    /** \brief Check if a fluent is entailed by the pointed world.
-     *  \param[in] to_check The fluent to check.
-     *  \return True if entailed.
-     */
-    [[nodiscard]] bool entails(const Fluent &to_check) const;
-
-    /** \brief Check if a set of fluents is entailed by the pointed world.
-     *  \param[in] to_check The set to check.
-     *  \return True if all are entailed.
-     */
-    [[nodiscard]] bool entails(const FluentsSet& to_check) const;
-
-    /** \brief Check if a DNF formula is entailed by the pointed world.
-     *  \param[in] to_check The formula to check.
-     *  \return True if entailed.
-     */
-    [[nodiscard]] bool entails(const FluentFormula& to_check) const;
     ///@}
 
     /// \name Comparison Operators

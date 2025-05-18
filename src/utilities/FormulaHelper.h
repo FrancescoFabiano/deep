@@ -111,14 +111,14 @@ public:
      * @param[in] map: the map that contains the tuples to check for entailment.
      * @param[in] state: the state in which to check the entailment.
      * @return the effects that are feasible in *this* with \p start as pointed world*.*/
-    static AgentsSet get_agents_if_entailed(const observability_map & map, const KripkeState & state);
+    static AgentsSet get_agents_if_entailed(const ObservabilitiesMap & map, const KripkeState & state);
 
     /** \brief Function that return the \ref fluent_formula (effect) that entails the exe condition.
      *
      * @param[in] map: the map that contains the tuples to check for entailment.
      * @param[in] state: the state in which to check the entailment.
      * @return the effects that are feasible in \p state.*/
-    static FluentFormula get_effects_if_entailed(const effects_map & map, const KripkeState & state);
+    static FluentFormula get_effects_if_entailed(const EffectsMap & map, const KripkeState & state);
 
     /**
      * \brief Concatenate two dynamic_bitsets as strings.

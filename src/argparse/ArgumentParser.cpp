@@ -48,7 +48,7 @@ void ArgumentParser::parse(int argc, char** argv) {
         app.parse(argc, argv);
         // After parsing, if log is enabled, generate the log file path using HelperPrint
         if (m_log_enabled) {
-            m_log_file_path = HelperPrint::get_instance().generate_log_file_path(m_input_file);
+            m_log_file_path = HelperPrint::generate_log_file_path(m_input_file);
         }
     } catch (const CLI::CallForHelp&) {
         print_usage();

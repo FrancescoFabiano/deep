@@ -11,12 +11,14 @@ include_directories(
         src
         src/actions
         src/argparse
+        src/bisimulation
         src/domain
         src/formulae
         src/heuristics
         src/parse
         src/states
-        src/states/kripke
+        src/states/representations/kripke
+        src/states/representations/kripke/helpers
         src/utilities
         src/search
         lib/bisimulation
@@ -25,6 +27,7 @@ include_directories(
 # Automatically include all source files
 set(SOURCES
         src/utilities/SetHelper.h #This is a header file, not a source file but it contains template functions
+
 )
 get_property(INCLUDE_DIRS DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY INCLUDE_DIRECTORIES)
 foreach(dir ${INCLUDE_DIRS})

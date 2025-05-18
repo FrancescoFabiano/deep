@@ -37,7 +37,6 @@ enum class BeliefFormulaType
     PROPOSITIONAL_FORMULA,    ///< A \ref BeliefFormula composed with logical operators and \ref BeliefFormula(e).
     E_FORMULA,                ///< A \ref BeliefFormula of the form E([set of \ref agent], *phi*).
     C_FORMULA,                ///< A \ref BeliefFormula of the form C([set of \ref agent], *phi*).
-    D_FORMULA,                ///< A \ref BeliefFormula of the form D([set of \ref agent], *phi*).
     BF_EMPTY,                 ///< When the belief formula is empty.
     BF_TYPE_FAIL              ///< The failure case.
 };

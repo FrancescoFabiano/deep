@@ -9,7 +9,6 @@
 #include "domain.h"
 #include <boost/dynamic_bitset.hpp>
 #include <iostream>
-#include <ranges>
 
 #include "ArgumentParser.h"
 #include "HelperPrint.h"
@@ -231,7 +230,6 @@ void Domain::build_initially(std::ostream& os) {
                 break;
         }
         case BeliefFormulaType::C_FORMULA:
-        case BeliefFormulaType::D_FORMULA:
         case BeliefFormulaType::PROPOSITIONAL_FORMULA:
         case BeliefFormulaType::BELIEF_FORMULA:
         case BeliefFormulaType::E_FORMULA: {

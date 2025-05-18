@@ -403,9 +403,9 @@ bool pg_state_level::compute_succ(const action & act, const pg_state_level & pre
 
 bool pg_state_level::exec_ontic(const action & act, const pg_state_level & predecessor, FormulaeSet & false_bf)
 {
-	observability_map fully_observant_map = act.get_fully_observants();
+	ObservabilitiesMap fully_observant_map = act.get_fully_observants();
 	AgentSet fully_obs;
-	effects_map effects_map = act.get_effects();
+	EffectsMap effects_map = act.get_effects();
 	fluent_set verified_fluents;
 	fluent_set bf_base_fluents;
 	bool modified_pg = false;
@@ -465,11 +465,11 @@ bool pg_state_level::exec_ontic(const action & act, const pg_state_level & prede
 
 bool pg_state_level::exec_epistemic(const action & act, const pg_state_level & predecessor, FormulaeSet & false_bf)
 {
-	observability_map partially_observant_map = act.get_partially_observants();
-	observability_map fully_observant_map = act.get_fully_observants();
+	ObservabilitiesMap partially_observant_map = act.get_partially_observants();
+	ObservabilitiesMap fully_observant_map = act.get_fully_observants();
 	AgentSet fully_obs;
 	AgentSet partially_obs;
-	effects_map effects_map = act.get_effects();
+	EffectsMap effects_map = act.get_effects();
 	fluent_set bf_base_fluents;
 	fluent_formula ff_temp;
 	fluent_set fs_temp;

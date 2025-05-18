@@ -53,38 +53,6 @@ KripkeWorldId KripkeWorld::get_id() const noexcept {
     return m_id;
 }
 
-bool KripkeWorld::entails(const Fluent &to_check) const {
-    return m_fluent_set.contains(to_check);
-}
-
-bool KripkeWorld::entails(const FluentsSet& to_check) const {
-    //Maybe just set to True (It was like this in EFP)
-    if (to_check.empty()) {
-        ExitHandler::exit_with_message(
-            ExitHandler::ExitCode::KripkeWorldEntailmentError,
-            "Error: Attempted to check entailment of an empty FluentFormula in KripkeWorld::entails().\n"
-        );
-    }
-    for (const auto& fl : to_check) {
-        if (!entails(fl)) return false;
-    }
-    return true;
-}
-
-bool KripkeWorld::entails(const FluentFormula& to_check) const {
-    //Maybe just set to True (It was like this in EFP)
-    if (to_check.empty()) {
-        ExitHandler::exit_with_message(
-            ExitHandler::ExitCode::KripkeWorldEntailmentError,
-            "Error: Attempted to check entailment of an empty FluentFormula in KripkeWorld::entails().\n"
-        );
-    }
-    for (const auto& fl : to_check) {
-        if (entails(fl)) return true;
-    }
-    return false;
-}
-
 bool KripkeWorld::operator<(const KripkeWorld& to_compare) const noexcept {
     return m_id < to_compare.get_id();
 }
@@ -212,33 +180,6 @@ KripkeWorldId KripkeWorldPointer::get_internal_world_id() const noexcept {
     return 0;
 }
 
-bool KripkeWorldPointer::entails(const Fluent &to_check) const {
-    if (!m_ptr) {
-        ExitHandler::exit_with_message(
-            ExitHandler::ExitCode::KripkeWorldPointerNullError,
-            "Error: Null KripkeWorldPointer in entails(const Fluent&).\n  Tip: Ensure all KripkeWorldPointer objects are properly initialized before use."
-        );
-    }
-    return m_ptr->entails(to_check);
-}
-bool KripkeWorldPointer::entails(const FluentsSet& to_check) const {
-    if (!m_ptr) {
-        ExitHandler::exit_with_message(
-            ExitHandler::ExitCode::KripkeWorldPointerNullError,
-            "Error: Null KripkeWorldPointer in entails(const FluentsSet&).\n  Tip: Ensure all KripkeWorldPointer objects are properly initialized before use."
-        );
-    }
-    return m_ptr->entails(to_check);
-}
-bool KripkeWorldPointer::entails(const FluentFormula& to_check) const {
-    if (!m_ptr) {
-        ExitHandler::exit_with_message(
-            ExitHandler::ExitCode::KripkeWorldPointerNullError,
-            "Error: Null KripkeWorldPointer in entails(const FluentFormula&).\n  Tip: Ensure all KripkeWorldPointer objects are properly initialized before use."
-        );
-    }
-    return m_ptr->entails(to_check);
-}
 
 bool KripkeWorldPointer::operator<(const KripkeWorldPointer& to_compare) const noexcept {
     return get_id() < to_compare.get_id();

@@ -19,7 +19,7 @@
 
 #pragma once
 
-#include "Define.h"
+#include "../utilities/Define.h"
 #include "formulae/BeliefFormula.h"
 #include "actions/Proposition.h"
 

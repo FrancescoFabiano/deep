@@ -1,6 +1,6 @@
 #include "FormulaHelper.h"
 #include <cmath>
-#include "states/kripke/KripkeState.h"
+#include "states/representations/kripke/KripkeState.h"
 #include "ExitHandler.h"
 #include "HelperPrint.h"
 
@@ -15,7 +15,7 @@
 Fluent FormulaHelper::negate_fluent(const Fluent& to_negate)
 {
     Fluent fluent_negated = to_negate;
-    fluent_negated.set(to_negate.size() - 1, to_negate[to_negate.size() - 1] == 0 ? 1 : 0);
+    fluent_negated.set(to_negate.size() - 1, to_negate[to_negate.size() - 1] == 0 ? true : false);
     return fluent_negated;
 }
 
@@ -56,11 +56,9 @@ bool FormulaHelper::is_negated(const Fluent& f)
 
 bool FormulaHelper::is_consistent(const FluentsSet& fl1, const FluentsSet& fl2)
 {
-    for (const auto& f : fl2) {
-        if (fl1.contains(negate_fluent(f)))
-            return false;
-    }
-    return true;
+    return std::ranges::all_of(fl2, [&](const Fluent& f) {
+        return !fl1.contains(negate_fluent(f));
+    });
 }
 
 FluentsSet FormulaHelper::and_ff(const FluentsSet& fl1, const FluentsSet& fl2)
@@ -109,8 +107,8 @@ FluentFormula FormulaHelper::and_ff(const FluentFormula& to_merge_1, const Fluen
 bool FormulaHelper::check_Bff_notBff(const BeliefFormula& to_check_1, const BeliefFormula& to_check_2, const std::shared_ptr<FluentFormula>& ret)
 {
     if (to_check_1.get_formula_type() == BeliefFormulaType::BELIEF_FORMULA && to_check_2.get_formula_type() == BeliefFormulaType::BELIEF_FORMULA) {
-        const auto to_check_nested_1 = to_check_1.get_bf1();
-        const auto to_check_nested_2 = to_check_2.get_bf1();
+        const auto& to_check_nested_1 = to_check_1.get_bf1();
+        const auto& to_check_nested_2 = to_check_2.get_bf1();
 
         if (to_check_nested_1.get_formula_type() == BeliefFormulaType::FLUENT_FORMULA && to_check_nested_2.
             get_formula_type() == BeliefFormulaType::PROPOSITIONAL_FORMULA) {
@@ -204,7 +202,7 @@ bool FormulaHelper::fluentset_negated_empty_intersection(const FluentsSet& set1,
     return true;
 }
 
-AgentsSet FormulaHelper::get_agents_if_entailed(const observability_map& map, const KripkeState& state)
+AgentsSet FormulaHelper::get_agents_if_entailed(const ObservabilitiesMap& map, const KripkeState& state)
 {
     AgentsSet ret;
     for (const auto& [agent, formula] : map) {
@@ -215,7 +213,7 @@ AgentsSet FormulaHelper::get_agents_if_entailed(const observability_map& map, co
     return ret;
 }
 
-FluentFormula FormulaHelper::get_effects_if_entailed(const effects_map& map, const KripkeState& state)
+FluentFormula FormulaHelper::get_effects_if_entailed(const EffectsMap& map, const KripkeState& state)
 {
     FluentFormula ret;
     for (const auto& [effect, formula] : map) {
@@ -264,8 +262,7 @@ boost::dynamic_bitset<> FormulaHelper::concatLoopDyn(const boost::dynamic_bitset
 }
 
 KripkeWorldId FormulaHelper::hash_fluents_into_id(const FluentsSet& fl) {
-    FluentsSet fl2 = fl;
-    return boost::hash_range(fl2.begin(), fl2.end());
+    return boost::hash_range(fl.begin(), fl.end());
 }
 
 bool FormulaHelper::consistent(const FluentsSet& to_check) {

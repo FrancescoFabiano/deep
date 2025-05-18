@@ -14,9 +14,9 @@
 #include "utilities/FormulaHelper.h"
 
 /// \brief Checks if a belief formula respects the initial restriction.
-/// \param[in] bf The belief formula to check.
+/// \param[in] to_check The belief formula to check.
 /// \return true if the formula respects the restriction, false otherwise.
-[[nodiscard]] bool InitialStateInformation::check_restriction(const BeliefFormula& bf)
+[[nodiscard]] bool InitialStateInformation::check_restriction(const BeliefFormula& to_check)
 {
     /* The possible cases are:
      * - *phi* -> all worlds must entail *phi*.
@@ -24,19 +24,19 @@
      * - C(B(i,*phi*) \ref BF_OR B(i,-*phi*)) -> only edges conditions.
      * - C(-B(i,*phi*) \ref BeliefFormulaOperator::BF_AND -B(i,-*phi*)) -> only edges conditions.*/
     bool ret = false;
-    switch (bf.get_formula_type()) {
+    switch (to_check.get_formula_type()) {
         case BeliefFormulaType::PROPOSITIONAL_FORMULA:
-            if (bf.get_operator() != BeliefFormulaOperator::BF_AND) {
+            if (to_check.get_operator() != BeliefFormulaOperator::BF_AND) {
                 ret = false;
             } else {
-                ret = check_restriction(bf.get_bf1()) && check_restriction(bf.get_bf2());
+                ret = check_restriction(to_check.get_bf1()) && check_restriction(to_check.get_bf2());
             }
             break;
         case BeliefFormulaType::FLUENT_FORMULA:
             ret = true;
             break;
         case BeliefFormulaType::C_FORMULA: {
-            switch (const auto& tmp = bf.get_bf1(); tmp.get_formula_type()) {
+            switch (const auto& tmp = to_check.get_bf1(); tmp.get_formula_type()) {
                 case BeliefFormulaType::FLUENT_FORMULA:
                     ret = true;
                     break;

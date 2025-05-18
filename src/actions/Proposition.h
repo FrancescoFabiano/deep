@@ -97,7 +97,7 @@ public:
      *
      * \param os The output stream to print to (default: std::cout).
      */
-    auto print(std::ostream &os = std::cout) const -> void;
+    void print(std::ostream &os = std::cout) const;
 
     /** \brief Grounds this proposition. */
     //void ground();

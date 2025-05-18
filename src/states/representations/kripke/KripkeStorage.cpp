@@ -29,5 +29,5 @@ KripkeWorldPointer KripkeStorage::add_world(const KripkeWorld& to_add)
         );
     }
     // Return a shared pointer to the (possibly existing) KripkeWorld.
-    return std::make_shared<const KripkeWorld>(*it);
+    return KripkeWorldPointer(std::make_shared<const KripkeWorld>(*it));
 }

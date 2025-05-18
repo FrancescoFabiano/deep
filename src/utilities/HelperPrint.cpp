@@ -141,13 +141,6 @@ void HelperPrint::print_belief_formula(const BeliefFormula& to_print, std::ostre
         print_belief_formula(to_print.get_bf1(), os);
         os << "))";
         break;
-    case BeliefFormulaType::D_FORMULA:
-        os << "D([";
-        print_list_ag(to_print.get_group_agents(), os);
-        os << "],";
-        print_belief_formula(to_print.get_bf1(), os);
-        os << ")";
-        break;
     case BeliefFormulaType::C_FORMULA:
         os << "C([";
         print_list_ag(to_print.get_group_agents(), os);
@@ -205,7 +198,7 @@ std::string HelperPrint::generate_log_file_path(const std::string& domain_file) 
 
     auto now = std::chrono::system_clock::now();
     std::time_t t = std::chrono::system_clock::to_time_t(now);
-    std::tm tm;
+    std::tm tm{};
 #ifdef _WIN32
     localtime_s(&tm, &t);
 #else

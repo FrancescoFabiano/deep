@@ -2,9 +2,9 @@
 #include <string>
 #include "Grounder.h"
 #include "InitialStateInformation.h"
-#include "../utilities/define.h"
-#include "../utilities/Reader.h"
-#include "../actions/Action.h"
+#include "utilities/define.h"
+#include "parse/Reader.h"
+#include "actions/Action.h"
 #include <boost/make_shared.hpp>
 
 /**

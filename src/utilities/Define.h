@@ -116,8 +116,8 @@ struct ML_Dataset_Params {
 class BeliefFormula;
 using FormulaeList = std::list<BeliefFormula>; ///< CNF formula of BeliefFormula.
 using FormulaeSet = std::set<BeliefFormula>;
-using observability_map = std::map<Agent, BeliefFormula>; ///< Agent to observability conditions.
-using effects_map = std::map<FluentFormula, BeliefFormula>; ///< Action effect to its conditions.
+using ObservabilitiesMap = std::map<Agent, BeliefFormula>; ///< Agent to observability conditions.
+using EffectsMap = std::map<FluentFormula, BeliefFormula>; ///< Action effect to its conditions.
 ///@}
 
 /**
