@@ -161,3 +161,59 @@ bool KripkeEntailmentHelper::entails(const FormulaeList& to_check, const KripkeS
 });
 }
 ///@}
+
+
+
+bool KripkeEntailmentHelper::check_properties(const AgentsSet & fully, const AgentsSet & partially, const FluentFormula & effects, const KripkeState & updated)
+{
+    if (!fully.empty()) {
+        BeliefFormula effects_formula;
+        effects_formula.set_formula_type(BeliefFormulaType::FLUENT_FORMULA);
+        effects_formula.set_fluent_formula(effects);
+
+        BeliefFormula property1;
+        property1.set_group_agents(fully);
+        property1.set_formula_type(BeliefFormulaType::C_FORMULA);
+        property1.set_bf1(effects_formula);
+
+        if (!entails(property1,updated)) {
+            std::cerr << "\nDEBUG: First property not respected";
+            return false;
+        }
+
+        if (!partially.empty()) {
+            BeliefFormula inner_nested2, nested2, disjunction, property2;
+            inner_nested2.set_group_agents(fully);
+            inner_nested2.set_formula_type(BeliefFormulaType::C_FORMULA);
+            inner_nested2.set_bf1(effects_formula);
+
+            nested2.set_formula_type(BeliefFormulaType::PROPOSITIONAL_FORMULA);
+            nested2.set_operator(BeliefFormulaOperator::BF_NOT);
+            nested2.set_bf1(inner_nested2);
+
+            disjunction.set_formula_type(BeliefFormulaType::PROPOSITIONAL_FORMULA);
+            disjunction.set_operator(BeliefFormulaOperator::BF_OR);
+            disjunction.set_bf1(property1);
+            disjunction.set_bf2(nested2);
+
+            property2.set_group_agents(partially);
+            property2.set_formula_type(BeliefFormulaType::C_FORMULA);
+            property2.set_bf1(disjunction);
+
+            BeliefFormula property3;
+            property3.set_group_agents(fully);
+            property3.set_formula_type(BeliefFormulaType::C_FORMULA);
+            property3.set_bf1(property2);
+
+            if (!entails(property2,updated)) {
+                std::cerr << "\nDEBUG: Second property not respected in the formula: ";
+                return false;
+            }
+            if (!entails(property3,updated)) {
+                std::cerr << "\nDEBUG: Third property not respected in the formula: ";
+                return false;
+            }
+        }
+    }
+    return true;
+}

@@ -113,11 +113,26 @@ public:
      */
     static std::string generate_log_file_path(const std::string& domain_file);
 
+    /**
+     * \brief Print a KripkeState in a human-readable format.
+     * \param kstate The KripkeState to print.
+     * \param os The output stream to print to (default: std::cout).
+     */
+    void print_KripkeState(const KripkeState &kstate, std::ostream &os) const;
+
+    /**
+     * \brief Print a KripkeState in DOT format for graph visualization.
+     * \param kstate The KripkeState to print.
+     * \param os The output stream to print to (default: std::cout).
+     */
+    void print_KripkeStateDot(const KripkeState &kstate, std::ostream &os) const;
+
 private:
+
+    static HelperPrint* instance; ///< Singleton instance
     Grounder m_grounder;           ///< Used to de-ground fluents for printing.
     bool m_set_grounder = false;///< True if \ref m_grounder has been set.
 
     /// \brief Private constructor for singleton pattern.
-    HelperPrint() = default;
-
+    HelperPrint();
 };

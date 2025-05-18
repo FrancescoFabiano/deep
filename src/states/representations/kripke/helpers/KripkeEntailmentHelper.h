@@ -134,5 +134,16 @@ public:
  * \return True if all formulae are entailed, false otherwise.
  */
     [[nodiscard]] static bool entails(const FormulaeList& to_check, const KripkeState& kstate);
+
+    /** \brief Check epistemic properties after an action execution.
+    *  \param[in] fully The set of fully observant agents.
+    *  \param[in] partially The set of partially observant agents.
+    *  \param[in] effects The effects of the action.
+    *  \param[in] updated The updated KripkeState.
+    *  \return True if all properties are respected, false otherwise.
+    */
+    [[nodiscard]] static bool check_properties(const AgentsSet &fully, const AgentsSet &partially, const FluentFormula &effects,
+                          const KripkeState &updated);
+
     ///@}
 };

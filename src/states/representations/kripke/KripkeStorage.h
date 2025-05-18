@@ -41,7 +41,7 @@ public:
      * \param[in] to_add The KripkeWorld to add.
      * \return A KripkeWorldPointer to the stored world.
      */
-    [[nodiscard]] KripkeWorldPointer add_world(const KripkeWorld &to_add);
+    KripkeWorldPointer add_world(const KripkeWorld &to_add);
     ///@}
 
     /// \name Deleted Special Members
