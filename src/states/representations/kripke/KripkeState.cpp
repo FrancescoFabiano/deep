@@ -161,12 +161,12 @@ void KripkeState::build_initial(std::ostream& os) {
     generate_initial_edges();
 }
 
-void KripkeState::generate_initial_worlds(FluentsSet& permutation, int index, const FluentsSet& initially_known) {
-    int fluent_number = Domain::get_instance().get_fluent_number();
-    int bit_size = Domain::get_instance().get_size_fluent();
+void KripkeState::generate_initial_worlds(FluentsSet& permutation, const int index, const FluentsSet& initially_known) {
+    auto const fluent_number = Domain::get_instance().get_fluent_number();
+    auto const bit_size = Domain::get_instance().get_size_fluent();
 
     if (index == fluent_number) {
-        KripkeWorld to_add(permutation);
+        const KripkeWorld to_add(permutation);
         add_initial_world(to_add);
         return;
     }
@@ -209,7 +209,7 @@ void KripkeState::generate_initial_edges() {
         }
     }
 
-    InitialStateInformation ini_conditions = Domain::get_instance().get_initial_description();
+    const auto& ini_conditions = Domain::get_instance().get_initial_description();
     for (const auto& bf : ini_conditions.get_initial_conditions()) {
         remove_initial_edge_bf(bf);
     }
@@ -244,7 +244,7 @@ void KripkeState::remove_initial_edge(const FluentFormula& known_ff, const Agent
 
 void KripkeState::remove_initial_edge_bf(const BeliefFormula& to_check) {
     if (to_check.get_formula_type() == BeliefFormulaType::C_FORMULA) {
-        BeliefFormula tmp = to_check.get_bf1();
+        const BeliefFormula& tmp = to_check.get_bf1();
         switch (tmp.get_formula_type()) {
         case BeliefFormulaType::PROPOSITIONAL_FORMULA:
             if (tmp.get_operator() == BeliefFormulaOperator::BF_OR) {
@@ -253,10 +253,7 @@ void KripkeState::remove_initial_edge_bf(const BeliefFormula& to_check) {
                 if (known_ff_ptr != nullptr) {
                     remove_initial_edge(*known_ff_ptr, tmp.get_bf2().get_agent());
                 }
-                return;
-            } else if (tmp.get_operator() == BeliefFormulaOperator::BF_AND) {
-                return;
-            } else {
+            } else if (tmp.get_operator() != BeliefFormulaOperator::BF_AND) {
                 ExitHandler::exit_with_message(
                     ExitHandler::ExitCode::FormulaBadDeclaration,
                     "Error: Invalid type of initial formula (FIFTH) in remove_initial_edge_bf."
@@ -285,25 +282,21 @@ void KripkeState::remove_initial_edge_bf(const BeliefFormula& to_check) {
 
 KripkeState KripkeState::compute_successor(const Action& act) const {
     switch (act.get_type()) {
-    case PropositionType::ONTIC:
-        return execute_ontic(act);
-    case PropositionType::SENSING:
-        return execute_sensing(act);
-    case PropositionType::ANNOUNCEMENT:
-        return execute_announcement(act);
-    default:
-        ExitHandler::exit_with_message(
-            ExitHandler::ExitCode::ActionTypeConflict,
-            "Error: Executing an action with undefined type: " + act.get_name()
-        );
+        case PropositionType::ONTIC:
+            return execute_ontic(act);
+        case PropositionType::SENSING:
+            return execute_sensing(act);
+        case PropositionType::ANNOUNCEMENT:
+            return execute_announcement(act);
+        default:
+            ExitHandler::exit_with_message(
+                ExitHandler::ExitCode::ActionTypeConflict,
+                "Error: Executing an action with undefined type: " + act.get_name()
+            );
     }
-    // Just to please the compiler
-    ExitHandler::exit_with_message(
-        ExitHandler::ExitCode::ExitForCompiler,
-        "Error: Reached unreachable code in KripkeState::compute_successor."
-    );
     //Jut To please the compiler
-    exit(static_cast<int>(ExitHandler::ExitCode::ExitForCompiler));}
+    exit(static_cast<int>(ExitHandler::ExitCode::ExitForCompiler));
+}
 
 void KripkeState::maintain_oblivious_believed_worlds(KripkeState& ret, const AgentsSet& oblivious_obs_agents) const {
     if (!oblivious_obs_agents.empty()) {

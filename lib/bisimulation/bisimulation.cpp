@@ -142,7 +142,7 @@ void bisimulation::CreateG(int num_v, v_elem *Gtemp)
 		// Ciclo che considera tutti gli archi uscenti da "v"
 		for (e = 0; e < Gtemp[v].ne; e++) {
 			// Creo un nuovo stato (il primo nella catena di etichette). Come detto precedentemente
-			// il campo "block" viene qui inizializzato con l'indice dell'elemento di X che rappresenta 
+			// il campo "block" viene qui inizializzato con l'indice dell'elemento di X che rappresenta
 			// l'etichetta dello stato che stiamo creando
 			G[numberOfNodes].block = Gtemp[v].e[e].bh[0];
 			G[numberOfNodes].label = Gtemp[v].e[e].bh[0];
