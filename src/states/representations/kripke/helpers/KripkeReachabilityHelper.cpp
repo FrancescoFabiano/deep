@@ -9,6 +9,8 @@
 #include "utilities/SetHelper.h"
 #include <utility>
 
+#include "Domain.h"
+
 /**
  * \file KripkeReachabilityHelper.cpp
  * \brief Implementation of KripkeReachabilityHelper.h
@@ -77,4 +79,49 @@ KripkeWorldPointersSet KripkeReachabilityHelper::get_C_reachable_worlds(const Ag
         already_reached = newly_reached;
     }
     return ret;
+}
+
+
+void KripkeReachabilityHelper::get_all_reachable_worlds(const KripkeWorldPointer & world, KripkeWorldPointersSet & reached_worlds, KripkeWorldPointersTransitiveMap & reached_edges, const KripkeState & kstate) {
+    const auto& agents = Domain::get_instance().get_agents();
+
+    for (const auto& agent : agents) {
+        KripkeWorldPointersSet pw_list;
+
+        if (auto world_beliefs_it = kstate.get_beliefs().find(world); world_beliefs_it != kstate.get_beliefs().end()) {
+            const auto& agent_beliefs_map = world_beliefs_it->second;
+            if (auto agent_beliefs_it = agent_beliefs_map.find(agent); agent_beliefs_it != agent_beliefs_map.end()) {
+                pw_list = agent_beliefs_it->second;
+            }
+        }
+
+        for (const auto& reachable_world : pw_list) {
+            if (reached_worlds.insert(reachable_world).second) {
+                get_all_reachable_worlds(reachable_world, reached_worlds, reached_edges, kstate);
+
+                if (auto beliefs_it = kstate.get_beliefs().find(reachable_world); beliefs_it != kstate.get_beliefs().end()) {
+                    reached_edges.emplace(reachable_world, beliefs_it->second);
+                }
+            }
+        }
+    }
+}
+
+void KripkeReachabilityHelper::clean_unreachable_worlds(KripkeState& kstate)
+{
+    KripkeWorldPointersSet reached_worlds;
+    KripkeWorldPointersTransitiveMap reached_edges;
+
+    const auto& pointed_world = kstate.get_pointed();
+    reached_worlds.insert(pointed_world);
+
+    const auto& beliefs = kstate.get_beliefs();
+    if (auto it = beliefs.find(pointed_world); it != beliefs.end()) {
+        reached_edges.emplace(pointed_world, it->second);
+    }
+
+    get_all_reachable_worlds(pointed_world, reached_worlds, reached_edges, kstate);
+
+    kstate.set_worlds(reached_worlds);
+    kstate.set_beliefs(reached_edges);
 }

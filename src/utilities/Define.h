@@ -9,6 +9,9 @@
 #include <list>
 #include <boost/dynamic_bitset.hpp>
 
+#include "ExitHandler.h"
+#include "VectorBisWrapper.h"
+
 /**
  * \def NEGATION_SYMBOL
  * \brief The negation symbol to negate a fluent.
@@ -160,7 +163,6 @@ using pg_bfs_score = std::map<BeliefFormula, unsigned short>;
 
 /// \name Bisimulation
 ///@{\todo Make sure the pointer cannot be unique
-///
 // STRUCTURE DECLARATION
 // index is the type of the implicit pointers to the array
 // hence is a number that belongs to the range [-1...numberOfNodes]
@@ -178,7 +180,7 @@ constexpr int BisUsed = 1;
 constexpr int BisNotUsed = 0;
 constexpr int BisDeleted = -1;
 constexpr int BisToDelete = -2;
-constexpr int BisPreAllocatedIndex = 10000;
+constexpr int BisPreAllocatedIndex = 100000;
 constexpr BisIndexType BIS_WHITE = 0;
 constexpr BisIndexType BIS_GRAY = 1;
 constexpr BisIndexType BIS_BLACK = 2;
@@ -269,7 +271,7 @@ using BisAutomata = BisAutomataStruct;
  */
 struct Bis_eElemStruct {
     int nbh{};                                   ///< Number of labels (behaviors) of a single edge.
-    std::vector<int> bh{};                 ///< Array of behaviors.
+    VectorBisWrapper<int> bh{};                 ///< Array of behaviors.
     int tv{};                                    ///< Index of the "To" vertex.
 };
 
@@ -279,7 +281,7 @@ struct Bis_eElemStruct {
  */
 struct Bis_vElemStruct {
     int ne{};                                    ///< Number of edges.
-    std::vector<Bis_eElem> e{};            ///< Array of edges.
+    VectorBisWrapper<Bis_eElem> e{};            ///< Array of edges.
 };
 
 /**
@@ -289,6 +291,6 @@ struct Bis_vElemStruct {
 struct BisAutomataStruct {
     int Nvertex{};                               ///< Number of vertices.
     int Nbehavs{};                               ///< Number of behaviors.
-    std::vector<Bis_vElem> Vertex{};       ///< Array of vertices.
+    VectorBisWrapper<Bis_vElem> Vertex{};       ///< Array of vertices.
 };
 ///@}

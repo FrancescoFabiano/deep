@@ -57,6 +57,17 @@ public:
     [[nodiscard]] bool get_bisimulation() const noexcept;
 
     /**
+     * \brief Sets the type of Bisimulation Adopted in boolean form (True is PT, false is FB) for efficiency.
+     */
+    void set_bisimulation_type_bool() noexcept;
+
+    /**
+     * \brief Return the type of Bisimulation Adopted in boolean form
+     * \return True is PT, false is FB.
+     */
+    bool get_bisimulation_type_bool() const noexcept;
+
+    /**
      * \brief Checks if dataset generation mode is enabled.
      * \return true if dataset mode is enabled, false otherwise.
      */
@@ -172,6 +183,8 @@ private:
     std::string m_input_file;  ///< Input domain file path.
     bool m_debug = false;      ///< Debug mode flag.
     bool m_bisimulation = false;  ///< Bisimulation type (NONE by default).
+    std::string m_bisimulation_type = "FB";  ///< Bisimulation type (PT by default).
+    bool m_bisimulation_type_bool = true; ///< Flag to indicate bisimulation type (used for efficiency)
     bool m_check_visited = false;  ///< Flag to check for visited states.
     bool m_dataset_mode = false;  ///< Flag to indicate dataset mode.
     int m_dataset_depth = 10;     ///< Maximum depth for dataset generation.
@@ -185,4 +198,10 @@ private:
     std::string m_plan_file = "plan.txt";  ///< Plan file path.
     bool m_log_enabled = false; ///< True if --log is enabled.
     std::string m_log_file_path; ///< The log file path if logging is enabled.
+
+    /**
+    * \brief Return the type of Bisimulation Adopted.
+    * \return the string that specifies the type of bisimulation used.
+    */
+    [[nodiscard]] const std::string &get_bisimulation_type() const noexcept;
 };

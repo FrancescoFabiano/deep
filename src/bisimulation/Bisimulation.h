@@ -19,6 +19,8 @@
 #pragma once
 
 #include <map>
+
+#include "VectorBisWrapper.h"
 #include "utilities/Define.h"
 
 /**
@@ -71,6 +73,12 @@ public:
     static void print(const BisAutomata* A, std::ostream& os);
 
     /**
+     * @brief Function that minimizes the KripkeState using bisimulation.
+     * @param[out] kstate The input Kripke state to minimize.
+     */
+    static void calc_min_bisimilar(KripkeState &kstate);
+
+    /**
      * \brief Returns true if Bisimulation has been executed, false otherwise.
      * \param[in] A The automaton to minimize.
      * \return True if minimization was successful.
@@ -93,20 +101,20 @@ private:
     BisIndexType freeQBlock = 0, QBlockLimit = 0;
     BisIndexType freeXBlock = 0;
 
-    std::vector<BisGraph> G {BisPreAllocatedIndex};
-    std::vector<Bis_qPartition> Q {BisPreAllocatedIndex};
-    std::vector<Bis_xPartition> X {BisPreAllocatedIndex};
+    VectorBisWrapper<BisGraph> G {BisPreAllocatedIndex};
+    VectorBisWrapper<Bis_qPartition> Q {BisPreAllocatedIndex};
+    VectorBisWrapper<Bis_xPartition> X {BisPreAllocatedIndex};
 
-    std::vector<std::shared_ptr<BisAdjList_1>> borderEdges{};
+    VectorBisWrapper<std::shared_ptr<BisAdjList_1>> borderEdges{};
     int t = 0; // timestamp
 
     BisIndexType maxRank = BIS_NIL;
     BisIndexType rankPartition = BIS_NIL;
 
 
-    std::vector<BisIndexType> B1{BisPreAllocatedIndex};
-    std::vector<BisIndexType> B_1{BisPreAllocatedIndex};
-    std::vector<BisIndexType> splitD{BisPreAllocatedIndex};
+    VectorBisWrapper<BisIndexType> B1{BisPreAllocatedIndex};
+    VectorBisWrapper<BisIndexType> B_1{BisPreAllocatedIndex};
+    VectorBisWrapper<BisIndexType> splitD{BisPreAllocatedIndex};
     BisIndexType b1List = 0, b_1List = 0, dList = 0;
 
     std::map<int, int> m_compact_indices;
@@ -176,7 +184,7 @@ private:
      * \param[in] num_v The number of vertices.
      * \param[in] G_temp The BisGraph with only labeled edges.
      */
-    void CreateG(int num_v, const std::vector<Bis_vElem>& G_temp);
+    void CreateG(int num_v, const VectorBisWrapper<Bis_vElem>& G_temp);
 
     /**
      * \brief Manages the pointers between the array X and the array G.
@@ -205,4 +213,32 @@ private:
      * \brief Constructs the inverse of the BisGraph represented by the adjacency list.
      */
     void Inverse();
+
+
+    /**
+     * @brief Converts a KripkeState into a Bisimulation Automaton (BisAutomata).
+     *
+     * This function takes a KripkeState and translates it into a bisimulation automaton,
+     * assigning each world a compact index and labeling transitions based on agent beliefs.
+     *
+     * @param pworld_vec Output vector that stores the ordered list of Kripke world pointers used in the automaton.
+     * @param agent_to_label A mapping from each Agent to a corresponding BisLabel.
+     * @param kstate The input Kripke state from which the automaton is constructed.
+     * @return BisAutomata The resulting bisimulation automaton.
+     */
+    static BisAutomata kstate_to_automaton(VectorBisWrapper<KripkeWorldPointer> &pworld_vec,
+                                    const std::map<Agent, BisLabel> &agent_to_label, const KripkeState &kstate) ;
+
+
+    /**
+     * @brief Converts a Bisimulation Automaton (BisAutomata) into a KripkeState.
+
+     *
+     * @param a The automaton to convert (usually minimized).
+     * @param world_vec A vector containing the worlds to insert into the state.
+     * @param label_to_agent Conversion to transform the edges of the automaton into edges labelled with agents.
+     * @param[out] kstate The input Kripke state in the automaton is constructed.
+     */
+    static void automaton_to_kstate(const BisAutomata &a, const VectorBisWrapper<KripkeWorldPointer> &world_vec,
+                                    const std::map<BisLabel, Agent> &label_to_agent, KripkeState &kstate);
 };

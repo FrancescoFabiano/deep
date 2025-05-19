@@ -14,8 +14,10 @@
 
 #include "KripkeState.h"
 #include "ArgumentParser.h"
+#include "Domain.h"
 #include "FormulaHelper.h"
 #include "HelperPrint.h"
+#include "InitialStateInformation.h"
 #include "KripkeEntailmentHelper.h"
 #include "KripkeReachabilityHelper.h"
 #include "KripkeStorage.h"
@@ -34,6 +36,10 @@ void KripkeState::set_pointed(const KripkeWorldPointer& to_set) {
 
 void KripkeState::set_beliefs(const KripkeWorldPointersTransitiveMap& to_set) {
     m_beliefs = to_set;
+}
+
+void KripkeState::clear_beliefs() {
+    m_beliefs.clear();
 }
 
 void KripkeState::set_max_depth(unsigned int to_set) noexcept {

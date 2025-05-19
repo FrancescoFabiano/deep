@@ -65,4 +65,25 @@ public:
      * \return Set of C-reachable worlds.
      */
     [[nodiscard]] static KripkeWorldPointersSet get_C_reachable_worlds(const AgentsSet& ags, const KripkeWorldPointer& world, const KripkeState& kstate);
+
+
+    /**
+     * \brief Get all common knowledge reachable worlds by a set of agents from a starting world, using a KripkeState.
+     * \param[in] world The starting world.
+     * \param[out] reached_worlds the set of reachable worlds.
+     * \param[out] reached_edges the set of reachable edges.
+     * \param[out] kstate The KripkeState to use for reachability.
+ */
+    static void get_all_reachable_worlds(const KripkeWorldPointer &world, KripkeWorldPointersSet &reached_worlds,
+                                         KripkeWorldPointersTransitiveMap &reached_edges, const KripkeState &kstate);
+
+    /**
+     * @brief Removes all unreachable possible worlds from the given Kripke state.
+     *
+     * This function computes all worlds that are reachable from the pointed world in the given KripkeState.
+     * It then updates the state to retain only the reachable worlds and the belief edges among them.
+     *
+     * @param kstate The KripkeState object to be pruned of unreachable possible worlds.
+     */
+    static void clean_unreachable_worlds(KripkeState &kstate);
 };

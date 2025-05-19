@@ -77,6 +77,14 @@ ArgumentParser::ArgumentParser() : app("deep") {
     app.add_flag("--bis", m_bisimulation,
         "Activate e-states size reduction through bisimulation.");
 
+    app.add_option("--bis_type", m_search_strategy,
+    "Sets the algorithm to use for bisimulation contraction (does not activate bisimulation)."
+    "  Possible values are: 'FB' (Fast Bisimulation) or 'PT' (Paige and Tarjan).")
+    ->check(CLI::IsMember({"FB", "PT"}))
+    ->default_val("FB");
+
+
+
     app.add_flag("--check_visited", m_check_visited, "Planner will check for visited states");
 
     app.add_option("--dataset-size", m_dataset_depth, "Maximum depth for dataset generation")
@@ -118,6 +126,9 @@ ArgumentParser::ArgumentParser() : app("deep") {
 // Getters
 bool ArgumentParser::get_debug() const noexcept { return m_debug; }
 bool ArgumentParser::get_bisimulation() const noexcept { return m_bisimulation; }
+const std::string& ArgumentParser::get_bisimulation_type() const noexcept { return m_bisimulation_type; }
+void ArgumentParser::set_bisimulation_type_bool() noexcept { m_bisimulation_type_bool = (get_bisimulation_type() != "PT");}
+bool ArgumentParser::get_bisimulation_type_bool() const noexcept { return m_bisimulation_type_bool; }
 bool ArgumentParser::get_dataset_mode() const noexcept { return m_dataset_mode; }
 int ArgumentParser::get_dataset_size() const noexcept { return m_dataset_depth; }
 const std::string& ArgumentParser::get_heuristic() const noexcept { return m_heuristic_opt; }

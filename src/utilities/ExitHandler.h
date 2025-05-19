@@ -64,7 +64,8 @@ public:
         BeliefFormulaEmptyAgentGroup = 605,    ///< BeliefFormula has empty agent group.
 
         // Bisimulation Related
-        BisimulationMemoryLimit = 800,         ///< Memory limit reached in Bisimulation.
+        BisimulationFailed = 800,        ///< Bisimulation minimization failed.
+        BisimulationWrapperOutOfBounds = 801,         ///< Accessed something out of bounds in Bisimulation wrapper.
 
         // KripkeWorldPointer Related
         KripkeWorldPointerNullError = 700,      ///< Null pointer dereference in KripkeWorldPointer.

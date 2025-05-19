@@ -35,6 +35,12 @@ public:
      *  \param[in] to_set The beliefs map to assign.
      */
     void set_beliefs(const KripkeWorldPointersTransitiveMap& to_set);
+
+    /** \brief Clears the beliefs map for this KripkeState.
+     * This is only usable by Bisimulation.
+   */
+    void clear_beliefs();
+
     /** \brief Set the maximum depth for this KripkeState.
      *  \param[in] to_set The unsigned int value to assign as max depth.
      */
@@ -205,6 +211,9 @@ private:
      *  \return Pointer to the newly inserted KripkeWorld.
      */
     KripkeWorldPointer add_rep_world(const KripkeWorld& to_add, unsigned short repetition, bool& is_new);
+
+    /*This is to allow bisimulation to reduce the size of the object*/
+    friend class Bisimulation;
 
     /** \brief Get all reachable worlds and edges from a given world.
      *  \param[in] pw The starting world.
