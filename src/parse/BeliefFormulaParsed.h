@@ -95,8 +95,8 @@ private:
     std::string m_string_agent;
     BeliefFormulaOperator m_operator{};
     StringsSet m_string_group_agents;
-    std::shared_ptr<BeliefFormulaParsed> m_bf1;
-    std::shared_ptr<BeliefFormulaParsed> m_bf2;
+    std::unique_ptr<BeliefFormulaParsed> m_bf1; //Check if shared pointer is better
+    std::unique_ptr<BeliefFormulaParsed> m_bf2; //Check if shared pointer is better
 };
 
 using ParsedFormulaeList = std::list<BeliefFormulaParsed>; ///< CNF formula of BeliefFormula.

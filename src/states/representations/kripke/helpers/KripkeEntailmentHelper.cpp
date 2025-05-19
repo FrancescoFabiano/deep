@@ -55,37 +55,37 @@ bool KripkeEntailmentHelper::entails(const FluentFormula& to_check, const Kripke
 
 /// \name Entailment for KripkeWorldPointer
 ///@{
-bool KripkeEntailmentHelper::entails(const Fluent& to_check, const KripkeWorldPointer& pworld)
+bool KripkeEntailmentHelper::entails(const Fluent& to_check, const KripkeWorldPointer& world)
 {
-    if (!pworld.get_ptr()) {
+    if (!world.get_ptr()) {
         ExitHandler::exit_with_message(
             ExitHandler::ExitCode::KripkeWorldPointerNullError,
             "Error: Null KripkeWorldPointer in KripkeEntailmentHelper::entails(Fluent, KripkeWorldPointer)."
         );
     }
-    return entails(to_check,*pworld.get_ptr());
+    return entails(to_check,*world.get_ptr());
 }
 
-bool KripkeEntailmentHelper::entails(const FluentsSet& to_check, const KripkeWorldPointer& pworld)
+bool KripkeEntailmentHelper::entails(const FluentsSet& to_check, const KripkeWorldPointer& world)
 {
-    if (!pworld.get_ptr()) {
+    if (!world.get_ptr()) {
         ExitHandler::exit_with_message(
             ExitHandler::ExitCode::KripkeWorldPointerNullError,
             "Error: Null KripkeWorldPointer in KripkeEntailmentHelper::entails(FluentsSet, KripkeWorldPointer)."
         );
     }
-    return entails(to_check, *pworld.get_ptr());
+    return entails(to_check, *world.get_ptr());
 }
 
-bool KripkeEntailmentHelper::entails(const FluentFormula& to_check, const KripkeWorldPointer& pworld)
+bool KripkeEntailmentHelper::entails(const FluentFormula& to_check, const KripkeWorldPointer& world)
 {
-    if (!pworld.get_ptr()) {
+    if (!world.get_ptr()) {
         ExitHandler::exit_with_message(
             ExitHandler::ExitCode::KripkeWorldPointerNullError,
             "Error: Null KripkeWorldPointer in KripkeEntailmentHelper::entails(FluentFormula, KripkeWorldPointer)."
         );
     }
-    return entails(to_check,*pworld.get_ptr());
+    return entails(to_check,*world.get_ptr());
 }
 ///@}
 

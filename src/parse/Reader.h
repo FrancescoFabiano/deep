@@ -20,7 +20,6 @@
 #pragma once
 
 #include "../utilities/Define.h"
-#include "formulae/BeliefFormula.h"
 #include "actions/Proposition.h"
 
 class Reader
@@ -56,11 +55,11 @@ public:
      * \details Called to parse the file containing the domain and store the information into the fields of the reader class.
      * \return The same int value returned from the parsing process.
      */
-    int read();
+    static int read();
 
     /**
      * \brief Print all the information stored inside the reader object.
-     * \param os The output stream to print to (default: std::cout).
+     * \param os The output stream to print to.
      */
-    void print(std::ostream& os = std::cout) const;
+    void print(std::ostream& os) const;
 };

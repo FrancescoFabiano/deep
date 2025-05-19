@@ -180,13 +180,13 @@ void Domain::build_actions(std::ostream& os) {
     m_grounder.set_action_name_map(domain_action_name_map);
     HelperPrint::get_instance().set_grounder(m_grounder);
 
-    build_propositions();
+    build_propositions(os);
 
 
     if (ArgumentParser::get_instance().get_debug()) {
         os << "\nPrinting complete action list..." << std::endl;
         for (const auto& action : m_actions) {
-            action.print();
+            action.print(os);
         }
     }
 }
@@ -224,7 +224,7 @@ void Domain::build_initially(std::ostream& os) {
                 m_initial_description.add_pointed_condition(formula.get_fluent_formula());
                 if (ArgumentParser::get_instance().get_debug()) {
                     os << "    Pointed world: ";
-                    HelperPrint::get_instance().print_list(formula.get_fluent_formula());
+                    HelperPrint::get_instance().print_list(formula.get_fluent_formula(),os);
                     os << std::endl;
                 }
                 break;
@@ -236,7 +236,7 @@ void Domain::build_initially(std::ostream& os) {
                 m_initial_description.add_initial_condition(formula);
                 if (ArgumentParser::get_instance().get_debug()) {
                     os << "Added to initial conditions: ";
-                    formula.print();
+                    formula.print(os);
                     os << std::endl;
                 }
                 break;
@@ -261,7 +261,7 @@ void Domain::build_goal(std::ostream& os) {
         m_goal_description.push_back(formula);
         if (ArgumentParser::get_instance().get_debug()) {
             os << "    ";
-            formula.print();
+            formula.print(os);
             os << std::endl;
         }
     }

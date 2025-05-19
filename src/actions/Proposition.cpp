@@ -103,7 +103,7 @@ void Proposition::print(std::ostream& os) const {
     }
 
     os << "\n Effects:\n";
-    HelperPrint::print_list(m_action_effect);
+    HelperPrint::print_list(m_action_effect,os);
 
     // Uncomment and adapt if you want to print observability/executability conditions
     // os << "\nObservability conditions:\n";

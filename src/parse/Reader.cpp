@@ -27,11 +27,11 @@ int Reader::read()
 void Reader::print(std::ostream& os) const
 {
     os << "\n\nAGENT DECLARATION\n---------------------------\n";
-    HelperPrint::get_instance().print_list(m_agents, os);
+    HelperPrint::print_list(m_agents, os);
     os << "\n\n";
 
     os << "FLUENT DECLARATION\n----------------------------\n";
-    HelperPrint::get_instance().print_list(m_fluents, os);
+    HelperPrint::print_list(m_fluents, os);
     os << "\n\n";
 
     os << "PROPOSITIONS\n----------------------------\n";

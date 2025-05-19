@@ -63,6 +63,9 @@ public:
         BeliefFormulaOperatorUnset = 604,     ///< BeliefFormula operator not set properly.
         BeliefFormulaEmptyAgentGroup = 605,    ///< BeliefFormula has empty agent group.
 
+        // Bisimulation Related
+        BisimulationMemoryLimit = 800,         ///< Memory limit reached in Bisimulation.
+
         // KripkeWorldPointer Related
         KripkeWorldPointerNullError = 700,      ///< Null pointer dereference in KripkeWorldPointer.
         KripkeStorageInsertError = 701,         ///< Failed to insert or find KripkeWorld in KripkeStorage.

@@ -21,7 +21,6 @@
  */
 #pragma once
 
-#include <iostream>
 #include <memory>
 
 #include "BeliefFormulaParsed.h"
@@ -195,9 +194,9 @@ public:
     [[nodiscard]] bool is_bf2_null() const;
 
     /** \brief Function that prints *this* (std::string parameters representation).
-     * \param os The output stream to print to (default: std::cout).
+     * \param os The output stream to print to.
      */
-    void print( std::ostream& os = std::cout) const;
+    void print( std::ostream& os) const;
 
     /** \brief The equality operator for \ref BeliefFormula.
      *  \param[in] to_compare The \ref BeliefFormula to compare with *this*.
@@ -218,7 +217,7 @@ private:
     Agent m_agent;
     BeliefFormulaOperator m_operator{};
     AgentsSet m_group_agents;
-    std::shared_ptr<BeliefFormula> m_bf1;
-    std::shared_ptr<BeliefFormula> m_bf2;
+    std::unique_ptr<BeliefFormula> m_bf1; //Check if shared pointer is better
+    std::unique_ptr<BeliefFormula> m_bf2; //Check if shared pointer is better
 };
 

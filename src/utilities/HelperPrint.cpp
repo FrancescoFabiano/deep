@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <chrono>
 #include <iomanip>
+#include <ranges>
 #include <sstream>
 
 #include "FormulaHelper.h"
@@ -236,41 +237,30 @@ std::string HelperPrint::generate_log_file_path(const std::string& domain_file) 
 
 void HelperPrint::print_KripkeState(const KripkeState & kstate, std::ostream& os) const
 {
-	int counter = 1;
 	os << std::endl;
 	os << "The Pointed World has id ";
-	print_list(kstate.get_pointed().get_fluent_set(),os);
+	print_list(kstate.get_pointed().get_fluent_set(), os);
 	os << "-" << kstate.get_pointed().get_repetition();
 	os << std::endl;
 	os << "*******************************************************************" << std::endl;
 
-	KripkeWorldPointersSet::const_iterator it_pwset;
 	os << "World List:" << std::endl;
-
-	for (it_pwset = kstate.get_worlds().begin(); it_pwset != kstate.get_worlds().end(); it_pwset++) {
+	int counter = 1;
+	for (const auto& world_ptr : kstate.get_worlds()) {
 		os << "W-" << counter << ": ";
-		print_list(it_pwset->get_fluent_set(),os);
-		os << " rep:" << it_pwset->get_repetition();
+		print_list(world_ptr.get_fluent_set(), os);
+		os << " rep:" << world_ptr.get_repetition();
 		os << std::endl;
-		counter++;
+		++counter;
 	}
-	counter = 1;
+
 	os << std::endl;
 	os << "*******************************************************************" << std::endl;
-	KripkeWorldPointersTransitiveMap::const_iterator it_pwtm;
-	KripkeWorldPointersMap::const_iterator it_pwm;
 	os << "Edge List:" << std::endl;
-	for (it_pwtm = kstate.get_beliefs().begin(); it_pwtm != kstate.get_beliefs().end(); it_pwtm++) {
-		KripkeWorldPointer from = it_pwtm->first;
-		KripkeWorldPointersMap from_map = it_pwtm->second;
-
-		for (it_pwm = from_map.begin(); it_pwm != from_map.end(); it_pwm++) {
-			Agent ag = it_pwm->first;
-			KripkeWorldPointersSet to_set = it_pwm->second;
-
-			for (it_pwset = to_set.begin(); it_pwset != to_set.end(); it_pwset++) {
-				KripkeWorldPointer to = *it_pwset;
-
+	counter = 1;
+	for (const auto& [from, from_map] : kstate.get_beliefs()) {
+		for (const auto& [ag, to_set] : from_map) {
+			for (const auto& to : to_set) {
 				os << "E-" << counter << ": (";
 				print_list(from.get_fluent_set(), os);
 				os << "," << from.get_repetition();
@@ -279,7 +269,7 @@ void HelperPrint::print_KripkeState(const KripkeState & kstate, std::ostream& os
 				os << "," << to.get_repetition();
 				os << ") ag:" << m_grounder.deground_agent(ag);
 				os << std::endl;
-				counter++;
+				++counter;
 			}
 		}
 	}
@@ -289,45 +279,34 @@ void HelperPrint::print_KripkeState(const KripkeState & kstate, std::ostream& os
 ///@TODO: Make this function so it can be used also to generate the dataset (maybe with a flag)
 void HelperPrint::print_KripkeStateDot(const KripkeState & kstate, std::ostream & os) const
 {
-	StringsSet::const_iterator it_st_set;
-	FluentsSet::const_iterator it_fs;
+	auto& worlds = kstate.get_worlds();
+	auto& pointed = kstate.get_pointed();
 
 	os << "//WORLDS List:" << std::endl;
 	std::map<FluentsSet, int> map_world_to_index;
 	std::map<unsigned short, char> map_rep_to_name;
-	char found_rep = (char) ((char) Domain::get_instance().get_agents().size() + 'A');
+	char found_rep = static_cast<char>(Domain::get_instance().get_agents().size() + 'A');
 	int found_fs = 0;
-	FluentsSet tmp_fs;
-	char tmp_unsh;
-	StringsSet tmp_stset;
-	bool print_first;
-	KripkeWorldPointersSet::const_iterator it_pwset;
-	for (it_pwset = kstate.get_worlds().begin(); it_pwset != kstate.get_worlds().end(); it_pwset++) {
-		if (*it_pwset == kstate.get_pointed())
-			os << "	node [shape = doublecircle] ";
-		else
-			os << "	node [shape = circle] ";
 
-		print_first = false;
-		tmp_fs = it_pwset->get_fluent_set();
-		if (map_world_to_index.count(tmp_fs) == 0) {
-			map_world_to_index[tmp_fs] = found_fs;
-			found_fs++;
+	for (const auto& world_ptr : worlds) {
+	    os << "	node [shape = " << ((world_ptr == pointed) ? "doublecircle" : "circle") << "] ";
+
+	    const auto& tmp_fs = world_ptr.get_fluent_set();
+	    if (!map_world_to_index.contains(tmp_fs)) {
+	        map_world_to_index[tmp_fs] = found_fs++;
 		}
-		tmp_unsh = it_pwset->get_repetition();
-		if (map_rep_to_name.count(tmp_unsh) == 0) {
-			map_rep_to_name[tmp_unsh] = found_rep;
-			found_rep++;
+	    unsigned short tmp_unsh = world_ptr.get_repetition();
+	    if (!map_rep_to_name.contains(tmp_unsh)) {
+	        map_rep_to_name[tmp_unsh] = found_rep++;
 		}
 		os << "\"" << map_rep_to_name[tmp_unsh] << "_" << map_world_to_index[tmp_fs] << "\";";
 		os << "// (";
-		tmp_stset = m_grounder.deground_fluent(tmp_fs);
-		for (it_st_set = tmp_stset.begin(); it_st_set != tmp_stset.end(); it_st_set++) {
-			if (print_first) {
-				os << ",";
-			}
+	    auto tmp_stset = m_grounder.deground_fluent(tmp_fs);
+	    bool print_first = false;
+	    for (const auto& str : tmp_stset) {
+	        if (print_first) os << ",";
 			print_first = true;
-			os << *it_st_set;
+	        os << str;
 		}
 		os << ")\n";
 	}
@@ -336,15 +315,14 @@ void HelperPrint::print_KripkeStateDot(const KripkeState & kstate, std::ostream 
 	os << "//RANKS List:" << std::endl;
 
 	std::map<int, KripkeWorldPointersSet> for_rank_print;
-	for (it_pwset = kstate.get_worlds().begin(); it_pwset != kstate.get_worlds().end(); it_pwset++) {
-		for_rank_print[it_pwset->get_repetition()].insert(*it_pwset);
+	for (const auto& world_ptr : worlds) {
+	    for_rank_print[world_ptr.get_repetition()].insert(world_ptr);
 	}
 
-	std::map<int, KripkeWorldPointersSet>::const_iterator it_map_rank;
-	for (it_map_rank = for_rank_print.begin(); it_map_rank != for_rank_print.end(); it_map_rank++) {
+	for (const auto& set : for_rank_print | std::views::values) {
 		os << "	{rank = same; ";
-		for (it_pwset = it_map_rank->second.begin(); it_pwset != it_map_rank->second.end(); it_pwset++) {
-			os << "\"" << map_rep_to_name[it_pwset->get_repetition()] << "_" << map_world_to_index[it_pwset->get_fluent_set()] << "\"; ";
+	    for (const auto& world_ptr : set) {
+	        os << "\"" << map_rep_to_name[world_ptr.get_repetition()] << "_" << map_world_to_index[world_ptr.get_fluent_set()] << "\"; ";
 		}
 		os << "}\n";
 	}
@@ -354,86 +332,66 @@ void HelperPrint::print_KripkeStateDot(const KripkeState & kstate, std::ostream 
 
 	std::map < std::tuple<std::string, std::string>, std::set<std::string> > edges;
 
-	KripkeWorldPointersTransitiveMap::const_iterator it_pwtm;
-	KripkeWorldPointersMap::const_iterator it_pwm;
-	std::tuple<std::string, std::string> tmp_tuple;
-	std::string tmp_string = "";
-
-	for (it_pwtm = kstate.get_beliefs().begin(); it_pwtm != kstate.get_beliefs().end(); it_pwtm++) {
-		KripkeWorldPointer from = it_pwtm->first;
-		KripkeWorldPointersMap from_map = it_pwtm->second;
-
-		for (it_pwm = from_map.begin(); it_pwm != from_map.end(); it_pwm++) {
-			Agent ag = it_pwm->first;
-			KripkeWorldPointersSet to_set = it_pwm->second;
-
-			for (it_pwset = to_set.begin(); it_pwset != to_set.end(); it_pwset++) {
-				KripkeWorldPointer to = *it_pwset;
-
-				tmp_string = "_" + std::to_string(map_world_to_index[from.get_fluent_set()]);
-				tmp_string.insert(0, 1, map_rep_to_name[from.get_repetition()]);
-				std::get<0>(tmp_tuple) = tmp_string;
-
-				tmp_string = "_" + std::to_string(map_world_to_index[to.get_fluent_set()]);
-				tmp_string.insert(0, 1, map_rep_to_name[to.get_repetition()]);
-				std::get<1>(tmp_tuple) = tmp_string;
-
-				edges[tmp_tuple].insert(m_grounder.deground_agent(ag));
+	for (const auto& [from, from_map] : kstate.get_beliefs()) {
+	    for (const auto& [ag, to_set] : from_map) {
+	        for (const auto& to : to_set) {
+	            std::string from_str = "_" + std::to_string(map_world_to_index[from.get_fluent_set()]);
+	            from_str.insert(0, 1, map_rep_to_name[from.get_repetition()]);
+	            std::string to_str = "_" + std::to_string(map_world_to_index[to.get_fluent_set()]);
+	            to_str.insert(0, 1, map_rep_to_name[to.get_repetition()]);
+	            edges[{from_str, to_str}].insert(m_grounder.deground_agent(ag));
 			}
 		}
 	}
-
-	std::map < std::tuple<std::string, std::string>, std::set < std::string>>::iterator it_map;
-	std::map < std::tuple<std::string, std::string>, std::set < std::string>>::const_iterator it_map_2;
 
 	std::map < std::tuple<std::string, std::string>, std::set < std::string>> to_print_double;
-	for (it_map = edges.begin(); it_map != edges.end(); it_map++) {
-		for (it_map_2 = it_map; it_map_2 != edges.end(); it_map_2++) {
-			if (std::get<0>(it_map->first).compare(std::get<1>(it_map_2->first)) == 0) {
-				if (std::get<1>(it_map->first).compare(std::get<0>(it_map_2->first)) == 0) {
-					if (it_map->second == it_map_2->second) {
-						if (std::get<0>(it_map->first).compare(std::get<1>(it_map->first)) != 0) {
+	for (auto it_map = edges.begin(); it_map != edges.end();) {
+	    bool erased = false;
+	    for (auto it_map_2 = std::next(it_map); it_map_2 != edges.end();) {
+	        if (std::get<0>(it_map->first) == std::get<1>(it_map_2->first) &&
+	            std::get<1>(it_map->first) == std::get<0>(it_map_2->first) &&
+	            it_map->second == it_map_2->second &&
+	            std::get<0>(it_map->first) != std::get<1>(it_map->first)) {
 							to_print_double[it_map->first] = it_map->second;
-							it_map_2 = edges.erase(it_map_2);
+							edges.erase(it_map_2);
 							it_map = edges.erase(it_map);
-						}
+	            erased = true;
+	            break;
+	        } else {
+	            ++it_map_2;
 					}
 				}
-			}
-		}
+	    if (!erased) ++it_map;
 	}
 
-	std::set<std::string>::const_iterator it_stset;
-	for (it_map = edges.begin(); it_map != edges.end(); it_map++) {
+	for (const auto& [key, agents] : edges) {
 		os << "	\"";
-		os << std::get<0>(it_map->first);
+	    os << std::get<0>(key);
 		os << "\" -> \"";
-		os << std::get<1>(it_map->first);
+	    os << std::get<1>(key);
 		os << "\" ";
 		os << "[ label = \"";
-		tmp_string = "";
-		for (it_stset = it_map->second.begin(); it_stset != it_map->second.end(); it_stset++) {
-			tmp_string += *it_stset;
-			tmp_string += ",";
+	    std::string tmp_string;
+	    for (const auto& ag : agents) {
+	        tmp_string += ag + ",";
 		}
-		tmp_string.pop_back();
+	    if (!tmp_string.empty()) tmp_string.pop_back();
 		os << tmp_string;
 		os << "\" ];\n";
 	}
 
-	for (it_map = to_print_double.begin(); it_map != to_print_double.end(); it_map++) {
+	for (const auto& [key, agents] : to_print_double) {
 		os << "	\"";
-		os << std::get<0>(it_map->first);
+	    os << std::get<0>(key);
 		os << "\" -> \"";
-		os << std::get<1>(it_map->first);
+	    os << std::get<1>(key);
 		os << "\" ";
 		os << "[ dir=both label = \"";
-		tmp_string = "";
-		for (it_stset = it_map->second.begin(); it_stset != it_map->second.end(); it_stset++) {
-			tmp_string += *it_stset;
-			tmp_string += ",";
+	    std::string tmp_string;
+	    for (const auto& ag : agents) {
+	        tmp_string += ag + ",";
 		}
-		tmp_string.pop_back();
+	    if (!tmp_string.empty()) tmp_string.pop_back();
 		os << tmp_string;
 		os << "\" ];\n";
 	}
@@ -443,18 +401,18 @@ void HelperPrint::print_KripkeStateDot(const KripkeState & kstate, std::ostream 
 	os << "	node [shape = plain]\n\n";
 	os << "	description[label=<\n";
 	os << "	<table border = \"0\" cellborder = \"1\" cellspacing = \"0\" >\n";
-	for (it_pwset = kstate.get_worlds().begin(); it_pwset != kstate.get_worlds().end(); it_pwset++) {
-		tmp_fs = it_pwset->get_fluent_set();
-		print_first = false;
-		os << "		<tr><td>" << map_rep_to_name[it_pwset->get_repetition()] << "_" << map_world_to_index[tmp_fs] << "</td> <td>";
-		for (it_fs = tmp_fs.begin(); it_fs != tmp_fs.end(); it_fs++) {
-			if (print_first) {
-				os << ", ";
-			}
+	for (const auto& world_ptr : worlds) {
+	    const auto& tmp_fs = world_ptr.get_fluent_set();
+	    bool print_first = false;
+	    os << "		<tr><td>" << map_rep_to_name[world_ptr.get_repetition()] << "_" << map_world_to_index[tmp_fs] << "</td> <td>";
+	    for (const auto& fluent : tmp_fs) {
+	        if (print_first) os << ", ";
 			print_first = true;
-			if (FormulaHelper::is_negated(*it_fs)) color = "<font color=\"#0000ff\"> ";
-			else color = "<font color=\"#ff1020\">";
-			os << color << m_grounder.deground_fluent(*it_fs) << "</font>";
+	        if (FormulaHelper::is_negated(fluent))
+	            color = "<font color=\"#0000ff\"> ";
+	        else
+	            color = "<font color=\"#ff1020\">";
+	        os << color << m_grounder.deground_fluent(fluent) << "</font>";
 		}
 		os << "</td></tr>\n";
 	}

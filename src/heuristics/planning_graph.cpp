@@ -256,7 +256,7 @@ short pg_state_level::get_bf_value(const BeliefFormula & key) const
 				}
 			}
 		} else {
-			std::cerr << "\nThe planning graph does not support non-deterministic action yet.";
+			std::cerr << "\nThe planning BisGraph does not support non-deterministic action yet.";
 			exit(1);
 		}
 		return ret_val;
@@ -428,7 +428,7 @@ bool pg_state_level::exec_ontic(const action & act, const pg_state_level & prede
 					verified_fluents.insert(f_tmp);
 				}
 			} else {
-				std::cerr << "\nThe planning graph does not support non-deterministic ontic action yet.";
+				std::cerr << "\nThe planning BisGraph does not support non-deterministic ontic action yet.";
 				exit(1);
 			}
 
@@ -814,7 +814,7 @@ void pg_state_level::set_pg_state_level(const pg_state_level & to_assign)
 
 
 /*\********************Transition function based on update models**********************************/
-//Given: a formula, custom update model, action definition and the map of belief formula (previous level) determines whether the given bf is true or not by exploring the update model graph
+//Given: a formula, custom update model, action definition and the map of belief formula (previous level) determines whether the given bf is true or not by exploring the update model BisGraph
 
 
 
@@ -1074,9 +1074,9 @@ unsigned short planning_graph::get_length() const
 
 	return m_pg_length;
 	//}
-	//std::cerr << "\nThe planning graph could not find any solution. Check for the satisfiability before calling \"get_length\"\n";
+	//std::cerr << "\nThe planning BisGraph could not find any solution. Check for the satisfiability before calling \"get_length\"\n";
 	//exit(1);
-}//construct planning graph and return the level that satisfied the goal.
+}//construct planning BisGraph and return the level that satisfied the goal.
 
 unsigned short planning_graph::get_sum() const
 {
@@ -1084,7 +1084,7 @@ unsigned short planning_graph::get_sum() const
 
 	return m_pg_sum;
 	//}
-	//std::cerr << "\nThe planning graph could not find any solution. Check for the satisfiability before calling \"get_sum\"\n";
+	//std::cerr << "\nThe planning BisGraph could not find any solution. Check for the satisfiability before calling \"get_sum\"\n";
 	//exit(1);
 }//
 

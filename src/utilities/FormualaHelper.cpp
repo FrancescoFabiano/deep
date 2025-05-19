@@ -1,8 +1,11 @@
 #include "FormulaHelper.h"
 #include <cmath>
+
+#include "Domain.h"
 #include "states/representations/kripke/KripkeState.h"
 #include "ExitHandler.h"
 #include "HelperPrint.h"
+#include "KripkeEntailmentHelper.h"
 
 /**
  * \file FormualaHelper.cpp
@@ -104,7 +107,7 @@ FluentFormula FormulaHelper::and_ff(const FluentFormula& to_merge_1, const Fluen
     return ret;
 }
 
-bool FormulaHelper::check_Bff_notBff(const BeliefFormula& to_check_1, const BeliefFormula& to_check_2, const std::shared_ptr<FluentFormula>& ret)
+bool FormulaHelper::check_Bff_notBff(const BeliefFormula& to_check_1, const BeliefFormula& to_check_2, FluentFormula& ret)
 {
     if (to_check_1.get_formula_type() == BeliefFormulaType::BELIEF_FORMULA && to_check_2.get_formula_type() == BeliefFormulaType::BELIEF_FORMULA) {
         const auto& to_check_nested_1 = to_check_1.get_bf1();
@@ -118,7 +121,7 @@ bool FormulaHelper::check_Bff_notBff(const BeliefFormula& to_check_1, const Beli
                 tmp = *to_check_nested_2.get_bf1().get_fluent_formula().begin();
                 const auto f2 = *tmp.begin();
                 if (f1 == f2) {
-                    if (ret) ret->insert(tmp);
+                    ret.insert(tmp);
                     return true;
                 }
             }
@@ -130,7 +133,7 @@ bool FormulaHelper::check_Bff_notBff(const BeliefFormula& to_check_1, const Beli
                 tmp = *to_check_nested_2.get_fluent_formula().begin();
                 const auto  f2 = *tmp.begin();
                 if (f1 == f2) {
-                    if (ret) ret->insert(tmp);
+                   ret.insert(tmp);
                     return true;
                 }
             }
@@ -206,7 +209,7 @@ AgentsSet FormulaHelper::get_agents_if_entailed(const ObservabilitiesMap& map, c
 {
     AgentsSet ret;
     for (const auto& [agent, formula] : map) {
-        if (state.entails(formula)) {
+        if (KripkeEntailmentHelper::entails(formula,state)) {
             ret.insert(agent);
         }
     }
@@ -217,7 +220,7 @@ FluentFormula FormulaHelper::get_effects_if_entailed(const EffectsMap& map, cons
 {
     FluentFormula ret;
     for (const auto& [effect, formula] : map) {
-        if (state.entails(formula)) {
+        if (KripkeEntailmentHelper::entails(formula,state)) {
             ret = FormulaHelper::and_ff(ret, effect);
         }
     }

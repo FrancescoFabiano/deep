@@ -17,7 +17,7 @@ StringSetsSet join_SL2(StringSetsSet, StringSetsSet);
 void print_string_set(StringsSet);
 void print_string_set_set(StringSetsSet);
 
-extern std::shared_ptr<reader> domain_reader;
+extern std::unique_ptr<reader> domain_reader;
 
 %}
 

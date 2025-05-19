@@ -14,7 +14,7 @@
 #include "KripkeWorld.h"
 #include "utilities/Define.h"
 #include "actions/Action.h"
-#include "../lib/bisimulation/bisimulation.h"
+#include "bisimulation/Bisimulation.h"
 
 class KripkeState
 {
@@ -61,9 +61,9 @@ public:
 
     // --- Structure Building ---
     /** \brief Build the initial Kripke structure (choose method internally).
-    * \param os The output stream to print to (default: std::cout).
+    * \param os The output stream to print to.
      */
-    void build_initial(std::ostream& os = std::cout);
+    void build_initial(std::ostream& os);
     /** \brief Generate all possible permutations of the domain's fluents.
      *  \param[out] permutation The permutation in construction.
      *  \param[in] index The index of the fluent to add.
@@ -95,7 +95,7 @@ public:
      *  \param[in] world The KripkeWorld pointer.
      *  \param[in] beliefs The beliefs map.
      */
-    void add_pworld_beliefs(const KripkeWorldPointer& world, const KripkeWorldPointersMap& beliefs);
+    void add_world_beliefs(const KripkeWorldPointer& world, const KripkeWorldPointersMap& beliefs);
     /** \brief Copy worlds and beliefs of oblivious agents to another KripkeState.
      *  \param[in] ret The new KripkeState.
      *  \param[in] oblivious_obs_agents The set of oblivious agents.
@@ -127,23 +127,23 @@ public:
      *  \param[in] act The ontic action to apply.
      *  \return The resulting KripkeState.
      */
-    KripkeState execute_ontic(const Action& act) const;
+    [[nodiscard]] KripkeState execute_ontic(const Action& act) const;
     /** \brief Apply a sensing action to this KripkeState.
      *  \param[in] act The sensing action to apply.
      *  \return The resulting KripkeState.
      */
-    KripkeState execute_sensing(const Action& act) const;
+    [[nodiscard]] KripkeState execute_sensing(const Action& act) const;
     /** \brief Apply an announcement action to this KripkeState.
      *  \param[in] act The announcement action to apply.
      *  \return The resulting KripkeState.
      */
-    KripkeState execute_announcement(const Action& act) const;
+    [[nodiscard]] KripkeState execute_announcement(const Action& act) const;
 
     /** \brief Compute the successor state after applying an action.
      *  \param[in] act The action to apply.
      *  \return The resulting KripkeState.
      */
-    KripkeState compute_successor(const Action& act) const;
+    [[nodiscard]] KripkeState compute_successor(const Action& act) const;
 
 
     /** \brief Minimize this KripkeState to the minimum bisimilar structure. */
@@ -161,8 +161,8 @@ public:
     // --- Printing ---
     /** \brief Print this KripkeState to std::cout.
     * Params:
-[in] os — The output stream.*/
-    void print(std::ostream& os = std::cout) const;
+    [in] os — The output stream.*/
+    void print(std::ostream& os) const;
 
 private:
     // --- Data members ---
@@ -220,11 +220,11 @@ private:
      *  \param[in] agent_to_label The map from agent to bisimulation label.
      *  \return The automaton representation.
      */
-    [[nodiscard]] automa kstate_to_automaton(std::vector<KripkeWorldPointer>& pworld_vec, const std::map<Agent, bis_label>& agent_to_label) const;
+    [[nodiscard]] BisAutomata kstate_to_automaton(std::vector<KripkeWorldPointer>& pworld_vec, const std::map<Agent, BisLabel>& agent_to_label) const;
     /** \brief Convert an automaton to this KripkeState.
      *  \param[in] a The automaton.
      *  \param[in] pworld_vec The vector of KripkeWorld pointers.
      *  \param[in] label_to_agent The map from bisimulation label to agent.
      */
-    void automaton_to_kstate(const automa& a, const std::vector<KripkeWorldPointer>& pworld_vec, const std::map<bis_label, Agent>& label_to_agent);
+    void automaton_to_kstate(const BisAutomata& a, const std::vector<KripkeWorldPointer>& pworld_vec, const std::map<BisLabel, Agent>& label_to_agent);
 };

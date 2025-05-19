@@ -182,7 +182,7 @@ void Action::print(std::ostream& os) const
     os << "    Executability:";
     for (const auto& exec : m_executability) {
         os << " | ";
-        exec.print();
+        exec.print(os);
     }
 
     os << "\n    Effects:";
@@ -190,19 +190,19 @@ void Action::print(std::ostream& os) const
         os << " | ";
         HelperPrint::get_instance().print_list(effect,os);
         os << " if ";
-        condition.print();
+        condition.print(os);
     }
 
     os << "\n    Fully Observant:";
     for (const auto& [agent, condition] : m_fully_observants) {
         os << " | " << grounder.deground_agent(agent) << " if ";
-        condition.print();
+        condition.print(os);
     }
 
     os << "\n    Partially Observant:";
     for (const auto& [agent, condition] : m_partially_observants) {
         os << " | " << grounder.deground_agent(agent) << " if ";
-        condition.print();
+        condition.print(os);
     }
     os << std::endl;
 }

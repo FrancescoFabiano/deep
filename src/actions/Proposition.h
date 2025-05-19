@@ -95,9 +95,9 @@ public:
     ///@{
     /** \brief Prints this proposition.
      *
-     * \param os The output stream to print to (default: std::cout).
+     * \param os The output stream to print to.
      */
-    void print(std::ostream &os = std::cout) const;
+    void print(std::ostream& os) const;
 
     /** \brief Grounds this proposition. */
     //void ground();

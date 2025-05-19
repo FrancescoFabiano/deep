@@ -35,12 +35,12 @@ public:
     /** \brief Setter for the domains parameters.
     *  \param os Output stream where information will be printed (especially if debug is active).
      */
-    static void create_instance(std::ostream& os = std::cout);
+    static void create_instance(std::ostream& os);
 
     /** \brief Function that builds all the domain information.
     *  \param os Output stream where information will be printed (especially if debug is active).
      */
-    void build(std::ostream& os = std::cout);
+    void build(std::ostream& os);
 
     /** \brief Getter of the field \ref m_grounder. */
     [[nodiscard]] const Grounder& get_grounder() const noexcept;
@@ -70,10 +70,10 @@ public:
 
 private:
     std::string m_name; ///< The name of the file that contains the description of *this*.
-    boost::shared_ptr<Reader> m_reader; ///< The pointer to a \ref Reader object.
+    boost::unique_ptr<Reader> m_reader; ///< The pointer to a \ref Reader object.
     Grounder m_grounder; ///< A \ref grounder object used to store the name of the information.
     FluentsSet m_fluents; ///< Set containing all the (grounded) \ref fluent of the domain.
-    ActionsSet m_actions; ///< Set containing all the \ref action (with effects, conditions, obsv etc.) of the domain.
+    ActionsSet m_actions; ///< Set containing all the \ref action (with effects, conditions, obs etc.) of the domain.
     AgentsSet m_agents; ///< Set containing all the (grounded) \ref agent of the domain.
     InitialStateInformation m_initial_description; ///< The description of the initial state.
     FormulaeList m_goal_description; ///< The formula that describes the goal.
@@ -81,37 +81,37 @@ private:
     /** \brief Function that stores the agent information from the file.
      *  \param os Output stream where information will be printed (especially if debug is active).
      */
-    void build_agents(std::ostream& os = std::cout);
+    void build_agents(std::ostream& os);
 
     /** \brief Function that stores the fluent information from the file.
      *  \param os Output stream where information will be printed (especially if debug is active).
      */
-    void build_fluents(std::ostream& os = std::cout);
+    void build_fluents(std::ostream& os);
 
     /** \brief Function that stores the action information (with effects, conditions, etc.) from the file.
      *  \param os Output stream where information will be printed (especially if debug is active).
      */
-    void build_actions(std::ostream& os = std::cout);
+    void build_actions(std::ostream& os);
 
     /** \brief Function that adds each proposition to the correct action.
      *  \param os Output stream where information will be printed (especially if debug is active).
      */
-    void build_propositions(std::ostream& os = std::cout);
+    void build_propositions(std::ostream& os);
 
     /** \brief Function that builds the initial state description.
      *  \param os Output stream where information will be printed (especially if debug is active).
      */
-    void build_initially(std::ostream& os = std::cout);
+    void build_initially(std::ostream& os);
 
     /** \brief Function that builds the goal description.
      *  \param os Output stream where information will be printed (especially if debug is active).
      */
-    void build_goal(std::ostream& os = std::cout);
+    void build_goal(std::ostream& os);
 
     /** Private constructor since it is a Singleton class.
     *  \param os Output stream where information will be printed (especially if debug is active).
     *  */
-    Domain(std::ostream& os = std::cout);
+    explicit Domain(std::ostream& os);
 
     Domain() = default; ///< Private constructor since it is a Singleton class.
 

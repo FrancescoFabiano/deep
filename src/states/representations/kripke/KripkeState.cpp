@@ -15,6 +15,7 @@
 #include "KripkeState.h"
 #include "ArgumentParser.h"
 #include "FormulaHelper.h"
+#include "HelperPrint.h"
 #include "KripkeEntailmentHelper.h"
 #include "KripkeReachabilityHelper.h"
 #include "KripkeStorage.h"
@@ -109,6 +110,11 @@ KripkeState& KripkeState::operator=(const KripkeState& to_copy) {
     return (it1 == beliefs1.end()) && (it2 != beliefs2.end());
 }
 
+void KripkeState::print(std::ostream& os) const
+{
+    HelperPrint::get_instance().print_KripkeState(*this,os);
+}
+
 // --- Structure Building ---
 
 void KripkeState::add_world(const KripkeWorld& to_add) {
@@ -149,7 +155,7 @@ void KripkeState::add_edge(const KripkeWorldPointer& from, const KripkeWorldPoin
     }
 }
 
-void KripkeState::add_pworld_beliefs(const KripkeWorldPointer& world, const KripkeWorldPointersMap& beliefs) {
+void KripkeState::add_world_beliefs(const KripkeWorldPointer& world, const KripkeWorldPointersMap& beliefs) {
     m_beliefs[world] = beliefs;
 }
 
@@ -248,10 +254,10 @@ void KripkeState::remove_initial_edge_bf(const BeliefFormula& to_check) {
         switch (tmp.get_formula_type()) {
         case BeliefFormulaType::PROPOSITIONAL_FORMULA:
             if (tmp.get_operator() == BeliefFormulaOperator::BF_OR) {
-                auto known_ff_ptr = std::make_shared<FluentFormula>();
+                auto known_ff_ptr = FluentFormula();
                 FormulaHelper::check_Bff_notBff(tmp.get_bf1(), tmp.get_bf2(), known_ff_ptr);
-                if (known_ff_ptr != nullptr) {
-                    remove_initial_edge(*known_ff_ptr, tmp.get_bf2().get_agent());
+                if (!known_ff_ptr.empty()) {
+                    remove_initial_edge(known_ff_ptr, tmp.get_bf2().get_agent());
                 }
             } else if (tmp.get_operator() != BeliefFormulaOperator::BF_AND) {
                 ExitHandler::exit_with_message(
@@ -314,7 +320,7 @@ void KripkeState::maintain_oblivious_believed_worlds(KripkeState& ret, const Age
         for (const auto& wo_ob : world_oblivious) {
             auto it_pwmap = m_beliefs.find(wo_ob);
             if (it_pwmap != m_beliefs.end()) {
-                ret.add_pworld_beliefs(wo_ob, it_pwmap->second);
+                ret.add_world_beliefs(wo_ob, it_pwmap->second);
             }
         }
     }
@@ -338,14 +344,14 @@ KripkeWorldPointer KripkeState::execute_ontic_helper(const Action& act, KripkeSt
 
             for (const auto& belief : beliefs) {
                 if (is_oblivious_obs) {
-                    auto maintained_pworld = ret.get_worlds().find(belief);
-                    if (maintained_pworld != ret.get_worlds().end()) {
+                    auto maintained_world = ret.get_worlds().find(belief);
+                    if (maintained_world != ret.get_worlds().end()) {
                         ret.add_edge(new_pw, belief, ag);
                     }
                 } else {
-                    auto calculated_pworld = calculated.find(belief);
-                    if (calculated_pworld != calculated.end()) {
-                        ret.add_edge(new_pw, calculated_pworld->second, ag);
+                    auto calculated_world = calculated.find(belief);
+                    if (calculated_world != calculated.end()) {
+                        ret.add_edge(new_pw, calculated_world->second, ag);
                     } else {
                         KripkeWorldPointer believed_pw = execute_ontic_helper(act, ret, belief, calculated, oblivious_obs_agents);
                         ret.add_edge(new_pw, believed_pw, ag);
@@ -391,19 +397,19 @@ KripkeWorldPointer KripkeState::execute_sensing_announcement_helper(const Fluent
 
             for (const auto& belief : beliefs) {
                 if (is_oblivious_obs) {
-                    auto maintained_pworld = ret.get_worlds().find(belief);
-                    if (maintained_pworld != ret.get_worlds().end()) {
+                    auto maintained_world = ret.get_worlds().find(belief);
+                    if (maintained_world != ret.get_worlds().end()) {
                         ret.add_edge(new_pw, belief, ag);
                     }
                 } else {
-                    auto calculated_pworld = calculated.find(belief);
+                    auto calculated_world = calculated.find(belief);
                     bool ent = KripkeEntailmentHelper::entails(effects, belief);
 
                     bool is_consistent_belief = is_partially_obs || (is_fully_obs && (ent == previous_entailment));
 
-                    if (calculated_pworld != calculated.end()) {
+                    if (calculated_world != calculated.end()) {
                         if (is_consistent_belief) {
-                            ret.add_edge(new_pw, calculated_pworld->second, ag);
+                            ret.add_edge(new_pw, calculated_world->second, ag);
                         }
                     } else {
                         if (is_consistent_belief) {

@@ -24,6 +24,7 @@
      * - C(B(i,*phi*) \ref BF_OR B(i,-*phi*)) -> only edges conditions.
      * - C(-B(i,*phi*) \ref BeliefFormulaOperator::BF_AND -B(i,-*phi*)) -> only edges conditions.*/
     bool ret = false;
+    auto ff = FluentFormula(); //Useless
     switch (to_check.get_formula_type()) {
         case BeliefFormulaType::PROPOSITIONAL_FORMULA:
             if (to_check.get_operator() != BeliefFormulaOperator::BF_AND) {
@@ -45,7 +46,7 @@
                     break;
                 case BeliefFormulaType::PROPOSITIONAL_FORMULA:
                     if (tmp.get_operator() == BeliefFormulaOperator::BF_OR) {
-                        ret = FormulaHelper::check_Bff_notBff(tmp.get_bf1(), tmp.get_bf2(), nullptr);
+                        ret = FormulaHelper::check_Bff_notBff(tmp.get_bf1(), tmp.get_bf2(), ff);
                     } else if (tmp.get_operator() == BeliefFormulaOperator::BF_AND) {
                         const auto& tmp_nested1 = tmp.get_bf1();
                         const auto& tmp_nested2 = tmp.get_bf2();
@@ -53,7 +54,7 @@
                             tmp_nested2.get_formula_type() == BeliefFormulaType::PROPOSITIONAL_FORMULA &&
                             tmp_nested1.get_operator() == BeliefFormulaOperator::BF_NOT &&
                             tmp_nested2.get_operator() == BeliefFormulaOperator::BF_NOT) {
-                            ret = FormulaHelper::check_Bff_notBff(tmp_nested1.get_bf1(), tmp_nested2.get_bf1(), nullptr);
+                            ret = FormulaHelper::check_Bff_notBff(tmp_nested1.get_bf1(), tmp_nested2.get_bf1(), ff);
                         }
                     } else {
                         ret = false;

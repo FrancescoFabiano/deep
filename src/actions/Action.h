@@ -89,9 +89,9 @@ public:
 
     /** \brief Prints this action.
      *
-     * \param os The output stream to print to (default: std::cout).
+     * \param os The output stream to print to.
      */
-    void print(std::ostream& os = std::cout) const;
+    void print(std::ostream& os) const;
 
     /** \brief Operator < implemented to use Action in std::set. */
     bool operator<(const Action&) const;

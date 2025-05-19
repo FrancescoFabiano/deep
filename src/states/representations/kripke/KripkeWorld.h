@@ -11,7 +11,6 @@
  */
 #pragma once
 
-#include <iostream>
 #include <set>
 #include <memory>
 
@@ -84,9 +83,9 @@ public:
     /// \name Utility
     ///@{
     /** \brief Print all information about this world.
-     * \param os The output stream to print to (default: std::cout).
+     * \param os The output stream to print to.
      */
-    void print(std::ostream& os = std::cout) const;
+    void print(std::ostream& os) const;
     ///@}
 
 private:

@@ -26,7 +26,7 @@ private:
     FormulaeList m_goals;
     pg_f_map m_fluents_score;
     pg_bf_map m_bf_score;
-    /*A map which contains the value of each "grounded" bf w.r.t. the classical planning graph.*/
+    /*A map which contains the value of each "grounded" bf w.r.t. the classical planning BisGraph.*/
     // pg_bfs_score m_bf_score;
 
 

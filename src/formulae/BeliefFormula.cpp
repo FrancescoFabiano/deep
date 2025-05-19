@@ -204,7 +204,7 @@ void BeliefFormula::set_bf2(const BeliefFormulaParsed & to_set)
 
 void BeliefFormula::print(std::ostream& os) const
 {
-    HelperPrint::get_instance().print_belief_formula(*this);
+    HelperPrint::get_instance().print_belief_formula(*this,os);
     os << std::endl;
 }
 

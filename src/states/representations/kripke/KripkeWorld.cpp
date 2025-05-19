@@ -3,7 +3,7 @@
  * \brief Implementation of KripkeWorld and KripkeWorldPointer.
  * \copyright GNU Public License.
  * \author Francesco Fabiano.
- * \date September 14, 2019
+ * \date May 16, 2025
  */
 #include <boost/dynamic_bitset.hpp>
 #include "KripkeWorld.h"

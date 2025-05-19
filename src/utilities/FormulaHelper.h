@@ -89,7 +89,7 @@ public:
      * 
      * @return true: if the two \ref belief_formula contain \ref fluent_formula that are the negation of each other.
      * @return false: otherwise.*/
-    static bool check_Bff_notBff(const BeliefFormula& to_check_1, const BeliefFormula& to_check_2, const std::shared_ptr<FluentFormula>& ret);
+    static bool check_Bff_notBff(const BeliefFormula& to_check_1, const BeliefFormula& to_check_2, FluentFormula& ret);
 
     /** \brief Function that check that the \ref ONTIC effect doesn't have uncertainty (OR).
      * 

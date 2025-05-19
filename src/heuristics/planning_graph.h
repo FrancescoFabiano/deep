@@ -319,7 +319,7 @@ private:
     unsigned short m_pg_length = 0;
     /*\brief The sum of the depths of the levels that contain a subgoal*/
     unsigned short m_pg_sum = 0;
-    /*\brief If the planning graph can find a solution*/
+    /*\brief If the planning BisGraph can find a solution*/
     bool m_satisfiable;
 
     /*\brief The list of the subgoals (possibly enanched by \ref heuristics_manager)*/
@@ -355,13 +355,13 @@ public:
 
     /*Constructor of *this* that set the initial state level and the goal from the domain
      * 
-     * This version should be used when a single planning graph is created from the initial state
+     * This version should be used when a single planning BisGraph is created from the initial state
      */
     planning_graph();
 
     /*Constructor of *this* that set the initial state level from the domain and the goal as given
      * 
-     *  This version should be used when a single planning graph is created from the initial state
+     *  This version should be used when a single planning BisGraph is created from the initial state
      * @param[in] goal: The formula_list that describes the given goals.
      */
     planning_graph(const FormulaeList & goal);
@@ -385,7 +385,7 @@ public:
     template <class T>
     planning_graph(const FormulaeList & goal, T & eState);
 
-    /*Function used by the constructors to properly initialize the various fields of the planning graph
+    /*Function used by the constructors to properly initialize the various fields of the planning BisGraph
      * 
      * @param[in] goal: The formula_list that describes the given goals.
      * @param[in] pg_init: the initial State level.
@@ -412,9 +412,9 @@ public:
 
 
 
-    /*Function that tells if the planning graph can satisfy the domain.
+    /*Function that tells if the planning BisGraph can satisfy the domain.
      *
-     * @return: True if a solution is found with the planning graph. 
+     * @return: True if a solution is found with the planning BisGraph. 
      * @return: False otherwise. 
      */
     bool is_satisfiable() const;
