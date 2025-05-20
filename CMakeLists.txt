@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.14)
 
 project(deep VERSION 1.0 LANGUAGES CXX)
 
@@ -24,22 +24,31 @@ include_directories(
         lib/bisimulation
 )
 
-# Automatically include all source files
-set(SOURCES
-        src/utilities/SetHelper.h #This is a header file, not a source file but it contains template functions
-        src/bisimulation/VectorBisWrapper.h #This is a header file, not a source file but it contains template functions
+# Automatically include all source (.cpp) files from include directories
+# and manually specify header files containing template implementations
 
+# Header files with template implementations that must be included in the build
+set(TEMPLATIC_HEADERS
+        src/utilities/SetHelper.h
+        src/bisimulation/VectorBisWrapper.h
+        src/search/SpaceSearcher.h
 )
+
+# Start the list of source files with those headers
+# Note: These aren't compiled directly but included for clarity in IDEs and some build systems
+set(SOURCES ${TEMPLATIC_HEADERS})
+
+# Append all .cpp source files found in include directories
 get_property(INCLUDE_DIRS DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY INCLUDE_DIRECTORIES)
 foreach(dir ${INCLUDE_DIRS})
     file(GLOB TMP_SOURCES CONFIGURE_DEPENDS "${dir}/*.cpp")
     list(APPEND SOURCES ${TMP_SOURCES})
 endforeach()
 
+# External library
 add_subdirectory(lib/CLI11)
 
-
-# Flex and Bison integration (before creating executable)
+# Flex and Bison integration
 find_package(FLEX REQUIRED)
 find_package(BISON REQUIRED)
 
@@ -47,9 +56,11 @@ FLEX_TARGET(Lexer src/parse/lcp.lex ${BUILD_DIR}/lex.cpp)
 BISON_TARGET(Parser src/parse/lcp.y ${BUILD_DIR}/bison.cpp)
 ADD_FLEX_BISON_DEPENDENCY(Lexer Parser)
 
-# Add executable with all sources
+# Add generated parser and lexer files to the build
+list(APPEND SOURCES ${FLEX_Lexer_OUTPUTS} ${BISON_Parser_OUTPUTS})
+
+# Create the executable
 add_executable(deep ${SOURCES})
-#add_executable(deep ${SOURCES} ${FLEX_Lexer_OUTPUTS} ${BISON_Parser_OUTPUTS})
 
 # Compiler flags
 target_compile_options(deep PRIVATE -g -Wall -ansi -Wfatal-errors -pthread -std=c++20)

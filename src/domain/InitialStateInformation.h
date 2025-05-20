@@ -51,7 +51,7 @@ public:
     /**
      * \brief Sets the S5 fluent formula for the initial state.
      *
-     * Used to check possible worlds for the initial state under the finitary-S5 restriction.
+     * Used to check possible worlds for the initial State under the finitary-S5 restriction.
      */
     void set_ff_forS5();
 

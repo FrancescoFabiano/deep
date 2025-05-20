@@ -127,7 +127,7 @@ private:
     /*\brief The map that associates each "grounded" \ref BeliefFormula to TRUE or FALSE**/
     pg_bf_map m_pg_bf_map;
 
-    /*\brief The depth of *this* (which state layer it is)*/
+    /*\brief The depth of *this* (which State layer it is)*/
     unsigned short m_depth = 0;
 
 
@@ -310,7 +310,7 @@ public:
 class planning_graph
 {
 private:
-    /*\brief The list of \ref pg_state_level that represents the state levels of the planning_graph*/
+    /*\brief The list of \ref pg_state_level that represents the State levels of the planning_graph*/
     std::vector< pg_state_level > m_state_levels;
     /*\brief The list of \ref pg_action_level that represents the action levels of the planning_graph*/
     std::vector< pg_action_level > m_action_levels;
@@ -340,7 +340,7 @@ private:
     void set_satisfiable(bool sat);
     /*The main function that build the planning_graph layer by layer until the goal is found or the planning_graph is saturated*/
     void pg_build();
-    /*Function add the next (depth + 1) state layer to m_state_levels
+    /*Function add the next (depth + 1) State layer to m_state_levels
      *
      * @param[in] s_level: The level to add to m_state_levels.
      */
@@ -353,15 +353,15 @@ private:
 
 public:
 
-    /*Constructor of *this* that set the initial state level and the goal from the domain
+    /*Constructor of *this* that set the initial State level and the goal from the domain
      * 
-     * This version should be used when a single planning BisGraph is created from the initial state
+     * This version should be used when a single planning BisGraph is created from the initial State
      */
     planning_graph();
 
-    /*Constructor of *this* that set the initial state level from the domain and the goal as given
+    /*Constructor of *this* that set the initial State level from the domain and the goal as given
      * 
-     *  This version should be used when a single planning BisGraph is created from the initial state
+     *  This version should be used when a single planning BisGraph is created from the initial State
      * @param[in] goal: The formula_list that describes the given goals.
      */
     planning_graph(const FormulaeList & goal);
@@ -371,16 +371,16 @@ public:
 
 
 
-    /*Constructor of *this* that set the initial state level from  a given eState and the goal from the domain
+    /*Constructor of *this* that set the initial State level from  a given eState and the goal from the domain
      * 
-     * @param[in] eState: The initial eState from which we should extract the first state level.
+     * @param[in] eState: The initial eState from which we should extract the first State level.
      */
     template <class T>
     planning_graph(T & eState);
 
-    /*Constructor of *this* that set the initial state level from a given eState and goal description
+    /*Constructor of *this* that set the initial State level from a given eState and goal description
      * @param[in] goal: The formula_list that describes the given goals.
-     * @param[in] eState: The initial eState from which we should extract the first state level.
+     * @param[in] eState: The initial eState from which we should extract the first State level.
      */
     template <class T>
     planning_graph(const FormulaeList & goal, T & eState);

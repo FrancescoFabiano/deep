@@ -87,7 +87,7 @@ $(BUILD_DIR)/main.o:	$(SRC_DIR)/main.cpp \
 						$(DOMAIN_DIR)/Domain.h \
 						$(SEARCH_DIR)/planner.h $(SEARCH_DIR)/planner.ipp \
 						$(HEURISTIC_DIR)/heuristics_manager.h $(HEURISTIC_DIR)/heuristics_template.ipp\
-						$(STATES_DIR)/state_T.h $(STATES_DIR)/state_T.ipp
+						$(STATES_DIR)/State.h $(STATES_DIR)/state_T.ipp
 		$(dir_guard)
 		echo "#define BUILT_DATE \"`date`\"" > $(BUILD_DIR)/built_date
 		cat $(BUILD_DIR)/built_date $(SRC_DIR)/main.cpp > $(BUILD_DIR)/main.temp.cpp
@@ -137,7 +137,7 @@ $(BUILD_DIR)/belief_formula.o: $(FORMULA_DIR)/belief_formula.cpp $(FORMULA_DIR)/
 
 ####SEARCH
 #$(BUILD_DIR)/planner.o: $(SEARCH_DIR)/planner.cpp $(SEARCH_DIR)/planner.h \
-#					    $(STATES_DIR)/state_T.h $(STATES_DIR)/state_T.ipp \
+#					    $(STATES_DIR)/State.h $(STATES_DIR)/state_T.ipp \
 #						$(DOMAIN_DIR)/Domain.h
 #		$(dir_guard)
 #		$(CC) $(CFLAGS) -c $(SEARCH_DIR)/planner.cpp -o $(BUILD_DIR)/planner.o
@@ -158,7 +158,7 @@ $(BUILD_DIR)/proposition.o: $(ACTION_DIR)/proposition.cpp $(ACTION_DIR)/proposit
 		$(CC) $(CFLAGS) -c $(ACTION_DIR)/proposition.cpp -o $(BUILD_DIR)/proposition.o
 
 ####STATES
-#$(BUILD_DIR)/state_T.o: $(STATES_DIR)/state_T.cpp $(STATES_DIR)/state_T.h \
+#$(BUILD_DIR)/state_T.o: $(STATES_DIR)/state_T.cpp $(STATES_DIR)/State.h \
 #					    $(ACTION_DIR)/action.h \
 #					    $(DOMAIN_DIR)/initially.h \
 #   					    $(UTILITIES_DIR)/define.h

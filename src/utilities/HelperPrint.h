@@ -117,14 +117,14 @@ public:
      * \param kstate The KripkeState to print.
      * \param os The output stream to print to.
      */
-    void print_KripkeState(const KripkeState &kstate, std::ostream &os) const;
+    void print_state(const KripkeState &kstate, std::ostream &os) const;
 
     /**
      * \brief Print a KripkeState in DOT format for graph visualization.
      * \param kstate The KripkeState to print.
      * \param os The output stream to print to.
      */
-    void print_KripkeStateDot(const KripkeState &kstate, std::ostream &os) const;
+    void print_dot_format(const KripkeState &kstate, std::ostream &os) const;
 
 private:
 

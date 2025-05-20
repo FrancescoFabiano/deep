@@ -54,7 +54,7 @@ using ReverseActionNamesMap = std::map<ActionId, std::string>;
 enum class heuristics
 {
     NO_H, ///< Breadth first search.
-    L_PG, ///< Planning BisGraph for state-goal distance.
+    L_PG, ///< Planning BisGraph for State-goal distance.
     S_PG, ///< Planning BisGraph for sum of subgoals distances.
     C_PG, ///< Classical planning BisGraph for belief formulae.
     SUBGOALS, ///< Number of found/missing subgoals.

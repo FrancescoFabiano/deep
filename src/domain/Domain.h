@@ -13,7 +13,7 @@
  *
  * The Domain class is responsible for reading, storing, and processing all relevant information
  * about the planning domain from the input file. This includes fluents, actions, agents, initial
- * state descriptions, and goal conditions. The class ensures that all domain data is available
+ * State descriptions, and goal conditions. The class ensures that all domain data is available
  * in structured form for the rest of the planner.
  *
  * This class follows the Singleton pattern: only one instance exists during the application's lifetime.
@@ -75,7 +75,7 @@ private:
     FluentsSet m_fluents; ///< Set containing all the (grounded) \ref fluent of the domain.
     ActionsSet m_actions; ///< Set containing all the \ref action (with effects, conditions, obs etc.) of the domain.
     AgentsSet m_agents; ///< Set containing all the (grounded) \ref agent of the domain.
-    InitialStateInformation m_initial_description; ///< The description of the initial state.
+    InitialStateInformation m_initial_description; ///< The description of the initial State.
     FormulaeList m_goal_description; ///< The formula that describes the goal.
 
     /** \brief Function that stores the agent information from the file.

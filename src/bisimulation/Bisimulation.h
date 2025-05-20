@@ -77,20 +77,6 @@ public:
      * @param[out] kstate The input Kripke state to minimize.
      */
     static void calc_min_bisimilar(KripkeState &kstate);
-
-    /**
-     * \brief Returns true if Bisimulation has been executed, false otherwise.
-     * \param[in] A The automaton to minimize.
-     * \return True if minimization was successful.
-     */
-    [[nodiscard]] bool MinimizeAutomaPT(BisAutomata& A);
-
-    /**
-     * \brief Returns true if fast Bisimulation has been executed, false otherwise.
-     * \param[in] A The automaton to minimize.
-     * \return True if minimization was successful.
-     */
-    [[nodiscard]] bool MinimizeAutomaFB(BisAutomata& A);
     ///@}
 
 private:
@@ -214,6 +200,19 @@ private:
      */
     void Inverse();
 
+    /**
+    * \brief Returns true if Bisimulation has been executed, false otherwise.
+    * \param[in] A The automaton to minimize.
+    * \return True if minimization was successful.
+    */
+    [[nodiscard]] bool MinimizeAutomaPT(BisAutomata& A);
+
+    /**
+     * \brief Returns true if fast Bisimulation has been executed, false otherwise.
+     * \param[in] A The automaton to minimize.
+     * \return True if minimization was successful.
+     */
+    [[nodiscard]] bool MinimizeAutomaFB(BisAutomata& A);
 
     /**
      * @brief Converts a KripkeState into a Bisimulation Automaton (BisAutomata).

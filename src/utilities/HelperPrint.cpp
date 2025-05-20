@@ -235,7 +235,7 @@ std::string HelperPrint::generate_log_file_path(const std::string& domain_file) 
 }
 
 
-void HelperPrint::print_KripkeState(const KripkeState & kstate, std::ostream& os) const
+void HelperPrint::print_state(const KripkeState & kstate, std::ostream& os) const
 {
 	os << std::endl;
 	os << "The Pointed World has id ";
@@ -277,7 +277,7 @@ void HelperPrint::print_KripkeState(const KripkeState & kstate, std::ostream& os
 }
 
 ///@TODO: Make this function so it can be used also to generate the dataset (maybe with a flag)
-void HelperPrint::print_KripkeStateDot(const KripkeState & kstate, std::ostream & os) const
+void HelperPrint::print_dot_format(const KripkeState & kstate, std::ostream & os) const
 {
 	auto& worlds = kstate.get_worlds();
 	auto& pointed = kstate.get_pointed();

@@ -37,8 +37,8 @@ public:
         DomainUndeclaredFluent = 203,   ///< Undeclared fluent error.
         DomainUndeclaredAgent = 204,    ///< Undeclared agent error.
         DomainUndeclaredAction = 205,   ///< Undeclared action error.
-        DomainInitialStateRestrictionError = 206, ///< Initial state restriction error.
-        DomainInitialStateTypeError = 207,        ///< Initial state type error.
+        DomainInitialStateRestrictionError = 206, ///< Initial State restriction error.
+        DomainInitialStateTypeError = 207,        ///< Initial State type error.
 
         // Action Related
         ActionTypeConflict = 300,    ///< Conflicting action types detected.
@@ -63,14 +63,17 @@ public:
         BeliefFormulaOperatorUnset = 604,     ///< BeliefFormula operator not set properly.
         BeliefFormulaEmptyAgentGroup = 605,    ///< BeliefFormula has empty agent group.
 
-        // Bisimulation Related
-        BisimulationFailed = 800,        ///< Bisimulation minimization failed.
-        BisimulationWrapperOutOfBounds = 801,         ///< Accessed something out of bounds in Bisimulation wrapper.
 
         // KripkeWorldPointer Related
         KripkeWorldPointerNullError = 700,      ///< Null pointer dereference in KripkeWorldPointer.
         KripkeStorageInsertError = 701,         ///< Failed to insert or find KripkeWorld in KripkeStorage.
         KripkeWorldEntailmentError = 702,       ///< Failed to check for entailment of something in KripkeWorld.
+
+        // Bisimulation Related
+        BisimulationFailed = 800,        ///< Bisimulation minimization failed.
+        BisimulationWrapperOutOfBounds = 801,         ///< Accessed something out of bounds in Bisimulation wrapper.
+
+        StateActionNotExecutableError = 900, ///< Action not executable in state where is supposed to be.
     };
 
     // ArgumentParser Related

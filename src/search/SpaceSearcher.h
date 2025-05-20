@@ -1,16 +1,14 @@
 /**
- * \class planner
+ * \class SpaceSearcher
  * 
  * \brief Templatic class that implements several search techniques (BFS, DFS, Best-First Search) and ML dataset generation.
  *
- * The class is templatic to allow searching with different state representations.
- *
- * \todo Templatic with priority queue for heuristic search?.
+ * The class is templatic to allow searching with different State representations.
  *
  * \copyright GNU Public License.
  *
  * \author Francesco Fabiano.
- * \date Originally May 6, 2019, updated April 27, 2025
+ * \date April 27, 2025
  */
 #pragma once
 
@@ -29,6 +27,8 @@
 #include <pthread.h>
 #include <unistd.h>
 #include <random>
+
+#include "State.h"
 // Create the random engine and distribution ONCE (global or inside a class)
 std::random_device rd;
 std::mt19937 gen(rd());
@@ -37,7 +37,7 @@ std::uniform_real_distribution<> dis(0.0, 1.0);
 
 #include "../domain/Domain.h"
 #include "../heuristics/heuristics_manager.h"
-// Because planner is templated, and state_T is a dependency:
+// Because SpaceSearcher is templated, and state_T is a dependency:
 #include "../states/state_T.ipp"
 
 
@@ -52,7 +52,7 @@ struct compare_heuristic
 };
 
 template <class T>
-class planner
+class SpaceSearcher
 {
 private:
     /** Queue for BFS search. */
@@ -113,6 +113,16 @@ private:
     /** Formats a single row of the dataset CSV file. */
     std::string format_row(T& state, int depth, int score, const std::string& goal_str);
 
+    /** \brief Function that computes the successor of *this* given an \ref action.
+     *
+     * The actual implementation is left to the specific State-representation (\ref m_representation).
+     *
+     * @see action
+     *
+     * @param prev_state: the \ref state to update.
+     * @param act: the \ref action to execute on *this*.
+     * @return The state that encodes the successor.*/
+    State<T> compute_successor(const State<T> & prev_state,const Action & act) const;
 public:
     /** Launches the search process based on given parameters. */
     bool search(bool results_file, parallel_input pin, heuristics used_heur, search_type used_search, ML_Dataset_Params generate_heur_ML_data, short IDFS_d, short IDFS_s);
@@ -120,7 +130,7 @@ public:
     /** Prints search results including time and expanded nodes. */
     void print_results(std::chrono::duration<double> elapsed_seconds, int expanded_nodes, T goal, bool results_file, bool givenplan, search_type used_search, heuristics used_heur = NO_H, parallel_type ptype = P_SERIAL);
 
-    /** Executes a given sequence of actions on the initial state. */
+    /** Executes a given sequence of actions on the initial State. */
     void execute_given_actions(std::vector<std::string>& act_name);
 
     /** Executes given actions while measuring execution time. */
@@ -130,4 +140,14 @@ public:
     void check_actions_names(std::vector<std::string>& act_name);
 };
 
+
+template <class T>
+State<T> SpaceSearcher<T>::compute_successor(const State<T> & prev_state,const Action & act) const
+{
+    State<T> ret;
+    ret.set_representation(prev_state.get_representation().compute_succ(act));
+    ret.set_executed_actions(prev_state.get_executed_actions());
+    ret.add_executed_action(act);
+    return ret;
+}
 

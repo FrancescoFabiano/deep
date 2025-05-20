@@ -7,7 +7,7 @@
  * \date May 6, 2019
  */
 #include <algorithm>
-#include "planner.h"
+#include "SpaceSearcher.h"
 
 // when running parallel, [heur] is printed at the start of each line so that it can easily be seen what heuristical thread is printing what output.
 // this function just takes a ptype and heuristic, and returns "[heur] " if the ptype is P_CHILD, or "" otherwise.
@@ -18,7 +18,7 @@ std::string child_string(parallel_type ptype, heuristics used_heur){
 }
 
 template <class T>
-void planner<T>::print_results(std::chrono::duration<double> elapsed_seconds, int expanded_nodes, T goal, bool results_file, bool givenplan, search_type used_search, heuristics used_heur, parallel_type ptype)
+void SpaceSearcher<T>::print_results(std::chrono::duration<double> elapsed_seconds, int expanded_nodes, T goal, bool results_file, bool givenplan, search_type used_search, heuristics used_heur, parallel_type ptype)
 {
 	std::string child_notice = "\n\n\n";
 	child_notice = child_notice + child_string(ptype,used_heur);
@@ -103,7 +103,7 @@ void planner<T>::print_results(std::chrono::duration<double> elapsed_seconds, in
 }
 
 template <class T>
-bool planner<T>::search(bool results_file, parallel_input pin, heuristics used_heur, search_type used_search, ML_Dataset_Params ML_dataset, short IDFS_d, short IDFS_s)
+bool SpaceSearcher<T>::search(bool results_file, parallel_input pin, heuristics used_heur, search_type used_search, ML_Dataset_Params ML_dataset, short IDFS_d, short IDFS_s)
 {
 	if(ML_dataset.generate){ML_dataset_creation(&ML_dataset);}
 	else
@@ -133,14 +133,14 @@ template <class T>
 static void* my_search_thread(void *args)
 {
 	pthread_params *params = (pthread_params *)args;
-	planner<T> tmpObj;
+	SpaceSearcher<T> tmpObj;
 	ML_Dataset_Params tmp_ml;
 	
 	tmpObj.search(params->results_file, params->pin, params->used_heur, params->used_search, tmp_ml, params->IDFS_d, params->IDFS_s);
 }
 
 template <class T>
-bool planner<T>::parallel_search(bool results_file, parallel_input pin, heuristics used_heur, search_type used_search, short IDFS_d, short IDFS_s)
+bool SpaceSearcher<T>::parallel_search(bool results_file, parallel_input pin, heuristics used_heur, search_type used_search, short IDFS_d, short IDFS_s)
 {
 	int num_heuristics = 5;
 	heuristics heur_list[num_heuristics]   = { NO_H ,  L_PG ,  S_PG ,  C_PG ,  SUBGOALS };
@@ -234,7 +234,7 @@ bool planner<T>::parallel_search(bool results_file, parallel_input pin, heuristi
 }
 
 template <class T>
-bool planner<T>::search_BFS(bool results_file, parallel_type ptype)
+bool SpaceSearcher<T>::search_BFS(bool results_file, parallel_type ptype)
 {
 
 	int expanded_nodes = 0;
@@ -321,7 +321,7 @@ bool planner<T>::search_BFS(bool results_file, parallel_type ptype)
 }
 
 template <class T>
-bool planner<T>::search_IterativeDFS(bool results_file, short maxDepth_, short step_, parallel_type ptype)
+bool SpaceSearcher<T>::search_IterativeDFS(bool results_file, short maxDepth_, short step_, parallel_type ptype)
 {
 	int expanded_nodes = 0;
 	//stack di supporto per i risultati della ricerca.
@@ -409,7 +409,7 @@ bool planner<T>::search_IterativeDFS(bool results_file, short maxDepth_, short s
 }
 
 template <class T>
-bool planner<T>::search_DFS(bool results_file, parallel_type ptype)
+bool SpaceSearcher<T>::search_DFS(bool results_file, parallel_type ptype)
 {
 	int expanded_nodes = 0;
 	T initial;
@@ -482,7 +482,7 @@ bool planner<T>::search_DFS(bool results_file, parallel_type ptype)
 }
 
 template <class T>
-bool planner<T>::search_heur(bool results_file, heuristics used_heur, parallel_type ptype)
+bool SpaceSearcher<T>::search_heur(bool results_file, heuristics used_heur, parallel_type ptype)
 {
 	int expanded_nodes = 0;
 
@@ -529,7 +529,7 @@ bool planner<T>::search_heur(bool results_file, heuristics used_heur, parallel_t
 	m_heur_search_space.push(initial);
 	while (!m_heur_search_space.empty()) {
 		popped_state = m_heur_search_space.top();
-		//std::cerr << "\nDEBUG: Picked the state with heur = " << popped_state.get_heuristic_value() << "\n\n\n";
+		//std::cerr << "\nDEBUG: Picked the State with heur = " << popped_state.get_heuristic_value() << "\n\n\n";
 		m_heur_search_space.pop();
 		expanded_nodes++;
 
@@ -550,7 +550,7 @@ bool planner<T>::search_heur(bool results_file, heuristics used_heur, parallel_t
 					h_manager.set_heuristic_value(tmp_state);
 
 					if ((tmp_state.get_heuristic_value() >= 0) || (used_heur == C_PG)) {
-						//std::cerr << "\nDEBUG: Generated a state with heur = " << tmp_state.get_heuristic_value();
+						//std::cerr << "\nDEBUG: Generated a State with heur = " << tmp_state.get_heuristic_value();
 						m_heur_search_space.push(tmp_state);
 					}
 				}
@@ -562,7 +562,7 @@ bool planner<T>::search_heur(bool results_file, heuristics used_heur, parallel_t
 }
 
 template <class T>
-void planner<T>::execute_given_actions(std::vector<std::string>& act_name)
+void SpaceSearcher<T>::execute_given_actions(std::vector<std::string>& act_name)
 {
 	check_actions_names(act_name);
 	// DEBUG
@@ -612,16 +612,16 @@ void planner<T>::execute_given_actions(std::vector<std::string>& act_name)
 					}
 
 					// DEBUG
-					//					if (!visited_states.insert(state).second) {
+					//					if (!visited_states.insert(State).second) {
 					//						for (T tmp : visited_states) {
-					//							if (!(tmp < state) && !(state < tmp) && !domain::get_instance().get_debug()) {
-					//								state.min_with_print(tmp);
+					//							if (!(tmp < State) && !(State < tmp) && !domain::get_instance().get_debug()) {
+					//								State.min_with_print(tmp);
 					//							}
 					//
-					//							//std::cerr << "\nDEBUG: reached already visited state with action " << (*it_acset).get_name() << "\n";
+					//							//std::cerr << "\nDEBUG: reached already visited State with action " << (*it_acset).get_name() << "\n";
 					//
 					//							// if ((*it_acset).get_name() == "shout_8") {
-					//							// 	state.print_graphviz(bis_postfix);
+					//							// 	State.print_graphviz(bis_postfix);
 					//							// }
 					//						}
 					//					}
@@ -644,7 +644,7 @@ void planner<T>::execute_given_actions(std::vector<std::string>& act_name)
 	if (domain::get_instance().get_debug()) {
 		std::cout << "\nGenerating the graphical representation of the states ...\n";
 
-		std::string name_folder_graphviz = "out/state/";
+		std::string name_folder_graphviz = "out/State/";
 		name_folder_graphviz += domain::get_instance().get_name();
 		switch ( domain::get_instance().get_stype() ) {
 		case POSSIBILITIES:
@@ -662,7 +662,7 @@ void planner<T>::execute_given_actions(std::vector<std::string>& act_name)
 
 template <class T>
 /**\todo just for confrontation with old*/
-void planner<T>::execute_given_actions_timed(std::vector<std::string>& act_name, parallel_type ptype)
+void SpaceSearcher<T>::execute_given_actions_timed(std::vector<std::string>& act_name, parallel_type ptype)
 {
 	check_actions_names(act_name);
 
@@ -695,7 +695,7 @@ void planner<T>::execute_given_actions_timed(std::vector<std::string>& act_name,
 
 template <class T>
 /**\todo just for confrontation with old*/
-void planner<T>::check_actions_names(std::vector<std::string>& act_name)
+void SpaceSearcher<T>::check_actions_names(std::vector<std::string>& act_name)
 {
 
 	StringsSet domain_act;
@@ -720,7 +720,7 @@ void planner<T>::check_actions_names(std::vector<std::string>& act_name)
 
 
 template <class T>
-bool planner<T>::ML_dataset_creation(ML_Dataset_Params* ML_dataset) {
+bool SpaceSearcher<T>::ML_dataset_creation(ML_Dataset_Params* ML_dataset) {
     std::string folder = "out/ML_HEUR_datasets/";
     folder += (ML_dataset->useDFS) ? "DFS/" : "BFS/";
     system(("mkdir -p " + folder).c_str());
@@ -753,7 +753,7 @@ bool planner<T>::ML_dataset_creation(ML_Dataset_Params* ML_dataset) {
 }
 
 template <class T>
-bool planner<T>::dataset_launcher(const std::string& fpath, int max_depth, bool useDFS, const std::string& goal_str) {
+bool SpaceSearcher<T>::dataset_launcher(const std::string& fpath, int max_depth, bool useDFS, const std::string& goal_str) {
     T initial;
     initial.build_initial();
 
@@ -793,7 +793,7 @@ bool planner<T>::dataset_launcher(const std::string& fpath, int max_depth, bool 
 
 
 template <class T>
-bool planner<T>::dataset_DFS_serial(T& initial_state, int max_depth, action_set* actions, const std::string& goal_str, std::vector<std::string>& global_dataset, bool bisimulation) {
+bool SpaceSearcher<T>::dataset_DFS_serial(T& initial_state, int max_depth, action_set* actions, const std::string& goal_str, std::vector<std::string>& global_dataset, bool bisimulation) {
     
     m_visited_states_ML.clear();
 
@@ -832,7 +832,7 @@ bool planner<T>::dataset_DFS_serial(T& initial_state, int max_depth, action_set*
 
 
 template <class T>
-int planner<T>::dataset_DFS_worker(T& state, int depth, int max_depth, action_set* actions, const std::string& goal_str, std::vector<std::string>& global_dataset, bool bisimulation) {
+int SpaceSearcher<T>::dataset_DFS_worker(T& state, int depth, int max_depth, action_set* actions, const std::string& goal_str, std::vector<std::string>& global_dataset, bool bisimulation) {
 
     if (m_current_nodes_ML >= m_threshold_node_generation_ML) {
 		if (state.is_goal()) {
@@ -934,10 +934,10 @@ int planner<T>::dataset_DFS_worker(T& state, int depth, int max_depth, action_se
 
 
 template <class T>
-std::string planner<T>::format_row(T& state, int depth, int score, const std::string& goal_str) {
+std::string SpaceSearcher<T>::format_row(T& state, int depth, int score, const std::string& goal_str) {
     std::stringstream ss;
     //ss << "\"";
-    //printer::get_instance().print_list(state.get_executed_actions());
+    //printer::get_instance().print_list(State.get_executed_actions());
     //ss << "\",";
     std::string graphviz_filename = state.print_graphviz_ML_dataset("");
     ss << graphviz_filename << "," << depth << "," << score << "," << goal_str;

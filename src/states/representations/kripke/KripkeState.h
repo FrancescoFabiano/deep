@@ -66,10 +66,7 @@ public:
 
 
     // --- Structure Building ---
-    /** \brief Build the initial Kripke structure (choose method internally).
-    * \param os The output stream to print to.
-     */
-    void build_initial(std::ostream& os);
+
     /** \brief Generate all possible permutations of the domain's fluents.
      *  \param[out] permutation The permutation in construction.
      *  \param[in] index The index of the fluent to add.
@@ -151,10 +148,6 @@ public:
      */
     [[nodiscard]] KripkeState compute_successor(const Action& act) const;
 
-
-    /** \brief Minimize this KripkeState to the minimum bisimilar structure. */
-    void calc_min_bisimilar();
-
     // --- Operators ---
     /** \brief Copy Assignment operator.*/
     KripkeState & operator=(const KripkeState& to_copy);
@@ -164,11 +157,81 @@ public:
      */
     [[nodiscard]] bool operator<(const KripkeState& to_compare) const;
 
+
+    /// \name Needed for State<T>
+    ///@{
+    /** \brief Minimize this KripkeState to the minimum bisimilar structure. */
+    /** \brief Build the initial Kripke structure (choose method internally).
+    * \param os The output stream to print to.
+     */
+    void build_initial(std::ostream& os);
+
+     /** \brief Function that checks if *this* entails a \ref fluent.
+     *
+     *
+     * @param to_check: the \ref fluent to check if is entailed by *this*.
+     *
+     * @return true if \p to_check is entailed by *this*.
+     * @return false if \p -to_check is entailed by *this*.
+     */
+    [[nodiscard]] bool entails(const Fluent & to_check) const;
+
+    /** \brief Function that checks if *this* entails a conjunctive set of \ref fluent.
+     *
+     *
+     * @param to_check: the conjunctive set of \ref fluent to check if is entailed by *this*.
+     *
+     * @return true if \p to_check is entailed by *this*.
+     * @return false if \p -to_check is entailed by *this*.*/
+    [[nodiscard]] bool entails(const FluentsSet & to_check) const;
+    /** \brief Function that checks if *this* entails a DNF \ref FluentFormula.
+     *
+     *
+     * @param to_check: the DNF \ref FluentFormula to check if is entailed by *this*.
+     *
+     * @return true if \p to_check is entailed by *this*.
+     * @return false if \p -to_check is entailed by *this*.*/
+    [[nodiscard]] bool entails(const FluentFormula & to_check) const;
+
+    /** \brief Function that checks if *this* entails a \ref BeliefFormula.
+     *
+     *
+     * @param to_check: the \ref BeliefFormula to check if is entailed by *this*.
+     *
+     * @return true if \p to_check is entailed by *this*.
+     * @return false if \p -to_check is entailed by *this*.*/
+    [[nodiscard]]  bool entails(const BeliefFormula & to_check) const;
+
+    /** \brief Function that checks if *this* entails a CNF \ref FormulaeList.
+     *
+     *
+     *
+     * @param to_check: the CNF \ref FormulaeList to check if is entailed by *this*.
+     *
+     *
+     * @return true if \p to_check is entailed by *this*.
+     * @return false if \p -to_check is entailed by *this*.*/
+    [[nodiscard]] bool entails(const FormulaeList & to_check) const;
+
+
+   /** \brief Function that applies bisimulation contraction to this*/
+    void contract_with_bisimulation();
+    ///}
     // --- Printing ---
-    /** \brief Print this KripkeState to std::cout.
+    /** \brief Print this KripkeState to os.
     * Params:
     [in] os — The output stream.*/
     void print(std::ostream& os) const;
+
+
+  /** \brief Print this KripkeState to a dot format in os.
+ * Params:
+ [in] os — The output stream.*/
+  void print_dot_format(std::ostream& os) const;
+
+
+
+
 
 private:
     // --- Data members ---
@@ -214,26 +277,4 @@ private:
 
     /*This is to allow bisimulation to reduce the size of the object*/
     friend class Bisimulation;
-
-    /** \brief Get all reachable worlds and edges from a given world.
-     *  \param[in] pw The starting world.
-     *  \param[out] reached_worlds The set of reached worlds.
-     *  \param[out] reached_edges The map of reached edges.
-     */
-    void get_all_reachable_worlds(const KripkeWorldPointer& pw, KripkeWorldPointersSet& reached_worlds, KripkeWorldPointersTransitiveMap& reached_edges) const;
-    /** \brief Remove unreachable worlds from the structure. */
-    void clean_unreachable_worlds();
-
-    /** \brief Convert this KripkeState to an automaton.
-     *  \param[out] pworld_vec The vector of KripkeWorld pointers.
-     *  \param[in] agent_to_label The map from agent to bisimulation label.
-     *  \return The automaton representation.
-     */
-    [[nodiscard]] BisAutomata kstate_to_automaton(std::vector<KripkeWorldPointer>& pworld_vec, const std::map<Agent, BisLabel>& agent_to_label) const;
-    /** \brief Convert an automaton to this KripkeState.
-     *  \param[in] a The automaton.
-     *  \param[in] pworld_vec The vector of KripkeWorld pointers.
-     *  \param[in] label_to_agent The map from bisimulation label to agent.
-     */
-    void automaton_to_kstate(const BisAutomata& a, const std::vector<KripkeWorldPointer>& pworld_vec, const std::map<BisLabel, Agent>& label_to_agent);
 };

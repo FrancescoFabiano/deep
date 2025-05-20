@@ -118,7 +118,12 @@ KripkeState& KripkeState::operator=(const KripkeState& to_copy) {
 
 void KripkeState::print(std::ostream& os) const
 {
-    HelperPrint::get_instance().print_KripkeState(*this,os);
+    HelperPrint::get_instance().print_state(*this,os);
+}
+
+void KripkeState::print_dot_format(std::ostream& os) const
+{
+    HelperPrint::get_instance().print_dot_format(*this,os);
 }
 
 // --- Structure Building ---
@@ -241,8 +246,8 @@ void KripkeState::remove_initial_edge(const FluentFormula& known_ff, const Agent
     for (const auto& pwptr_tmp1 : m_worlds) {
         for (const auto& pwptr_tmp2 : m_worlds) {
             if (pwptr_tmp1 == pwptr_tmp2) continue;
-            bool entails1 = KripkeEntailmentHelper::entails(known_ff, pwptr_tmp1);
-            bool entails2 = KripkeEntailmentHelper::entails(known_ff, pwptr_tmp2);
+            const bool entails1 = KripkeEntailmentHelper::entails(known_ff, pwptr_tmp1);
+            const bool entails2 = KripkeEntailmentHelper::entails(known_ff, pwptr_tmp2);
             if (entails1 && !entails2) {
                 remove_edge(pwptr_tmp1, pwptr_tmp2, ag);
                 remove_edge(pwptr_tmp2, pwptr_tmp1, ag);
@@ -459,4 +464,35 @@ KripkeState KripkeState::execute_sensing(const Action& act) const {
 
 KripkeState KripkeState::execute_announcement(const Action& act) const {
     return execute_sensing(act);
+}
+
+bool KripkeState::entails(const Fluent & to_check) const
+{
+    return KripkeEntailmentHelper::entails(to_check, get_pointed());
+}
+
+bool KripkeState::entails(const FluentsSet & to_check) const
+{
+    return KripkeEntailmentHelper::entails(to_check, get_pointed());
+}
+
+bool KripkeState::entails(const FluentFormula & to_check) const
+{
+    return KripkeEntailmentHelper::entails(to_check, get_pointed());
+}
+
+bool KripkeState::entails(const BeliefFormula & to_check) const
+{
+    return KripkeEntailmentHelper::entails(to_check, *this);
+}
+
+bool KripkeState::entails(const FormulaeList & to_check) const
+{
+    return KripkeEntailmentHelper::entails(to_check, *this);
+}
+
+void KripkeState::contract_with_bisimulation()
+{
+    Bisimulation bisimulation;
+    bisimulation.calc_min_bisimilar(*this);
 }
