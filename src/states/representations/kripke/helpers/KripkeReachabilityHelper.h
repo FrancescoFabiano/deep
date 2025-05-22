@@ -4,7 +4,7 @@
  * \brief Helper class for entailment checks in Kripke structures.
  *
  * Provides static methods to provide reachability on the estates.
- *
+ * We use this class to alleviate the logic of KripkeState so we make everything private accessible only form KripkeState
  * \author Francesco Fabiano
  * \date May 17, 2025
  */
@@ -19,6 +19,8 @@ public:
     KripkeReachabilityHelper& operator=(const KripkeReachabilityHelper&) = default;
     KripkeReachabilityHelper(KripkeReachabilityHelper&&) = default;
     KripkeReachabilityHelper& operator=(KripkeReachabilityHelper&&) = default;
+
+private:
     /**
      * \brief Get all worlds reachable by an agent from a starting world, using a KripkeState.
      * \param[in] ag The agent.
@@ -86,4 +88,8 @@ public:
      * @param kstate The KripkeState object to be pruned of unreachable possible worlds.
      */
     static void clean_unreachable_worlds(KripkeState &kstate);
+
+    /*We use this class to alleviate the logic of KripkeState so we make everything private accessible only form KripkeState*/
+    friend class KripkeState;
+    friend class KripkeEntailmentHelper;
 };

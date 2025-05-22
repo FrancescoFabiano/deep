@@ -6,6 +6,8 @@
  * Provides static methods to check whether various formulae
  * (fluents, sets, formulas, belief formulas) are entailed in a given world, state, etc.
  *
+ *
+ * We use this class to alleviate the logic of KripkeState so we make everything private accessible only form KripkeState
  * \author Francesco Fabiano
  * \date May 17, 2025
  */
@@ -146,4 +148,9 @@ public:
                           const KripkeState &updated);
 
     ///@}
+    ///
+
+    /*We use this class to alleviate the logic of KripkeState so we make everything private accessible only form KripkeState*/
+    friend class KripkeState;
+    friend class KripkeReachabilityHelper;
 };

@@ -17,6 +17,17 @@
 #include "satisfied_goals.h"
 #include "planning_graph.h"
 
+/** \brief Class used as comparator for the priority queue (for Best-First Search). */
+template <class T>
+struct compare_heuristic
+{
+    bool operator()(const T& state1, const T& state2)
+    {
+        return state1.get_heuristic_value() > state2.get_heuristic_value();
+    }
+};
+
+
 class heuristics_manager
 {
 private:

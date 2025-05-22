@@ -35,21 +35,13 @@ std::mt19937 gen(rd());
 std::uniform_real_distribution<> dis(0.0, 1.0);
 
 
-#include "../domain/Domain.h"
-#include "../heuristics/heuristics_manager.h"
+#include "domain/Domain.h"
+#include "heuristics/heuristics_manager.h"
 // Because SpaceSearcher is templated, and state_T is a dependency:
-#include "../states/state_T.ipp"
+#include "states/state_T.ipp"
 
 
-/** \brief Class used as comparator for the priority queue (for Best-First Search). */
-template <class T>
-struct compare_heuristic
-{
-    bool operator()(const T& state1, const T& state2)
-    {
-        return state1.get_heuristic_value() > state2.get_heuristic_value();
-    }
-};
+
 
 template <class T>
 class SpaceSearcher

@@ -1854,7 +1854,6 @@ void Bisimulation::automaton_to_kstate(const BisAutomata & a, const VectorBisWra
 }
 
 void Bisimulation::calc_min_bisimilar(KripkeState & kstate) {
-	kstate.clean_unreachable_worlds();
 
 	VectorBisWrapper<KripkeWorldPointer> pworld_vec;
 	pworld_vec.reserve(kstate.get_worlds().size());

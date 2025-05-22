@@ -1,34 +1,32 @@
-# EFP
+# deep
 
-## Thesis - Related
-The repository, for a brief period of time, will store previous versions of the planner that match the implementation of some foundamental features.
-The planner, at the moment, is not completly able to manage the various versions.
-These versions will be merged in the next future and we will provide a unique solver that would allow, through parameters, to try different configurations.
-
-As a temporary solution we store in the folder "Thesis Code" four archives:
-- EFP2-0.zip: Contains the code of EFP 2.0 presented at (Fabiano et al. 2020)
-- EFP2-1.zip: Contains the code of EFP 2.1 that is EFP 2.0 optimized -- this version works only with Possibilities and also allows to play with small variation of the classical actions
-- EFP-att.zip: Contains the code where EFP is able to deal with agents attitudes (Fabiano et al. 2021) -- the example files contains the line to execute to generate the graphical states representation
-- EFP-customEve.zip: Contains the code where it is possible to play with custom event model
-- PLATO.zip: The ASP planner based on (Burigana et al. 2020)
+## TODOs
+- [ ] Make the Class State<T> with methods that can be overwritten by its implementation or force the various templatic implementation to implement certain methods (like the entails) -- Virtual maybe
+- [ ] Apply the same thing to search strategies and make sure planner uses a specific state and specific search strategy (maybe check for compatibility)
+- [ ] Make the general search methods multi-threaded and also each search strategy possibly multi-threaded
+- [ ] Make the same for heuristics. Especially here the combination of state and heuristics must hold and cannot create all the possible configuartion
+- [ ] Copy and past GNN dataset generation (plus goal) from EFP
+- [ ] Create set of test to run on push to validate the push itself (use timeouts)
+	- [ ] Randomly solve n problems from different domains and check if the solution is the same as the expected one
+	- [ ] Do the same thing but activate bisimulation and also create a check that for each state generated after bisimulation a set of randomly generated belief formulae holds and also prints out the compression ratio (especially at the beginning to empirically evaluate bisimulation which has been adapted from hold code)
+	- [ ] Do the same but now with heuristics and other planner configurations
+	- [ ] Adapt hold scripts and make them more concise and directly generate the latex
+- [ ] Fix the ReadME
+- [ ] Check the doxygen and structure for consistency
+- [ ] Create a docker version maybe
+- [ ] Provide some support in the compilation tools
+- [ ] Add Francois partial state
+- [ ] Add EPDDL support
+- [ ] Create generic update function with event model but maybe keep optimized solving strategies/heuristics for mA* (planning graph)
+- [ ] Start to test against other planning types (classical, conformant etc.)
+- [ ] Enrich the search strategies with Local Search, MonteCarlo, add Delphic from Buri's, Christian's etc.
 
 ## Goal
-Realize a scalable Epistemic Forward Planner that bases its concept on different states representations such as:
-- [x] *Kripke structure*
-- [x] *possibilities*
-- [ ] *OBDDs*
+Realize a scalable Planner that tackles Multi-Agent Epistemic Planning exploiting the full power of Dynamic Epistemic Logic.
+This tool is able to reason over belief/knoweldge relations, i.e., over infomration flows.
 
-Temporally disabled Kripke and OBDD
 
 ## Current situation:
-Implemented EFP v. 2.1 that uses templatic e-States representations with relative templatic transition function and data structure based on bitset.
-The planner is based on several scientific publications where the different semantics and transition functions are described.
-In particular we have the following configurations:
-- **eState:** *Kripke Structures*; **transition function:** *event based updates---mA<sup>\*</sup>* (Baral et al. 2015, Le et al. 2018);
-- **eState:** *Kripke Structures*; **transition function:** *optimized event based updates* (Fabiano et al. 2020);
-- **eState:** *Possibilities*; **transition function:** *Iterative transition function---mA<sup>p</sup>* (Fabiano et al. 2019, Fabiano et al. 2020).
-- **eState:** *Possibilities*; **transition function:** *Iterative transition function---mA<sup>p</sup> that consider agents attitudes for complex epistemic reasoning (e.g., lies, misconception etc.)* (Under review).
-
 
 Moreover the planner admits templatic heuristics usage.
 At the moment we implemented:
@@ -36,7 +34,7 @@ At the moment we implemented:
 - *number of satisfied goals* that possibly expands the original goal for a better scalability;
 - BFS, DFS and DFS Iterative searches.
 
-  
+
 ## Future works and some ideas
 - Think about OBDDs.
 - More Heuristics.
@@ -72,8 +70,8 @@ At the moment we implemented:
 - **make fresh**: executes **clear** and also removes doxygen documentation.
 - **make old**: cleans and compile the old version (1.0) of EFP.
 - **make all**: executes **make doxygen** and **make_old**.
-	
-	
+
+
 ### Extras
 - The repository also includes several scripts to help in the testing/debugging process. These are located inside the folder *scripts*.
 - All the utilized beanchmark are preserved in the folder *exp*.
