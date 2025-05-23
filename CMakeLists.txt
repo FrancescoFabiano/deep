@@ -29,6 +29,7 @@ include_directories(
 
 # Header files with template implementations that must be included in the build
 set(TEMPLATIC_HEADERS
+        src/states/State.h
         src/utilities/SetHelper.h
         src/bisimulation/VectorBisWrapper.h
         src/search/SpaceSearcher.h

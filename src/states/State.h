@@ -16,14 +16,70 @@
  * \date May 20, 2025
  */
 #pragma once
+#include <concepts>
 
 #include "utilities/Define.h"
 #include "actions/Action.h"
 
+
 /**
- * @tparam T:
- *    - \ref POSSIBILITIES*/
-template <class T>
+ * @brief Concept that enforces the required interface for a state representation type `T`.
+ *
+ * This concept defines the contract that a type `T` must fulfill to be used with the `State<T>` class.
+ * It ensures that `T` provides entailment checks, executability conditions, printing, and comparison.
+ *
+ * @tparam T The type to be checked against the required interface.
+ */
+template<typename T>
+concept StateRepresentation = requires(T rep, const Fluent &f, const FluentsSet &fs,
+                                       const FluentFormula &ff, const BeliefFormula &bf,
+                                       const FormulaeList &fl, std::ostream &os, const T &other) {
+ /**
+  * @name Entailment Methods
+  * Methods for logical entailment evaluation
+  */
+ ///@{
+ { rep.entails(f) } -> std::same_as<bool>;
+ { rep.entails(fs) } -> std::same_as<bool>;
+ { rep.entails(ff) } -> std::same_as<bool>;
+ { rep.entails(bf) } -> std::same_as<bool>;
+ { rep.entails(fl) } -> std::same_as<bool>;
+ ///@}
+
+ /**
+  * @brief Constructs the initial state.
+  */
+ { rep.build_initial() };
+
+ /**
+  * @brief Reduces the state using bisimulation contraction.
+  */
+ { rep.contract_with_bisimulation() };
+
+ /**
+  * @name Output Methods
+  * Required methods for formatted output.
+  */
+ ///@{
+ { rep.print(os) };
+ { rep.print_dot_format(os) };
+ ///@}
+
+ /**
+  * @name Operators
+  * Required comparison and assignment operators.
+  */
+ ///@{
+ { rep.operator=(other) } -> std::same_as<T&>;
+ { rep.operator<(other) } -> std::same_as<bool>;
+ ///@}
+ };
+
+
+/**
+ * @tparam T The state representation class satisfying StateRepresentation
+ */
+template <StateRepresentation T>
 class State
 {
 public:

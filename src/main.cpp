@@ -53,6 +53,10 @@ int main(int argc, char** argv)
 	auto output = ArgumentParser::get_instance().get_log_enabled() ? ArgumentParser::get_instance().get_log_file_path() : std::cout;
 	Domain::create_instance(output);
 
+	//you can run a single search or use portfolio search
+	//Understand if portfolio needs to be achieved through an extenral script (massive overhead for parsing and launching)
+	//or if it can be done through the planner itself. maybe vreate a new class for this (which also set the various parameter of a search)
+	//this way we can create initla (stored somewhere, find a way to address this) once and then use it for all the search, as well as creaing the wrods etc (make the worlds pointer accessible by all threads?. This imply generation and then readonly)
 	return 0;
 
 	/////@TODO Fix: generate_domain(argv);
