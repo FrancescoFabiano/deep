@@ -57,6 +57,11 @@ concept StateRepresentation = requires(T rep, const Fluent &f, const FluentsSet 
  { rep.contract_with_bisimulation() };
 
  /**
+ * @brief Return the heuristic value from a state
+ */
+ { rep.get_heuristic_value() } -> std::same_as<short>;
+
+ /**
   * @name Output Methods
   * Required methods for formatted output.
   */

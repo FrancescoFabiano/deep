@@ -73,6 +73,9 @@ public:
         BisimulationFailed = 800,        ///< Bisimulation minimization failed.
         BisimulationWrapperOutOfBounds = 801,         ///< Accessed something out of bounds in Bisimulation wrapper.
 
+        // BreadthFirst Search Related
+        SearchNoActions = 850, ///< No actions available in the domain for the search.
+
         StateActionNotExecutableError = 900, ///< Action not executable in state where is supposed to be.
     };
 

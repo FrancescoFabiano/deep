@@ -33,6 +33,9 @@ set(TEMPLATIC_HEADERS
         src/utilities/SetHelper.h
         src/bisimulation/VectorBisWrapper.h
         src/search/SpaceSearcher.h
+        src/search/search_strategies/BreadthFirst.h
+        src/search/search_strategies/DepthFirst.h
+        src/search/search_strategies/BestFirst.h
 )
 
 # Start the list of source files with those headers
