@@ -66,7 +66,7 @@ public:
     /**
      * \brief Check if the search container is empty.
      */
-    bool empty() const {
+    [[nodiscard]] bool empty() const {
         return search_space.empty();
     }
 

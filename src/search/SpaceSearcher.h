@@ -138,20 +138,5 @@ private:
 
 };
 
-/*
-// Example usage for BFS with a queue:
-using BFSQueue = std::queue<State>;
-auto push = [](BFSQueue& q, const State& s) { q.push(s); };
-auto pop  = [](BFSQueue& q) { q.pop(); };
-auto peek = [](BFSQueue& q) -> State { return q.front(); };
-
-// Instantiate the searcher:
-SpaceSearcher<State, BFSQueue, decltype(push), decltype(pop), decltype(peek)> bfs_searcher(
-    "BFS", push, pop, peek
-);
-
-// Run the search:
-bool found = bfs_searcher.search(initial_state, num_threads);
-*/
 
 #include "search/SpaceSearcher.tpp"
