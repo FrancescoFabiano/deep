@@ -11,6 +11,7 @@
 #include <iostream>
 #include <boost/make_shared.hpp>
 
+#include "Configuration.h"
 #include "argparse/ArgumentParser.h"
 #include "domain/Domain.h"
 //#include "../src/search/planner.ipp"
@@ -50,7 +51,8 @@ int main(int argc, char** argv)
 
 
 	ArgumentParser::create_instance(argc, argv);
-	auto output = ArgumentParser::get_instance().get_log_enabled() ? ArgumentParser::get_instance().get_log_file_path() : std::cout;
+	Configuration::create_instance();
+	auto output = Configuration::get_instance().get_log_enabled() ? Configuration::get_instance().get_log_file_path() : std::cout;
 	Domain::create_instance(output);
 
 	//you can run a single search or use portfolio search

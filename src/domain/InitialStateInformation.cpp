@@ -16,7 +16,7 @@
 /// \brief Checks if a belief formula respects the initial restriction.
 /// \param[in] to_check The belief formula to check.
 /// \return true if the formula respects the restriction, false otherwise.
-[[nodiscard]] bool InitialStateInformation::check_restriction(const BeliefFormula& to_check)
+bool InitialStateInformation::check_restriction(const BeliefFormula& to_check)
 {
     /* The possible cases are:
      * - *phi* -> all worlds must entail *phi*.

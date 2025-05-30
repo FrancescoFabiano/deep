@@ -5,7 +5,6 @@
 #include "utilities/define.h"
 #include "parse/Reader.h"
 #include "actions/Action.h"
-#include <boost/make_shared.hpp>
 
 /**
  * \class Domain
@@ -70,7 +69,7 @@ public:
 
 private:
     std::string m_name; ///< The name of the file that contains the description of *this*.
-    boost::unique_ptr<Reader> m_reader; ///< The pointer to a \ref Reader object.
+    std::unique_ptr<Reader> m_reader; ///< The pointer to a \ref Reader object.
     Grounder m_grounder; ///< A \ref grounder object used to store the name of the information.
     FluentsSet m_fluents; ///< Set containing all the (grounded) \ref fluent of the domain.
     ActionsSet m_actions; ///< Set containing all the \ref action (with effects, conditions, obs etc.) of the domain.
@@ -98,18 +97,18 @@ private:
      */
     void build_propositions(std::ostream& os);
 
-    /** \brief Function that builds the initial state description.
+    /** \brief Function that builds the initial state static description.
      *  \param os Output stream where information will be printed (especially if debug is active).
      */
     void build_initially(std::ostream& os);
 
-    /** \brief Function that builds the goal description.
+    /** \brief Function that builds the goal description.static
      *  \param os Output stream where information will be printed (especially if debug is active).
      */
     void build_goal(std::ostream& os);
 
     /** Private constructor since it is a Singleton class.
-    *  \param os Output stream where information will be printed (especially if debug is active).
+ static    *  \param os Output stream where information will be printed (especially if debug is active).
     *  */
     explicit Domain(std::ostream& os);
 

@@ -9,7 +9,6 @@
 #include <list>
 #include <boost/dynamic_bitset.hpp>
 
-#include "ExitHandler.h"
 #include "VectorBisWrapper.h"
 
 /**

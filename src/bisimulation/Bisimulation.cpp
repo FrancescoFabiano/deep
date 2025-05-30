@@ -4,10 +4,9 @@
 
 #include "Bisimulation.h"
 
-#include "ArgumentParser.h"
+#include "Configuration.h"
 #include "Domain.h"
 #include "KripkeState.h"
-#include "CLI/Error.hpp"
 
 /***IO_FC2.cpp****/
 void Bisimulation::FillStructures(const BisAutomata &A)
@@ -1871,13 +1870,13 @@ void Bisimulation::calc_min_bisimilar(KripkeState & kstate) {
 
 	BisAutomata automaton = kstate_to_automaton(pworld_vec, agent_to_label, kstate);
 
-	if (!ArgumentParser::get_instance().get_bisimulation()) {
+	if (!Configuration::get_instance().get_bisimulation()) {
 		return;
 	}
 
 	Bisimulation bisim;
 
-	const bool use_FB = ArgumentParser::get_instance().get_bisimulation_type_bool();
+	const bool use_FB = Configuration::get_instance().get_bisimulation_type_bool();
 	const bool success = use_FB
 		? bisim.MinimizeAutomaFB(automaton)
 		: bisim.MinimizeAutomaPT(automaton);

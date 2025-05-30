@@ -9,6 +9,7 @@
 #include <ranges>
 #include <sstream>
 
+#include "Domain.h"
 #include "FormulaHelper.h"
 #include "KripkeState.h"
 

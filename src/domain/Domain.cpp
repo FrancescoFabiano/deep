@@ -8,9 +8,8 @@
  */
 #include "domain.h"
 #include <boost/dynamic_bitset.hpp>
-#include <iostream>
 
-#include "ArgumentParser.h"
+#include "Configuration.h"
 #include "HelperPrint.h"
 #include "utilities/FormulaHelper.h"
 
@@ -20,8 +19,8 @@ Domain* Domain::instance = nullptr;
 
 Domain::Domain(std::ostream& os)
 {
-    auto& arg_parser = ArgumentParser::get_instance();
-    std::string input_file = arg_parser.get_input_file();
+    const auto& configuration = Configuration::get_instance();
+    const std::string input_file = configuration.get_input_file();
 
     if (freopen(input_file.c_str(), "r", stdin) == nullptr) {
         ExitHandler::exit_with_message(
@@ -36,9 +35,9 @@ Domain::Domain(std::ostream& os)
     instance->m_name = instance->m_name.substr(0, instance->m_name.find_last_of('.'));
 
     /////@TODO This will be replaced by epddl parser
-    auto domain_reader = boost::make_shared<Reader>(Reader());
+    auto domain_reader = std::make_unique<Reader>(Reader());
     domain_reader->read();
-    instance->m_reader = domain_reader;
+    instance->m_reader = std::move(domain_reader);
     instance->build(os);
 }
 
@@ -113,7 +112,7 @@ void Domain::build_agents(std::ostream& os) {
     AgentsMap domain_agent_map;
     os << "\nBuilding agent list..." << std::endl;
     int i = 0;
-    int agents_length = FormulaHelper::length_to_power_two(static_cast<int>(m_reader->m_agents.size()));
+    const int agents_length = FormulaHelper::length_to_power_two(static_cast<int>(m_reader->m_agents.size()));
 
     /////@TODO This will be replaced by epddl parser. Reader needs to be changed and make sure to have getter and setter
     for (const auto& agent_name : m_reader->m_agents) {
@@ -122,7 +121,7 @@ void Domain::build_agents(std::ostream& os) {
         m_agents.insert(agent);
         ++i;
 
-        if (ArgumentParser::get_instance().get_debug()) {
+        if (Configuration::get_instance().get_debug()) {
             os << "Agent " << agent_name << " is " << agent << std::endl;
         };
     }
@@ -148,7 +147,7 @@ void Domain::build_fluents(std::ostream& os) {
         m_fluents.insert(fluent_negate_real);
         ++i;
 
-        if (ArgumentParser::get_instance().get_debug()) {
+        if (Configuration::get_instance().get_debug()) {
             os << "Literal " << fluent_name << " is " << " " << fluentReal << std::endl;
             os << "Literal not " << fluent_name << " is " << (i - 1) << " " << fluent_negate_real << std::endl;
         }
@@ -172,7 +171,7 @@ void Domain::build_actions(std::ostream& os) {
         m_actions.insert(tmp_action);
         ++i;
 
-        if (ArgumentParser::get_instance().get_debug()) {
+        if (Configuration::get_instance().get_debug()) {
             os << "Action " << tmp_action.get_name() << " is " << tmp_action.get_id() << std::endl;
         }
     }
@@ -183,7 +182,7 @@ void Domain::build_actions(std::ostream& os) {
     build_propositions(os);
 
 
-    if (ArgumentParser::get_instance().get_debug()) {
+    if (Configuration::get_instance().get_debug()) {
         os << "\nPrinting complete action list..." << std::endl;
         for (const auto& action : m_actions) {
             action.print(os);
@@ -222,7 +221,7 @@ void Domain::build_initially(std::ostream& os) {
         switch (formula.get_formula_type()) {
         case BeliefFormulaType::FLUENT_FORMULA: {
                 m_initial_description.add_pointed_condition(formula.get_fluent_formula());
-                if (ArgumentParser::get_instance().get_debug()) {
+                if (Configuration::get_instance().get_debug()) {
                     os << "    Pointed world: ";
                     HelperPrint::get_instance().print_list(formula.get_fluent_formula(),os);
                     os << std::endl;
@@ -234,7 +233,7 @@ void Domain::build_initially(std::ostream& os) {
         case BeliefFormulaType::BELIEF_FORMULA:
         case BeliefFormulaType::E_FORMULA: {
                 m_initial_description.add_initial_condition(formula);
-                if (ArgumentParser::get_instance().get_debug()) {
+                if (Configuration::get_instance().get_debug()) {
                     os << "Added to initial conditions: ";
                     formula.print(os);
                     os << std::endl;
@@ -259,7 +258,7 @@ void Domain::build_goal(std::ostream& os) {
     for (auto& formula_parsed : m_reader->m_bf_goal) {
         const auto formula = BeliefFormula(formula_parsed);
         m_goal_description.push_back(formula);
-        if (ArgumentParser::get_instance().get_debug()) {
+        if (Configuration::get_instance().get_debug()) {
             os << "    ";
             formula.print(os);
             os << std::endl;

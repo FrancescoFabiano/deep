@@ -76,7 +76,7 @@ public:
      * \brief Reset the search container.
      */
     void reset() {
-        search_space = std::priority_queue<State>();
+        search_space = StatePriorityQueue();
     }
 
     /**
@@ -87,5 +87,6 @@ public:
     }
 
 private:
-    std::priority_queue<State> search_space;
+    using StatePriorityQueue = std::priority_queue<State, std::vector<State>, StateComparator<State>>;
+    StatePriorityQueue search_space;
 };

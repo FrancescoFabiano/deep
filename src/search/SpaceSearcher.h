@@ -9,10 +9,8 @@
 
 #pragma once
 #include "states/State.h"
-#include "argparse/ArgumentParser.h"
 #include <chrono>
 #include <string>
-#include <thread>
 
 
 
@@ -78,17 +76,7 @@ public:
     [[nodiscard]]
     const std::string& get_search_type() const noexcept;
 
-    /// \name Search Methods
-    ///@{
-    /**
-     * \brief Launches the portfolio-method search (multiple configurations).
-     *
-     * For now, uses a fixed configuration: BFS + ALL Heuristics + DFS (depending on the number of threads).
-     * \todo Add a parser from file that sets the priority list as parameters.
-     * \return true if a plan was found, false otherwise.
-     */
-    [[nodiscard]]
-    bool run_portfolio_search();
+
 
 private:
 

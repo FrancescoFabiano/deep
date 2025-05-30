@@ -76,6 +76,11 @@ public:
         // BreadthFirst Search Related
         SearchNoActions = 850, ///< No actions available in the domain for the search.
 
+        // PortfolioSearch Related
+        PortfolioConfigFileError = 860, ///< Could not open portfolio configuration file.
+        PortfolioSearchInternalError = 861, ///< Internal error in portfolio search.
+
+
         StateActionNotExecutableError = 900, ///< Action not executable in state where is supposed to be.
     };
 

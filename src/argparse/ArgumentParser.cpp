@@ -92,13 +92,13 @@ ArgumentParser::ArgumentParser() : app("deep") {
 
     app.add_option("--search", m_search_strategy,
         "Search strategy to use")
-        ->check(CLI::IsMember({"BFS", "DFS", "I_DFS"}))
+        ->check(CLI::IsMember({"BFS", "DFS", "HFS"}))
         ->default_val("BFS");
 
     app.add_option("--heuristic", m_heuristic_opt,
         "Heuristic to use")
-        ->check(CLI::IsMember({"NONE", "L_PG", "S_PG", "C_PG", "GNN", "SUBGOALS"}))
-        ->default_val("NONE");
+        ->check(CLI::IsMember({"SUBGOALS", "L_PG", "S_PG", "C_PG", "GNN"}))
+        ->default_val("SUBGOALS");
 
     app.add_option("--parallel", m_parallel_type,
         "Run all heuristics in parallel. Overrides --heuristic and --search.")
@@ -146,7 +146,7 @@ const std::string& ArgumentParser::get_log_file_path() const noexcept { return m
 
 void ArgumentParser::print_usage() const {
     std::cout << app.help() << std::endl;
-    std::string prog_name = "deep";
+    const std::string prog_name = "deep";
     std::cout << "\nEXAMPLES:\n";
     std::cout << "  " << prog_name << " domain.epddl\n";
     std::cout << "    Find a plan for domain.epddl\n\n";

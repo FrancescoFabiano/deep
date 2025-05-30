@@ -7,7 +7,7 @@
  */
 
 #include "search/SpaceSearcher.h"
-#include "argparse/ArgumentParser.h"
+#include "argparse/Configuration.h"
 #include "utilities/ExitHandler.h"
 #include <set>
 #include <chrono>
@@ -32,8 +32,8 @@ bool SpaceSearcher<State, Strategy>::search(State& initial, int num_threads, con
 {
     m_expanded_nodes = 0;
 
-    const bool check_visited = ArgumentParser::get_instance().get_check_visited();
-    const bool bisimulation_reduction = ArgumentParser::get_instance().get_bisimulation();
+    const bool check_visited = Configuration::get_instance().get_check_visited();
+    const bool bisimulation_reduction = Configuration::get_instance().get_bisimulation();
 
     // Defensive: Check if Domain singleton is available and actions are not empty
     const auto& domain_instance = Domain::get_instance();

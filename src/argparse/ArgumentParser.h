@@ -42,7 +42,56 @@ public:
      */
     static ArgumentParser& get_instance();
 
-    // Accessors
+    /**
+     * \brief Prints the usage of the application (command-line arguments).
+     */
+    void print_usage() const;
+
+    /** \brief Copy constructor removed since this is a Singleton class. */
+    ArgumentParser(const ArgumentParser&) = delete;
+    /** \brief Copy operator removed since this is a Singleton class. */
+    ArgumentParser& operator=(const ArgumentParser&) = delete;
+
+private:
+    /**
+     * \brief Constructor for ArgumentParser, parsing the command-line arguments.
+     */
+    ArgumentParser();
+
+    /**
+     * \brief Parses the command-line arguments.
+     * \param argc Argument count.
+     * \param argv Argument values.
+     */
+    void parse(int argc, char** argv);
+
+    CLI::App app;  ///< CLI11 app object for argument parsing.
+
+
+    static ArgumentParser* instance;  ///< Singleton instance of the class.
+
+    // Option storage
+    std::string m_input_file;  ///< Input domain file path.
+    bool m_debug = false;      ///< Debug mode flag.
+    bool m_bisimulation = false;  ///< Bisimulation type (NONE by default).
+    std::string m_bisimulation_type = "FB";  ///< Bisimulation type (PT by default).
+    bool m_bisimulation_type_bool = true; ///< Flag to indicate bisimulation type (used for efficiency)
+    bool m_check_visited = false;  ///< Flag to check for visited states.
+    bool m_dataset_mode = false;  ///< Flag to indicate dataset mode.
+    int m_dataset_depth = 10;     ///< Maximum depth for dataset generation.
+    std::string m_search_strategy = "BFS"; ///< Search strategy (BFS by default).
+    std::string m_heuristic_opt = "SUBGOALS";  ///< Heuristic type (SUBGOALS by default).
+    std::string m_parallel_type = "PTHREAD";  ///< Parallel execution type (PTHREAD by default).
+    std::string m_parallel_wait = "NONE";     ///< Parallel wait strategy (NONE by default).
+    bool m_exec_plan = false;  ///< Flag to indicate if the plan should be executed.
+    std::vector<std::string> m_exec_actions;  ///< Actions to execute instead of planning.
+    bool m_output_results_file = false;  ///< Flag to enable results file logging.
+    std::string m_plan_file = "plan.txt";  ///< Plan file path.
+    bool m_log_enabled = false; ///< True if --log is enabled.
+    std::string m_log_file_path; ///< The log file path if logging is enabled.
+
+
+    // Accessors private because they can be accessed only by friend class \ref Configuration
 
     /**
      * \brief Checks if debug mode is enabled.
@@ -55,6 +104,13 @@ public:
      * \return true if bisimulation is used, false otherwise.
      */
     [[nodiscard]] bool get_bisimulation() const noexcept;
+
+
+    /**
+    * \brief Return the type of Bisimulation Adopted.
+    * \return the string that specifies the type of bisimulation used.
+    */
+    [[nodiscard]] const std::string &get_bisimulation_type() const noexcept;
 
     /**
      * \brief Sets the type of Bisimulation Adopted in boolean form (True is PT, false is FB) for efficiency.
@@ -151,57 +207,6 @@ public:
      */
     [[nodiscard]] const std::string& get_log_file_path() const noexcept;
 
-    /**
-     * \brief Prints the usage of the application (command-line arguments).
-     */
-    void print_usage() const;
+    friend class Configuration;
 
-    /** \brief Copy constructor removed since this is a Singleton class. */
-    ArgumentParser(const ArgumentParser&) = delete;
-    /** \brief Copy operator removed since this is a Singleton class. */
-    ArgumentParser& operator=(const ArgumentParser&) = delete;
-
-private:
-    /**
-     * \brief Constructor for ArgumentParser, parsing the command-line arguments.
-     */
-    ArgumentParser();
-
-    /**
-     * \brief Parses the command-line arguments.
-     * \param argc Argument count.
-     * \param argv Argument values.
-     */
-    void parse(int argc, char** argv);
-
-    CLI::App app;  ///< CLI11 app object for argument parsing.
-
-
-    static ArgumentParser* instance;  ///< Singleton instance of the class.
-
-    // Option storage
-    std::string m_input_file;  ///< Input domain file path.
-    bool m_debug = false;      ///< Debug mode flag.
-    bool m_bisimulation = false;  ///< Bisimulation type (NONE by default).
-    std::string m_bisimulation_type = "FB";  ///< Bisimulation type (PT by default).
-    bool m_bisimulation_type_bool = true; ///< Flag to indicate bisimulation type (used for efficiency)
-    bool m_check_visited = false;  ///< Flag to check for visited states.
-    bool m_dataset_mode = false;  ///< Flag to indicate dataset mode.
-    int m_dataset_depth = 10;     ///< Maximum depth for dataset generation.
-    std::string m_search_strategy = "BFS"; ///< Search strategy (BFS by default).
-    std::string m_heuristic_opt = "NONE";  ///< Heuristic type (NONE by default).
-    std::string m_parallel_type = "PTHREAD";  ///< Parallel execution type (PTHREAD by default).
-    std::string m_parallel_wait = "NONE";     ///< Parallel wait strategy (NONE by default).
-    bool m_exec_plan = false;  ///< Flag to indicate if the plan should be executed.
-    std::vector<std::string> m_exec_actions;  ///< Actions to execute instead of planning.
-    bool m_output_results_file = false;  ///< Flag to enable results file logging.
-    std::string m_plan_file = "plan.txt";  ///< Plan file path.
-    bool m_log_enabled = false; ///< True if --log is enabled.
-    std::string m_log_file_path; ///< The log file path if logging is enabled.
-
-    /**
-    * \brief Return the type of Bisimulation Adopted.
-    * \return the string that specifies the type of bisimulation used.
-    */
-    [[nodiscard]] const std::string &get_bisimulation_type() const noexcept;
 };

@@ -32,6 +32,11 @@ public:
     /// \name Constructors
     ///@{
     BeliefFormulaParsed() = default;
+
+    /** \brief Copy Constructor
+     *  \param[in] to_copy The \ref BeliefFormulaParsed to copy in *this*.
+     */
+    BeliefFormulaParsed(const BeliefFormulaParsed& to_copy);
     ///@}
 
     /// \name Setters
@@ -87,6 +92,10 @@ public:
     /** \brief Getter for the field m_string_group_agents (alias for group agents). */
     [[nodiscard]] const StringsSet & get_group_agents() const noexcept;
     ///@}
+
+    /** \brief Copy Assignment */
+    BeliefFormulaParsed& operator=(const BeliefFormulaParsed& to_copy);
+
 
 private:
     // --- Data members (all string-based) ---

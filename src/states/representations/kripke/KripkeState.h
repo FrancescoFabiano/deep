@@ -64,84 +64,6 @@ public:
      */
     [[nodiscard]] unsigned int get_max_depth() const noexcept;
 
-
-    // --- Structure Building ---
-
-    /** \brief Generate all possible permutations of the domain's fluents.
-     *  \param[out] permutation The permutation in construction.
-     *  \param[in] index The index of the fluent to add.
-     *  \param[in] initially_known The set of initially known fluents.
-     */
-    void generate_initial_worlds(FluentsSet& permutation, int index, const FluentsSet& initially_known);
-    /** \brief Check if a KripkeWorld respects initial conditions and add it if so.
-     *  \param[in] possible_add The KripkeWorld to check.
-     */
-    void add_initial_world(const KripkeWorld& possible_add);
-    /** \brief Generate all initial edges for the KripkeState. */
-    void generate_initial_edges();
-    /** \brief Remove an edge for an agent between two worlds.
-     *  \param[in] from The KripkeWorld pointer to remove the edge from.
-     *  \param[in] to The KripkeWorld to remove.
-     *  \param[in] ag The agent.
-     */
-    void remove_edge(const KripkeWorldPointer& from, const KripkeWorldPointer &to, const Agent &ag);
-    /** \brief Remove initial edges based on known fluent formula for an agent.
-     *  \param[in] known_ff The fluent formula known by the agent.
-     *  \param[in] ag The agent.
-     */
-    void remove_initial_edge(const FluentFormula& known_ff, const Agent &ag);
-    /** \brief Remove initial edges based on a BeliefFormula.
-     *  \param[in] to_check The BeliefFormula to check.
-     */
-    void remove_initial_edge_bf(const BeliefFormula& to_check);
-    /** \brief Add beliefs to a world.
-     *  \param[in] world The KripkeWorld pointer.
-     *  \param[in] beliefs The beliefs map.
-     */
-    void add_world_beliefs(const KripkeWorldPointer& world, const KripkeWorldPointersMap& beliefs);
-    /** \brief Copy worlds and beliefs of oblivious agents to another KripkeState.
-     *  \param[in] ret The new KripkeState.
-     *  \param[in] oblivious_obs_agents The set of oblivious agents.
-     */
-    void maintain_oblivious_believed_worlds(KripkeState& ret, const AgentsSet& oblivious_obs_agents) const;
-
-    // --- Transition/Execution ---
-    /** \brief Recursively compute the result of an ontic action.
-     *  \param[in] act The ontic action to apply.
-     *  \param[in] ret The resulting KripkeState.
-     *  \param[in] current_pw The world being currently calculated.
-     *  \param[in] calculated Map tracking results of the transition function.
-     *  \param[in] oblivious_obs_agents The set of oblivious agents.
-     *  \return The resulting KripkeWorld pointer.
-     */
-    KripkeWorldPointer execute_ontic_helper(const Action& act, KripkeState& ret, const KripkeWorldPointer& current_pw, TransitionMap& calculated, AgentsSet& oblivious_obs_agents) const;
-    /** \brief Recursively compute the result of a sensing/announcement action.
-     *  \param[in] effects The effects of the action.
-     *  \param[in] ret The resulting KripkeState.
-     *  \param[in] current_pw The world being currently calculated.
-     *  \param[in] calculated Map tracking results of the transition function.
-     *  \param[in] partially_obs_agents The set of partially observant agents.
-     *  \param[in] oblivious_obs_agents The set of oblivious agents.
-     *  \param[in] previous_entailment The value of the coming state entailment.
-     *  \return The resulting KripkeWorld pointer.
-     */
-    KripkeWorldPointer execute_sensing_announcement_helper(const FluentFormula& effects, KripkeState& ret, const KripkeWorldPointer& current_pw, TransitionMap& calculated, AgentsSet& partially_obs_agents, AgentsSet& oblivious_obs_agents, bool previous_entailment) const;
-    /** \brief Apply an ontic action to this KripkeState.
-     *  \param[in] act The ontic action to apply.
-     *  \return The resulting KripkeState.
-     */
-    [[nodiscard]] KripkeState execute_ontic(const Action& act) const;
-    /** \brief Apply a sensing action to this KripkeState.
-     *  \param[in] act The sensing action to apply.
-     *  \return The resulting KripkeState.
-     */
-    [[nodiscard]] KripkeState execute_sensing(const Action& act) const;
-    /** \brief Apply an announcement action to this KripkeState.
-     *  \param[in] act The announcement action to apply.
-     *  \return The resulting KripkeState.
-     */
-    [[nodiscard]] KripkeState execute_announcement(const Action& act) const;
-
     /** \brief Compute the successor state after applying an action.
      *  \param[in] act The action to apply.
      *  \return The resulting KripkeState.
@@ -153,14 +75,13 @@ public:
     KripkeState & operator=(const KripkeState& to_copy);
     /** \brief Less-than operator for set operations.
      *  \param[in] to_compare The KripkeState to compare.
-     *  \return True if this is less than to_compare, false otherwise.
+     *  \return True if this is less than \ref to_compare, false otherwise.
      */
     [[nodiscard]] bool operator<(const KripkeState& to_compare) const;
 
 
     /// \name Needed for State<T>
     ///@{
-    /** \brief Minimize this KripkeState to the minimum bisimilar structure. */
     /** \brief Build the initial Kripke structure (choose method internally).
     * \param os The output stream to print to.
      */
@@ -274,6 +195,83 @@ private:
      *  \return Pointer to the newly inserted KripkeWorld.
      */
     KripkeWorldPointer add_rep_world(const KripkeWorld& to_add, unsigned short repetition, bool& is_new);
+
+     // --- Structure Building ---
+
+    /** \brief Generate all possible permutations of the domain's fluents.
+     *  \param[out] permutation The permutation in construction.
+     *  \param[in] index The index of the fluent to add.
+     *  \param[in] initially_known The set of initially known fluents.
+     */
+    void generate_initial_worlds(FluentsSet& permutation, int index, const FluentsSet& initially_known);
+    /** \brief Check if a KripkeWorld respects initial conditions and add it if so.
+     *  \param[in] possible_add The KripkeWorld to check.
+     */
+    void add_initial_world(const KripkeWorld& possible_add);
+    /** \brief Generate all initial edges for the KripkeState. */
+    void generate_initial_edges();
+    /** \brief Remove an edge for an agent between two worlds.
+     *  \param[in] from The KripkeWorld pointer to remove the edge from.
+     *  \param[in] to The KripkeWorld to remove.
+     *  \param[in] ag The agent.
+     */
+    void remove_edge(const KripkeWorldPointer& from, const KripkeWorldPointer &to, const Agent &ag);
+    /** \brief Remove initial edges based on known fluent formula for an agent.
+     *  \param[in] known_ff The fluent formula known by the agent.
+     *  \param[in] ag The agent.
+     */
+    void remove_initial_edge(const FluentFormula& known_ff, const Agent &ag);
+    /** \brief Remove initial edges based on a BeliefFormula.
+     *  \param[in] to_check The BeliefFormula to check.
+     */
+    void remove_initial_edge_bf(const BeliefFormula& to_check);
+    /** \brief Add beliefs to a world.
+     *  \param[in] world The KripkeWorld pointer.
+     *  \param[in] beliefs The beliefs map.
+     */
+    void add_world_beliefs(const KripkeWorldPointer& world, const KripkeWorldPointersMap& beliefs);
+    /** \brief Copy worlds and beliefs of oblivious agents to another KripkeState.
+     *  \param[in] ret The new KripkeState.
+     *  \param[in] oblivious_obs_agents The set of oblivious agents.
+     */
+    void maintain_oblivious_believed_worlds(KripkeState& ret, const AgentsSet& oblivious_obs_agents) const;
+
+    // --- Transition/Execution ---
+    /** \brief Recursively compute the result of an ontic action.
+     *  \param[in] act The ontic action to apply.
+     *  \param[in] ret The resulting KripkeState.
+     *  \param[in] current_pw The world being currently calculated.
+     *  \param[in] calculated Map tracking results of the transition function.
+     *  \param[in] oblivious_obs_agents The set of oblivious agents.
+     *  \return The resulting KripkeWorld pointer.
+     */
+    KripkeWorldPointer execute_ontic_helper(const Action& act, KripkeState& ret, const KripkeWorldPointer& current_pw, TransitionMap& calculated, AgentsSet& oblivious_obs_agents) const;
+    /** \brief Recursively compute the result of a sensing/announcement action.
+     *  \param[in] effects The effects of the action.
+     *  \param[in] ret The resulting KripkeState.
+     *  \param[in] current_pw The world being currently calculated.
+     *  \param[in] calculated Map tracking results of the transition function.
+     *  \param[in] partially_obs_agents The set of partially observant agents.
+     *  \param[in] oblivious_obs_agents The set of oblivious agents.
+     *  \param[in] previous_entailment The value of the coming state entailment.
+     *  \return The resulting KripkeWorld pointer.
+     */
+    KripkeWorldPointer execute_sensing_announcement_helper(const FluentFormula& effects, KripkeState& ret, const KripkeWorldPointer& current_pw, TransitionMap& calculated, AgentsSet& partially_obs_agents, AgentsSet& oblivious_obs_agents, bool previous_entailment) const;
+    /** \brief Apply an ontic action to this KripkeState.
+     *  \param[in] act The ontic action to apply.
+     *  \return The resulting KripkeState.
+     */
+    [[nodiscard]] KripkeState execute_ontic(const Action& act) const;
+    /** \brief Apply a sensing action to this KripkeState.
+     *  \param[in] act The sensing action to apply.
+     *  \return The resulting KripkeState.
+     */
+    [[nodiscard]] KripkeState execute_sensing(const Action& act) const;
+    /** \brief Apply an announcement action to this KripkeState.
+     *  \param[in] act The announcement action to apply.
+     *  \return The resulting KripkeState.
+     */
+    [[nodiscard]] KripkeState execute_announcement(const Action& act) const;
 
     /*This is to allow bisimulation to reduce the size of the object*/
     friend class Bisimulation;

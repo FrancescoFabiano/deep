@@ -184,22 +184,22 @@ void BeliefFormula::set_group_agents(const AgentsSet & to_set)
 
 void BeliefFormula::set_bf1(const BeliefFormula & to_set)
 {
-    m_bf1 = std::make_shared<BeliefFormula>(to_set);
+    m_bf1 = std::make_unique<BeliefFormula>(to_set);
 }
 
 void BeliefFormula::set_bf2(const BeliefFormula & to_set)
 {
-    m_bf2 = std::make_shared<BeliefFormula>(to_set);
+    m_bf2 = std::make_unique<BeliefFormula>(to_set);
 }
 
 void BeliefFormula::set_bf1(const BeliefFormulaParsed & to_set)
 {
-    m_bf1 = std::make_shared<BeliefFormula>(to_set);
+    m_bf1 = std::make_unique<BeliefFormula>(to_set);
 }
 
 void BeliefFormula::set_bf2(const BeliefFormulaParsed & to_set)
 {
-    m_bf2 = std::make_shared<BeliefFormula>(to_set);
+    m_bf2 = std::make_unique<BeliefFormula>(to_set);
 }
 
 void BeliefFormula::print(std::ostream& os) const
