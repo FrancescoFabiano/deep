@@ -7,7 +7,6 @@
  *          All the domain information stored are yet to be grounded (\ref grounder).
  *
  * \todo The fields of the class are public but should be private and accessed through getters and setters.
- * \todo Maybe remove the string description after this, make them not accessible and give outside only the grounded ones and check that grounder is called only here and in printer.
  * \bug the () extra causes weird errors
  * \bug the - before B is not accepted
  * \bug the - before fluent_formula is not accepted

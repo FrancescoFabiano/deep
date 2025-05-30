@@ -100,16 +100,6 @@ ArgumentParser::ArgumentParser() : app("deep") {
         ->check(CLI::IsMember({"SUBGOALS", "L_PG", "S_PG", "C_PG", "GNN"}))
         ->default_val("SUBGOALS");
 
-    app.add_option("--parallel", m_parallel_type,
-        "Run all heuristics in parallel. Overrides --heuristic and --search.")
-        ->check(CLI::IsMember({"SERIAL", "PTHREAD", "FORK"}))
-        ->default_val("PTHREAD");
-
-    app.add_option("--parallel-wait", m_parallel_wait,
-        "Decide whether to wait for all parallel threads/processes.")
-        ->check(CLI::IsMember({"NONE", "WAIT"}))
-        ->default_val("NONE");
-
     app.add_flag("--results_file", m_output_results_file,
         "Log plan execution time to a file for test comparisons");
 
@@ -127,8 +117,6 @@ ArgumentParser::ArgumentParser() : app("deep") {
 bool ArgumentParser::get_debug() const noexcept { return m_debug; }
 bool ArgumentParser::get_bisimulation() const noexcept { return m_bisimulation; }
 const std::string& ArgumentParser::get_bisimulation_type() const noexcept { return m_bisimulation_type; }
-void ArgumentParser::set_bisimulation_type_bool() noexcept { m_bisimulation_type_bool = (get_bisimulation_type() != "PT");}
-bool ArgumentParser::get_bisimulation_type_bool() const noexcept { return m_bisimulation_type_bool; }
 bool ArgumentParser::get_dataset_mode() const noexcept { return m_dataset_mode; }
 int ArgumentParser::get_dataset_size() const noexcept { return m_dataset_depth; }
 const std::string& ArgumentParser::get_heuristic() const noexcept { return m_heuristic_opt; }
@@ -138,8 +126,6 @@ const std::string& ArgumentParser::get_plan_file() const noexcept { return m_pla
 const std::string& ArgumentParser::get_input_file() const noexcept { return m_input_file; }
 const std::vector<std::string>& ArgumentParser::get_execution_actions() const noexcept { return m_exec_actions; }
 bool ArgumentParser::get_results_file() const noexcept { return m_output_results_file; }
-const std::string& ArgumentParser::get_parallel_type() const noexcept { return m_parallel_type; }
-const std::string& ArgumentParser::get_parallel_wait() const noexcept { return m_parallel_wait; }
 bool ArgumentParser::get_check_visited() const noexcept { return m_check_visited; }
 bool ArgumentParser::get_log_enabled() const noexcept { return m_log_enabled; }
 const std::string& ArgumentParser::get_log_file_path() const noexcept { return m_log_file_path; }

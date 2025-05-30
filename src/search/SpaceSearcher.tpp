@@ -7,8 +7,9 @@
  */
 
 #include "search/SpaceSearcher.h"
-#include "argparse/Configuration.h"
+#include "argparse/ArgumentParser.h"
 #include "utilities/ExitHandler.h"
+#include "states/State.h"
 #include <set>
 #include <chrono>
 #include <string>
@@ -17,18 +18,32 @@
 #include <atomic>
 #include <algorithm>
 
-template <StateRepresentation State, SearchStrategy<State> Strategy>
-SpaceSearcher<State, Strategy>::SpaceSearcher(Strategy strategy)
+#include "Configuration.h"
+
+template <StateRepresentation StateRepr, SearchStrategy<State<StateRepr>> Strategy>
+SpaceSearcher<StateRepr, Strategy>::SpaceSearcher(Strategy strategy)
 {
     m_strategy = std::move(strategy);
 }
 
-template <StateRepresentation State, SearchStrategy<State> Strategy>
-const std::string& SpaceSearcher<State, Strategy>::get_search_type() const noexcept { return m_strategy.get_name(); }
+template <StateRepresentation StateRepr, SearchStrategy<State<StateRepr>> Strategy>
+const std::string& SpaceSearcher<StateRepr, Strategy>::get_search_type() const noexcept { return m_strategy.get_name(); }
+
+template <StateRepresentation StateRepr, SearchStrategy<State<StateRepr>> Strategy>
+unsigned int SpaceSearcher<StateRepr, Strategy>::get_expanded_nodes() const noexcept
+{
+    return m_expanded_nodes;
+}
+
+template <StateRepresentation StateRepr, SearchStrategy<State<StateRepr>> Strategy>
+std::chrono::duration<double> SpaceSearcher<StateRepr, Strategy>::get_elapsed_seconds() const noexcept
+{
+    return m_elapsed_seconds;
+}
 
 
-template <StateRepresentation State, SearchStrategy<State> Strategy>
-bool SpaceSearcher<State, Strategy>::search(State& initial, int num_threads, const std::vector<Action>& plan)
+template <StateRepresentation StateRepr, SearchStrategy<State<StateRepr>> Strategy>
+bool SpaceSearcher<StateRepr, Strategy>::search(State<StateRepr>& initial, int num_threads, const std::vector<Action>& plan)
 {
     m_expanded_nodes = 0;
 
@@ -77,13 +92,13 @@ bool SpaceSearcher<State, Strategy>::search(State& initial, int num_threads, con
     return result;
 }
 
-template <StateRepresentation State, SearchStrategy<State> Strategy>
-bool SpaceSearcher<State, Strategy>::search_sequential(const State& initial, const std::vector<Action>& actions,
+template <StateRepresentation StateRepr, SearchStrategy<State<StateRepr>> Strategy>
+bool SpaceSearcher<StateRepr, Strategy>::search_sequential(const State<StateRepr>& initial, const std::vector<Action>& actions,
                                                        const bool check_visited, const bool bisimulation_reduction)
 {
     m_strategy.fresh();
 
-    std::unordered_set<State> visited_states;
+    std::unordered_set<State<StateRepr>> visited_states;
     m_expanded_nodes = 0;
 
     m_strategy.push(initial);
@@ -123,12 +138,12 @@ bool SpaceSearcher<State, Strategy>::search_sequential(const State& initial, con
     return false;
 }
 
-template <StateRepresentation State, SearchStrategy<State> Strategy>
-bool SpaceSearcher<State, Strategy>::search_parallel(const State& initial, const std::vector<Action>& actions,
+template <StateRepresentation StateRepr, SearchStrategy<State<StateRepr>> Strategy>
+bool SpaceSearcher<StateRepr, Strategy>::search_parallel(const State<StateRepr>& initial, const std::vector<Action>& actions,
                                                      const bool check_visited, const bool bisimulation_reduction,
                                                      const int num_threads)
 {
-    std::unordered_set<State> visited_states;
+    std::unordered_set<State<StateRepr>> visited_states;
     Strategy current_frontier;
     current_frontier.push(initial);
 
@@ -143,7 +158,7 @@ bool SpaceSearcher<State, Strategy>::search_parallel(const State& initial, const
     {
         std::vector<std::thread> threads;
         Strategy next_frontier;
-        std::vector<State> level_states = {};
+        std::vector<State<StateRepr>> level_states = {};
 
         while (!current_frontier.empty())
         {
@@ -153,7 +168,7 @@ bool SpaceSearcher<State, Strategy>::search_parallel(const State& initial, const
 
         size_t chunk_size = (level_states.size() + num_threads - 1) / num_threads;
         std::atomic<bool> found_goal{false};
-        std::vector<std::unordered_set<State>> local_visited(num_threads);
+        std::vector<std::unordered_set<State<StateRepr>>> local_visited(num_threads);
         std::vector<Strategy> local_frontiers(num_threads);
 
         for (int t = 0; t < num_threads; ++t)
@@ -165,13 +180,13 @@ bool SpaceSearcher<State, Strategy>::search_parallel(const State& initial, const
 
                 for (size_t i = start; i < end && !found_goal; ++i)
                 {
-                    State& popped_state = level_states[i];
+                    State<StateRepr>& popped_state = level_states[i];
 
                     for (const auto& tmp_action : actions)
                     {
                         if (popped_state.is_executable(tmp_action))
                         {
-                            State tmp_state = popped_state.compute_succ(tmp_action);
+                            State<StateRepr> tmp_state = popped_state.compute_succ(tmp_action);
 
                             if (bisimulation_reduction)
                             {
@@ -236,16 +251,16 @@ bool SpaceSearcher<State, Strategy>::search_parallel(const State& initial, const
 }
 
 
-template <StateRepresentation State, SearchStrategy<State> Strategy>
-bool SpaceSearcher<State, Strategy>::validate_plan(const State& initial, const std::vector<std::string>& plan, const bool check_visited, const bool bisimulation_reduction)
+template <StateRepresentation StateRepr, SearchStrategy<State<StateRepr>> Strategy>
+bool SpaceSearcher<StateRepr, Strategy>::validate_plan(const State<StateRepr>& initial, const std::vector<std::string>& plan, const bool check_visited, const bool bisimulation_reduction)
 {
-    std::unordered_set<State> visited_states;
+    std::unordered_set<State<StateRepr>> visited_states;
     if (check_visited)
     {
         visited_states.insert(initial);
     }
 
-    State current = initial;
+    State<StateRepr> current = initial;
 
     for (const auto& action_name : plan)
     {

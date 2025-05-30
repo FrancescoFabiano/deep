@@ -2,9 +2,10 @@
 
 #include "Grounder.h"
 
-#include "Configuration.h"
 #include "utilities/ExitHandler.h"
 #include <boost/lexical_cast.hpp>
+
+#include "ArgumentParser.h"
 
 /**
  * \file Grounder.cpp
@@ -20,7 +21,7 @@ Grounder::Grounder(const FluentMap& fluent_map, const AgentsMap& agent_map, cons
     set_agent_map(agent_map);
     set_action_name_map(action_name_map);
 
-    if (Configuration::get_instance().get_debug())
+    if (ArgumentParser::get_instance().get_debug())
     {
         reverse();
     }

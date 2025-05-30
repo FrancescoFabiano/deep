@@ -68,45 +68,9 @@ enum class search_type
 {
     BFS, ///< Breadth first search.
     DFS, ///< Depth first search.
-    I_DFS, ///< Iterative deepening DFS.
     HFS, ///< Heuristic first search.
 };
 
-/**
- * \enum parallel_type
- * \brief The possible implementations of parallelism.
- */
-enum class parallel_type
-{
-    P_SERIAL, ///< Parallelism disabled.
-    P_PTHREAD, ///< POSIX threads.
-    P_FORK, ///< Forked processes.
-    P_CHILD ///< Current process is a child.
-};
-
-/**
- * \struct parallel_input
- * \brief Input parameters for parallel execution.
- */
-struct parallel_input
-{
-    parallel_type ptype = parallel_type::P_SERIAL;
-    bool pwait = false;
-};
-
-/**
- * \struct pthread_params
- * \brief Parameters for pthread-based execution.
- */
-struct pthread_params
-{
-    bool results_file = false;
-    parallel_input pin;
-    heuristics used_heur = heuristics::NO_H;
-    search_type used_search = search_type::BFS;
-    short IDFS_d = 0;
-    short IDFS_s = 0;
-};
 
 /**
  * \struct ML_Dataset_Params

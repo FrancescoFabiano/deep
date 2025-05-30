@@ -42,6 +42,61 @@ public:
      */
     static ArgumentParser& get_instance();
 
+
+    /**
+       * \brief Checks if debug mode is enabled.
+       * \return true if debug mode is enabled, false otherwise.
+       */
+    [[nodiscard]] bool get_debug() const noexcept;
+
+    /**
+     * \brief Checks if dataset generation mode is enabled.
+     * \return true if dataset mode is enabled, false otherwise.
+     */
+    [[nodiscard]] bool get_dataset_mode() const noexcept;
+
+    /**
+     * \brief Retrieves the dataset size.
+     * \return The dataset size.
+     */
+    [[nodiscard]] int get_dataset_size() const noexcept;
+
+    /**
+     * \brief Checks if the generated plan should be executed.
+     * \return true if the plan should be executed, false otherwise.
+     */
+    [[nodiscard]] bool get_execute_plan() const noexcept;
+
+    /**
+     * \brief Retrieves the file path for saving/loading the plan.
+     * \return The plan file path.
+     */
+    [[nodiscard]] const std::string& get_plan_file() const noexcept;
+
+    /**
+     * \brief Retrieves the input file path.
+     * \return The input file path.
+     */
+    [[nodiscard]] const std::string& get_input_file() const noexcept;
+
+    /**
+     * \brief Retrieves the sequence of actions to execute.
+     * \return A vector containing the actions to be executed.
+     */
+    [[nodiscard]] const std::vector<std::string>& get_execution_actions() const noexcept;
+
+    /**
+     * \brief Checks if the results should be logged to a file.
+     * \return true if results file logging is enabled, false otherwise.
+     */
+    [[nodiscard]] bool get_results_file() const noexcept;
+
+    /**
+     * \brief Checks if logging to a file is enabled.
+     * \return true if logging is enabled, false otherwise.
+     */
+    [[nodiscard]] bool get_log_enabled() const noexcept;
+
     /**
      * \brief Prints the usage of the application (command-line arguments).
      */
@@ -75,14 +130,11 @@ private:
     bool m_debug = false;      ///< Debug mode flag.
     bool m_bisimulation = false;  ///< Bisimulation type (NONE by default).
     std::string m_bisimulation_type = "FB";  ///< Bisimulation type (PT by default).
-    bool m_bisimulation_type_bool = true; ///< Flag to indicate bisimulation type (used for efficiency)
     bool m_check_visited = false;  ///< Flag to check for visited states.
     bool m_dataset_mode = false;  ///< Flag to indicate dataset mode.
     int m_dataset_depth = 10;     ///< Maximum depth for dataset generation.
     std::string m_search_strategy = "BFS"; ///< Search strategy (BFS by default).
     std::string m_heuristic_opt = "SUBGOALS";  ///< Heuristic type (SUBGOALS by default).
-    std::string m_parallel_type = "PTHREAD";  ///< Parallel execution type (PTHREAD by default).
-    std::string m_parallel_wait = "NONE";     ///< Parallel wait strategy (NONE by default).
     bool m_exec_plan = false;  ///< Flag to indicate if the plan should be executed.
     std::vector<std::string> m_exec_actions;  ///< Actions to execute instead of planning.
     bool m_output_results_file = false;  ///< Flag to enable results file logging.
@@ -94,46 +146,16 @@ private:
     // Accessors private because they can be accessed only by friend class \ref Configuration
 
     /**
-     * \brief Checks if debug mode is enabled.
-     * \return true if debug mode is enabled, false otherwise.
-     */
-    [[nodiscard]] bool get_debug() const noexcept;
-
-    /**
      * \brief Checks if bisimulation is used.
      * \return true if bisimulation is used, false otherwise.
      */
     [[nodiscard]] bool get_bisimulation() const noexcept;
-
 
     /**
     * \brief Return the type of Bisimulation Adopted.
     * \return the string that specifies the type of bisimulation used.
     */
     [[nodiscard]] const std::string &get_bisimulation_type() const noexcept;
-
-    /**
-     * \brief Sets the type of Bisimulation Adopted in boolean form (True is PT, false is FB) for efficiency.
-     */
-    void set_bisimulation_type_bool() noexcept;
-
-    /**
-     * \brief Return the type of Bisimulation Adopted in boolean form
-     * \return True is PT, false is FB.
-     */
-    bool get_bisimulation_type_bool() const noexcept;
-
-    /**
-     * \brief Checks if dataset generation mode is enabled.
-     * \return true if dataset mode is enabled, false otherwise.
-     */
-    [[nodiscard]] bool get_dataset_mode() const noexcept;
-
-    /**
-     * \brief Retrieves the dataset size.
-     * \return The dataset size.
-     */
-    [[nodiscard]] int get_dataset_size() const noexcept;
 
     /**
      * \brief Retrieves the heuristic to be used.
@@ -148,58 +170,11 @@ private:
     [[nodiscard]] const std::string& get_search_strategy() const noexcept;
 
     /**
-     * \brief Checks if the generated plan should be executed.
-     * \return true if the plan should be executed, false otherwise.
-     */
-    [[nodiscard]] bool get_execute_plan() const noexcept;
-
-    /**
-     * \brief Retrieves the file path for saving/loading the plan.
-     * \return The plan file path.
-     */
-    [[nodiscard]] const std::string& get_plan_file() const noexcept;
-
-    /**
-     * \brief Retrieves the input file path.
-     * \return The input file path.
-     */
-    [[nodiscard]] const std::string& get_input_file() const noexcept;
-
-    /**
-     * \brief Retrieves the sequence of actions to execute.
-     * \return A vector containing the actions to be executed.
-     */
-    [[nodiscard]] const std::vector<std::string>& get_execution_actions() const noexcept;
-
-    /**
-     * \brief Checks if the results should be logged to a file.
-     * \return true if results file logging is enabled, false otherwise.
-     */
-    [[nodiscard]] bool get_results_file() const noexcept;
-
-    /**
-     * \brief Retrieves the parallel type to be used for running heuristics.
-     * \return The parallel type (e.g., "SERIAL", "PTHREAD", "FORK").
-     */
-    [[nodiscard]] const std::string& get_parallel_type() const noexcept;
-
-    /**
-     * \brief Retrieves the parallel wait strategy.
-     * \return The parallel wait strategy (e.g., "NONE", "WAIT").
-     */
-    [[nodiscard]] const std::string& get_parallel_wait() const noexcept;
-
-    /**
      * \brief Checks if visited states should be checked during planning.
      * \return true if visited state checking is enabled, false otherwise.
      */
     [[nodiscard]] bool get_check_visited() const noexcept;
 
-    /**
-     * \brief Checks if logging to a file is enabled.
-     * \return true if logging is enabled, false otherwise.
-     */
-    [[nodiscard]] bool get_log_enabled() const noexcept;
 
     /**
      * \brief Returns the log file path to use if logging is enabled.

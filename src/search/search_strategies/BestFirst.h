@@ -13,6 +13,8 @@
 #include <queue>
 #include <string>
 
+#include "heuristics_manager.h"
+
 
 /**
  * \brief Compares two states based on their heuristic value.
@@ -21,10 +23,10 @@
  * \param state2 The second state to compare.
  * \return true if state1 has a higher heuristic value than state2, false otherwise.
  */
-template <StateRepresentation State>
+template <StateRepresentation StateRepr>
 struct StateComparator
 {
-    bool operator()(const State& state1, const State& state2) const
+    bool operator()(const State<StateRepr>& state1, const State<StateRepr>& state2) const
     {
         return state1.get_heuristic_value() > state2.get_heuristic_value();
     }
@@ -32,9 +34,9 @@ struct StateComparator
 
 /**
  * \brief BestFirst search strategy for use with SpaceSearcher.
- * \tparam State The state representation type (must satisfy StateRepresentation).
+ * \tparam StateRepr The state representation type (must satisfy StateRepresentation).
  */
-template <StateRepresentation State>
+template <StateRepresentation StateRepr>
 class BestFirst {
 public:
 
@@ -46,7 +48,8 @@ public:
     /**
      * \brief Push a state into the search container.
      */
-    void push(const State& s) {
+    void push(const State<StateRepr>& s) {
+        heuristics_manager.set_heuristic_value(s);
         search_space.push(s);
     }
 
@@ -60,7 +63,7 @@ public:
     /**
      * \brief Peek at the next state in the search container.
      */
-    State peek() const {
+    State<StateRepr> peek() const {
         return search_space.top();
     }
 
@@ -87,6 +90,6 @@ public:
     }
 
 private:
-    using StatePriorityQueue = std::priority_queue<State, std::vector<State>, StateComparator<State>>;
+    using StatePriorityQueue = std::priority_queue<State<StateRepr>, std::vector<State<StateRepr>>, StateComparator<State<StateRepr>>>;
     StatePriorityQueue search_space;
 };

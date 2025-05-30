@@ -41,17 +41,17 @@ concept StateRepresentation = requires(T rep, const Fluent& f, const FluentsSet&
      * Methods for logical entailment evaluation
      */
     ///@{
-    { rep.entails(f) } -> std::same_as<bool>;
-    { rep.entails(fs) } -> std::same_as<bool>;
-    { rep.entails(ff) } -> std::same_as<bool>;
-    { rep.entails(bf) } -> std::same_as<bool>;
-    { rep.entails(fl) } -> std::same_as<bool>;
+    { std::as_const(rep).entails(f) } -> std::same_as<bool>;
+    { std::as_const(rep).entails(fs) } -> std::same_as<bool>;
+    { std::as_const(rep).entails(ff) } -> std::same_as<bool>;
+    { std::as_const(rep).entails(bf) } -> std::same_as<bool>;
+    { std::as_const(rep).entails(fl) } -> std::same_as<bool>;
     ///@}
 
     /**
      * @brief Constructs the initial state.
      */
-    { rep.build_initial() };
+    { rep.build_initial(os) };
 
     /**
      * @brief Reduces the state using bisimulation contraction.
@@ -62,20 +62,15 @@ concept StateRepresentation = requires(T rep, const Fluent& f, const FluentsSet&
     /**
      * @brief Successor computation method.
      */
-    { rep.compute_successor(act) } -> std::same_as<T>;
-
-    /**
-    * @brief Return the heuristic value from a state
-    */
-    { rep.get_heuristic_value() } -> std::same_as<short>;
+    { std::as_const(rep).compute_successor(act) } -> std::same_as<T>;
 
     /**
      * @name Output Methods
      * Required methods for formatted output.
      */
     ///@{
-    { rep.print(os) };
-    { rep.print_dot_format(os) };
+    { std::as_const(rep).print(os) };
+    { std::as_const(rep).print_dot_format(os) };
     ///@}
 
     /**
@@ -84,7 +79,7 @@ concept StateRepresentation = requires(T rep, const Fluent& f, const FluentsSet&
      */
     ///@{
     { rep.operator=(other) } -> std::same_as<T&>;
-    { rep.operator<(other) } -> std::same_as<bool>;
+    { std::as_const(rep).operator<(other) } -> std::same_as<bool>;
     ///@}
 };
 

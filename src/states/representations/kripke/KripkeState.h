@@ -145,13 +145,9 @@ public:
     void print(std::ostream& os) const;
 
 
-  /** \brief Print this KripkeState to a dot format in os.
- * Params:
- [in] os — The output stream.*/
-  void print_dot_format(std::ostream& os) const;
-
-
-
+    /** \brief Print this KripkeState to a dot format in os.
+    * Params: [in] os — The output stream.*/
+    void print_dot_format(std::ostream& os) const;
 
 
 private:

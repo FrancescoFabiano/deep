@@ -6,9 +6,10 @@
  * \author Francesco Fabiano.
  * \date May 14, 2025
  */
-#include "domain.h"
+#include "Domain.h"
 #include <boost/dynamic_bitset.hpp>
 
+#include "ArgumentParser.h"
 #include "Configuration.h"
 #include "HelperPrint.h"
 #include "utilities/FormulaHelper.h"
@@ -19,8 +20,8 @@ Domain* Domain::instance = nullptr;
 
 Domain::Domain(std::ostream& os)
 {
-    const auto& configuration = Configuration::get_instance();
-    const std::string input_file = configuration.get_input_file();
+    const auto& argument_parser = ArgumentParser::get_instance();
+    const std::string input_file = argument_parser.get_input_file();
 
     if (freopen(input_file.c_str(), "r", stdin) == nullptr) {
         ExitHandler::exit_with_message(
@@ -121,7 +122,7 @@ void Domain::build_agents(std::ostream& os) {
         m_agents.insert(agent);
         ++i;
 
-        if (Configuration::get_instance().get_debug()) {
+        if (ArgumentParser::get_instance().get_debug()) {
             os << "Agent " << agent_name << " is " << agent << std::endl;
         };
     }
@@ -147,7 +148,7 @@ void Domain::build_fluents(std::ostream& os) {
         m_fluents.insert(fluent_negate_real);
         ++i;
 
-        if (Configuration::get_instance().get_debug()) {
+        if (ArgumentParser::get_instance().get_debug()) {
             os << "Literal " << fluent_name << " is " << " " << fluentReal << std::endl;
             os << "Literal not " << fluent_name << " is " << (i - 1) << " " << fluent_negate_real << std::endl;
         }
@@ -171,7 +172,7 @@ void Domain::build_actions(std::ostream& os) {
         m_actions.insert(tmp_action);
         ++i;
 
-        if (Configuration::get_instance().get_debug()) {
+        if (ArgumentParser::get_instance().get_debug()) {
             os << "Action " << tmp_action.get_name() << " is " << tmp_action.get_id() << std::endl;
         }
     }
@@ -182,7 +183,7 @@ void Domain::build_actions(std::ostream& os) {
     build_propositions(os);
 
 
-    if (Configuration::get_instance().get_debug()) {
+    if (ArgumentParser::get_instance().get_debug()) {
         os << "\nPrinting complete action list..." << std::endl;
         for (const auto& action : m_actions) {
             action.print(os);
@@ -221,7 +222,7 @@ void Domain::build_initially(std::ostream& os) {
         switch (formula.get_formula_type()) {
         case BeliefFormulaType::FLUENT_FORMULA: {
                 m_initial_description.add_pointed_condition(formula.get_fluent_formula());
-                if (Configuration::get_instance().get_debug()) {
+                if (ArgumentParser::get_instance().get_debug()) {
                     os << "    Pointed world: ";
                     HelperPrint::get_instance().print_list(formula.get_fluent_formula(),os);
                     os << std::endl;
@@ -233,7 +234,7 @@ void Domain::build_initially(std::ostream& os) {
         case BeliefFormulaType::BELIEF_FORMULA:
         case BeliefFormulaType::E_FORMULA: {
                 m_initial_description.add_initial_condition(formula);
-                if (Configuration::get_instance().get_debug()) {
+                if (ArgumentParser::get_instance().get_debug()) {
                     os << "Added to initial conditions: ";
                     formula.print(os);
                     os << std::endl;
@@ -258,7 +259,7 @@ void Domain::build_goal(std::ostream& os) {
     for (auto& formula_parsed : m_reader->m_bf_goal) {
         const auto formula = BeliefFormula(formula_parsed);
         m_goal_description.push_back(formula);
-        if (Configuration::get_instance().get_debug()) {
+        if (ArgumentParser::get_instance().get_debug()) {
             os << "    ";
             formula.print(os);
             os << std::endl;

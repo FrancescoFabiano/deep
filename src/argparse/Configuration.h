@@ -3,7 +3,7 @@
  * \brief Singleton class to store and access configuration options, inheriting from ArgumentParser.
  *
  * The Configuration class provides a singleton interface for storing and accessing
- * configuration options parsed from the command line. It inherits all fields from ArgumentParser
+ * configuration options parsed from the command line. It inherits search based fields from ArgumentParser
  * and provides public getters and setters for each configuration option.
  *
  * \copyright GNU Public License.
@@ -14,8 +14,7 @@
 #pragma once
 
 #include <string>
-#include <vector>
-#include "argparse/ArgumentParser.h"
+#include <ostream>
 
 
 class Configuration {
@@ -47,18 +46,6 @@ public:
     // Getters and setters for all configuration fields
 
     /**
-     * \brief Checks if debug mode is enabled.
-     * \return true if debug mode is enabled, false otherwise.
-     */
-    [[nodiscard]] bool get_debug() const noexcept;
-    /**
-     * \brief Sets debug mode.
-     * \param val true to enable debug mode, false to disable.
-     */
-    void set_debug(const std::string& val);
-    void set_debug(bool val);
-
-    /**
      * \brief Checks if bisimulation is used.
      * \return true if bisimulation is used, false otherwise.
      */
@@ -86,12 +73,7 @@ public:
      * \return True if PT, false if FB.
      */
     [[nodiscard]] bool get_bisimulation_type_bool() const noexcept;
-    /**
-     * \brief Sets the bisimulation type as a boolean.
-     * \param val True for PT, false for FB.
-     */
-    void set_bisimulation_type_bool(const std::string& val);
-    void set_bisimulation_type_bool(bool val);
+
 
     /**
      * \brief Checks if visited state checking is enabled.
@@ -105,29 +87,6 @@ public:
     void set_check_visited(const std::string& val);
     void set_check_visited(bool val);
 
-    /**
-     * \brief Checks if dataset mode is enabled.
-     * \return true if enabled, false otherwise.
-     */
-    [[nodiscard]] bool get_dataset_mode() const noexcept;
-    /**
-     * \brief Sets dataset mode.
-     * \param val true to enable, false to disable.
-     */
-    void set_dataset_mode(const std::string& val);
-    void set_dataset_mode(bool val);
-
-    /**
-     * \brief Gets the dataset depth.
-     * \return The dataset depth.
-     */
-    [[nodiscard]] int get_dataset_depth() const noexcept;
-    /**
-     * \brief Sets the dataset depth.
-     * \param val The dataset depth.
-     */
-    void set_dataset_depth(const std::string& val);
-    void set_dataset_depth(int val);
 
     /**
      * \brief Gets the search strategy.
@@ -150,113 +109,29 @@ public:
      * \param val The heuristic option string.
      */
     void set_heuristic_opt(const std::string& val);
-
     /**
-     * \brief Gets the parallel type.
-     * \return The parallel type string.
-     */
-    [[nodiscard]] const std::string& get_parallel_type() const noexcept;
-    /**
-     * \brief Sets the parallel type.
-     * \param val The parallel type string.
-     */
-    void set_parallel_type(const std::string& val);
-
-    /**
-     * \brief Gets the parallel wait strategy.
-     * \return The parallel wait strategy string.
-     */
-    [[nodiscard]] const std::string& get_parallel_wait() const noexcept;
-    /**
-     * \brief Sets the parallel wait strategy.
-     * \param val The parallel wait strategy string.
-     */
-    void set_parallel_wait(const std::string& val);
-
-    /**
-     * \brief Checks if plan execution is enabled.
-     * \return true if enabled, false otherwise.
-     */
-    [[nodiscard]] bool get_exec_plan() const noexcept;
-    /**
-     * \brief Sets plan execution.
-     * \param val true to enable, false to disable.
-     */
-    void set_exec_plan(const std::string& val);
-    void set_exec_plan(bool val);
-
-    /**
-     * \brief Gets the actions to execute.
-     * \return Vector of action strings.
-     */
-    [[nodiscard]] const std::vector<std::string>& get_exec_actions() const noexcept;
-    /**
-     * \brief Sets the actions to execute.
-     * \param val Comma-separated string of actions.
-     */
-    void set_exec_actions(const std::string& val);
-    /**
-     * \brief Sets the actions to execute.
-     * \param val Vector of action strings.
-     */
-    void set_exec_actions(const std::vector<std::string>& val);
-
-    /**
-     * \brief Checks if output results file is enabled.
-     * \return true if enabled, false otherwise.
-     */
-    [[nodiscard]] bool get_output_results_file() const noexcept;
-    /**
-     * \brief Sets output results file flag.
-     * \param val true to enable, false to disable.
-     */
-    void set_output_results_file(const std::string& val);
-    void set_output_results_file(bool val);
-
-    /**
-     * \brief Gets the plan file path.
-     * \return The plan file path string.
-     */
-    [[nodiscard]] const std::string& get_plan_file() const noexcept;
-    /**
-     * \brief Sets the plan file path.
-     * \param val The plan file path string.
-     */
-    void set_plan_file(const std::string& val);
-
-    /**
-     * \brief Checks if logging is enabled.
-     * \return true if enabled, false otherwise.
-     */
-    [[nodiscard]] bool get_log_enabled() const noexcept;
-    /**
-     * \brief Sets logging enabled flag.
-     * \param val true to enable, false to disable.
-     */
-    void set_log_enabled(const std::string& val);
-    void set_log_enabled(bool val);
-
-    /**
-     * \brief Gets the log file path.
-     * \return The log file path string.
+     * \brief Gets the log_file_path.
+     * \return The log_file_path string.
      */
     [[nodiscard]] const std::string& get_log_file_path() const noexcept;
     /**
-     * \brief Sets the log file path.
-     * \param val The log file path string.
+     * \brief Sets the log_file_path.
+     * \param val The log_file_path  string.
      */
     void set_log_file_path(const std::string& val);
 
     /**
-     * \brief Gets the input file path.
-     * \return The input file path string.
-     */
-    [[nodiscard]] const std::string& get_input_file() const noexcept;
+    * \brief Sets the field of the class to value
+    * \param field The name of the field to set (based on the parsing from command line)
+    * \param value The value to set the field to.
+    */
+    void set_field_by_name(const std::string& field, const std::string& value);
+
     /**
-     * \brief Sets the input file path.
-     * \param val The input file path string.
+     * \brief Prints all configuration values to the given output stream.
+     * \param os The output stream to print to.
      */
-    void set_input_file(const std::string& val);
+    void print(std::ostream& os) const;
 
 private:
     /**
@@ -268,22 +143,16 @@ private:
     static thread_local Configuration* instance;
 
     // Configuration fields
-    bool m_debug = false; ///< Debug mode flag.
     bool m_bisimulation = false; ///< Bisimulation enabled flag.
     std::string m_bisimulation_type = "FB"; ///< Bisimulation type string.
     bool m_bisimulation_type_bool = true; ///< Bisimulation type as boolean.
     bool m_check_visited = false; ///< Visited state checking flag.
-    bool m_dataset_mode = false; ///< Dataset mode flag.
-    int m_dataset_depth = 10; ///< Dataset depth.
     std::string m_search_strategy = "BFS"; ///< Search strategy string.
-    std::string m_heuristic_opt = "NONE"; ///< Heuristic option string.
-    std::string m_parallel_type = "PTHREAD"; ///< Parallel type string.
-    std::string m_parallel_wait = "NONE"; ///< Parallel wait strategy string.
-    bool m_exec_plan = false; ///< Plan execution flag.
-    std::vector<std::string> m_exec_actions; ///< Actions to execute.
-    bool m_output_results_file = false; ///< Output results file flag.
-    std::string m_plan_file = "plan.txt"; ///< Plan file path.
-    bool m_log_enabled = false; ///< Logging enabled flag.
-    std::string m_log_file_path; ///< Log file path.
-    std::string m_input_file; ///< Input file path.
+    std::string m_heuristic_opt = "SUBGOALS"; ///< Heuristic option string.
+    std::string m_log_file_path; ///< The log file path if logging is enabled. Here to allow multiple files for threads management.
+
+    /**
+     * \brief Sets the bisimulation type as a boolean.
+     */
+    void set_bisimulation_type_bool();
 };

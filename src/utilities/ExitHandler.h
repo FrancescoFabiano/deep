@@ -78,7 +78,8 @@ public:
 
         // PortfolioSearch Related
         PortfolioConfigFileError = 860, ///< Could not open portfolio configuration file.
-        PortfolioSearchInternalError = 861, ///< Internal error in portfolio search.
+        PortfolioConfigError = 861, ///< Internal error in portfolio search.
+        PortfolioConfigFieldError = 862, ///< Error in reading a field in portfolio configuration file.
 
 
         StateActionNotExecutableError = 900, ///< Action not executable in state where is supposed to be.

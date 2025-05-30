@@ -22,14 +22,14 @@
  *
  * @tparam T The type to be checked against the required interface.
  */
-template<typename T, StateRepresentation State>
-concept SearchStrategy = requires(T rep, State s) {
+template<typename T, StateRepresentation StateRepr>
+concept SearchStrategy = requires(T rep, State<StateRepr> s) {
     /// Functor/lambda to push a state into the container.
     { rep.push(s) } -> std::same_as<void>;
     /// Functor/lambda to pop a state from the container.
     { rep.pop() } -> std::same_as<void>;
     /// Functor/lambda to peek at the next state in the container.
-    { rep.peek() } -> std::same_as<State>;
+    { rep.peek() } -> std::same_as<State<StateRepr>>;
     /// Functor/lambda to clean container.
     { rep.reset() } -> std::same_as<void>;
     /// Functor/lambda to check if container is empty.
@@ -41,17 +41,17 @@ concept SearchStrategy = requires(T rep, State s) {
 
 /**
  * \brief Generic search strategy using a user-supplied container (queue/stack).
- * \tparam State The state representation type (must satisfy StateRepresentation).
+ * \tparam StateRepr The state representation type (must satisfy StateRepresentation).
  * \tparam Strategy The search strategy type (must satisfy SearchStrategy).
  */
-template <StateRepresentation State, SearchStrategy<State> Strategy>
+template <StateRepresentation StateRepr, SearchStrategy<State<StateRepr>> Strategy>
 class SpaceSearcher {
 public:
     /**
      * \brief Constructor with search name and strategy instance.
      * \param strategy The search strategy instance.
      */
-    SpaceSearcher(Strategy strategy);
+    explicit SpaceSearcher(Strategy strategy);
 
     /**
      * \brief Default destructor.
@@ -67,7 +67,7 @@ public:
      * \return true if a goal state is found, false otherwise.
      */
     [[nodiscard]]
-    bool search(State& initial, int num_threads, const std::vector<Action>& plan = {});
+    bool search(State<StateRepr>& initial, int num_threads, const std::vector<Action>& plan = {});
 
     /**
      * \brief Get the name of the search strategy.
@@ -76,6 +76,19 @@ public:
     [[nodiscard]]
     const std::string& get_search_type() const noexcept;
 
+    /**
+     * \brief Get the number of expanded nodes by the search strategy.
+     * \return The number of expanded nodes.
+     */
+    [[nodiscard]]
+    unsigned int get_expanded_nodes() const noexcept;
+
+    /**
+     * \brief Get the time taken by the search strategy (in seconds).
+     * \return The time taken (in seconds).
+     */
+    [[nodiscard]]
+    std::chrono::duration<double> get_elapsed_seconds() const noexcept;
 
 
 private:
@@ -95,7 +108,7 @@ private:
      * \return true if a goal state is found, false otherwise.
      */
     [[nodiscard]]
-    bool search_sequential(const State& initial, const std::vector<Action>& actions, bool check_visited, bool bisimulation_reduction);
+    bool search_sequential(const State<StateRepr>& initial, const std::vector<Action>& actions, bool check_visited, bool bisimulation_reduction);
 
     /**
      * \brief Executes the search algorithm in parallel (queue-based BFS only).
@@ -106,9 +119,11 @@ private:
      * \param bisimulation_reduction Whether to apply bisimulation reduction.
      * \param num_threads The number of threads to use.
      * \return true if a goal state is found, false otherwise.
+     *
+     * \warning not too throughly tested, use with caution.
      */
     [[nodiscard]]
-    bool search_parallel(const State &initial, const std::vector<Action> &actions, bool check_visited, bool bisimulation_reduction, int num_threads);
+    bool search_parallel(const State<StateRepr>& initial, const std::vector<Action> &actions, bool check_visited, bool bisimulation_reduction, int num_threads);
 
     /// \name Plan Validation
     ///@{
@@ -121,7 +136,7 @@ private:
      * \return true if the plan is valid, false otherwise.
      */
     [[nodiscard]]
-    bool validate_plan(const State& initial, const std::vector<std::string>& plan, bool check_visited, bool bisimulation_reduction);
+    bool validate_plan(const State<StateRepr>& initial, const std::vector<std::string>& plan, bool check_visited, bool bisimulation_reduction);
     ///@}
 
 };

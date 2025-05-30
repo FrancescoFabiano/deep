@@ -1,24 +1,50 @@
-//
-// Created by fraano on 30/05/2025.
-//
-
+/**
+ * \class PortfolioSearch
+ * \brief Class that implements the portfolio-method search (multiple configurations).
+ *
+ * \details This class manages and executes multiple search configurations in parallel or sequentially.
+ *          Each configuration can specify different search strategies and heuristics.
+ *          The search stops as soon as a plan is found by any configuration.
+ *
+ * \copyright GNU Public License.
+ * \author Francesco Fabiano.
+ * \date May 30, 2025
+ */
 #pragma once
+
 #include <map>
 #include <string>
 #include <vector>
+#include <ostream>
 
-
+/**
+ * \brief PortfolioSearch manages and executes multiple search configurations.
+ */
 class PortfolioSearch {
-
 public:
+    /// \name Constructors & Destructor
+    ///@{
+    PortfolioSearch() = default;
+    ~PortfolioSearch() = default;
+    PortfolioSearch(const PortfolioSearch&) = default;
+    PortfolioSearch(PortfolioSearch&&) noexcept = default;
+    PortfolioSearch& operator=(const PortfolioSearch&) = default;
+    PortfolioSearch& operator=(PortfolioSearch&&) noexcept = default;
+    ///@}
+
+    /// \name Main Methods
+    ///@{
     /**
      * \brief Launches the portfolio-method search (multiple configurations).
      *
-     * For now, uses a fixed configuration: BFS + ALL Heuristics + DFS (depending on the number of threads).
+     * \param os Output stream for printing information during the search.
+     * \param user_threads The number of threads to use for the search.
+     * \param threads_per_search Number of threads to use in each search strategy (default: 1).
      * \return true if a plan was found, false otherwise.
+     *
      */
     [[nodiscard]]
-    bool run_portfolio_search(int user_threads = 1) const;
+    bool run_portfolio_search(std::ostream& os, int user_threads = 1, int threads_per_search = 1);
 
     /**
      * \brief Parses configurations from a file.
@@ -32,9 +58,21 @@ public:
      */
     void parse_configurations_from_file(const std::string& file_path);
 
+    /**
+     * \brief Sets a default set of search configurations.
+     *
+     * This will overwrite any previously set configurations.
+     */
     void set_default_configurations();
+    ///@}
 
 private:
-    std::vector<std::map<std::string, std::string>> m_search_configurations = {}; ///< List of search configurations to try.
-
+    /// \name Data Members
+    ///@{
+    /**
+     * \brief List of search configurations to try.
+     * Each configuration is a map from parameter name to value.
+     */
+    std::vector<std::map<std::string, std::string>> m_search_configurations{};
+    ///@}
 };

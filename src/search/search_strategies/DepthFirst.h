@@ -9,16 +9,15 @@
 
 #pragma once
 #include "states/State.h"
-#include "utilities/ExitHandler.h"
 #include <stack>
 #include <string>
 
 
 /**
  * \brief DepthFirst search strategy for use with SpaceSearcher.
- * \tparam State The state representation type (must satisfy StateRepresentation).
+ * \tparam StateRepr The state representation type (must satisfy StateRepresentation).
  */
-template <StateRepresentation State>
+template <StateRepresentation StateRepr>
 class DepthFirst {
 public:
 
@@ -30,7 +29,7 @@ public:
     /**
      * \brief Push a state into the search container.
      */
-    void push(const State& s) {
+    void push(const State<StateRepr>& s) {
         search_space.push(s);
     }
 
@@ -44,7 +43,7 @@ public:
     /**
      * \brief Peek at the next state in the search container.
      */
-    State peek() const {
+    State<StateRepr> peek() const {
         return search_space.top();
     }
 
@@ -60,7 +59,7 @@ public:
      * \brief Reset the search container.
      */
     void reset() {
-        search_space = std::stack<State>();
+        search_space = std::stack<State<StateRepr>>();
     }
 
     /**
@@ -71,7 +70,7 @@ public:
     }
 
 private:
-    std::stack<State> search_space;
+    std::stack<State<StateRepr>> search_space;
 };
 
 

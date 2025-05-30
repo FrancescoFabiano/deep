@@ -10,14 +10,13 @@
 #pragma once
 #include <queue>
 #include <string>
-#include <chrono>
 #include "states/State.h"
 
 /**
  * \brief BreadthFirst search strategy for use with SpaceSearcher.
- * \tparam State The state representation type (must satisfy StateRepresentation).
+ * \tparam StateRepr The state representation type (must satisfy StateRepresentation).
  */
-template <StateRepresentation State>
+template <StateRepresentation StateRepr>
 class BreadthFirst {
 public:
 
@@ -29,7 +28,7 @@ public:
     /**
      * \brief Push a state into the search container.
      */
-    void push(const State& s) {
+    void push(const State<StateRepr>& s) {
         search_space.push(s);
     }
 
@@ -43,7 +42,7 @@ public:
     /**
      * \brief Peek at the next state in the search container.
      */
-    State peek() const {
+    State<StateRepr> peek() const {
         return search_space.front();
     }
 
@@ -59,7 +58,7 @@ public:
      * \brief Reset the search container.
      */
     void reset() {
-        search_space = std::queue<State>();
+        search_space = std::queue<State<StateRepr>>();
     }
 
     /**
@@ -70,7 +69,7 @@ public:
     }
 
 private:
-    std::queue<State> search_space;
+    std::queue<State<StateRepr>> search_space;
 };
 
 /*
