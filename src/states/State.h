@@ -221,10 +221,9 @@ public:
 
     /** \brief The copy operator.
      *
-     * @param [in] to_copy: the \ref state to assign to *this*.
-     * @return true: if \p the assignment went ok.
-     * @return false: otherwise.*/
-    bool operator=(const State<T>& to_copy);
+     * @param [in] to_assign: the \ref state to assign to *this*.
+     * @return This with the copied assigned values.*/
+    [[nodiscard]] State& operator=(const State<T>& to_assign);
 
     /** \brief The < operator for set operations.
      *

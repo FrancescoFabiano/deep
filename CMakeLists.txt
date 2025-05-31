@@ -15,6 +15,8 @@ include_directories(
         src/domain
         src/formulae
         src/heuristics
+        src/heuristics/heuristics_strategies
+        src/heuristics/heuristics_strategies/EpistemicPlanningGraph
         src/parse
         src/states
         src/states/representations/kripke
@@ -29,13 +31,17 @@ include_directories(
 
 # Header files with template implementations that must be included in the build
 set(TEMPLATIC_HEADERS
-        src/states/State.h
-        src/utilities/SetHelper.h
         src/bisimulation/VectorBisWrapper.h
+        src/heuristics/HeuristicsManager.h
+        src/heuristics/heuristics_strategies/SatisfiedGoals.h
+        src/heuristics/heuristics_strategies/EpistemicPlanningGraph/StateLevel.h
+        src/heuristics/heuristics_strategies/EpistemicPlanningGraph/PlanningGraph.h
         src/search/SpaceSearcher.h
         src/search/search_strategies/BreadthFirst.h
         src/search/search_strategies/DepthFirst.h
         src/search/search_strategies/BestFirst.h
+        src/states/State.h
+        src/utilities/SetHelper.h
 )
 
 # Start the list of source files with those headers

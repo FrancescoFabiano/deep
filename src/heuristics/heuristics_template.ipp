@@ -2,31 +2,7 @@
 #include <map>
 //#include "planning_graph_template.ipp"
 #include "HeuristicsManager.h"
-template <class T>
-unsigned short satisfied_goals::get_unsatisfied_goals(const T & eState) const
-{
-	unsigned short ret = m_goals_number;
 
-	FormulaeList::const_iterator it_fl;
-	for (it_fl = m_goals.begin(); it_fl != m_goals.end(); it_fl++) {
-		if (eState.entails(*it_fl)) {
-			ret--;
-		}
-	}
-	return ret;
-
-}
-
-template <class T>
-unsigned short satisfied_goals::get_satisfied_goals(const T & eState) const
-{
-	std::string dotFile = "out/state/ex_poss/signal_a_c_signal_c_b_open_a.dot";
-    int number = 3;
-
-    std::string command = "./run_python_script.sh " + dotFile + " " + std::to_string(number);
-    system(command.c_str());
-
-}
 
 
 //@TODO fix this

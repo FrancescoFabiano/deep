@@ -63,13 +63,13 @@ const T& State<T>::get_representation() const
 
 
 template <StateRepresentation T>
-bool State<T>::operator=(const State& given_state)
+State<T>& State<T>::operator=(const State& to_assign)
 {
-    set_representation(given_state.get_representation());
-    set_executed_actions(given_state.get_executed_actions());
-    set_plan_length(given_state.get_plan_length());
-    set_heuristic_value(given_state.get_heuristic_value());
-    return true;
+    set_representation(to_assign.get_representation());
+    set_executed_actions(to_assign.get_executed_actions());
+    set_plan_length(to_assign.get_plan_length());
+    set_heuristic_value(to_assign.get_heuristic_value());
+    return (*this);
 }
 
 template <StateRepresentation T>

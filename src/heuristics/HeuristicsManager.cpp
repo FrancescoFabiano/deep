@@ -16,7 +16,7 @@ HeuristicsManager::HeuristicsManager(const Heuristics used_heuristics)
             expand_goals();
             break;
         case Heuristics::C_PG: {
-            if (const planning_graph pg; pg.is_satisfiable()) {
+            if (const PlanningGraph pg; pg.is_satisfiable()) {
                 m_pg_max_score = 0;
                 m_fluents_score = pg.get_f_scores();
                 m_bf_score = pg.get_bf_scores();
@@ -33,7 +33,7 @@ HeuristicsManager::HeuristicsManager(const Heuristics used_heuristics)
         }
         case Heuristics::SUBGOALS:
             expand_goals();
-            satisfied_goals::get_instance().set(m_goals);
+            SatisfiedGoals::get_instance().set(m_goals);
             break;
         default:
             ExitHandler::exit_with_message(

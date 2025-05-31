@@ -13,8 +13,8 @@
 #include <utility>
 #include "utilities/Define.h"
 #include "utilities/ExitHandler.h"
-#include "satisfied_goals.h"
-#include "planning_graph.h"
+#include "heuristics_strategies/SatisfiedGoals.h"
+#include "EpistemicPlanningGraph/PlanningGraph.h"
 #include "search_strategies/BestFirst.h"
 
 /**
@@ -39,12 +39,12 @@ public:
     void set_heuristic_value(const State<T> &eState) {
         switch (m_used_heuristics) {
             case Heuristics::L_PG: {
-                const planning_graph pg(m_goals, eState);
+                const PlanningGraph pg(m_goals, eState);
                 eState.set_heuristic_value(pg.is_satisfiable() ? pg.get_length() : -1);
                 break;
             }
             case Heuristics::S_PG: {
-                const planning_graph pg(m_goals, eState);
+                const PlanningGraph pg(m_goals, eState);
                 eState.set_heuristic_value(pg.is_satisfiable() ? pg.get_sum() : -1);
                 break;
             }
@@ -67,7 +67,7 @@ public:
                 break;
             }
             case Heuristics::SUBGOALS: {
-                eState.set_heuristic_value(satisfied_goals::get_instance().get_unsatisfied_goals(eState));
+                eState.set_heuristic_value(SatisfiedGoals::get_instance().get_unsatisfied_goals(eState));
                 break;
             }
             case Heuristics::GNN: {
