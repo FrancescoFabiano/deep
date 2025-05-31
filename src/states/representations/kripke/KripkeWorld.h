@@ -114,6 +114,27 @@ private:
     ///@}
 };
 
+
+/**
+ * \brief Calculates the maximum number of decimal digits representable by KripkeWorldId.
+ * \details This function computes how many digits are needed to represent the maximum value of KripkeWorldId.
+ * \return The number of decimal digits.
+ */
+constexpr unsigned short calculate_max_digits() {
+    KripkeWorldId max_rep = std::numeric_limits<KripkeWorldId>::max();
+    unsigned short digits = 0;
+    while (max_rep > 0) {
+        max_rep /= 10;
+        ++digits;
+    }
+    return digits;
+}
+
+/**
+ * \brief The maximum number of decimal digits for KripkeWorldId.
+ */
+constexpr unsigned short max_digits = calculate_max_digits();
+
 /**
  * \class KripkeWorldPointer
  * \brief Wrapper for std::shared_ptr<const KripkeWorld> for use in KripkeStorage.

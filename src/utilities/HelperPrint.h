@@ -123,8 +123,9 @@ public:
      * \brief Print a KripkeState in DOT format for graph visualization.
      * \param kstate The KripkeState to print.
      * \param os The output stream to print to.
+     * \param minimal A flag indicating whether to print minimal information for the dataset generation for GNN heuristics training.
      */
-    void print_dot_format(const KripkeState &kstate, std::ostream &os) const;
+    void print_dot_format(const KripkeState &kstate, std::ostream &os, bool minimal) const;
 
 private:
 

@@ -278,7 +278,7 @@ void HelperPrint::print_state(const KripkeState & kstate, std::ostream& os) cons
 }
 
 ///@TODO: Make this function so it can be used also to generate the dataset (maybe with a flag)
-void HelperPrint::print_dot_format(const KripkeState & kstate, std::ostream & os) const
+void HelperPrint::print_dot_format(const KripkeState & kstate, std::ostream & os, bool minimal = false) const
 {
 	auto& worlds = kstate.get_worlds();
 	auto& pointed = kstate.get_pointed();

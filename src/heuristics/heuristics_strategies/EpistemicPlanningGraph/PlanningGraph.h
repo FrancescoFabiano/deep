@@ -17,6 +17,20 @@
 #include "utilities/Define.h"
 #include "actions/Action.h"
 #include <vector>
+#include <chrono>
+
+/**
+    * \brief Struct to encapsulate timing variables for PlanningGraph timing.
+    */
+   struct Clocks {
+       std::chrono::duration<double> t1{0};
+       std::chrono::duration<double> t2{0};
+       std::chrono::duration<double> t3{0};
+       std::chrono::duration<double> t4{0};
+       std::chrono::duration<double> t5{0};
+       std::chrono::system_clock::time_point start_clock1;
+       std::chrono::system_clock::time_point start_clock2;
+   };
 
 /**
  * \brief The PlanningGraph class for epistemic planning heuristics.
@@ -30,14 +44,16 @@ public:
      * \brief Default constructor. Sets the initial State level and the goal from the domain.
      *
      * This version should be used when a single planning BisGraph is created from the initial State.
+     * \param os The output stream to print debug information.
      */
-    PlanningGraph();
+    explicit PlanningGraph(std::ostream & os);
 
     /**
      * \brief Constructor that sets the initial State level from the domain and the goal as given.
      * \param[in] goal The formula_list that describes the given goals.
+     * \param os The output stream to print debug information.
      */
-    explicit PlanningGraph(const FormulaeList& goal);
+    explicit PlanningGraph(const FormulaeList& goal, std::ostream & os);
 
     /**
      * \brief Copy constructor.
@@ -49,13 +65,14 @@ public:
      * \brief Constructor that sets the initial State level from a given eState and the goal from the domain.
      * \tparam T The state representation type.
      * \param[in] eState The initial eState from which to extract the first State level.
+     * \param os The output stream to print debug information.
      */
     template<StateRepresentation T>
-    explicit PlanningGraph(State<T>& eState) {
+    explicit PlanningGraph(State<T>& eState,std::ostream & os) {
         auto goals = Domain::get_instance().get_goal_description();
         StateLevel pg_init;
         pg_init.initialize(goals, eState);
-        init(goals, pg_init);
+        init(goals, pg_init,os);
     }
 
     /**
@@ -63,12 +80,13 @@ public:
      * \tparam T The state representation type.
      * \param[in] goal The formula_list that describes the given goals.
      * \param[in] eState The initial eState from which to extract the first State level.
+     * \param os The output stream to print debug information.
      */
     template<StateRepresentation T>
-    PlanningGraph(const FormulaeList& goal, State<T>& eState) {
+    PlanningGraph(const FormulaeList& goal, State<T>& eState, std::ostream & os) {
         StateLevel pg_init;
         pg_init.initialize(goal, eState);
-        init(goal, pg_init);
+        init(goal, pg_init, os);
     }
     ///@}
 
@@ -76,8 +94,9 @@ public:
      * \brief Initializes the PlanningGraph fields.
      * \param[in] goal The formula_list that describes the given goals.
      * \param[in] pg_init The initial State level.
+     * \param os The output stream to print debug information.
      */
-    void init(const FormulaeList& goal, const StateLevel& pg_init);
+    void init(const FormulaeList& goal, const StateLevel& pg_init, std::ostream &os);
 
     /**
      * \brief Sets the length of the PlanningGraph.
@@ -210,6 +229,11 @@ private:
     FormulaeSet m_belief_formula_false;
 
     /**
+     * \brief Timing variables for PlanningGraph.
+     */
+    Clocks m_clocks;
+
+    /**
      * \brief Sets the satisfiable field.
      * \param[in] sat The value to assign to m_satisfiable.
      */
@@ -217,8 +241,9 @@ private:
 
     /**
      * \brief Builds the PlanningGraph layer by layer until the goal is found or the PlanningGraph is saturated.
+     * \param os The output stream to print debug information.
      */
-    void pg_build();
+    void pg_build(std::ostream & os);
 
     /**
      * \brief Adds the next (depth + 1) State layer to m_state_levels.

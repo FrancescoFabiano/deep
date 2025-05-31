@@ -1,7 +1,6 @@
 /*
  * \brief Class that implements PlanningGraph.h.
  *
- *
  * \copyright GNU Public License.
  *
  * \author Francesco Fabiano.
@@ -9,368 +8,325 @@
  */
 
 #include "PlanningGraph.h"
+#include "ArgumentParser.h"
+#include "utilities/ExitHandler.h"
 
-/*\******************************************************************************************************************/
-
-/*\*****START PLANNING GRAPH TIME MEASURE*******
-#include <chrono>
-std::chrono::duration<double> t1, t2, t3, t4;
-
-*\******END PLANNING GRAPH TIME MEASURE********/
-
-PlanningGraph::PlanningGraph()
-{
-	auto goals = Domain::get_instance().get_goal_description();
-	StateLevel pg_init;
-	pg_init.initialize(goals);
-	init(goals, pg_init);
+PlanningGraph::PlanningGraph(std::ostream& os) {
+    auto goals = Domain::get_instance().get_goal_description();
+    StateLevel pg_init;
+    pg_init.initialize(goals);
+    init(goals, pg_init, os);
 }
 
-PlanningGraph::PlanningGraph(const PlanningGraph & pg)
-{
-	set_pg(pg);
+PlanningGraph::PlanningGraph(const PlanningGraph& pg) {
+    set_pg(pg);
 }
 
-PlanningGraph::PlanningGraph(const FormulaeList & goal)
-{
-	StateLevel pg_init;
-	pg_init.initialize(goal);
-	init(goal, pg_init);
+PlanningGraph::PlanningGraph(const FormulaeList& goal, std::ostream& os) {
+    StateLevel pg_init;
+    pg_init.initialize(goal);
+    init(goal, pg_init, os);
 }
 
-void PlanningGraph::init(const FormulaeList & goal, const StateLevel & pg_init)
-{
-	/*\*****START PLANNING GRAPH TIME MEASURE*******
-	auto start_pg_build = std::chrono::system_clock::now();
-	os << "start" << std::endl;
-	*\******END PLANNING GRAPH TIME MEASURE********/
+void PlanningGraph::init(const FormulaeList& goal, const StateLevel& pg_init, std::ostream& os) {
+    // Start timing for planning graph construction
+    if (ArgumentParser::get_instance().get_debug()) {
+        m_clocks.start_clock1 = std::chrono::system_clock::now();
+    }
 
+    set_goal(goal);
+    m_state_levels.push_back(pg_init);
+    const auto& init_bf_score = pg_init.get_bf_map();
+    for (const auto& [bf, score] : init_bf_score) {
+        if (score < 0) {
+            m_belief_formula_false.insert(bf);
+        }
+    }
 
-	set_goal(goal);
-	m_state_levels.push_back(pg_init);
-	auto init_bf_score = pg_init.get_bf_map();
-	for (auto it_pgbf = init_bf_score.begin(); it_pgbf != init_bf_score.end(); ++it_pgbf) {
-		if (it_pgbf->second < 0) {
-			m_belief_formula_false.insert(it_pgbf->first);
-		}
-	}
+    m_never_executed = Domain::get_instance().get_actions();
+    set_length(0);
+    set_sum(0);
 
-	m_never_executed = Domain::get_instance().get_actions();
-	set_length(0);
-	set_sum(0);
+    // Start timing for initial goal check
+    if (ArgumentParser::get_instance().get_debug()) {
+        m_clocks.start_clock2 = std::chrono::system_clock::now();
+    }
 
-	/*\*****START PLANNING GRAPH TIME MEASURE*******
-	auto start_pg_goal_ini = std::chrono::system_clock::now();
-	*\******END PLANNING GRAPH TIME MEASURE********/
+    bool not_goal = false;
+    for (auto it_fl = m_goal.begin(); it_fl != m_goal.end();) {
+        if (m_state_levels.back().pg_entailment(*it_fl)) {
+            it_fl = m_goal.erase(it_fl);
+        } else {
+            not_goal = true;
+            ++it_fl;
+        }
+    }
 
+    // End timing for initial goal check and reset other timers
+    if (ArgumentParser::get_instance().get_debug()) {
+        const auto end_pg_goal_ini = std::chrono::system_clock::now();
+        m_clocks.t5 = end_pg_goal_ini - m_clocks.start_clock2;
+        m_clocks.t1 = std::chrono::milliseconds::zero();
+        m_clocks.t2 = std::chrono::milliseconds::zero();
+        m_clocks.t3 = std::chrono::milliseconds::zero();
+        m_clocks.t4 = std::chrono::milliseconds::zero();
+    }
 
-	bool not_goal = false;
-	for (auto it_fl = m_goal.begin(); it_fl != m_goal.end();) {
-		if (m_state_levels.back().pg_entailment(*it_fl)) {
-			it_fl = m_goal.erase(it_fl);
-		} else {
-			not_goal = true;
-			it_fl++;
-		}
-	}
+    if (not_goal) {
+        pg_build(os);
+    } else {
+        set_satisfiable(true);
+        ExitHandler::exit_with_message(
+            ExitHandler::ExitCode::PlanningGraphErrorInitialState,
+            "BUILDING: The initial state is goal. PlanningGraph construction terminated early. You should check if the state is goal before creating the planning graph"
+        );
+    }
 
-	/*\*****START PLANNING GRAPH TIME MEASURE*******
-	auto end_pg_goal_ini = std::chrono::system_clock::now();
-	std::chrono::duration<double> pg_goal_ini_time = end_pg_goal_ini - start_pg_goal_ini;
-	t1 = std::chrono::milliseconds::zero();
-	t2 = std::chrono::milliseconds::zero();
-	t3 = std::chrono::milliseconds::zero();
-	t4 = std::chrono::milliseconds::zero();
-	*\******END PLANNING GRAPH TIME MEASURE********/
-
-	if (not_goal) {
-		//	if (!is_single) {
-		pg_build();
-		//	} else {
-		//		pg_build_initially(goal);
-		//	}
-	} else {
-
-		set_satisfiable(true);
-		std::cerr << "\nBUILDING: The initial state is goal\n";
-		exit(1);
-	}
-
-	/*\*****START PLANNING GRAPH TIME MEASURE*******
-	auto end_pg_build = std::chrono::system_clock::now();
-	std::chrono::duration<double> pg_build_time = end_pg_build - start_pg_build;
-	os << "\n\nGenerated Planning Graph of length " << get_length() << " in " << pg_build_time.count() << " seconds of which:";
-	os << "\nFirst goal check:      " << pg_goal_ini_time.count();
-	os << "\nAction Level creation: " << t1.count();
-	os << "\n\nState Level Creation:  " << t2.count() << " of which:";
-	os << "\nActions Execution:     " << t4.count();
-	os << "\n\nGoals Check:           " << t3.count() << std::endl;
-	*\******END PLANNING GRAPH TIME MEASURE********/
-
-
+    // End timing for planning graph construction
+    if (ArgumentParser::get_instance().get_debug()) {
+        const auto end_pg_build = std::chrono::system_clock::now();
+        std::chrono::duration<double> pg_build_time = end_pg_build - m_clocks.start_clock1;
+        os << "\n\nGenerated Planning Graph of length " << get_length() << " in " << pg_build_time.count()
+           << " seconds of which:";
+        os << "\nFirst goal check:      " << m_clocks.t5.count();
+        os << "\nAction Level creation: " << m_clocks.t1.count();
+        os << "\n\nState Level Creation:  " << m_clocks.t2.count() << " of which:";
+        os << "\nActions Execution:     " << m_clocks.t4.count();
+        os << "\n\nGoals Check:           " << m_clocks.t3.count() << std::endl;
+    }
 }
 
-void PlanningGraph::set_satisfiable(bool sat)
-{
-
-	m_satisfiable = sat;
+void PlanningGraph::set_satisfiable(bool sat) {
+    m_satisfiable = sat;
 }
 
-bool PlanningGraph::is_satisfiable() const
-{
-
-	return m_satisfiable;
+[[nodiscard]]
+bool PlanningGraph::is_satisfiable() const {
+    return m_satisfiable;
 }
 
-void PlanningGraph::pg_build()
-{
-	StateLevel s_level_curr;
-	s_level_curr = m_state_levels.back();
-	ActionLevel a_level_curr;
-	a_level_curr.set_depth(get_length());
+void PlanningGraph::pg_build(std::ostream& os) {
+    const StateLevel s_level_curr = m_state_levels.back();
+    ActionLevel a_level_curr;
+    a_level_curr.set_depth(get_length());
 
-	/*\*****START PLANNING GRAPH TIME MEASURE*******
-	auto start = std::chrono::system_clock::now();
-	*\******END PLANNING GRAPH TIME MEASURE********/
+    // Start timing for action level creation
+    if (ArgumentParser::get_instance().get_debug()) {
+        m_clocks.start_clock1 = std::chrono::system_clock::now();
+    }
 
-	if (m_action_levels.size() > 0) {
-		a_level_curr = m_action_levels.back();
-	}
-	ActionsSet::iterator it_actset;
-	for (it_actset = m_never_executed.begin(); it_actset != m_never_executed.end();) {
-		if (s_level_curr.pg_executable(*it_actset)) {
-			a_level_curr.add_action(*it_actset);
-			it_actset = m_never_executed.erase(it_actset);
-		} else {
-			it_actset++;
-		}
-	}
-	/*\*****START PLANNING GRAPH TIME MEASURE*******
-	auto end = std::chrono::system_clock::now();
-	t1 += end - start;
-	*\******END PLANNING GRAPH TIME MEASURE********/
+    if (!m_action_levels.empty()) {
+        a_level_curr = m_action_levels.back();
+    }
 
+    for (auto it_actset = m_never_executed.begin(); it_actset != m_never_executed.end();) {
+        if (s_level_curr.pg_executable(*it_actset)) {
+            a_level_curr.add_action(*it_actset);
+            it_actset = m_never_executed.erase(it_actset);
+        } else {
+            ++it_actset;
+        }
+    }
 
-	add_action_level(a_level_curr);
-	set_length(get_length() + 1);
+    // End timing for action level creation
+    if (ArgumentParser::get_instance().get_debug()) {
+        m_clocks.t1 += std::chrono::system_clock::now() - m_clocks.start_clock1;
+    }
 
-	//The no-op is done with the copy
-	StateLevel s_level_next;
-	s_level_next = s_level_curr;
-	s_level_next.set_depth(get_length());
-	bool new_state_insertion = false;
+    add_action_level(a_level_curr);
+    set_length(get_length() + 1);
 
-	/*\*****START PLANNING GRAPH TIME MEASURE*******
-	start = std::chrono::system_clock::now();
-	*\******END PLANNING GRAPH TIME MEASURE********/
+    // The no-op is done with the copy
+    StateLevel s_level_next = s_level_curr;
+    s_level_next.set_depth(get_length());
+    bool new_state_insertion = false;
 
-	/*\*****START PLANNING GRAPH TIME MEASURE*******
-	std::cerr << "\n\nPlaning Graph Length: " << get_length();
-	if (get_length() > 0) {
-		std::cerr << "\nAction Level creation: " << t1.count();
-		std::cerr << "\nState Level Creation:  " << t2.count() << " of which:";
-		std::cerr << "\nActions execution:     " << t4.count();
-	}
-	*\******END PLANNING GRAPH TIME MEASURE********/
+    // Start timing for state level creation
+    if (ArgumentParser::get_instance().get_debug()) {
+        m_clocks.start_clock1 = std::chrono::system_clock::now();
+    }
 
+    // Print debug info for planning graph length and timings
+    if (ArgumentParser::get_instance().get_debug()) {
+        os << "\n\nPlaning Graph Length: " << get_length();
+        if (get_length() > 0) {
+            os << "\nAction Level creation: " << m_clocks.t1.count();
+            os << "\nState Level Creation:  " << m_clocks.t2.count() << " of which:";
+            os << "\nActions execution:     " << m_clocks.t4.count();
+        }
+    }
 
-	for (it_actset = a_level_curr.get_actions().begin(); it_actset != a_level_curr.get_actions().end(); it_actset++) {
+    for (const auto& action : a_level_curr.get_actions()) {
+        // Start timing for action execution
+        if (ArgumentParser::get_instance().get_debug()) {
+            m_clocks.start_clock2 = std::chrono::system_clock::now();
+        }
 
-		/*\*****START PLANNING GRAPH TIME MEASURE*******
-		auto startN = std::chrono::system_clock::now();
-		*\******END PLANNING GRAPH TIME MEASURE********/
+        if (s_level_next.compute_successor(action, s_level_curr, m_belief_formula_false)) {
+            new_state_insertion = true;
+        }
 
-		if (s_level_next.compute_successor(*it_actset, s_level_curr, m_belief_formula_false)) {
-			new_state_insertion = true;
-		}
-		/*\*****START PLANNING GRAPH TIME MEASURE*******
-		auto endN = std::chrono::system_clock::now();
-		t4 += endN - startN;
-		*\******END PLANNING GRAPH TIME MEASURE********/
-	}
+        // End timing for action execution
+        if (ArgumentParser::get_instance().get_debug()) {
+            m_clocks.t4 += std::chrono::system_clock::now() - m_clocks.start_clock2;
+        }
+    }
 
-	/*\*****START PLANNING GRAPH TIME MEASURE*******
-	end = std::chrono::system_clock::now();
-	t2 += end - start;
-	*\******END PLANNING GRAPH TIME MEASURE********/
+    // End timing for state level creation
+    if (ArgumentParser::get_instance().get_debug()) {
+        m_clocks.t2 += std::chrono::system_clock::now() - m_clocks.start_clock1;
+    }
 
+    add_state_level(s_level_next);
 
-	add_state_level(s_level_next);
+    bool not_goal = false;
 
-	bool not_goal = false;
+    // Start timing for goal check
+    if (ArgumentParser::get_instance().get_debug()) {
+        m_clocks.start_clock1 = std::chrono::system_clock::now();
+    }
 
-	/*\*****START PLANNING GRAPH TIME MEASURE*******
-	start = std::chrono::system_clock::now();
-	*\******END PLANNING GRAPH TIME MEASURE********/
+    // Remove each subgoal already satisfied: it will always be. We just need to check it once
+    for (auto it_fl = m_goal.begin(); it_fl != m_goal.end();) {
+        if (s_level_next.pg_entailment(*it_fl)) {
+            it_fl = m_goal.erase(it_fl);
+            m_pg_sum += get_length();
+        } else {
+            ++it_fl;
+            not_goal = true;
+        }
+    }
 
+    // End timing for goal check
+    if (ArgumentParser::get_instance().get_debug()) {
+        m_clocks.t3 += std::chrono::system_clock::now() - m_clocks.start_clock1;
+    }
 
-	//Remove each sub goal already satisfied: it will always be and we just need to check it once
-	for (auto it_fl = m_goal.begin(); it_fl != m_goal.end();) {
-
-		if (s_level_next.pg_entailment(*it_fl)) {
-			it_fl = m_goal.erase(it_fl);
-			m_pg_sum += get_length();
-
-		} else {
-			it_fl++;
-			not_goal = true;
-		}
-	}
-	/*\*****START PLANNING GRAPH TIME MEASURE*******
-	end = std::chrono::system_clock::now();
-	t3 += end - start;
-	*\******END PLANNING GRAPH TIME MEASURE********/
-	if (!not_goal) {
-		set_satisfiable(true);
-		return;
-	} else if (!new_state_insertion) {
-		set_satisfiable(false);
-		/*\*****START PLANNING GRAPH TIME MEASURE*******
-		if (get_length() > 5) {
-			print();
-		}
-		*\******END PLANNING GRAPH TIME MEASURE********/
-		return;
-	} else {
-		pg_build();
-	}
+    if (!not_goal) {
+        set_satisfiable(true);
+        return;
+    } else if (!new_state_insertion) {
+        set_satisfiable(false);
+        if (ArgumentParser::get_instance().get_debug()) {
+            if (get_length() > 5) {
+                print(os);
+            }
+        }
+        return;
+    } else {
+        pg_build(os);
+    }
 }
 
-void PlanningGraph::add_state_level(const StateLevel & s_level)
-{
-	m_state_levels.push_back(s_level);
+void PlanningGraph::add_state_level(const StateLevel& s_level) {
+    m_state_levels.push_back(s_level);
 }
 
-void PlanningGraph::add_action_level(const ActionLevel & a_level)
-{
-
-	m_action_levels.push_back(a_level);
+void PlanningGraph::add_action_level(const ActionLevel& a_level) {
+    m_action_levels.push_back(a_level);
 }
 
-void PlanningGraph::set_length(unsigned short length)
-{
-
-	m_pg_length = length;
+void PlanningGraph::set_length(unsigned short length) {
+    m_pg_length = length;
 }
 
-void PlanningGraph::set_sum(unsigned short sum)
-{
-
-	m_pg_sum = sum;
+void PlanningGraph::set_sum(unsigned short sum) {
+    m_pg_sum = sum;
 }
 
-unsigned short PlanningGraph::get_length() const
-{
-	//if (is_satisfiable()) {
-
-	return m_pg_length;
-	//}
-	//std::cerr << "\nThe planning BisGraph could not find any solution. Check for the satisfiability before calling \"get_length\"\n";
-	//exit(1);
-}//construct planning BisGraph and return the level that satisfied the goal.
-
-unsigned short PlanningGraph::get_sum() const
-{
-	//if (is_satisfiable()) {
-
-	return m_pg_sum;
-	//}
-	//std::cerr << "\nThe planning BisGraph could not find any solution. Check for the satisfiability before calling \"get_sum\"\n";
-	//exit(1);
-}//
-
-void PlanningGraph::set_goal(const FormulaeList & goal)
-{
-	m_goal = goal;
+[[nodiscard]]
+unsigned short PlanningGraph::get_length() const {
+    return m_pg_length;
 }
 
-const std::vector< StateLevel > & PlanningGraph::get_state_levels() const
-{
-	return m_state_levels;
+[[nodiscard]]
+unsigned short PlanningGraph::get_sum() const {
+    return m_pg_sum;
 }
 
-const std::vector< ActionLevel > & PlanningGraph::get_action_levels() const
-{
-	return m_action_levels;
+void PlanningGraph::set_goal(const FormulaeList& goal) {
+    m_goal = goal;
 }
 
-const PG_FluentsScoreMap & PlanningGraph::get_f_scores() const
-{
-	return m_state_levels.back().get_f_map();
+[[nodiscard]]
+const std::vector<StateLevel>& PlanningGraph::get_state_levels() const {
+    return m_state_levels;
 }
 
-const PG_BeliefFormulaeMap & PlanningGraph::get_bf_scores() const
-{
-	return m_state_levels.back().get_bf_map();
+[[nodiscard]]
+const std::vector<ActionLevel>& PlanningGraph::get_action_levels() const {
+    return m_action_levels;
 }
 
-const FormulaeList & PlanningGraph::get_goal() const
-{
-	return m_goal;
+[[nodiscard]]
+const PG_FluentsScoreMap& PlanningGraph::get_f_scores() const {
+    return m_state_levels.back().get_f_map();
 }
 
-const ActionsSet & PlanningGraph::get_never_executed() const
-{
-	return m_never_executed;
+[[nodiscard]]
+const PG_BeliefFormulaeMap& PlanningGraph::get_bf_scores() const {
+    return m_state_levels.back().get_bf_map();
 }
 
-const FormulaeSet & PlanningGraph::get_belief_formula_false() const
-{
-	return m_belief_formula_false;
+[[nodiscard]]
+const FormulaeList& PlanningGraph::get_goal() const {
+    return m_goal;
 }
 
-PlanningGraph& PlanningGraph::operator=(const PlanningGraph & to_assign)
-{
-	set_pg(to_assign);
-	return (*this);
+[[nodiscard]]
+const ActionsSet& PlanningGraph::get_never_executed() const {
+    return m_never_executed;
 }
 
-void PlanningGraph::set_pg(const PlanningGraph & to_assign)
-{
-	m_state_levels = to_assign.get_state_levels();
-	m_action_levels = to_assign.get_action_levels();
-	m_pg_length = to_assign.get_length();
-	m_pg_sum = to_assign.get_sum();
-	m_satisfiable = to_assign.is_satisfiable();
-	m_goal = to_assign.get_goal();
-	//	m_bfs_score = to_assign.get_bfs_score();
-	m_never_executed = to_assign.get_never_executed();
-	m_belief_formula_false = to_assign.get_belief_formula_false();
+[[nodiscard]]
+const FormulaeSet& PlanningGraph::get_belief_formula_false() const {
+    return m_belief_formula_false;
 }
 
-void PlanningGraph::print(std::ostream& os) const
-{
+PlanningGraph& PlanningGraph::operator=(const PlanningGraph& to_assign) {
+    set_pg(to_assign);
+    return *this;
+}
 
-	os << "\n\n**********ePLANNING-GRAPH PRINT**********\n";
-	unsigned short count = 0;
-	for (auto it_stlv = m_state_levels.begin(); it_stlv != m_state_levels.end(); ++it_stlv) {
-		auto fluents_score = it_stlv->get_f_map();
-		auto bf_score = it_stlv->get_bf_map();
+void PlanningGraph::set_pg(const PlanningGraph& to_assign) {
+    m_state_levels = to_assign.get_state_levels();
+    m_action_levels = to_assign.get_action_levels();
+    m_pg_length = to_assign.get_length();
+    m_pg_sum = to_assign.get_sum();
+    m_satisfiable = to_assign.is_satisfiable();
+    m_goal = to_assign.get_goal();
+    m_never_executed = to_assign.get_never_executed();
+    m_belief_formula_false = to_assign.get_belief_formula_false();
+}
 
-		os << "\n\t*******State Level " << count << "*******\n";
-		os << "\n\t\t****Fluents****\n\n";
-		for (auto it_pgf = fluents_score.begin(); it_pgf != fluents_score.end(); ++it_pgf) {
-			os << "\t\t\t" << Domain::get_instance().get_grounder().deground_fluent(it_pgf->first) << " -> " << it_pgf->second << std::endl;
-		}
-		os << "\n\t\t****Belief Formulae****\n\n";
-		for (auto it_pgbf = bf_score.begin(); it_pgbf != bf_score.end(); ++it_pgbf) {
-			os << "\t\t\t";
-			it_pgbf->first.print(os);
-			os << " -> " << it_pgbf->second << std::endl;
-		}
-		os << "\n\t*******End State Level " << count << "*******\n";
+void PlanningGraph::print(std::ostream& os) const {
+    os << "\n\n**********ePLANNING-GRAPH PRINT**********\n";
+    unsigned short count = 0;
+    for (auto it_stlv = m_state_levels.begin(); it_stlv != m_state_levels.end(); ++it_stlv) {
+        const auto& fluents_score = it_stlv->get_f_map();
+        const auto& bf_score = it_stlv->get_bf_map();
 
+        os << "\n\t*******State Level " << count << "*******\n";
+        os << "\n\t\t****Fluents****\n\n";
+        for (const auto& [fluent, score] : fluents_score) {
+            os << "\t\t\t" << Domain::get_instance().get_grounder().deground_fluent(fluent) << " -> " << score << std::endl;
+        }
+        os << "\n\t\t****Belief Formulae****\n\n";
+        for (const auto& [bf, score] : bf_score) {
+            os << "\t\t\t";
+            bf.print(os);
+            os << " -> " << score << std::endl;
+        }
+        os << "\n\t*******End State Level " << count << "*******\n";
 
-		if (count < m_action_levels.size()) {
-			os << "\n\t*******Action Level " << count << "*******\n";
-			auto act_set = m_action_levels.at(count).get_actions();
-			for (auto it_acts = act_set.begin(); it_acts != act_set.end(); it_acts++) {
-
-				os << "\n\t\t" << it_acts->get_name() << std::endl;
-			}
-			os << "\n\t*******End Action Level " << count++ << "*******\n";
-		}
-
-	}
-	os << "\n*********END ePLANNING-GRAPH PRINT**********\n";
+        if (count < m_action_levels.size()) {
+            os << "\n\t*******Action Level " << count << "*******\n";
+            const auto& act_set = m_action_levels.at(count).get_actions();
+            for (const auto& act : act_set) {
+                os << "\n\t\t" << act.get_name() << std::endl;
+            }
+            os << "\n\t*******End Action Level " << count++ << "*******\n";
+        }
+    }
+    os << "\n*********END ePLANNING-GRAPH PRINT**********\n";
 }

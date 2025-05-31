@@ -1,6 +1,5 @@
 
 #include <map>
-//#include "planning_graph_template.ipp"
 #include "HeuristicsManager.h"
 
 
