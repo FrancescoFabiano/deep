@@ -24,7 +24,7 @@ public:
      */
     enum class ExitCode : int {
         Success = 0,         ///< Program completed successfully.
-        ExitForCompiler = -1,         ///< Used after calling this class to satisfy the compiler when it does not recognize that the branch will exit.
+        ExitForCompiler = -1,   ///< Used after calling this class to satisfy the compiler when it does not recognize that the branch will exit.
 
         //ArgumentParser Related
         ArgParseError = 100,    ///< Error occurred during argument parsing in \ref ArgumentParser.
@@ -63,6 +63,7 @@ public:
         BeliefFormulaOperatorUnset = 604,     ///< BeliefFormula operator not set properly.
         BeliefFormulaEmptyAgentGroup = 605,    ///< BeliefFormula has empty agent group.
 
+        HeuristicsBadDeclaration = 650, ///< Heuristic type not declared properly in HeuristicsManager.
 
         // KripkeWorldPointer Related
         KripkeWorldPointerNullError = 700,      ///< Null pointer dereference in KripkeWorldPointer.

@@ -54,7 +54,7 @@ public:
      */
     void set(const FormulaeList & goals);
 
-    /** \brief Function that return the number of unsatisifed goals of \ref eState
+    /** \brief Function that return the number of unsatisfied goals of \ref eState
      * 
      * @param[in] eState: The (templatic) state where to check for unsatisfied goals
      * @return: The number of unsatisfied goals in \ref eState.*/

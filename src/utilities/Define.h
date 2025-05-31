@@ -47,17 +47,18 @@ using ReverseActionNamesMap = std::map<ActionId, std::string>;
 ///@}
 
 /**
- * \enum heuristics
+ * \enum Heuristics
  * \brief The possible heuristics applicable to the domain.
  */
-enum class heuristics
+enum class Heuristics
 {
     NO_H, ///< Breadth first search.
     L_PG, ///< Planning BisGraph for State-goal distance.
     S_PG, ///< Planning BisGraph for sum of subgoals distances.
     C_PG, ///< Classical planning BisGraph for belief formulae.
     SUBGOALS, ///< Number of found/missing subgoals.
-    GNN ///< GNN-based heuristic.
+    GNN, ///< GNN-based heuristic.
+    ERROR, ///< Error state, used to detect uninitialized heuristics.
 };
 
 /**

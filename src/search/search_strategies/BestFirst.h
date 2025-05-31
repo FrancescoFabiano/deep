@@ -9,11 +9,11 @@
 
 #pragma once
 #include "states/State.h"
-#include "utilities/ExitHandler.h"
 #include <queue>
 #include <string>
 
-#include "heuristics_manager.h"
+#include "heuristics/HeuristicsManager.h"
+#include "argparse/Configuration.h"
 
 
 /**
@@ -22,6 +22,8 @@
  * \param state1 The first state to compare.
  * \param state2 The second state to compare.
  * \return true if state1 has a higher heuristic value than state2, false otherwise.
+ *
+ * \note Check if this is what we want: Lower Score the better for now and negative excludes the state
  */
 template <StateRepresentation StateRepr>
 struct StateComparator
@@ -43,13 +45,18 @@ public:
     /**
      * \brief Default constructor.
      */
-    BestFirst() = default;
+    BestFirst() {
+        heuristics_manager = HeuristicsManager(Configuration::get_instance().get_heuristic_opt());
+    };
 
     /**
      * \brief Push a state into the search container.
      */
     void push(const State<StateRepr>& s) {
-        heuristics_manager.set_heuristic_value(s);
+        HeuristicsManager.set_heuristic_value(s);
+        if (s.get_heuristic_value() < 0) {
+            return; // Skip states with negative heuristic values.
+        }
         search_space.push(s);
     }
 
@@ -91,5 +98,6 @@ public:
 
 private:
     using StatePriorityQueue = std::priority_queue<State<StateRepr>, std::vector<State<StateRepr>>, StateComparator<State<StateRepr>>>;
-    StatePriorityQueue search_space;
+    StatePriorityQueue search_space; ///< The search space represented as a priority queue of states.
+    HeuristicsManager heuristics_manager; ///< Heuristics manager to compute heuristic values for states.
 };
