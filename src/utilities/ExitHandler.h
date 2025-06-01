@@ -88,6 +88,11 @@ public:
         PortfolioConfigError           = 861,  ///< Internal error in portfolio search.
         PortfolioConfigFieldError      = 862,  ///< Error in reading a field in portfolio configuration file.
 
+        // --- GNN Related (880-889) ---
+        GNNTrainingFileError         = 880,  ///< Error opening GNN training files.
+        GNNMappingError             = 881,  ///< Error in accessing GNN mapped data.
+
+
         // --- State/Action Related (900-919) ---
         StateActionNotExecutableError  = 900,  ///< Action not executable in state where it is supposed to be.
     };

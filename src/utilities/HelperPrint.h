@@ -123,9 +123,24 @@ public:
      * \brief Print a KripkeState in DOT format for graph visualization.
      * \param kstate The KripkeState to print.
      * \param os The output stream to print to.
-     * \param minimal A flag indicating whether to print minimal information for the dataset generation for GNN heuristics training.
      */
-    void print_dot_format(const KripkeState &kstate, std::ostream &os, bool minimal) const;
+    void print_dot_format(const KripkeState &kstate, std::ostream &os) const;
+
+    /**
+     * \brief Print a KripkeState in format for training the GNN.
+     * \param kstate The KripkeState to print.
+     * \param os The output stream to print to.
+     */
+    void print_dataset_format(const KripkeState &kstate, std::ostream &os) const;
+
+
+    /**
+     * \brief Adjusts the world ID with respect to the number of agents.
+     * \param num The original world ID.
+     * \return The adjusted world ID as a string.
+     */
+    static std::string adjust_id_wrt_agents(int num);
+
 
 private:
 

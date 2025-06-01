@@ -56,10 +56,10 @@ public:
     [[nodiscard]] bool get_dataset_mode() const noexcept;
 
     /**
-     * \brief Retrieves the dataset size.
-     * \return The dataset size.
+     * \brief Retrieves the max depth at which we want to explore the tree.
+     * \return The max dataset depth.
      */
-    [[nodiscard]] int get_dataset_size() const noexcept;
+    [[nodiscard]] int get_dataset_depth() const noexcept;
 
     /**
      * \brief Checks if the generated plan should be executed.
@@ -98,6 +98,19 @@ public:
     [[nodiscard]] bool get_log_enabled() const noexcept;
 
     /**
+     * \brief Checks if mapped (compact) node labels are used in dataset generation.
+     * \return true if mapped node labels are used, false if hashed node labels are used.
+     */
+    [[nodiscard]] bool get_dataset_mapped() const noexcept;
+
+    /**
+     * \brief Checks if both mapped and hashed node labels should be used in dataset generation.
+     * \return true if both mapped and hashed node labels are used, false otherwise.
+     */
+    [[nodiscard]] bool get_dataset_both() const noexcept;
+
+
+    /**
      * \brief Prints the usage of the application (command-line arguments).
      */
     void print_usage() const;
@@ -133,6 +146,8 @@ private:
     bool m_check_visited = false;  ///< Flag to check for visited states.
     bool m_dataset_mode = false;  ///< Flag to indicate dataset mode.
     int m_dataset_depth = 10;     ///< Maximum depth for dataset generation.
+    bool m_dataset_mapped = false;  ///< Flag for using mapped (compact) node labels in dataset generation. If false we use hashed node labels.
+    bool m_dataset_both = false;  ///< Flag to indicate if both mapped and hashed node labels should be used in dataset generation.
     std::string m_search_strategy = "BFS"; ///< Search strategy (BFS by default).
     std::string m_heuristic_opt = "SUBGOALS";  ///< Heuristic type (SUBGOALS by default).
     bool m_exec_plan = false;  ///< Flag to indicate if the plan should be executed.

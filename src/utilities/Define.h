@@ -12,6 +12,16 @@
 #include "VectorBisWrapper.h"
 
 /**
+ * \struct OutputPaths
+ * \brief Contains static constants for commonly used output and log folder paths.
+ */
+struct OutputPaths {
+    static inline const std::string OUTPUT_FOLDER = "out";  ///< Path to the output folder.
+    static inline const std::string GNN_OUTPUT_FOLDER = OUTPUT_FOLDER + "/GNN";  ///< Path to the GNN output folder.
+    static inline const std::string LOGS_FOLDER = "logs";   ///< Path to the log folder.
+};
+
+/**
  * \def NEGATION_SYMBOL
  * \brief The negation symbol to negate a fluent.
  */

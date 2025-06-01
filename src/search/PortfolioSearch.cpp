@@ -34,7 +34,7 @@ bool PortfolioSearch::run_portfolio_search( std::ostream & os, int user_threads,
     const auto& user_config = Configuration::get_instance();
 
     // --- Measure initial state build time ---
-    os << "Building intial state ...\n";
+    os << "Building initial state ...\n";
     auto initial_build_start = Clock::now();
     State<KripkeState> initial_state;
     initial_state.build_initial();

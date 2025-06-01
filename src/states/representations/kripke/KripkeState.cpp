@@ -126,6 +126,10 @@ void KripkeState::print_dot_format(std::ostream& os) const
     HelperPrint::get_instance().print_dot_format(*this,os);
 }
 
+void KripkeState::print_dataset_format(std::ostream &os) const {
+    HelperPrint::get_instance().print_dataset_format(*this,os);
+}
+
 // --- Structure Building ---
 
 void KripkeState::add_world(const KripkeWorld& to_add) {

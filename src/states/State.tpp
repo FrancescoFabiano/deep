@@ -167,3 +167,8 @@ void State<T>::print_dot_format(std::ostream& os) const
 {
     m_representation.print_dot_format(os);
 }
+
+template<StateRepresentation T>
+void State<T>::print_dataset_format(std::ostream &os) const {
+        m_representation.print_dataset_format(os);
+}

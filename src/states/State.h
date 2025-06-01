@@ -71,6 +71,7 @@ concept StateRepresentation = requires(T rep, const Fluent& f, const FluentsSet&
     ///@{
     { std::as_const(rep).print(os) };
     { std::as_const(rep).print_dot_format(os) };
+    { std::as_const(rep).print_dataset_format(os) };
     ///@}
 
     /**
@@ -244,6 +245,11 @@ public:
      * \param os The output stream to print to.
      */
     void print_dot_format(std::ostream& os) const;
+
+    /** \brief Function that prints the information of *this* for the generation of the dataset used to train the GNN.
+    * \param os The output stream to print to.
+    */
+    void print_dataset_format(std::ostream& os) const;
 
 private:
     /** \brief The type of state m_representation.
