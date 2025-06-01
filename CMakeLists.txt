@@ -33,6 +33,7 @@ include_directories(
 set(TEMPLATIC_HEADERS
         src/bisimulation/VectorBisWrapper.h
         src/heuristics/HeuristicsManager.h
+        src/heuristics/heuristics_strategies/GraphNN.h
         src/heuristics/heuristics_strategies/SatisfiedGoals.h
         src/heuristics/heuristics_strategies/EpistemicPlanningGraph/StateLevel.h
         src/heuristics/heuristics_strategies/EpistemicPlanningGraph/PlanningGraph.h

@@ -12,7 +12,7 @@
 #include "ArgumentParser.h"
 #include "Domain.h"
 #include "FormulaHelper.h"
-#include "GraphNN.h"
+#include "../heuristics/heuristics_strategies/GraphNN.h"
 #include "KripkeState.h"
 
 /**
