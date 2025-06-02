@@ -88,11 +88,16 @@ public:
         PortfolioConfigError           = 861,  ///< Internal error in portfolio search.
         PortfolioConfigFieldError      = 862,  ///< Error in reading a field in portfolio configuration file.
 
-        // --- GNN Related (880-889) ---
+        // --- NN Related (880-889) ---
         NNTrainingFileError           = 880,  ///< Error opening NN training files.
         NNMappingError                = 881,  ///< Error in accessing NN mapped data.
         NNInstanceError               = 882,  ///< NN singleton instance error.
         NNDirectoryCreationError      = 883,  ///< Error creating NN output directories.
+
+        // --- GNN Related (890-899) ---
+        GNNInstanceError              = 890,  ///< Error in creating GNN training files.
+        GNNFileError                  = 891,  ///< Error in accessing a file.
+        GNNScriptError                = 892,  ///< Erroro in runnign the GNN script file.
 
         // --- State/Action Related (900-919) ---
         StateActionNotExecutableError  = 900,  ///< Action not executable in state where it is supposed to be.
