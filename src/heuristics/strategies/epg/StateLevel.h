@@ -29,7 +29,8 @@ using PG_BeliefFormulaeMap = std::map<BeliefFormula, short>;
 /**
  * \brief Represents a level in the epistemic planning graph containing state information.
  */
-class StateLevel {
+class StateLevel
+{
 public:
     /// \name Constructors
     ///@{
@@ -70,7 +71,7 @@ public:
      * \param goals The list of goal formulae.
      * \param eState The epistemic state.
      */
-    template<StateRepresentation T>
+    template <StateRepresentation T>
     void initialize(const FormulaeList& goals, State<T>& eState)
     {
         build_init_f_map(eState);
@@ -272,10 +273,11 @@ private:
      * \param fl The list of belief formulas.
      * \param eState The epistemic state.
      */
-    template<StateRepresentation T>
+    template <StateRepresentation T>
     void insert_subformula_bf(const FormulaeList& fl, State<T>& eState)
     {
-        for (const auto& formula : fl) {
+        for (const auto& formula : fl)
+        {
             insert_subformula_bf(formula, eState);
         }
     }
@@ -286,57 +288,63 @@ private:
      * \param bf The belief formula.
      * \param eState The epistemic state.
      */
-    template<StateRepresentation T>
+    template <StateRepresentation T>
     void insert_subformula_bf(const BeliefFormula& bf, State<T>& eState)
     {
         short value = eState.entails(bf) ? 0 : -1;
 
-        switch (bf.get_formula_type()) {
-            case BeliefFormulaType::BELIEF_FORMULA:
-                if (m_pg_bf_map.emplace(bf, value).second) {
+        switch (bf.get_formula_type())
+        {
+        case BeliefFormulaType::BELIEF_FORMULA:
+            if (m_pg_bf_map.emplace(bf, value).second)
+            {
+                insert_subformula_bf(bf.get_bf1(), eState);
+            }
+            break;
+
+        case BeliefFormulaType::PROPOSITIONAL_FORMULA:
+            switch (bf.get_operator())
+            {
+            case BeliefFormulaOperator::BF_NOT:
+                if (m_pg_bf_map.emplace(bf, value).second)
+                {
                     insert_subformula_bf(bf.get_bf1(), eState);
                 }
                 break;
-
-            case BeliefFormulaType::PROPOSITIONAL_FORMULA:
-                switch (bf.get_operator()) {
-                    case BeliefFormulaOperator::BF_NOT:
-                        if (m_pg_bf_map.emplace(bf, value).second) {
-                            insert_subformula_bf(bf.get_bf1(), eState);
-                        }
-                        break;
-                    case BeliefFormulaOperator::BF_OR:
-                    case BeliefFormulaOperator::BF_AND:
-                        if (m_pg_bf_map.emplace(bf, value).second) {
-                            insert_subformula_bf(bf.get_bf1(), eState);
-                            insert_subformula_bf(bf.get_bf2(), eState);
-                        }
-                        break;
-                    case BeliefFormulaOperator::BF_FAIL:
-                    default:
-                        ExitHandler::exit_with_message(
-                            ExitHandler::ExitCode::BeliefFormulaOperatorUnset,
-                            "Error: Unexpected operator in PROPOSITIONAL_FORMULA while generating subformulas for the Planning Graph."
-                        );
-                }
-                break;
-
-            case BeliefFormulaType::C_FORMULA:
-                if (m_pg_bf_map.emplace(bf, value).second) {
+            case BeliefFormulaOperator::BF_OR:
+            case BeliefFormulaOperator::BF_AND:
+                if (m_pg_bf_map.emplace(bf, value).second)
+                {
                     insert_subformula_bf(bf.get_bf1(), eState);
+                    insert_subformula_bf(bf.get_bf2(), eState);
                 }
                 break;
-
-            case BeliefFormulaType::FLUENT_FORMULA:
-            case BeliefFormulaType::BF_EMPTY:
-                break;
-
-            case BeliefFormulaType::BF_TYPE_FAIL:
+            case BeliefFormulaOperator::BF_FAIL:
             default:
                 ExitHandler::exit_with_message(
-                    ExitHandler::ExitCode::BeliefFormulaTypeUnset,
-                    "Error: Unexpected formula type in insert_subformula_bf while generating subformulas for the Planning Graph."
+                    ExitHandler::ExitCode::BeliefFormulaOperatorUnset,
+                    "Error: Unexpected operator in PROPOSITIONAL_FORMULA while generating subformulas for the Planning Graph."
                 );
+            }
+            break;
+
+        case BeliefFormulaType::C_FORMULA:
+            if (m_pg_bf_map.emplace(bf, value).second)
+            {
+                insert_subformula_bf(bf.get_bf1(), eState);
+            }
+            break;
+
+        case BeliefFormulaType::FLUENT_FORMULA:
+        case BeliefFormulaType::BF_EMPTY:
+            break;
+
+        case BeliefFormulaType::BF_TYPE_FAIL:
+        default:
+            ExitHandler::exit_with_message(
+                ExitHandler::ExitCode::BeliefFormulaTypeUnset,
+                "Error: Unexpected formula type in insert_subformula_bf while generating subformulas for the Planning Graph."
+            );
         }
     }
 
@@ -388,5 +396,6 @@ private:
      * \param vis_cond The visibility condition.
      * \return true if the epistemic effects were applied successfully, false otherwise.
      */
-    bool apply_epistemic_effects(const Fluent& effect, const BeliefFormula& bf, FormulaeSet& fl, const AgentsSet& fully, const AgentsSet& partially, bool& modified_pg, unsigned short vis_cond);
+    bool apply_epistemic_effects(const Fluent& effect, const BeliefFormula& bf, FormulaeSet& fl, const AgentsSet& fully,
+                                 const AgentsSet& partially, bool& modified_pg, unsigned short vis_cond);
 };

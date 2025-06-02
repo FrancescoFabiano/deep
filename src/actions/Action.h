@@ -14,7 +14,8 @@
  * \date May 16, 2025
  * \copyright GNU Public License.
  */
-class Action {
+class Action
+{
 public:
     /// \name Constructors
     ///@{
@@ -100,15 +101,15 @@ public:
 private:
     /// \name Fields
     ///@{
-    std::string m_name;                ///< The name of this action.
-    ActionId m_id;                     ///< The unique id of this action (calculated with grounder).
-    Agent m_executor;                  ///< The agent that executes the action.
-    PropositionType m_type = PropositionType::NOTSET;  ///< The proposition type of this action.
+    std::string m_name; ///< The name of this action.
+    ActionId m_id; ///< The unique id of this action (calculated with grounder).
+    Agent m_executor; ///< The agent that executes the action.
+    PropositionType m_type = PropositionType::NOTSET; ///< The proposition type of this action.
 
-    FormulaeList m_executability;      ///< Executability conditions.
-    ObservabilitiesMap m_fully_observants;    ///< Fully observant agents and their conditions.
-    ObservabilitiesMap m_partially_observants;///< Partially observant agents and their conditions.
-    EffectsMap m_effects;             ///< Effects and their conditions.
+    FormulaeList m_executability; ///< Executability conditions.
+    ObservabilitiesMap m_fully_observants; ///< Fully observant agents and their conditions.
+    ObservabilitiesMap m_partially_observants; ///< Partially observant agents and their conditions.
+    EffectsMap m_effects; ///< Effects and their conditions.
     ///@}
 
     /// \name Private Methods

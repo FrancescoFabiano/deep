@@ -12,9 +12,11 @@
 #include <algorithm>
 
 #include "ArgumentParser.h"
+#include "ExitHandler.h"
 
 // Helper to trim trailing and leading spaces
-static std::string trim(const std::string& s) {
+static std::string trim(const std::string& s)
+{
     const auto start = s.find_first_not_of(" \t\r\n");
     const auto end = s.find_last_not_of(" \t\r\n");
     if (start == std::string::npos) return "";
@@ -22,7 +24,8 @@ static std::string trim(const std::string& s) {
 }
 
 // Helper to convert string to bool
-static bool str_to_bool(const std::string& s) {
+static bool str_to_bool(const std::string& s)
+{
     std::string val = trim(s);
     std::ranges::transform(val, val.begin(), ::tolower);
     return (val == "1" || val == "true" || val == "yes" || val == "on");
@@ -32,8 +35,10 @@ static bool str_to_bool(const std::string& s) {
 // Static thread-local instance pointer
 thread_local Configuration* Configuration::instance = nullptr;
 
-void Configuration::create_instance() {
-    if (!instance) {
+void Configuration::create_instance()
+{
+    if (!instance)
+    {
         instance = new Configuration();
 
         // Copy values from ArgumentParser singleton using setters
@@ -43,12 +48,13 @@ void Configuration::create_instance() {
         instance->set_check_visited(parser.get_check_visited());
         instance->set_search_strategy(parser.get_search_strategy());
         instance->set_heuristic_opt(parser.get_heuristic());
-        instance->set_log_file_path(parser.get_log_file_path());
     }
 }
 
-Configuration& Configuration::get_instance() {
-    if (!instance) {
+Configuration& Configuration::get_instance()
+{
+    if (!instance)
+    {
         create_instance();
     }
     return *instance;
@@ -63,6 +69,7 @@ void Configuration::set_bisimulation(const std::string& val) { m_bisimulation = 
 void Configuration::set_bisimulation(const bool val) { m_bisimulation = val; }
 
 const std::string& Configuration::get_bisimulation_type() const noexcept { return m_bisimulation_type; }
+
 void Configuration::set_bisimulation_type(const std::string& val)
 {
     m_bisimulation_type = trim(val);
@@ -82,18 +89,15 @@ void Configuration::set_search_strategy(const std::string& val) { m_search_strat
 const std::string& Configuration::get_heuristic_opt() const noexcept { return m_heuristic_opt; }
 void Configuration::set_heuristic_opt(const std::string& val) { m_heuristic_opt = trim(val); }
 
-const std::string& Configuration::get_log_file_path() const noexcept { return m_log_file_path; }
-void Configuration::set_log_file_path(const std::string& val) { m_log_file_path = trim(val); }
-
 
 // In Configuration.cpp
-void Configuration::set_field_by_name(const std::string& field, const std::string& value) {
+void Configuration::set_field_by_name(const std::string& field, const std::string& value)
+{
     if (field == "bis") set_bisimulation(value);
     else if (field == "bis_type") set_bisimulation_type(value);
     else if (field == "check_visited") set_check_visited(value);
     else if (field == "search_strategy") set_search_strategy(value);
     else if (field == "heuristic_opt") set_heuristic_opt(value);
-    else if (field == "log_file_path") set_log_file_path(value);
     else
     {
         ExitHandler::exit_with_message(
@@ -105,7 +109,8 @@ void Configuration::set_field_by_name(const std::string& field, const std::strin
     // Optionally handle unknown fields
 }
 
-void Configuration::print(std::ostream& os) const {
+void Configuration::print(std::ostream& os) const
+{
     os << "Configuration Parameters:\n";
     os << "  bisimulation: " << std::boolalpha << m_bisimulation << '\n';
     os << "  bisimulation_type: " << m_bisimulation_type << '\n';

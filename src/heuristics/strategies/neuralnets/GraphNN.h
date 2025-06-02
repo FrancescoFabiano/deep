@@ -1,9 +1,6 @@
 #pragma once
 #include <string>
-#include <memory>
-#include <ostream>
 #include "State.h"
-#include "TrainingDataset.h"
 
 /**
  * \class GraphNN

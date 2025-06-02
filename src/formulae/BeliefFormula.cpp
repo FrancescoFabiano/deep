@@ -202,10 +202,9 @@ void BeliefFormula::set_bf2(const BeliefFormulaParsed & to_set)
     m_bf2 = std::make_unique<BeliefFormula>(to_set);
 }
 
-void BeliefFormula::print(std::ostream& os) const
+void BeliefFormula::print() const
 {
-    HelperPrint::get_instance().print_belief_formula(*this,os);
-    os << std::endl;
+    HelperPrint::get_instance().print_belief_formula(*this);
 }
 
 bool BeliefFormula::operator==(const BeliefFormula & to_compare) const // NOLINT(*-no-recursion)

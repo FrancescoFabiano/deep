@@ -11,28 +11,34 @@
  *
  * @tparam T Element type.
  */
-template<typename T>
-class VectorBisWrapper {
-private:
-    std::vector<T> data;
-
+template <typename T>
+class VectorBisWrapper
+{
 public:
     // Constructors
     VectorBisWrapper() = default;
 
     VectorBisWrapper(std::initializer_list<T> init)
-        : data(init) {}
+        : data(init)
+    {
+    }
 
     explicit VectorBisWrapper(size_t n)
-        : data(n) {}
+        : data(n)
+    {
+    }
 
     explicit VectorBisWrapper(size_t n, const T& value)
-        : data(n, value) {}
+        : data(n, value)
+    {
+    }
 
     // Bounds-checked element access
     // Maybe modify bounds to allow for bisimulation
-    T& operator[](size_t index) {
-        if (index >= data.size()) {
+    T& operator[](size_t index)
+    {
+        if (index >= data.size())
+        {
             ExitHandler::exit_with_message(
                 ExitHandler::ExitCode::BisimulationWrapperOutOfBounds,
                 "Index " + std::to_string(index) + " is out of bounds in one of the bisimulation vectors"
@@ -41,8 +47,10 @@ public:
         return data[index];
     }
 
-    const T& operator[](size_t index) const {
-        if (index >= data.size()) {
+    const T& operator[](size_t index) const
+    {
+        if (index >= data.size())
+        {
             ExitHandler::exit_with_message(
                 ExitHandler::ExitCode::BisimulationWrapperOutOfBounds,
                 "Index " + std::to_string(index) + " is out of bounds in one of the bisimulation vectors"
@@ -81,4 +89,7 @@ public:
     // Underlying vector access (if needed)
     std::vector<T>& raw() { return data; }
     const std::vector<T>& raw() const { return data; }
+
+private:
+    std::vector<T> data;
 };

@@ -16,7 +16,8 @@
 /**
  * \brief Represents a level in the planning graph containing executable actions.
  */
-class ActionLevel {
+class ActionLevel
+{
 public:
     /// \name Constructors
     ///@{
@@ -90,9 +91,8 @@ public:
 
     /**
      * \brief Prints this ActionLevel to the given output stream.
-     * \param os The output stream to print to.
      */
-    void print(std::ostream& os) const;
+    void print() const;
 
 private:
     /// \brief The set of executable actions at this level.

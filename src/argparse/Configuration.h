@@ -17,7 +17,8 @@
 #include <ostream>
 
 
-class Configuration {
+class Configuration
+{
 public:
     /**
      * \brief Creates the singleton instance of Configuration by copying values from ArgumentParser.
@@ -109,16 +110,6 @@ public:
      * \param val The heuristic option string.
      */
     void set_heuristic_opt(const std::string& val);
-    /**
-     * \brief Gets the log_file_path.
-     * \return The log_file_path string.
-     */
-    [[nodiscard]] const std::string& get_log_file_path() const noexcept;
-    /**
-     * \brief Sets the log_file_path.
-     * \param val The log_file_path  string.
-     */
-    void set_log_file_path(const std::string& val);
 
     /**
     * \brief Sets the field of the class to value
@@ -149,7 +140,6 @@ private:
     bool m_check_visited = false; ///< Visited state checking flag.
     std::string m_search_strategy = "BFS"; ///< Search strategy string.
     std::string m_heuristic_opt = "SUBGOALS"; ///< Heuristic option string.
-    std::string m_log_file_path; ///< The log file path if logging is enabled. Here to allow multiple files for threads management.
 
     /**
      * \brief Sets the bisimulation type as a boolean.

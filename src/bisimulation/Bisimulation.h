@@ -68,15 +68,14 @@ public:
     /**
      * \brief Visualizes the automaton.
      * \param[in] A The automaton to visualize.
-     * \param[in] os The output stream to print the automaton.
      */
-    static void print(const BisAutomata* A, std::ostream& os);
+    static void print(const BisAutomata* A);
 
     /**
      * @brief Function that minimizes the KripkeState using bisimulation.
      * @param[out] kstate The input Kripke state to minimize.
      */
-    static void calc_min_bisimilar(KripkeState &kstate);
+    static void calc_min_bisimilar(KripkeState& kstate);
     ///@}
 
 private:
@@ -87,9 +86,9 @@ private:
     BisIndexType freeQBlock = 0, QBlockLimit = 0;
     BisIndexType freeXBlock = 0;
 
-    VectorBisWrapper<BisGraph> G {BisPreAllocatedIndex};
-    VectorBisWrapper<Bis_qPartition> Q {BisPreAllocatedIndex};
-    VectorBisWrapper<Bis_xPartition> X {BisPreAllocatedIndex};
+    VectorBisWrapper<BisGraph> G{BisPreAllocatedIndex};
+    VectorBisWrapper<Bis_qPartition> Q{BisPreAllocatedIndex};
+    VectorBisWrapper<Bis_xPartition> X{BisPreAllocatedIndex};
 
     VectorBisWrapper<std::shared_ptr<BisAdjList_1>> borderEdges{};
     int t = 0; // timestamp
@@ -182,7 +181,7 @@ private:
      * \brief Updates the automaton with the minimized structure.
      * \param[in] A The automaton to update.
      */
-    void GetMinimizedAutoma(BisAutomata & A);
+    void GetMinimizedAutoma(BisAutomata& A);
 
     /**
      * \brief Marks nodes to be deleted.
@@ -225,8 +224,8 @@ private:
      * @param kstate The input Kripke state from which the automaton is constructed.
      * @return BisAutomata The resulting bisimulation automaton.
      */
-    static BisAutomata kstate_to_automaton(VectorBisWrapper<KripkeWorldPointer> &pworld_vec,
-                                    const std::map<Agent, BisLabel> &agent_to_label, const KripkeState &kstate) ;
+    static BisAutomata kstate_to_automaton(VectorBisWrapper<KripkeWorldPointer>& pworld_vec,
+                                           const std::map<Agent, BisLabel>& agent_to_label, const KripkeState& kstate);
 
 
     /**
@@ -238,6 +237,6 @@ private:
      * @param label_to_agent Conversion to transform the edges of the automaton into edges labelled with agents.
      * @param[out] kstate The input Kripke state in the automaton is constructed.
      */
-    static void automaton_to_kstate(const BisAutomata &a, const VectorBisWrapper<KripkeWorldPointer> &world_vec,
-                                    const std::map<BisLabel, Agent> &label_to_agent, KripkeState &kstate);
+    static void automaton_to_kstate(const BisAutomata& a, const VectorBisWrapper<KripkeWorldPointer>& world_vec,
+                                    const std::map<BisLabel, Agent>& label_to_agent, KripkeState& kstate);
 };

@@ -25,56 +25,68 @@ bool InitialStateInformation::check_restriction(const BeliefFormula& to_check)
      * - C(-B(i,*phi*) \ref BeliefFormulaOperator::BF_AND -B(i,-*phi*)) -> only edges conditions.*/
     bool ret = false;
     auto ff = FluentFormula(); //Useless
-    switch (to_check.get_formula_type()) {
-        case BeliefFormulaType::PROPOSITIONAL_FORMULA:
-            if (to_check.get_operator() != BeliefFormulaOperator::BF_AND) {
-                ret = false;
-            } else {
-                ret = check_restriction(to_check.get_bf1()) && check_restriction(to_check.get_bf2());
-            }
-            break;
-        case BeliefFormulaType::FLUENT_FORMULA:
-            ret = true;
-            break;
-        case BeliefFormulaType::C_FORMULA: {
-            switch (const auto& tmp = to_check.get_bf1(); tmp.get_formula_type()) {
-                case BeliefFormulaType::FLUENT_FORMULA:
-                    ret = true;
-                    break;
-                case BeliefFormulaType::BELIEF_FORMULA:
-                    ret = (tmp.get_bf1().get_formula_type() == BeliefFormulaType::FLUENT_FORMULA);
-                    break;
-                case BeliefFormulaType::PROPOSITIONAL_FORMULA:
-                    if (tmp.get_operator() == BeliefFormulaOperator::BF_OR) {
-                        ret = FormulaHelper::check_Bff_notBff(tmp.get_bf1(), tmp.get_bf2(), ff);
-                    } else if (tmp.get_operator() == BeliefFormulaOperator::BF_AND) {
-                        const auto& tmp_nested1 = tmp.get_bf1();
-                        const auto& tmp_nested2 = tmp.get_bf2();
-                        if (tmp_nested1.get_formula_type() == BeliefFormulaType::PROPOSITIONAL_FORMULA &&
-                            tmp_nested2.get_formula_type() == BeliefFormulaType::PROPOSITIONAL_FORMULA &&
-                            tmp_nested1.get_operator() == BeliefFormulaOperator::BF_NOT &&
-                            tmp_nested2.get_operator() == BeliefFormulaOperator::BF_NOT) {
-                            ret = FormulaHelper::check_Bff_notBff(tmp_nested1.get_bf1(), tmp_nested2.get_bf1(), ff);
-                        }
-                    } else {
-                        ret = false;
+    switch (to_check.get_formula_type())
+    {
+    case BeliefFormulaType::PROPOSITIONAL_FORMULA:
+        if (to_check.get_operator() != BeliefFormulaOperator::BF_AND)
+        {
+            ret = false;
+        }
+        else
+        {
+            ret = check_restriction(to_check.get_bf1()) && check_restriction(to_check.get_bf2());
+        }
+        break;
+    case BeliefFormulaType::FLUENT_FORMULA:
+        ret = true;
+        break;
+    case BeliefFormulaType::C_FORMULA:
+        {
+            switch (const auto& tmp = to_check.get_bf1(); tmp.get_formula_type())
+            {
+            case BeliefFormulaType::FLUENT_FORMULA:
+                ret = true;
+                break;
+            case BeliefFormulaType::BELIEF_FORMULA:
+                ret = (tmp.get_bf1().get_formula_type() == BeliefFormulaType::FLUENT_FORMULA);
+                break;
+            case BeliefFormulaType::PROPOSITIONAL_FORMULA:
+                if (tmp.get_operator() == BeliefFormulaOperator::BF_OR)
+                {
+                    ret = FormulaHelper::check_Bff_notBff(tmp.get_bf1(), tmp.get_bf2(), ff);
+                }
+                else if (tmp.get_operator() == BeliefFormulaOperator::BF_AND)
+                {
+                    const auto& tmp_nested1 = tmp.get_bf1();
+                    const auto& tmp_nested2 = tmp.get_bf2();
+                    if (tmp_nested1.get_formula_type() == BeliefFormulaType::PROPOSITIONAL_FORMULA &&
+                        tmp_nested2.get_formula_type() == BeliefFormulaType::PROPOSITIONAL_FORMULA &&
+                        tmp_nested1.get_operator() == BeliefFormulaOperator::BF_NOT &&
+                        tmp_nested2.get_operator() == BeliefFormulaOperator::BF_NOT)
+                    {
+                        ret = FormulaHelper::check_Bff_notBff(tmp_nested1.get_bf1(), tmp_nested2.get_bf1(), ff);
                     }
-                    break;
-                case BeliefFormulaType::BF_EMPTY:
-                    ret = true;
-                    break;
-                default:
+                }
+                else
+                {
                     ret = false;
-                    break;
+                }
+                break;
+            case BeliefFormulaType::BF_EMPTY:
+                ret = true;
+                break;
+            default:
+                ret = false;
+                break;
             }
             break;
         }
-        case BeliefFormulaType::BF_EMPTY:
-            ret = true;
-            break;
-        default:
-            ret = false;
-            break;
+    case BeliefFormulaType::BF_EMPTY:
+        ret = true;
+        break;
+    default:
+        ret = false;
+        break;
     }
     return ret;
 }
@@ -88,12 +100,18 @@ void InitialStateInformation::add_pointed_condition(const FluentFormula& to_add)
 void InitialStateInformation::add_initial_condition(const BeliefFormula& to_add)
 {
     // Keep only bf_1, bf_2 and not (bf_1 AND bf_2)
-    if (to_add.get_formula_type() == BeliefFormulaType::PROPOSITIONAL_FORMULA && to_add.get_operator() == BeliefFormulaOperator::BF_AND) {
+    if (to_add.get_formula_type() == BeliefFormulaType::PROPOSITIONAL_FORMULA && to_add.get_operator() ==
+        BeliefFormulaOperator::BF_AND)
+    {
         add_initial_condition(to_add.get_bf1());
         add_initial_condition(to_add.get_bf2());
-    } else if (check_restriction(to_add)) {
+    }
+    else if (check_restriction(to_add))
+    {
         m_bf_initial_conditions.push_back(to_add);
-    } else {
+    }
+    else
+    {
         ExitHandler::exit_with_message(
             ExitHandler::ExitCode::DomainInitialStateRestrictionError,
             "ERROR: The initial state does not respect the required conditions."
@@ -120,47 +138,56 @@ void InitialStateInformation::set_ff_forS5()
 {
     // The consistency with S5 is already checked
     FluentFormula ret;
-    for (const auto& bf : m_bf_initial_conditions) {
-        switch (bf.get_formula_type()) {
-            case BeliefFormulaType::FLUENT_FORMULA:
-                ret = FormulaHelper::and_ff(ret, bf.get_fluent_formula());
-                break;
-            case BeliefFormulaType::C_FORMULA: {
-                switch (const auto tmp = bf.get_bf1(); tmp.get_formula_type()) {
-                    case BeliefFormulaType::FLUENT_FORMULA: {
+    for (const auto& bf : m_bf_initial_conditions)
+    {
+        switch (bf.get_formula_type())
+        {
+        case BeliefFormulaType::FLUENT_FORMULA:
+            ret = FormulaHelper::and_ff(ret, bf.get_fluent_formula());
+            break;
+        case BeliefFormulaType::C_FORMULA:
+            {
+                switch (const auto tmp = bf.get_bf1(); tmp.get_formula_type())
+                {
+                case BeliefFormulaType::FLUENT_FORMULA:
+                    {
                         ret = FormulaHelper::and_ff(ret, tmp.get_fluent_formula());
-                        if (const auto& tmp_ff = tmp.get_fluent_formula(); tmp_ff.size() == 1) {
+                        if (const auto& tmp_ff = tmp.get_fluent_formula(); tmp_ff.size() == 1)
+                        {
                             const auto& tmp_fs = *tmp_ff.begin();
                             for (const auto& f : tmp_fs)
                                 m_initially_known_fluents.insert(f);
                         }
                         break;
                     }
-                    case BeliefFormulaType::BELIEF_FORMULA:
-                        if (tmp.get_bf1().get_formula_type() == BeliefFormulaType::FLUENT_FORMULA) {
-                            ret = FormulaHelper::and_ff(ret, tmp.get_bf1().get_fluent_formula());
-                        } else {
-                            ExitHandler::exit_with_message(
-                                ExitHandler::ExitCode::DomainInitialStateTypeError,
-                                "ERROR: Invalid type in initial formulae (FIRST)."
-                            );
-                        }
-                        break;
-                    case BeliefFormulaType::PROPOSITIONAL_FORMULA:
-                        break; // Only for edges -- expresses that someone is ignorant - just edges.
-                    default:
+                case BeliefFormulaType::BELIEF_FORMULA:
+                    if (tmp.get_bf1().get_formula_type() == BeliefFormulaType::FLUENT_FORMULA)
+                    {
+                        ret = FormulaHelper::and_ff(ret, tmp.get_bf1().get_fluent_formula());
+                    }
+                    else
+                    {
                         ExitHandler::exit_with_message(
                             ExitHandler::ExitCode::DomainInitialStateTypeError,
-                            "ERROR: Invalid type in initial formulae (SECOND)."
+                            "ERROR: Invalid type in initial formulae (FIRST)."
                         );
+                    }
+                    break;
+                case BeliefFormulaType::PROPOSITIONAL_FORMULA:
+                    break; // Only for edges -- expresses that someone is ignorant - just edges.
+                default:
+                    ExitHandler::exit_with_message(
+                        ExitHandler::ExitCode::DomainInitialStateTypeError,
+                        "ERROR: Invalid type in initial formulae (SECOND)."
+                    );
                 }
                 break;
             }
-            default:
-                ExitHandler::exit_with_message(
-                    ExitHandler::ExitCode::DomainInitialStateTypeError,
-                    "ERROR: Invalid type in initial formulae (THIRD)."
-                );
+        default:
+            ExitHandler::exit_with_message(
+                ExitHandler::ExitCode::DomainInitialStateTypeError,
+                "ERROR: Invalid type in initial formulae (THIRD)."
+            );
         }
     }
     m_ff_forS5 = ret;

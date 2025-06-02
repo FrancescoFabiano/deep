@@ -36,7 +36,7 @@ public:
     ///@{
     /**
      * \brief Sets the goals and their count for this instance.
-     * \param[in] goals The goal description, expanded by the heuristics manager.
+     * \param[in] goals The goal description, expanded by the heuristics' manager.
      */
     void set(const FormulaeList& goals);
     ///@}
@@ -54,13 +54,16 @@ public:
     {
         unsigned short ret = m_goals_number;
 
-        for (const auto& goal : m_goals) {
-            if (eState.entails(goal)) {
+        for (const auto& goal : m_goals)
+        {
+            if (eState.entails(goal))
+            {
                 --ret;
             }
         }
         return ret;
     }
+
     ///@}
 
     /// \name Getters

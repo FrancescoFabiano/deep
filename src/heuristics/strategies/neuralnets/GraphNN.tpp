@@ -9,8 +9,10 @@ template <StateRepresentation StateRepr>
 GraphNN<StateRepr>* GraphNN<StateRepr>::instance = nullptr;
 
 template <StateRepresentation StateRepr>
-GraphNN<StateRepr>& GraphNN<StateRepr>::get_instance() {
-    if (!instance) {
+GraphNN<StateRepr>& GraphNN<StateRepr>::get_instance()
+{
+    if (!instance)
+    {
         ExitHandler::exit_with_message(
             ExitHandler::ExitCode::GNNInstanceError,
             "GraphNN instance not created. Call create_instance() first."
@@ -21,8 +23,10 @@ GraphNN<StateRepr>& GraphNN<StateRepr>::get_instance() {
 }
 
 template <StateRepresentation StateRepr>
-void GraphNN<StateRepr>::create_instance() {
-    if (!instance) {
+void GraphNN<StateRepr>::create_instance()
+{
+    if (!instance)
+    {
         instance = new GraphNN();
     }
 }
@@ -47,7 +51,8 @@ template <StateRepresentation StateRepr>
     // Print the state in the required dataset format to the checking file
     {
         std::ofstream ofs(m_checking_file_path);
-        if (!ofs) {
+        if (!ofs)
+        {
             ExitHandler::exit_with_message(
                 ExitHandler::ExitCode::GNNFileError,
                 "Failed to open file for NN state checking: " + m_checking_file_path
@@ -57,10 +62,12 @@ template <StateRepresentation StateRepr>
     }
 
     // Run the external Python script for NN inference
-    std::string command = "./lib/RL/run_python_script.sh " + m_checking_file_path + " " + std::to_string(state.get_plan_length());
+    std::string command = "./lib/RL/run_python_script.sh " + m_checking_file_path + " " + std::to_string(
+        state.get_plan_length());
     int ret = std::system(command.c_str()); // blocks until script (and Python) finishes
 
-    if (ret != 0) {
+    if (ret != 0)
+    {
         ExitHandler::exit_with_message(
             ExitHandler::ExitCode::GNNScriptError,
             "Using GNN for heuristics failed with exit code: " + std::to_string(ret)
@@ -68,7 +75,8 @@ template <StateRepresentation StateRepr>
     }
 
     std::ifstream infile("prediction.tmp");
-    if (!infile) {
+    if (!infile)
+    {
         ExitHandler::exit_with_message(
             ExitHandler::ExitCode::GNNFileError,
             "Failed to open prediction.tmp"
@@ -79,8 +87,11 @@ template <StateRepresentation StateRepr>
     std::string line;
     unsigned short valueFromFile = 0;
 
-    while (std::getline(infile, line)) {
-        if (line.rfind("VALUE:", 0) == 0) { // line starts with "VALUE:"
+    while (std::getline(infile, line))
+    {
+        if (line.rfind("VALUE:", 0) == 0)
+        {
+            // line starts with "VALUE:"
             std::istringstream iss(line.substr(6)); // Skip "VALUE:"
             iss >> valueFromFile;
             break;
@@ -91,4 +102,3 @@ template <StateRepresentation StateRepr>
 
     return valueFromFile;
 }
-

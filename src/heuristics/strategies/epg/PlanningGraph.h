@@ -22,20 +22,22 @@
 /**
     * \brief Struct to encapsulate timing variables for PlanningGraph timing.
     */
-   struct Clocks {
-       std::chrono::duration<double> t1{0};
-       std::chrono::duration<double> t2{0};
-       std::chrono::duration<double> t3{0};
-       std::chrono::duration<double> t4{0};
-       std::chrono::duration<double> t5{0};
-       std::chrono::system_clock::time_point start_clock1;
-       std::chrono::system_clock::time_point start_clock2;
-   };
+struct Clocks
+{
+    std::chrono::duration<double> t1{0};
+    std::chrono::duration<double> t2{0};
+    std::chrono::duration<double> t3{0};
+    std::chrono::duration<double> t4{0};
+    std::chrono::duration<double> t5{0};
+    std::chrono::system_clock::time_point start_clock1;
+    std::chrono::system_clock::time_point start_clock2;
+};
 
 /**
  * \brief The PlanningGraph class for epistemic planning heuristics.
  */
-class PlanningGraph {
+class PlanningGraph
+{
 public:
     /// \name Constructors
     ///@{
@@ -44,16 +46,14 @@ public:
      * \brief Default constructor. Sets the initial State level and the goal from the domain.
      *
      * This version should be used when a single planning BisGraph is created from the initial State.
-     * \param os The output stream to print debug information.
      */
-    explicit PlanningGraph(std::ostream & os);
+    explicit PlanningGraph();
 
     /**
      * \brief Constructor that sets the initial State level from the domain and the goal as given.
      * \param[in] goal The formula_list that describes the given goals.
-     * \param os The output stream to print debug information.
      */
-    explicit PlanningGraph(const FormulaeList& goal, std::ostream & os);
+    explicit PlanningGraph(const FormulaeList& goal);
 
     /**
      * \brief Copy constructor.
@@ -65,14 +65,14 @@ public:
      * \brief Constructor that sets the initial State level from a given eState and the goal from the domain.
      * \tparam T The state representation type.
      * \param[in] eState The initial eState from which to extract the first State level.
-     * \param os The output stream to print debug information.
      */
-    template<StateRepresentation T>
-    explicit PlanningGraph(State<T>& eState,std::ostream & os) {
+    template <StateRepresentation T>
+    explicit PlanningGraph(State<T>& eState)
+    {
         auto goals = Domain::get_instance().get_goal_description();
         StateLevel pg_init;
         pg_init.initialize(goals, eState);
-        init(goals, pg_init,os);
+        init(goals, pg_init);
     }
 
     /**
@@ -80,23 +80,23 @@ public:
      * \tparam T The state representation type.
      * \param[in] goal The formula_list that describes the given goals.
      * \param[in] eState The initial eState from which to extract the first State level.
-     * \param os The output stream to print debug information.
      */
-    template<StateRepresentation T>
-    PlanningGraph(const FormulaeList& goal, State<T>& eState, std::ostream & os) {
+    template <StateRepresentation T>
+    PlanningGraph(const FormulaeList& goal, State<T>& eState)
+    {
         StateLevel pg_init;
         pg_init.initialize(goal, eState);
-        init(goal, pg_init, os);
+        init(goal, pg_init);
     }
+
     ///@}
 
     /**
      * \brief Initializes the PlanningGraph fields.
      * \param[in] goal The formula_list that describes the given goals.
      * \param[in] pg_init The initial State level.
-     * \param os The output stream to print debug information.
      */
-    void init(const FormulaeList& goal, const StateLevel& pg_init, std::ostream &os);
+    void init(const FormulaeList& goal, const StateLevel& pg_init);
 
     /**
      * \brief Sets the length of the PlanningGraph.
@@ -190,10 +190,8 @@ public:
     [[nodiscard]] const PG_BeliefFormulaeMap& get_bf_scores() const;
 
     /**
-     * \brief Prints the PlanningGraph to std::cout.
-     * \param os The output stream to print to.
-     */
-    void print(std::ostream &os) const;
+     * \brief Prints the PlanningGraph to std::cout.     */
+    void print() const;
 
 private:
     /// \name Internal Data Members
@@ -241,9 +239,8 @@ private:
 
     /**
      * \brief Builds the PlanningGraph layer by layer until the goal is found or the PlanningGraph is saturated.
-     * \param os The output stream to print debug information.
      */
-    void pg_build(std::ostream & os);
+    void pg_build();
 
     /**
      * \brief Adds the next (depth + 1) State layer to m_state_levels.

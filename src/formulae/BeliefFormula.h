@@ -31,13 +31,13 @@
  */
 enum class BeliefFormulaType
 {
-    FLUENT_FORMULA,           ///< A \ref BeliefFormula is also a \ref fluent_formula (base case for recursion).
-    BELIEF_FORMULA,           ///< A \ref BeliefFormula of the form B(\ref agent, *phi*).
-    PROPOSITIONAL_FORMULA,    ///< A \ref BeliefFormula composed with logical operators and \ref BeliefFormula(e).
-    E_FORMULA,                ///< A \ref BeliefFormula of the form E([set of \ref agent], *phi*).
-    C_FORMULA,                ///< A \ref BeliefFormula of the form C([set of \ref agent], *phi*).
-    BF_EMPTY,                 ///< When the belief formula is empty.
-    BF_TYPE_FAIL              ///< The failure case.
+    FLUENT_FORMULA, ///< A \ref BeliefFormula is also a \ref fluent_formula (base case for recursion).
+    BELIEF_FORMULA, ///< A \ref BeliefFormula of the form B(\ref agent, *phi*).
+    PROPOSITIONAL_FORMULA, ///< A \ref BeliefFormula composed with logical operators and \ref BeliefFormula(e).
+    E_FORMULA, ///< A \ref BeliefFormula of the form E([set of \ref agent], *phi*).
+    C_FORMULA, ///< A \ref BeliefFormula of the form C([set of \ref agent], *phi*).
+    BF_EMPTY, ///< When the belief formula is empty.
+    BF_TYPE_FAIL ///< The failure case.
 };
 
 /**
@@ -47,11 +47,12 @@ enum class BeliefFormulaType
  */
 enum class BeliefFormulaOperator
 {
-    BF_AND,      ///< The AND between \ref BeliefFormula(e).
-    BF_OR,       ///< The OR between \ref BeliefFormula(e).
-    BF_NOT,      ///< The NOT of a \ref BeliefFormula.
-    BF_INPAREN,  ///< When the \ref BeliefFormula is only surrounded by "()".
-    BF_FAIL      ///< When the \ref BeliefFormula is not set properly (shouldn't be accessed if not \ref PROPOSITIONAL_FORMULA).
+    BF_AND, ///< The AND between \ref BeliefFormula(e).
+    BF_OR, ///< The OR between \ref BeliefFormula(e).
+    BF_NOT, ///< The NOT of a \ref BeliefFormula.
+    BF_INPAREN, ///< When the \ref BeliefFormula is only surrounded by "()".
+    BF_FAIL
+    ///< When the \ref BeliefFormula is not set properly (shouldn't be accessed if not \ref PROPOSITIONAL_FORMULA).
 };
 
 class BeliefFormula
@@ -72,19 +73,19 @@ public:
     /** \brief Copy Constructor
      *  \param[in] to_copy The \ref BeliefFormula to copy in *this*.
      */
-    BeliefFormula(const BeliefFormula & to_copy);
+    BeliefFormula(const BeliefFormula& to_copy);
 
     /** \brief Move Constructor */
-    BeliefFormula(BeliefFormula &&) noexcept = default;
+    BeliefFormula(BeliefFormula&&) noexcept = default;
 
     /** \brief Destructor */
     ~BeliefFormula() = default;
 
     /** \brief Copy Assignment */
-    BeliefFormula & operator=(const BeliefFormula & to_copy);
+    BeliefFormula& operator=(const BeliefFormula& to_copy);
 
     /** \brief Move Assignment */
-    BeliefFormula & operator=(BeliefFormula &&) noexcept = default;
+    BeliefFormula& operator=(BeliefFormula&&) noexcept = default;
     ///@}
 
     /// \name Setters
@@ -113,25 +114,25 @@ public:
      *  This setter takes a \ref BeliefFormula and sets m_bf1 to be its pointer.
      *  \param[in] to_set The \ref BeliefFormula to be pointed by m_bf1.
      */
-    void set_bf1(const BeliefFormula & to_set);
+    void set_bf1(const BeliefFormula& to_set);
 
     /** \brief Setter of the field m_bf2.
      *  This setter takes a \ref BeliefFormula and sets m_bf2 to be its pointer.
      *  \param[in] to_set The \ref BeliefFormula to be pointed by m_bf2.
      */
-    void set_bf2(const BeliefFormula & to_set);
+    void set_bf2(const BeliefFormula& to_set);
 
     /** \brief Setter of the field m_bf1 given a \ref BeliefFormulaParsed.
      *  This setter takes a \ref BeliefFormulaParsed and sets m_bf1 to be its pointer.
      *  \param[in] to_set The \ref BeliefFormulaParsed to be pointed by m_bf1.
      */
-    void set_bf1(const BeliefFormulaParsed & to_set);
+    void set_bf1(const BeliefFormulaParsed& to_set);
 
     /** \brief Setter of the field m_bf2 given a \ref BeliefFormulaParsed.
      *  This setter takes a \ref BeliefFormulaParsed and sets m_bf2 to be its pointer.
      *  \param[in] to_set The \ref BeliefFormulaParsed to be pointed by m_bf2.
      */
-    void set_bf2(const BeliefFormulaParsed & to_set);
+    void set_bf2(const BeliefFormulaParsed& to_set);
 
     /** \brief Setter for the field m_formula_type.
      *  \param[in] to_set The \ref bf_type object to copy in m_formula_type.
@@ -144,7 +145,7 @@ public:
     void set_operator(BeliefFormulaOperator to_set);
 
     /** \brief Setter from a fluent_formula. */
-    void set_from_ff(const FluentFormula & to_build);
+    void set_from_ff(const FluentFormula& to_build);
     ///@}
 
     /// \name Getters
@@ -162,17 +163,17 @@ public:
     /** \brief Getter for the field m_agent.
      *  \return The value of the field m_agent.
      */
-    [[nodiscard]] const Agent & get_agent() const noexcept;
+    [[nodiscard]] const Agent& get_agent() const noexcept;
 
     /** \brief Getter of the \ref BeliefFormula pointed by m_bf1.
      *  \return The \ref BeliefFormula pointed by m_bf1.
      */
-    [[nodiscard]] const BeliefFormula & get_bf1() const;
+    [[nodiscard]] const BeliefFormula& get_bf1() const;
 
     /** \brief Getter of the \ref BeliefFormula pointed by m_bf2.
      *  \return The \ref BeliefFormula pointed by m_bf2.
      */
-    [[nodiscard]] const BeliefFormula & get_bf2() const;
+    [[nodiscard]] const BeliefFormula& get_bf2() const;
 
 
     /** \brief Getter for the field m_operator.
@@ -193,10 +194,8 @@ public:
      */
     [[nodiscard]] bool is_bf2_null() const;
 
-    /** \brief Function that prints *this* (std::string parameters representation).
-     * \param os The output stream to print to.
-     */
-    void print( std::ostream& os) const;
+    /** \brief Function that prints *this* (std::string parameters representation).    */
+    void print() const;
 
     /** \brief The equality operator for \ref BeliefFormula.
      *  \param[in] to_compare The \ref BeliefFormula to compare with *this*.
@@ -220,4 +219,3 @@ private:
     std::unique_ptr<BeliefFormula> m_bf1; //Check if shared pointer is better
     std::unique_ptr<BeliefFormula> m_bf2; //Check if shared pointer is better
 };
-

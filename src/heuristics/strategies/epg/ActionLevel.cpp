@@ -1,9 +1,7 @@
-//
-// Created by franc on 5/31/2025.
-//
-
 #include "ActionLevel.h"
 #include <ostream>
+
+#include "ArgumentParser.h"
 
 ActionLevel::ActionLevel(const ActionsSet& actions)
 {
@@ -50,18 +48,22 @@ ActionLevel& ActionLevel::operator=(const ActionLevel& to_assign)
     return (*this);
 }
 
-void ActionLevel::print(std::ostream& os) const
+void ActionLevel::print() const
 {
     /**
      * \brief Prints this ActionLevel to the given output stream.
      * \param os The output stream to print to.
      */
+    auto& os = ArgumentParser::get_instance().get_output_stream();
+
     os << "\nPrinting an Action Level:";
-    if (m_actions.empty()) {
+    if (m_actions.empty())
+    {
         os << "\nActionLevel is empty.\n";
         return;
     }
-    for (const auto& act : m_actions) {
+    for (const auto& act : m_actions)
+    {
         os << "\nAction " << act.get_name() << std::endl;
     }
 }

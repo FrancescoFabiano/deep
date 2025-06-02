@@ -59,12 +59,14 @@ TrainingDataset<StateRepr>::TrainingDataset()
             if (ArgumentParser::get_instance().get_dataset_mapped() && !ArgumentParser::get_instance().
                 get_dataset_both())
             {
-                std::filesystem::create_directories(m_training_raw_files_folder + OutputPaths::DATASET_NN_DATASET_MAPPED + "/");
+                std::filesystem::create_directories(
+                    m_training_raw_files_folder + OutputPaths::DATASET_NN_DATASET_MAPPED + "/");
             }
             if (!ArgumentParser::get_instance().get_dataset_mapped() && !ArgumentParser::get_instance().
                 get_dataset_both())
             {
-                std::filesystem::create_directories(m_training_raw_files_folder + OutputPaths::DATASET_NN_DATASET_HASHED + "/");
+                std::filesystem::create_directories(
+                    m_training_raw_files_folder + OutputPaths::DATASET_NN_DATASET_HASHED + "/");
             }
         }
         catch (const std::filesystem::filesystem_error& e)
@@ -99,7 +101,6 @@ TrainingDataset<StateRepr>::TrainingDataset()
 
 
     generate_goal_tree();
-
 }
 
 template <StateRepresentation StateRepr>
@@ -112,7 +113,7 @@ void TrainingDataset<StateRepr>::create_instance()
 }
 
 template <StateRepresentation StateRepr>
-bool TrainingDataset<StateRepr>::generate_dataset(std::ostream& os)
+bool TrainingDataset<StateRepr>::generate_dataset()
 {
     std::ofstream result(m_filepath_csv);
     if (!result.is_open())
@@ -126,7 +127,7 @@ bool TrainingDataset<StateRepr>::generate_dataset(std::ostream& os)
     result << "Path Hash,Path Mapped,Depth,Distance From Goal,Goal" << std::endl;
     result.close();
 
-    return search_space_exploration(os);
+    return search_space_exploration();
 }
 
 
@@ -159,7 +160,7 @@ void TrainingDataset<StateRepr>::generate_goal_tree()
 
 template <StateRepresentation StateRepr>
 size_t TrainingDataset<StateRepr>::get_id_from_map(const std::unordered_map<boost::dynamic_bitset<>, size_t>& id_map,
-                                                     const boost::dynamic_bitset<>& key, const std::string& type_name)
+                                                   const boost::dynamic_bitset<>& key, const std::string& type_name)
 {
     if (const auto it = id_map.find(key); it != id_map.end())
     {
@@ -175,8 +176,8 @@ size_t TrainingDataset<StateRepr>::get_id_from_map(const std::unordered_map<boos
 
 template <StateRepresentation StateRepr>
 void TrainingDataset<StateRepr>::populate_ids_from_bitset(const std::set<boost::dynamic_bitset<>>& keys_set,
-                                                            std::unordered_map<boost::dynamic_bitset<>, size_t>& id_map,
-                                                            size_t start_id)
+                                                          std::unordered_map<boost::dynamic_bitset<>, size_t>& id_map,
+                                                          size_t start_id)
 {
     size_t current_id = start_id;
     for (const auto& key : keys_set)
@@ -211,8 +212,8 @@ void TrainingDataset<StateRepr>::populate_agent_ids(const size_t start_id)
 
 template <StateRepresentation StateRepr>
 void TrainingDataset<StateRepr>::print_goal_subtree(const BeliefFormula& to_print, const size_t goal_counter,
-                                                      size_t& next_id,
-                                                      const std::string& parent_node, std::ostream& os)
+                                                    size_t& next_id,
+                                                    const std::string& parent_node, std::ofstream& ofs)
 {
     size_t current_node_id = ++next_id;
     std::string node_name;
@@ -227,8 +228,8 @@ void TrainingDataset<StateRepr>::print_goal_subtree(const BeliefFormula& to_prin
                 //REMOVE LETTERS node_name = "F_OR" + std::to_string(current_node_id);
                 node_name = std::to_string(current_node_id);
                 current_node_id = ++next_id;
-                //os << "  " << node_name << " [label=\"" << current_node_id << "\"];\n";
-                os << "  " << parent_node << " -> " << node_name << " [label=\"" << goal_counter << "\"];\n";
+                //ofs << "  " << node_name << " [label=\"" << current_node_id << "\"];\n";
+                ofs << "  " << parent_node << " -> " << node_name << " [label=\"" << goal_counter << "\"];\n";
                 m_parent_node = node_name;
             }
 
@@ -241,16 +242,16 @@ void TrainingDataset<StateRepr>::print_goal_subtree(const BeliefFormula& to_prin
                     //REMOVE LETTERS node_name = "F_AND" + std::to_string(current_node_id);
                     node_name = std::to_string(current_node_id);
                     current_node_id = ++next_id;
-                    //os << "  " << node_name << " [label=\"" << current_node_id << "\"];\n";
-                    os << "  " << m_parent_node << " -> " << node_name << " [label=\"" << goal_counter <<
+                    //ofs << "  " << node_name << " [label=\"" << current_node_id << "\"];\n";
+                    ofs << "  " << m_parent_node << " -> " << node_name << " [label=\"" << goal_counter <<
                         "\"];\n";
                     m_m_parent_node = node_name;
                 }
 
                 for (const auto& fl : fls_set)
                 {
-                    //REMOVE LETTERS os << "  " << m_m_parent_node << " -> F" << get_unique_f_id_from_map(fl) << " [label=\"" << goal_counter << "\"];\n";
-                    os << "  " << m_m_parent_node << " -> " << get_unique_f_id_from_map(fl) << " [label=\"" <<
+                    //REMOVE LETTERS ofs << "  " << m_m_parent_node << " -> F" << get_unique_f_id_from_map(fl) << " [label=\"" << goal_counter << "\"];\n";
+                    ofs << "  " << m_m_parent_node << " -> " << get_unique_f_id_from_map(fl) << " [label=\"" <<
                         goal_counter << "\"];\n";
                 }
             }
@@ -261,16 +262,16 @@ void TrainingDataset<StateRepr>::print_goal_subtree(const BeliefFormula& to_prin
         {
             //REMOVE LETTERS node_name = "B" + std::to_string(current_node_id);
             node_name = std::to_string(current_node_id);
-            //os << "  " << node_name << " [label=\"" << current_node_id << "\"];\n";
-            os << "  " << parent_node << " -> " << node_name << " [label=\"" << goal_counter << "\"];\n";
-            //REMOVE LETTERS os << "  " << node_name << " -> A" << get_unique_a_id_from_map(to_print.get_agent()) << " [label=\"" << goal_counter << "\"];\n";
-            //REMOVE LETTERS os << "  A" << get_unique_a_id_from_map(to_print.get_agent()) << " -> " << node_name << " [label=\"" << goal_counter << "\"];\n";
-            os << "  " << node_name << " -> " << get_unique_a_id_from_map(to_print.get_agent()) << " [label=\"" <<
+            //ofs << "  " << node_name << " [label=\"" << current_node_id << "\"];\n";
+            ofs << "  " << parent_node << " -> " << node_name << " [label=\"" << goal_counter << "\"];\n";
+            //REMOVE LETTERS ofs << "  " << node_name << " -> A" << get_unique_a_id_from_map(to_print.get_agent()) << " [label=\"" << goal_counter << "\"];\n";
+            //REMOVE LETTERS ofs << "  A" << get_unique_a_id_from_map(to_print.get_agent()) << " -> " << node_name << " [label=\"" << goal_counter << "\"];\n";
+            ofs << "  " << node_name << " -> " << get_unique_a_id_from_map(to_print.get_agent()) << " [label=\"" <<
                 goal_counter << "\"];\n";
-            os << "  " << get_unique_a_id_from_map(to_print.get_agent()) << " -> " << node_name << " [label=\"" <<
+            ofs << "  " << get_unique_a_id_from_map(to_print.get_agent()) << " -> " << node_name << " [label=\"" <<
                 goal_counter << "\"];\n";
 
-            print_goal_subtree(to_print.get_bf1(), goal_counter, next_id, node_name, os);
+            print_goal_subtree(to_print.get_bf1(), goal_counter, next_id, node_name, ofs);
             break;
         }
 
@@ -278,20 +279,20 @@ void TrainingDataset<StateRepr>::print_goal_subtree(const BeliefFormula& to_prin
         {
             //REMOVE LETTERS node_name = "C" + std::to_string(current_node_id);
             node_name = std::to_string(current_node_id);
-            //os << "  " << node_name << " [label=\"" << current_node_id << "\"];\n";
-            os << "  " << parent_node << " -> " << node_name << " [label=\"" << goal_counter << "\"];\n";
+            //ofs << "  " << node_name << " [label=\"" << current_node_id << "\"];\n";
+            ofs << "  " << parent_node << " -> " << node_name << " [label=\"" << goal_counter << "\"];\n";
 
             for (const auto& ag : to_print.get_group_agents())
             {
-                //REMOVE LETTERS os << "  " << node_name << " -> A" << get_unique_a_id_from_map(ag) << " [label=\"" << goal_counter << "\"];\n";
-                //REMOVE LETTERS os << "  A" << get_unique_a_id_from_map(ag) << " -> " << node_name << " [label=\"" << goal_counter << "\"];\n";
-                os << "  " << node_name << " -> " << get_unique_a_id_from_map(ag) << " [label=\"" << goal_counter
+                //REMOVE LETTERS ofs << "  " << node_name << " -> A" << get_unique_a_id_from_map(ag) << " [label=\"" << goal_counter << "\"];\n";
+                //REMOVE LETTERS ofs << "  A" << get_unique_a_id_from_map(ag) << " -> " << node_name << " [label=\"" << goal_counter << "\"];\n";
+                ofs << "  " << node_name << " -> " << get_unique_a_id_from_map(ag) << " [label=\"" << goal_counter
                     << "\"];\n";
-                os << "  " << get_unique_a_id_from_map(ag) << " -> " << node_name << " [label=\"" << goal_counter
+                ofs << "  " << get_unique_a_id_from_map(ag) << " -> " << node_name << " [label=\"" << goal_counter
                     << "\"];\n";
             }
 
-            print_goal_subtree(to_print.get_bf1(), goal_counter, next_id, node_name, os);
+            print_goal_subtree(to_print.get_bf1(), goal_counter, next_id, node_name, ofs);
             break;
         }
 
@@ -318,13 +319,13 @@ void TrainingDataset<StateRepr>::print_goal_subtree(const BeliefFormula& to_prin
 
             //REMOVE LETTERS node_name = node_name + std::to_string(current_node_id);
             node_name = std::to_string(current_node_id);
-            //os << "  " << node_name << " [label=\"" << current_node_id << "\"];\n";
-            os << "  " << parent_node << " -> " << node_name << " [label=\"" << goal_counter << "\"];\n";
-            print_goal_subtree(to_print.get_bf1(), goal_counter, next_id, node_name, os);
+            //ofs << "  " << node_name << " [label=\"" << current_node_id << "\"];\n";
+            ofs << "  " << parent_node << " -> " << node_name << " [label=\"" << goal_counter << "\"];\n";
+            print_goal_subtree(to_print.get_bf1(), goal_counter, next_id, node_name, ofs);
 
             if (!to_print.is_bf2_null())
             {
-                print_goal_subtree(to_print.get_bf2(), goal_counter, next_id, node_name, os);
+                print_goal_subtree(to_print.get_bf2(), goal_counter, next_id, node_name, ofs);
             }
 
             break;
@@ -344,7 +345,7 @@ void TrainingDataset<StateRepr>::print_goal_subtree(const BeliefFormula& to_prin
 }
 
 template <StateRepresentation StateRepr>
-bool TrainingDataset<StateRepr>::search_space_exploration(std::ostream& os)
+bool TrainingDataset<StateRepr>::search_space_exploration()
 {
     State<StateRepr> initial_state;
     initial_state.build_initial();
@@ -361,10 +362,11 @@ bool TrainingDataset<StateRepr>::search_space_exploration(std::ostream& os)
     std::vector<std::string> global_dataset;
     global_dataset.reserve(m_threshold_node_generation);
 
-    const bool result = dfs_exploration(initial_state, &actions, global_dataset, os);
+    const bool result = dfs_exploration(initial_state, &actions, global_dataset);
 
     auto end_time = std::chrono::system_clock::now();
     std::chrono::duration<double> elapsed = end_time - start_time;
+    auto& os = ArgumentParser::get_instance().get_output_stream();
     os << "\nDataset Generated in " << elapsed.count() << " seconds" << std::endl;
 
     std::ofstream result_file(m_filepath_csv, std::ofstream::app);
@@ -379,7 +381,7 @@ bool TrainingDataset<StateRepr>::search_space_exploration(std::ostream& os)
 
 template <StateRepresentation StateRepr>
 bool TrainingDataset<StateRepr>::dfs_exploration(State<StateRepr>& initial_state, ActionsSet* actions,
-                                                   std::vector<std::string>& global_dataset, std::ostream& os)
+                                                 std::vector<std::string>& global_dataset)
 {
     auto max_depth = ArgumentParser::get_instance().get_dataset_depth();
     m_visited_states.clear();
@@ -397,6 +399,7 @@ bool TrainingDataset<StateRepr>::dfs_exploration(State<StateRepr>& initial_state
         m_total_possible_nodes_log = numerator_log - denominator_log;
     }
 
+    auto& os = ArgumentParser::get_instance().get_output_stream();
 
     os << "Total possible nodes exceed threshold." << std::endl;
     os << "Approximate number of nodes (exp(log)) = " << std::exp(m_total_possible_nodes_log) << std::endl;
@@ -426,7 +429,7 @@ bool TrainingDataset<StateRepr>::dfs_exploration(State<StateRepr>& initial_state
 
 template <StateRepresentation StateRepr>
 int TrainingDataset<StateRepr>::dfs_worker(State<StateRepr>& state, const size_t depth, ActionsSet* actions,
-                                             std::vector<std::string>& global_dataset)
+                                           std::vector<std::string>& global_dataset)
 {
     if (m_current_nodes >= m_threshold_node_generation)
     {
@@ -587,8 +590,8 @@ std::string TrainingDataset<StateRepr>::print_state_for_dataset(const State<Stat
 
 template <StateRepresentation StateRepr>
 void TrainingDataset<StateRepr>::print_state_for_dataset_internal(const State<StateRepr>& state,
-                                                                    const std::string& base_filename,
-                                                                    const std::string& type) const
+                                                                  const std::string& base_filename,
+                                                                  const std::string& type) const
 {
     std::ofstream out(format_name(base_filename, type));
     state.print_dataset_format(out);

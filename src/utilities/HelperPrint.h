@@ -18,7 +18,6 @@
  */
 class HelperPrint
 {
-
 public:
     /// \brief Deleted copy constructor (singleton).
     HelperPrint(const HelperPrint&) = delete;
@@ -45,65 +44,56 @@ public:
     /**
      * \brief Print all std::string in a set (conjunctive set of fluents).
      * \param to_print The set to print.
-     * \param os The output stream to print to.
      */
-    static void print_list(const StringsSet& to_print, std::ostream& os);
+    static void print_list(const StringsSet& to_print);
 
     /**
      * \brief Print all std::string sets in a set (DNF formula).
      * \param to_print The set of sets to print.
-     * \param os The output stream to print to.
      */
-    static void print_list(const StringSetsSet& to_print, std::ostream& os);
+    static void print_list(const StringSetsSet& to_print);
 
     /**
      * \brief Print all fluents in a set (conjunctive set).
      * \param to_print The set to print.
-     * \param os The output stream to print to.
      */
-    void print_list(const FluentsSet& to_print, std::ostream& os) const;
+    void print_list(const FluentsSet& to_print) const;
 
     /**
      * \brief Print all fluent sets in a formula (DNF).
      * \param to_print The formula to print.
-     * \param os The output stream to print to.
      */
-    void print_list(const FluentFormula& to_print, std::ostream& os) const;
+    void print_list(const FluentFormula& to_print) const;
 
     /**
      * \brief Print all belief formulas in a list (CNF).
      * \param to_print The list to print.
-     * \param os The output stream to print to.
      */
-    static void print_list(const FormulaeList& to_print, std::ostream& os);
+    static void print_list(const FormulaeList& to_print);
 
     /**
      * \brief Print all KripkeWorld pointers in a set.
      * \param to_print The set to print.
-     * \param os The output stream to print to.
      */
-    static void print_list(const KripkeWorldPointersSet& to_print, std::ostream& os);
+    static void print_list(const KripkeWorldPointersSet& to_print);
 
     /**
      * \brief Print all action names in a list.
      * \param to_print The list to print.
-     * \param os The output stream to print to.
      */
-    void print_list(const ActionIdsList& to_print, std::ostream& os) const;
+    void print_list(const ActionIdsList& to_print) const;
 
     /**
      * \brief Print all agent names in a set.
      * \param to_print The set to print.
-     * \param os The output stream to print to.
      */
-    void print_list_ag(const AgentsSet& to_print, std::ostream& os) const;
+    void print_list_ag(const AgentsSet& to_print) const;
 
     /**
      * \brief Print all agent names in a set.
      * \param to_print The BeliefFormula to print.
-     * \param os The output stream to print to.
      */
-    void print_belief_formula(const BeliefFormula& to_print, std::ostream& os) const;
+    void print_belief_formula(const BeliefFormula& to_print) const;
 
     /**
      * \brief Generate a log file path based on domain name, date, time, and repetition.
@@ -115,23 +105,22 @@ public:
     /**
      * \brief Print a KripkeState in a human-readable format.
      * \param kstate The KripkeState to print.
-     * \param os The output stream to print to.
      */
-    void print_state(const KripkeState &kstate, std::ostream &os) const;
+    void print_state(const KripkeState& kstate) const;
 
     /**
      * \brief Print a KripkeState in DOT format for graph visualization.
      * \param kstate The KripkeState to print.
-     * \param os The output stream to print to.
+     * \param ofs The output stream to write the DOT format to. This must be a file.
      */
-    void print_dot_format(const KripkeState &kstate, std::ostream &os) const;
+    void print_dot_format(const KripkeState& kstate, std::ofstream ofs) const;
 
     /**
      * \brief Print a KripkeState in format for training the GNN.
      * \param kstate The KripkeState to print.
-     * \param os The output stream to print to.
+     * \param ofs The output stream to write the DOT format to. This must be a file.
      */
-    static void print_dataset_format(const KripkeState &kstate, std::ostream &os) ;
+    static void print_dataset_format(const KripkeState& kstate, std::ofstream ofs);
 
 
     /**
@@ -141,12 +130,10 @@ public:
      */
     static std::string adjust_id_wrt_agents(int num);
 
-
 private:
-
     static HelperPrint* instance; ///< Singleton instance
-    Grounder m_grounder;           ///< Used to de-ground fluents for printing.
-    bool m_set_grounder = false;///< True if \ref m_grounder has been set.
+    Grounder m_grounder; ///< Used to de-ground fluents for printing.
+    bool m_set_grounder = false; ///< True if \ref m_grounder has been set.
 
     /// \brief Private constructor for singleton pattern.
     HelperPrint();

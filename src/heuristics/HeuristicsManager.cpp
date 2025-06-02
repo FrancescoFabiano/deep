@@ -4,28 +4,37 @@
 void HeuristicsManager::expand_goals(const unsigned short nesting)
 {
     FormulaeList original_goal = m_goals;
-    for (const auto& formula : original_goal) {
+    for (const auto& formula : original_goal)
+    {
         produce_subgoals(nesting, 0, formula, formula.get_group_agents());
     }
 }
 
-void HeuristicsManager::produce_subgoals(const unsigned short nesting, const unsigned short depth, const BeliefFormula& to_explore, const AgentsSet& agents)
+void HeuristicsManager::produce_subgoals(const unsigned short nesting, const unsigned short depth,
+                                         const BeliefFormula& to_explore, const AgentsSet& agents)
 {
     if ((to_explore.get_formula_type() == BeliefFormulaType::C_FORMULA && depth == 0)
-        || (to_explore.get_formula_type() == BeliefFormulaType::BELIEF_FORMULA && depth > 0)) {
-        for (const auto& agent : agents) {
-            if ((to_explore.get_agent() != agent) || (depth == 0)) {
+        || (to_explore.get_formula_type() == BeliefFormulaType::BELIEF_FORMULA && depth > 0))
+    {
+        for (const auto& agent : agents)
+        {
+            if ((to_explore.get_agent() != agent) || (depth == 0))
+            {
                 BeliefFormula new_subgoal;
                 new_subgoal.set_formula_type(BeliefFormulaType::BELIEF_FORMULA);
-                if (depth == 0) {
+                if (depth == 0)
+                {
                     new_subgoal.set_bf1(to_explore.get_bf1());
-                } else {
+                }
+                else
+                {
                     new_subgoal.set_bf1(to_explore);
                 }
                 new_subgoal.set_agent(agent);
                 m_goals.push_back(new_subgoal);
 
-                if (nesting > (depth + 1)) {
+                if (nesting > (depth + 1))
+                {
                     produce_subgoals(nesting, depth + 1, new_subgoal, agents);
                 }
             }

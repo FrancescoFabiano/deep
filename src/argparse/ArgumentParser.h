@@ -3,8 +3,6 @@
 #include <string>
 #include <vector>
 #include <CLI/CLI.hpp>
-#include "utilities/ExitHandler.h"
-
 
 /**
  * \class ArgumentParser
@@ -18,7 +16,8 @@
  * \author Francesco Fabiano
  * \date May 12, 2025
  */
-class ArgumentParser {
+class ArgumentParser
+{
 public:
     /**
      * \brief Creates the singleton instance of ArgumentParser.
@@ -143,27 +142,29 @@ private:
      */
     void parse(int argc, char** argv);
 
-    CLI::App app;  ///< CLI11 app object for argument parsing.
+    CLI::App app; ///< CLI11 app object for argument parsing.
 
 
-    static ArgumentParser* instance;  ///< Singleton instance of the class.
+    static ArgumentParser* instance; ///< Singleton instance of the class.
 
     // Option storage
-    std::string m_input_file;  ///< Input domain file path.
-    bool m_debug = false;      ///< Debug mode flag.
-    bool m_bisimulation = false;  ///< Bisimulation type (NONE by default).
-    std::string m_bisimulation_type = "FB";  ///< Bisimulation type (PT by default).
-    bool m_check_visited = false;  ///< Flag to check for visited states.
-    bool m_dataset_mode = false;  ///< Flag to indicate dataset mode.
-    int m_dataset_depth = 10;     ///< Maximum depth for dataset generation.
-    bool m_dataset_mapped = false;  ///< Flag for using mapped (compact) node labels in dataset generation. If false we use hashed node labels.
-    bool m_dataset_both = false;  ///< Flag to indicate if both mapped and hashed node labels should be used in dataset generation.
+    std::string m_input_file; ///< Input domain file path.
+    bool m_debug = false; ///< Debug mode flag.
+    bool m_bisimulation = false; ///< Bisimulation type (NONE by default).
+    std::string m_bisimulation_type = "FB"; ///< Bisimulation type (PT by default).
+    bool m_check_visited = false; ///< Flag to check for visited states.
+    bool m_dataset_mode = false; ///< Flag to indicate dataset mode.
+    int m_dataset_depth = 10; ///< Maximum depth for dataset generation.
+    bool m_dataset_mapped = false;
+    ///< Flag for using mapped (compact) node labels in dataset generation. If false we use hashed node labels.
+    bool m_dataset_both = false;
+    ///< Flag to indicate if both mapped and hashed node labels should be used in dataset generation.
     std::string m_search_strategy = "BFS"; ///< Search strategy (BFS by default).
-    std::string m_heuristic_opt = "SUBGOALS";  ///< Heuristic type (SUBGOALS by default).
-    bool m_exec_plan = false;  ///< Flag to indicate if the plan should be executed.
-    std::vector<std::string> m_exec_actions;  ///< Actions to execute instead of planning.
-    bool m_output_results_file = false;  ///< Flag to enable results file logging.
-    std::string m_plan_file = "plan.txt";  ///< Plan file path.
+    std::string m_heuristic_opt = "SUBGOALS"; ///< Heuristic type (SUBGOALS by default).
+    bool m_exec_plan = false; ///< Flag to indicate if the plan should be executed.
+    std::vector<std::string> m_exec_actions; ///< Actions to execute instead of planning.
+    bool m_output_results_file = false; ///< Flag to enable results file logging.
+    std::string m_plan_file = "plan.txt"; ///< Plan file path.
     bool m_log_enabled = false; ///< True if --log is enabled.
     std::string m_log_file_path; ///< The log file path if logging is enabled.
     std::ostream* m_output_stream = &std::cout; ///< Output stream for logging and results (default: std::cout).
@@ -181,7 +182,7 @@ private:
     * \brief Return the type of Bisimulation Adopted.
     * \return the string that specifies the type of bisimulation used.
     */
-    [[nodiscard]] const std::string &get_bisimulation_type() const noexcept;
+    [[nodiscard]] const std::string& get_bisimulation_type() const noexcept;
 
     /**
      * \brief Retrieves the heuristic to be used.
@@ -202,5 +203,4 @@ private:
     [[nodiscard]] bool get_check_visited() const noexcept;
 
     friend class Configuration;
-
 };

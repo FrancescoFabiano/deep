@@ -30,7 +30,8 @@ inline std::uniform_real_distribution<> m_dis(0.0, 1.0);
  * \date May 31, 2025
  */
 template <StateRepresentation StateRepr>
-class TrainingDataset {
+class TrainingDataset
+{
 public:
     /**
      * \brief Get the singleton instance of GraphNN.
@@ -45,10 +46,9 @@ public:
 
     /**
      * \brief Generates the dataset for ML heuristics.
-     * \param os Output stream for logging/debugging.
      * \return True if dataset generation was successful, false otherwise.
      */
-    [[nodiscard]] bool generate_dataset(std::ostream& os);
+    [[nodiscard]] bool generate_dataset();
 
 
     /**
@@ -92,7 +92,7 @@ private:
 
     // --- Mappings ---
     std::unordered_map<Fluent, size_t> m_fluent_to_id; ///< Mapping from fluent to unique ID
-    std::unordered_map<Agent, size_t> m_agent_to_id;   ///< Mapping from agent to unique ID
+    std::unordered_map<Agent, size_t> m_agent_to_id; ///< Mapping from agent to unique ID
 
     // --- Node and search statistics ---
     size_t m_current_nodes = 0; ///< Current number of nodes
@@ -159,28 +159,26 @@ private:
      * \param goal_counter Goal counter.
      * \param next_id Next node ID.
      * \param parent_node Parent node name.
-     * \param os Output file stream.
+     * \param ofs Output file stream.
      */
     void print_goal_subtree(const BeliefFormula& to_print, size_t goal_counter, size_t& next_id,
-                            const std::string& parent_node, std::ostream& os);
+                            const std::string& parent_node, std::ofstream& ofs);
 
     /**
      * \brief Explore the search space.
-     * \param os Output stream.
      * \return True if exploration was successful.
      */
-    bool search_space_exploration(std::ostream& os);
+    bool search_space_exploration();
 
     /**
      * \brief Perform DFS exploration for dataset generation.
      * \param initial_state The initial state.
      * \param actions Set of actions.
      * \param global_dataset Dataset vector.
-     * \param os Output stream.
      * \return True if successful.
      */
     bool dfs_exploration(State<StateRepr>& initial_state, ActionsSet* actions,
-                         std::vector<std::string>& global_dataset, std::ostream& os);
+                         std::vector<std::string>& global_dataset);
 
     /**
      * \brief DFS worker for dataset generation.
@@ -215,7 +213,8 @@ private:
      * \param base_filename Base filename.
      * \param type Type string.
      */
-    void print_state_for_dataset_internal(const State<StateRepr>& state, const std::string& base_filename, const std::string& type) const;
+    void print_state_for_dataset_internal(const State<StateRepr>& state, const std::string& base_filename,
+                                          const std::string& type) const;
 
     /**
      * \brief Format a name for dataset files.

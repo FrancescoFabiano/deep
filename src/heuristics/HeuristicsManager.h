@@ -21,18 +21,20 @@
 /**
  * \brief Manages the computation and assignment of heuristic values to states.
  */
-class HeuristicsManager {
+class HeuristicsManager
+{
 public:
     /**
      * \brief Constructs a HeuristicsManager with the chosen heuristic.
      * \param[in] used_heuristics The heuristic to use.
      */
-    template<StateRepresentation T>
+    template <StateRepresentation T>
     explicit HeuristicsManager(Heuristics used_heuristics)
     {
         set_used_h(used_heuristics);
         m_goals = Domain::get_instance().get_goal_description();
-        switch (m_used_heuristics) {
+        switch (m_used_heuristics)
+        {
         case Heuristics::GNN:
             GraphNN<T>::create_instance();
             break;
@@ -40,22 +42,28 @@ public:
         case Heuristics::S_PG:
             expand_goals();
             break;
-        case Heuristics::C_PG: {
-                if (const PlanningGraph pg; pg.is_satisfiable()) {
+        case Heuristics::C_PG:
+            {
+                if (const PlanningGraph pg; pg.is_satisfiable())
+                {
                     m_pg_max_score = 0;
                     m_fluents_score = pg.get_f_scores();
                     m_bf_score = pg.get_bf_scores();
-                    for (const auto &score_f : m_fluents_score | std::views::values) {
+                    for (const auto& score_f : m_fluents_score | std::views::values)
+                    {
                         m_pg_max_score += score_f; // Accumulate positive scores for normalization.
                     }
-                    for (const auto &score_bf: m_bf_score | std::views::values) {
+                    for (const auto& score_bf : m_bf_score | std::views::values)
+                    {
                         m_pg_max_score += score_bf; // Accumulate positive scores for normalization.
                     }
-                } else {
+                }
+                else
+                {
                     m_pg_goal_not_found = true;
                 }
                 break;
-        }
+            }
         case Heuristics::SUBGOALS:
             expand_goals();
             SatisfiedGoals::get_instance().set(m_goals);
@@ -76,46 +84,60 @@ public:
      *
      * \note If the heuristic value is negative, it indicates that the heuristic is not applicable or the state does not satisfy the goals so needs to be discarded.
      */
-    template<StateRepresentation T>
-    void set_heuristic_value(const State<T> &eState) {
-        switch (m_used_heuristics) {
-            case Heuristics::L_PG: {
+    template <StateRepresentation T>
+    void set_heuristic_value(const State<T>& eState)
+    {
+        switch (m_used_heuristics)
+        {
+        case Heuristics::L_PG:
+            {
                 const PlanningGraph pg(m_goals, eState);
                 eState.set_heuristic_value(pg.is_satisfiable() ? pg.get_length() : -1);
                 break;
             }
-            case Heuristics::S_PG: {
+        case Heuristics::S_PG:
+            {
                 const PlanningGraph pg(m_goals, eState);
                 eState.set_heuristic_value(pg.is_satisfiable() ? pg.get_sum() : -1);
                 break;
             }
-            case Heuristics::C_PG: {
+        case Heuristics::C_PG:
+            {
                 short h_value = 0;
 
-                if (m_pg_goal_not_found) {
+                if (m_pg_goal_not_found)
+                {
                     h_value = -1; // Goal not reachable, set heuristic to -1.
-                } else {
-                    for (const auto &[fluent, score] : m_fluents_score) {
+                }
+                else
+                {
+                    for (const auto& [fluent, score] : m_fluents_score)
+                    {
                         if (eState.entails(fluent) && score > 0) h_value += score;
                     }
-                    for (const auto &[belief, score] : m_bf_score) {
+                    for (const auto& [belief, score] : m_bf_score)
+                    {
                         if (eState.entails(belief) && score > 0) h_value += score;
                     }
-                    h_value = static_cast<short>(100 - ((static_cast<float>(h_value) / static_cast<float>(m_pg_max_score)) * 100)); // Invert: 0 is 100%, 100 is 0%
+                    h_value = static_cast<short>(100 - ((static_cast<float>(h_value) / static_cast<float>(
+                        m_pg_max_score)) * 100)); // Invert: 0 is 100%, 100 is 0%
                 }
 
                 eState.set_heuristic_value(h_value);
                 break;
             }
-            case Heuristics::SUBGOALS: {
+        case Heuristics::SUBGOALS:
+            {
                 eState.set_heuristic_value(SatisfiedGoals::get_instance().get_unsatisfied_goals(eState));
                 break;
             }
-            case Heuristics::GNN: {
+        case Heuristics::GNN:
+            {
                 eState.set_heuristic_value(get_score(eState));
                 break;
             }
-            default: {
+        default:
+            {
                 ExitHandler::exit_with_message(
                     ExitHandler::ExitCode::HeuristicsBadDeclaration,
                     "Wrong Heuristic Selection in HeuristicsManager. Please check the heuristic type."
@@ -141,23 +163,24 @@ public:
      * \brief Sets the goals (CNF of expanded subgoals).
      * \param[in] to_set The CNF of expanded subgoals.
      */
-    void set_goals(const FormulaeList &to_set);
+    void set_goals(const FormulaeList& to_set);
 
     /**
      * \brief Gets the goals (CNF of expanded subgoals).
      * \return The CNF of expanded subgoals.
      */
-    [[nodiscard]] const FormulaeList &get_goals() const noexcept;
+    [[nodiscard]] const FormulaeList& get_goals() const noexcept;
 
 private:
     Heuristics m_used_heuristics = Heuristics::ERROR; ///< The type of heuristic used.
-    FormulaeList m_goals {}; ///< The goal description, possibly expanded for heuristic use.
+    FormulaeList m_goals{}; ///< The goal description, possibly expanded for heuristic use.
 
     /// \name Planning Graph Related
     ///@{
-    PG_FluentsScoreMap m_fluents_score {}; ///< Map of fluent scores (used by C_PG heuristic).
-    PG_BeliefFormulaeMap m_bf_score {}; ///< Map of belief formula scores (used by C_PG heuristic).
-    bool m_pg_goal_not_found = false; ///< Flag indicating if the planning graph determined that the goal is not reachable.
+    PG_FluentsScoreMap m_fluents_score{}; ///< Map of fluent scores (used by C_PG heuristic).
+    PG_BeliefFormulaeMap m_bf_score{}; ///< Map of belief formula scores (used by C_PG heuristic).
+    bool m_pg_goal_not_found = false;
+    ///< Flag indicating if the planning graph determined that the goal is not reachable.
     int m_pg_max_score = 0; ///< Maximum score for the planning graph (used for normalization).
     ///@}
 
@@ -177,6 +200,6 @@ private:
      * \param[in] to_explore The belief formula to expand.
      * \param[in] agents The agents for whom to generate subgoals.
      */
-    void produce_subgoals(unsigned short nesting, unsigned short depth, const BeliefFormula &to_explore,
-                          const AgentsSet &agents);
+    void produce_subgoals(unsigned short nesting, unsigned short depth, const BeliefFormula& to_explore,
+                          const AgentsSet& agents);
 };

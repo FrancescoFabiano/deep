@@ -1,33 +1,33 @@
 #include "SatisfiedGoals.h"
 
-void SatisfiedGoals::set(const FormulaeList & goals)
+void SatisfiedGoals::set(const FormulaeList& goals)
 {
-	set_goals(goals);
-	set_goals_number(goals.size());
+    set_goals(goals);
+    set_goals_number(goals.size());
 }
 
 SatisfiedGoals& SatisfiedGoals::get_instance()
 {
-	static SatisfiedGoals instance;
-	return instance;
+    static SatisfiedGoals instance;
+    return instance;
 }
 
-const FormulaeList & SatisfiedGoals::get_goals() const
+const FormulaeList& SatisfiedGoals::get_goals() const
 {
-	return m_goals;
+    return m_goals;
 }
 
-void SatisfiedGoals::set_goals(const FormulaeList & to_set)
+void SatisfiedGoals::set_goals(const FormulaeList& to_set)
 {
-	m_goals = to_set;
+    m_goals = to_set;
 }
 
 unsigned short SatisfiedGoals::get_goals_number() const
 {
-	return m_goals_number;
+    return m_goals_number;
 }
 
 void SatisfiedGoals::set_goals_number(const unsigned short to_set)
 {
-	m_goals_number = to_set;
+    m_goals_number = to_set;
 }

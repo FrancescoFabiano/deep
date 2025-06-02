@@ -16,12 +16,14 @@
  * \author Francesco Fabiano
  * \date April 5, 2019
  */
-class Grounder {
+class Grounder
+{
 public:
     /// \name Constructors
     ///@{
     Grounder() = default;
-    Grounder(const FluentMap& given_fluent_map, const AgentsMap& given_agent_map, const ActionNamesMap& given_action_name_map);
+    Grounder(const FluentMap& given_fluent_map, const AgentsMap& given_agent_map,
+             const ActionNamesMap& given_action_name_map);
     ///@}
 
     /// \name Setters
@@ -139,12 +141,12 @@ public:
     ///@}
 
 private:
-    FluentMap m_fluent_map;           ///< Maps fluent names to grounded values.
-    AgentsMap m_agent_map;            ///< Maps agent names to grounded values.
+    FluentMap m_fluent_map; ///< Maps fluent names to grounded values.
+    AgentsMap m_agent_map; ///< Maps agent names to grounded values.
     ActionNamesMap m_action_name_map; ///< Maps action names to grounded values.
 
-    ReverseFluentsMap r_fluent_map;        ///< Maps grounded fluents to names.
-    ReverseAgentsMap r_agent_map;          ///< Maps grounded agents to names.
+    ReverseFluentsMap r_fluent_map; ///< Maps grounded fluents to names.
+    ReverseAgentsMap r_agent_map; ///< Maps grounded agents to names.
     ReverseActionNamesMap r_action_name_map; ///< Maps grounded actions to names.
 
     // Reverse map creation helpers (used for printing/debugging)

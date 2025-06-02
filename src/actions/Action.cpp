@@ -63,10 +63,14 @@ PropositionType Action::get_type() const
 
 void Action::set_type(PropositionType type)
 {
-    if (type != PropositionType::NOTSET) {
-        if (m_type == PropositionType::NOTSET) {
+    if (type != PropositionType::NOTSET)
+    {
+        if (m_type == PropositionType::NOTSET)
+        {
             m_type = type;
-        } else if (m_type != type) {
+        }
+        else if (m_type != type)
+        {
             ExitHandler::exit_with_message(
                 ExitHandler::ExitCode::ActionTypeConflict,
                 "Conflicting action types for action '" + m_name + "'."
@@ -103,7 +107,8 @@ void Action::add_executability(const BeliefFormula& exec)
 void Action::add_effect(const FluentFormula& effect, const BeliefFormula& condition)
 {
     auto [it, inserted] = m_effects.insert(EffectsMap::value_type(effect, condition));
-    if (!inserted) {
+    if (!inserted)
+    {
         ExitHandler::exit_with_message(
             ExitHandler::ExitCode::ActionEffectError,
             "Failed to add effect to action '" + m_name + "'."
@@ -123,33 +128,34 @@ void Action::add_partially_observant(const Agent& partial, const BeliefFormula& 
 
 void Action::add_proposition(const Proposition& to_add)
 {
-    switch (to_add.get_type()) {
-        case PropositionType::ONTIC:
-            set_type(PropositionType::ONTIC);
-            add_effect(to_add.get_action_effect(), to_add.get_executability_conditions());
-            break;
-        case PropositionType::SENSING:
-            set_type(PropositionType::SENSING);
-            add_effect(to_add.get_action_effect(), to_add.get_executability_conditions());
-            break;
-        case PropositionType::ANNOUNCEMENT:
-            set_type(PropositionType::ANNOUNCEMENT);
-            add_effect(to_add.get_action_effect(), to_add.get_executability_conditions());
-            break;
-        case PropositionType::OBSERVANCE:
-            set_type(PropositionType::NOTSET);
-            add_fully_observant(to_add.get_agent(), to_add.get_observability_conditions());
-            break;
-        case PropositionType::AWARENESS:
-            set_type(PropositionType::NOTSET);
-            add_partially_observant(to_add.get_agent(), to_add.get_observability_conditions());
-            break;
-        case PropositionType::EXECUTABILITY:
-            set_type(PropositionType::NOTSET);
-            add_executability(to_add.get_executability_conditions());
-            break;
-        default:
-            break;
+    switch (to_add.get_type())
+    {
+    case PropositionType::ONTIC:
+        set_type(PropositionType::ONTIC);
+        add_effect(to_add.get_action_effect(), to_add.get_executability_conditions());
+        break;
+    case PropositionType::SENSING:
+        set_type(PropositionType::SENSING);
+        add_effect(to_add.get_action_effect(), to_add.get_executability_conditions());
+        break;
+    case PropositionType::ANNOUNCEMENT:
+        set_type(PropositionType::ANNOUNCEMENT);
+        add_effect(to_add.get_action_effect(), to_add.get_executability_conditions());
+        break;
+    case PropositionType::OBSERVANCE:
+        set_type(PropositionType::NOTSET);
+        add_fully_observant(to_add.get_agent(), to_add.get_observability_conditions());
+        break;
+    case PropositionType::AWARENESS:
+        set_type(PropositionType::NOTSET);
+        add_partially_observant(to_add.get_agent(), to_add.get_observability_conditions());
+        break;
+    case PropositionType::EXECUTABILITY:
+        set_type(PropositionType::NOTSET);
+        add_executability(to_add.get_executability_conditions());
+        break;
+    default:
+        break;
     }
 }
 
@@ -160,7 +166,8 @@ bool Action::operator<(const Action& act) const
 
 Action& Action::operator=(const Action& act)
 {
-    if (this != &act) {
+    if (this != &act)
+    {
         set_name(act.get_name());
         set_id(act.get_id());
         m_type = act.get_type();
@@ -175,34 +182,38 @@ Action& Action::operator=(const Action& act)
 
 void Action::print() const
 {
-    auto & os = ArgumentParser::get_instance().get_output_stream();
+    auto& os = ArgumentParser::get_instance().get_output_stream();
     const Grounder grounder = Domain::get_instance().get_grounder();
     os << "\nAction " << get_name() << ":" << std::endl;
     os << "    ID: " << get_id() << ":" << std::endl;
     os << "    Type: " << Proposition::type_to_string(get_type()) << std::endl;
 
     os << "    Executability:";
-    for (const auto& exec : m_executability) {
+    for (const auto& exec : m_executability)
+    {
         os << " | ";
         exec.print(os);
     }
 
     os << "\n    Effects:";
-    for (const auto& [effect, condition] : m_effects) {
+    for (const auto& [effect, condition] : m_effects)
+    {
         os << " | ";
-        HelperPrint::get_instance().print_list(effect,os);
+        HelperPrint::get_instance().print_list(effect, os);
         os << " if ";
         condition.print(os);
     }
 
     os << "\n    Fully Observant:";
-    for (const auto& [agent, condition] : m_fully_observants) {
+    for (const auto& [agent, condition] : m_fully_observants)
+    {
         os << " | " << grounder.deground_agent(agent) << " if ";
         condition.print(os);
     }
 
     os << "\n    Partially Observant:";
-    for (const auto& [agent, condition] : m_partially_observants) {
+    for (const auto& [agent, condition] : m_partially_observants)
+    {
         os << " | " << grounder.deground_agent(agent) << " if ";
         condition.print(os);
     }

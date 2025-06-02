@@ -9,14 +9,15 @@
  * \enum PropositionType
  * \brief The possible types of proposition found in the domain description.
  */
-enum class PropositionType {
-    EXECUTABILITY,  ///< Specifies an action executability condition: *act* exec if *phi*
-    ONTIC,          ///< Specifies the effects of an ontic action: *act* causes *f*
-    SENSING,        ///< Specifies the effects of a sensing action: *act* sensed *f*
-    ANNOUNCEMENT,   ///< Specifies the effects of an announcement action: *act* announces *ff*
-    OBSERVANCE,     ///< Specifies the full observability conditions: *ag* observes *act*
-    AWARENESS,      ///< Specifies the partial observability conditions: *ag* aware *act*
-    NOTSET          ///< Default case
+enum class PropositionType
+{
+    EXECUTABILITY, ///< Specifies an action executability condition: *act* exec if *phi*
+    ONTIC, ///< Specifies the effects of an ontic action: *act* causes *f*
+    SENSING, ///< Specifies the effects of a sensing action: *act* sensed *f*
+    ANNOUNCEMENT, ///< Specifies the effects of an announcement action: *act* announces *ff*
+    OBSERVANCE, ///< Specifies the full observability conditions: *ag* observes *act*
+    AWARENESS, ///< Specifies the partial observability conditions: *ag* aware *act*
+    NOTSET ///< Default case
 };
 
 /**
@@ -31,7 +32,8 @@ enum class PropositionType {
  * \author Francesco Fabiano
  * \date May 16, 2025
  */
-class Proposition {
+class Proposition
+{
 public:
     /// \name Constructors
     ///@{
@@ -93,23 +95,20 @@ public:
 
     /// \name Utilities
     ///@{
-    /** \brief Prints this proposition.
-     *
-     * \param os The output stream to print to.
-     */
-    void print(std::ostream& os) const;
+    /** \brief Prints this proposition. */
+    void print() const;
 
     /** \brief Grounds this proposition. */
     //void ground();
     ///@}
 
 private:
-    PropositionType m_type {PropositionType::NOTSET}; ///< The type of this proposition.
-    std::string m_action_name;                        ///< The name/id of this proposition.
-    StringSetsSet m_action_effect;                    ///< Effects (for ONTIC, SENSING, ANNOUNCEMENT).
-    std::string m_agent;                              ///< Agent (for OBSERVANCE, AWARENESS).
-    BeliefFormula m_observability_conditions;        ///< Observability condition (not grounded).
-    BeliefFormula m_executability_conditions;        ///< Executability condition (not grounded).
+    PropositionType m_type{PropositionType::NOTSET}; ///< The type of this proposition.
+    std::string m_action_name; ///< The name/id of this proposition.
+    StringSetsSet m_action_effect; ///< Effects (for ONTIC, SENSING, ANNOUNCEMENT).
+    std::string m_agent; ///< Agent (for OBSERVANCE, AWARENESS).
+    BeliefFormula m_observability_conditions; ///< Observability condition (not grounded).
+    BeliefFormula m_executability_conditions; ///< Executability condition (not grounded).
 };
 
 /// \brief A list of Proposition objects.
