@@ -16,9 +16,15 @@
  * \brief Contains static constants for commonly used output and log folder paths.
  */
 struct OutputPaths {
-    static inline const std::string OUTPUT_FOLDER = "out";  ///< Path to the output folder.
-    static inline const std::string GNN_OUTPUT_FOLDER = OUTPUT_FOLDER + "/GNN";  ///< Path to the GNN output folder.
-    static inline const std::string LOGS_FOLDER = "logs";   ///< Path to the log folder.
+    static constexpr std::string LOGS_FOLDER = "logs";   ///< Path to the log folder.
+    static constexpr std::string OUTPUT_FOLDER = "out";  ///< Path to the output folder.
+    static constexpr std::string DATASET_NN_OUTPUT_FOLDER = OUTPUT_FOLDER + "/NN";  ///< Path to the NN output folder.
+    static constexpr std::string DATASET_TRAINING_FOLDER = DATASET_NN_OUTPUT_FOLDER + "/Training";  ///< Path to the training folder.
+    static constexpr std::string DATASET_INFERENCE_FOLDER = DATASET_NN_OUTPUT_FOLDER + "/Inference";  ///< Path to the inference folder.
+    static constexpr std::string DATASET_NN_DATASET_MAPPED = "map";  ///< The suffix for the NN dataset mapped file.
+    static constexpr std::string DATASET_NN_DATASET_HASHED = "hash";  ///< The suffix for the NN dataset hashed file.
+
+
 };
 
 /**

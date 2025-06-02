@@ -15,8 +15,8 @@ include_directories(
         src/domain
         src/formulae
         src/heuristics
-        src/heuristics/heuristics_strategies
-        src/heuristics/heuristics_strategies/EpistemicPlanningGraph
+        src/heuristics/strategies
+        src/heuristics/strategies/epg
         src/parse
         src/states
         src/states/representations/kripke
@@ -33,10 +33,10 @@ include_directories(
 set(TEMPLATIC_HEADERS
         src/bisimulation/VectorBisWrapper.h
         src/heuristics/HeuristicsManager.h
-        src/heuristics/heuristics_strategies/GraphNN.h
-        src/heuristics/heuristics_strategies/SatisfiedGoals.h
-        src/heuristics/heuristics_strategies/EpistemicPlanningGraph/StateLevel.h
-        src/heuristics/heuristics_strategies/EpistemicPlanningGraph/PlanningGraph.h
+        src/heuristics/strategies/neuralnets/TrainingDataset.h
+        src/heuristics/strategies/SatisfiedGoals.h
+        src/heuristics/strategies/epg/StateLevel.h
+        src/heuristics/strategies/epg/PlanningGraph.h
         src/search/SpaceSearcher.h
         src/search/search_strategies/BreadthFirst.h
         src/search/search_strategies/DepthFirst.h

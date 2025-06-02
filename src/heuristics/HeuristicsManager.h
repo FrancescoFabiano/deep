@@ -13,8 +13,8 @@
 #include <utility>
 #include "utilities/Define.h"
 #include "utilities/ExitHandler.h"
-#include "heuristics_strategies/SatisfiedGoals.h"
-#include "EpistemicPlanningGraph/PlanningGraph.h"
+#include "strategies/SatisfiedGoals.h"
+#include "epg/PlanningGraph.h"
 #include "search_strategies/BestFirst.h"
 
 /**

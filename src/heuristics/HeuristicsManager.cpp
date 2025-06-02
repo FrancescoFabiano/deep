@@ -10,6 +10,7 @@ HeuristicsManager::HeuristicsManager(const Heuristics used_heuristics)
     m_goals = Domain::get_instance().get_goal_description();
     switch (m_used_heuristics) {
         case Heuristics::GNN:
+            //ADD NEW CLASS INITIALIZER WHICH WILL HAVE THE TrainingDataset intilizer for goial generation and map usage.
             break;
         case Heuristics::L_PG:
         case Heuristics::S_PG:
@@ -52,7 +53,7 @@ void HeuristicsManager::expand_goals(const unsigned short nesting = 2)
     }
 }
 
-void HeuristicsManager::produce_subgoals(unsigned short nesting, unsigned short depth, const BeliefFormula& to_explore, const AgentsSet& agents)
+void HeuristicsManager::produce_subgoals(unsigned short nesting, const unsigned short depth, const BeliefFormula& to_explore, const AgentsSet& agents)
 {
     if ((to_explore.get_formula_type() == BeliefFormulaType::C_FORMULA && depth == 0)
         || (to_explore.get_formula_type() == BeliefFormulaType::BELIEF_FORMULA && depth > 0)) {

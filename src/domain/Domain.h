@@ -68,6 +68,9 @@ public:
     Domain& operator=(const Domain&) = delete;
 
 private:
+
+    static Domain* instance; ///< Singleton instance
+
     std::string m_name; ///< The name of the file that contains the description of *this*.
     std::unique_ptr<Reader> m_reader; ///< The pointer to a \ref Reader object.
     Grounder m_grounder; ///< A \ref grounder object used to store the name of the information.
@@ -114,5 +117,4 @@ private:
 
     Domain() = default; ///< Private constructor since it is a Singleton class.
 
-    static Domain* instance; ///< Singleton instance
 };

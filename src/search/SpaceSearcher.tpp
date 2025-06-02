@@ -75,7 +75,7 @@ bool SpaceSearcher<StateRepr, Strategy>::search(State<StateRepr>& initial, int n
     }
 
     // Dispatch
-    if (plan.size() > 0)
+    if (!plan.empty())
     {
         // If a plan is provided, validate it
         return validate_plan(initial, actions, check_visited, bisimulation_reduction);

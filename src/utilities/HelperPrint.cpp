@@ -12,7 +12,7 @@
 #include "ArgumentParser.h"
 #include "Domain.h"
 #include "FormulaHelper.h"
-#include "../heuristics/heuristics_strategies/GraphNN.h"
+#include "../heuristics/NeuralNets/DatasetNNTraining.h"
 #include "KripkeState.h"
 
 /**
@@ -410,7 +410,7 @@ void HelperPrint::print_dot_format(const KripkeState &kstate, std::ostream &os) 
     os << "	{rank = max; description};\n";
 }
 
-void HelperPrint::print_dataset_format(const KripkeState &kstate, std::ostream &os) const {
+void HelperPrint::print_dataset_format(const KripkeState &kstate, std::ostream &os) {
     std::unordered_map<KripkeWorldId, int> world_map;
     int world_counter = 1;
     const bool use_hash = !ArgumentParser::get_instance().get_dataset_mapped();
@@ -463,7 +463,7 @@ void HelperPrint::print_dataset_format(const KripkeState &kstate, std::ostream &
         } */
 
     //One edge per agent
-    auto gnn_instance = GraphNN<KripkeState>::get_instance();
+    const auto gnn_instance = &DatasetNNTraining<KripkeState>::get_instance();
     for (const auto &[edge, agents]: edge_map) {
         auto from_label = use_hash ? std::to_string(edge.first) : adjust_id_wrt_agents(world_map[edge.first]);
         auto to_label = use_hash ? std::to_string(edge.second) : adjust_id_wrt_agents(world_map[edge.second]);
@@ -472,7 +472,7 @@ void HelperPrint::print_dataset_format(const KripkeState &kstate, std::ostream &
         //Agents will always be printed as integer starting from 0 as in the goal generation
         for (const auto &ag: agents) {
             os << from_label << " -> " << to_label << " [label=\""
-                    << gnn_instance.get_unique_a_id_from_map(ag)
+                    << gnn_instance->get_unique_a_id_from_map(ag)
                     << "\"];" << std::endl;
         }
     }
