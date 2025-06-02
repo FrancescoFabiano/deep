@@ -71,7 +71,7 @@ public:
                 break;
             }
             case Heuristics::GNN: {
-                eState.set_heuristic_value(get_gnn_score(eState));
+                eState.set_heuristic_value(get_score(eState));
                 break;
             }
             default: {

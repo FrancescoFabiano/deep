@@ -30,6 +30,13 @@ TrainingDataset<StateRepr>& TrainingDataset<StateRepr>::get_instance()
 }
 
 template <StateRepresentation StateRepr>
+const std::string& TrainingDataset<StateRepr>::get_folder() const
+{
+    return m_folder;
+}
+
+
+template <StateRepresentation StateRepr>
 TrainingDataset<StateRepr>::TrainingDataset()
 {
     const std::string domain_name = Domain::get_instance().get_name();

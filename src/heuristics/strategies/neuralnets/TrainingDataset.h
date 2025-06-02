@@ -50,6 +50,13 @@ public:
      */
     [[nodiscard]] bool generate_dataset(std::ostream& os);
 
+
+    /**
+     * \brief Gets the folder path for datasets.
+     * \return The path to the folder.
+     */
+    const std::string& get_folder() const;
+
     /**
     * \brief Get unique agent ID from map.
     * \param ag The agent.
