@@ -49,6 +49,16 @@ void ArgumentParser::parse(int argc, char** argv) {
         // After parsing, if log is enabled, generate the log file path using HelperPrint
         if (m_log_enabled) {
             m_log_file_path = HelperPrint::generate_log_file_path(m_input_file);
+            m_log_ofstream.open(m_log_file_path);
+            if (!m_log_ofstream.is_open()) {
+                ExitHandler::exit_with_message(
+                    ExitHandler::ExitCode::ArgParseError,
+                    "Failed to open log file: " + m_log_file_path
+                );
+            }
+            m_output_stream = &m_log_ofstream;
+        } else {
+            m_output_stream = &std::cout;
         }
 
         // --- Dataset mode consistency check ---
@@ -128,7 +138,7 @@ ArgumentParser::ArgumentParser() : app("deep") {
         ->default_val("SUBGOALS");
 
     app.add_flag("--results_file", m_output_results_file,
-        "Log plan execution time and results to a file for test comparisons.");
+        "Log plan execution time and results to a file for scripting and comparisons.");
 
     app.add_option("--execute_actions", m_exec_actions,
         "Execute a sequence of actions instead of planning. Provide actions as arguments (e.g., --execute_actions open_a peek_a).")->expected(-1);
@@ -137,7 +147,13 @@ ArgumentParser::ArgumentParser() : app("deep") {
     app.add_option("--plan_file", m_plan_file, "Specify the file for saving/loading the plan (default: plan.txt).")
         ->default_val("plan.txt");
 
-    app.add_flag("--log", m_log_enabled, "Enable logging to a file in the '" + OutputPaths::LOGS_FOLDER + "' folder. The log file will be named automatically.");
+    app.add_flag("--log", m_log_enabled, "Enable logging to a file in the '" + OutputPaths::LOGS_FOLDER + "' folder. The log file will be named automatically. If this is not activated, std::cout will be used.");
+}
+
+ArgumentParser::~ArgumentParser() {
+    if (m_log_ofstream.is_open()) {
+        m_log_ofstream.close();
+    }
 }
 
 // Getters
@@ -165,7 +181,7 @@ const std::vector<std::string>& ArgumentParser::get_execution_actions() const no
 bool ArgumentParser::get_results_file() const noexcept { return m_output_results_file; }
 bool ArgumentParser::get_log_enabled() const noexcept { return m_log_enabled; }
 
-const std::string& ArgumentParser::get_log_file_path() const noexcept { return m_log_file_path; }
+std::ostream& ArgumentParser::get_output_stream() const { return *m_output_stream; }
 
 void ArgumentParser::print_usage() const {
     std::cout << app.help() << std::endl;

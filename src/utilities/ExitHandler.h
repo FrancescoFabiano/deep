@@ -97,7 +97,7 @@ public:
         // --- GNN Related (890-899) ---
         GNNInstanceError              = 890,  ///< Error in creating GNN training files.
         GNNFileError                  = 891,  ///< Error in accessing a file.
-        GNNScriptError                = 892,  ///< Erroro in runnign the GNN script file.
+        GNNScriptError                = 892,  ///< Error in running the GNN script file.
 
         // --- State/Action Related (900-919) ---
         StateActionNotExecutableError  = 900,  ///< Action not executable in state where it is supposed to be.

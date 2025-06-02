@@ -1,16 +1,15 @@
 #include "GraphNN.h"
 #include "TrainingDataset.h"
 #include "ExitHandler.h"
-#include <filesystem>
 #include <fstream>
 #include <sstream>
-#include <iostream>
-#include <cstdlib>
 
 // --- Singleton instance initialization ---
-GraphNN* GraphNN::instance = nullptr;
+template <StateRepresentation StateRepr>
+GraphNN<StateRepr>* GraphNN<StateRepr>::instance = nullptr;
 
-GraphNN& GraphNN::get_instance() {
+template <StateRepresentation StateRepr>
+GraphNN<StateRepr>& GraphNN<StateRepr>::get_instance() {
     if (!instance) {
         ExitHandler::exit_with_message(
             ExitHandler::ExitCode::GNNInstanceError,
@@ -21,17 +20,19 @@ GraphNN& GraphNN::get_instance() {
     return *instance;
 }
 
-void GraphNN::create_instance() {
+template <StateRepresentation StateRepr>
+void GraphNN<StateRepr>::create_instance() {
     if (!instance) {
         instance = new GraphNN();
     }
 }
 
-GraphNN::GraphNN()
+template <StateRepresentation StateRepr>
+GraphNN<StateRepr>::GraphNN()
 {
     // Use default StateRepresentation for dataset folder creation
-    TrainingDataset<DefaultStateRepresentation>::create_instance();
-    m_checking_file_path = TrainingDataset<DefaultStateRepresentation>::get_instance().get_folder() + "to_predict.dot";
+    TrainingDataset<StateRepr>::create_instance();
+    m_checking_file_path = TrainingDataset<StateRepr>::get_instance().get_folder() + "to_predict.dot";
 }
 
 /**
@@ -41,7 +42,7 @@ GraphNN::GraphNN()
  * \return The heuristic score for the state.
  */
 template <StateRepresentation StateRepr>
-[[nodiscard]] unsigned short GraphNN::get_score(const State<StateRepr>& state)
+[[nodiscard]] unsigned short GraphNN<StateRepr>::get_score(const State<StateRepr>& state)
 {
     // Print the state in the required dataset format to the checking file
     {

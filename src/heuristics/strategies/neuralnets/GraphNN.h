@@ -3,6 +3,7 @@
 #include <memory>
 #include <ostream>
 #include "State.h"
+#include "TrainingDataset.h"
 
 /**
  * \class GraphNN
@@ -15,6 +16,7 @@
  * \author Francesco Fabiano
  * \date June 2, 2025
  */
+template <StateRepresentation StateRepr>
 class GraphNN
 {
 public:
@@ -27,7 +29,9 @@ public:
     /**
      * \brief Create the singleton instance of GraphNN.
      */
+
     static void create_instance();
+
 
     /**
      * \brief Get the score for a given state using the neural network heuristic.
@@ -35,7 +39,6 @@ public:
      * \param state The state to evaluate.
      * \return The heuristic score for the state.
      */
-    template <StateRepresentation StateRepr>
     [[nodiscard]] unsigned short get_score(const State<StateRepr>& state);
 
     /** \brief Deleted copy constructor (singleton pattern). */
@@ -57,3 +60,5 @@ private:
 
     std::string m_checking_file_path; ///< Path to the file where the state is printed
 };
+
+#include "GraphNN.tpp"

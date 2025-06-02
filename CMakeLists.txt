@@ -33,6 +33,7 @@ include_directories(
 set(TEMPLATIC_HEADERS
         src/bisimulation/VectorBisWrapper.h
         src/heuristics/HeuristicsManager.h
+        src/heuristics/strategies/neuralnets/GraphNN.h
         src/heuristics/strategies/neuralnets/TrainingDataset.h
         src/heuristics/strategies/SatisfiedGoals.h
         src/heuristics/strategies/epg/StateLevel.h

@@ -15,7 +15,8 @@
 #include "utilities/ExitHandler.h"
 #include "strategies/SatisfiedGoals.h"
 #include "epg/PlanningGraph.h"
-#include "search_strategies/BestFirst.h"
+#include "neuralnets/GraphNN.h"
+#include <ranges>
 
 /**
  * \brief Manages the computation and assignment of heuristic values to states.
@@ -26,7 +27,47 @@ public:
      * \brief Constructs a HeuristicsManager with the chosen heuristic.
      * \param[in] used_heuristics The heuristic to use.
      */
-    explicit HeuristicsManager(Heuristics used_heuristics);
+    template<StateRepresentation T>
+    explicit HeuristicsManager(Heuristics used_heuristics)
+    {
+        set_used_h(used_heuristics);
+        m_goals = Domain::get_instance().get_goal_description();
+        switch (m_used_heuristics) {
+        case Heuristics::GNN:
+            GraphNN<T>::create_instance();
+            break;
+        case Heuristics::L_PG:
+        case Heuristics::S_PG:
+            expand_goals();
+            break;
+        case Heuristics::C_PG: {
+                if (const PlanningGraph pg; pg.is_satisfiable()) {
+                    m_pg_max_score = 0;
+                    m_fluents_score = pg.get_f_scores();
+                    m_bf_score = pg.get_bf_scores();
+                    for (const auto &score_f : m_fluents_score | std::views::values) {
+                        m_pg_max_score += score_f; // Accumulate positive scores for normalization.
+                    }
+                    for (const auto &score_bf: m_bf_score | std::views::values) {
+                        m_pg_max_score += score_bf; // Accumulate positive scores for normalization.
+                    }
+                } else {
+                    m_pg_goal_not_found = true;
+                }
+                break;
+        }
+        case Heuristics::SUBGOALS:
+            expand_goals();
+            SatisfiedGoals::get_instance().set(m_goals);
+            break;
+        default:
+            ExitHandler::exit_with_message(
+                ExitHandler::ExitCode::HeuristicsBadDeclaration,
+                "Wrong Heuristic Selection in HeuristicsManager. Please check the heuristic type."
+            );
+            break;
+        }
+    }
 
     /**
      * \brief Computes and sets the heuristic value for a given state.
@@ -60,7 +101,7 @@ public:
                     for (const auto &[belief, score] : m_bf_score) {
                         if (eState.entails(belief) && score > 0) h_value += score;
                     }
-                    h_value = static_cast<short>(100 - ((static_cast<float>(h_value) / m_pg_max_score) * 100)); // Invert: 0 is 100%, 100 is 0%
+                    h_value = static_cast<short>(100 - ((static_cast<float>(h_value) / static_cast<float>(m_pg_max_score)) * 100)); // Invert: 0 is 100%, 100 is 0%
                 }
 
                 eState.set_heuristic_value(h_value);
@@ -108,21 +149,14 @@ public:
      */
     [[nodiscard]] const FormulaeList &get_goals() const noexcept;
 
-    /**
-     * \brief Assignment operator.
-     * \param[in] to_copy The HeuristicsManager to assign from.
-     * \return true if the assignment succeeded, false otherwise.
-     */
-    bool operator=(const HeuristicsManager &to_copy);
-
 private:
     Heuristics m_used_heuristics = Heuristics::ERROR; ///< The type of heuristic used.
     FormulaeList m_goals {}; ///< The goal description, possibly expanded for heuristic use.
 
     /// \name Planning Graph Related
     ///@{
-    pg_f_map m_fluents_score {}; ///< Map of fluent scores (used by C_PG heuristic).
-    pg_bf_map m_bf_score {}; ///< Map of belief formula scores (used by C_PG heuristic).
+    PG_FluentsScoreMap m_fluents_score {}; ///< Map of fluent scores (used by C_PG heuristic).
+    PG_BeliefFormulaeMap m_bf_score {}; ///< Map of belief formula scores (used by C_PG heuristic).
     bool m_pg_goal_not_found = false; ///< Flag indicating if the planning graph determined that the goal is not reachable.
     int m_pg_max_score = 0; ///< Maximum score for the planning graph (used for normalization).
     ///@}
@@ -134,7 +168,7 @@ private:
      *   - B(a, φ), B(b, φ), B(a, B(b, φ)), B(b, B(a, φ)), etc., up to the specified nesting depth.
      * \param[in] nesting The maximum depth for generated subgoals (default: 2).
      */
-    void expand_goals(unsigned short nesting);
+    void expand_goals(unsigned short nesting = 2);
 
     /**
      * \brief Recursively generates nested subgoals.

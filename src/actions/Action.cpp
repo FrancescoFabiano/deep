@@ -12,6 +12,7 @@
 
 #include <utility>
 
+#include "ArgumentParser.h"
 #include "Domain.h"
 #include "HelperPrint.h"
 #include "utilities/ExitHandler.h"
@@ -172,9 +173,10 @@ Action& Action::operator=(const Action& act)
     return *this;
 }
 
-void Action::print(std::ostream& os) const
+void Action::print() const
 {
-    Grounder grounder = Domain::get_instance().get_grounder();
+    auto & os = ArgumentParser::get_instance().get_output_stream();
+    const Grounder grounder = Domain::get_instance().get_grounder();
     os << "\nAction " << get_name() << ":" << std::endl;
     os << "    ID: " << get_id() << ":" << std::endl;
     os << "    Type: " << Proposition::type_to_string(get_type()) << std::endl;

@@ -87,11 +87,8 @@ public:
      */
     void add_proposition(const Proposition& to_add);
 
-    /** \brief Prints this action.
-     *
-     * \param os The output stream to print to.
-     */
-    void print(std::ostream& os) const;
+    /** \brief Prints this action.*/
+    void print() const;
 
     /** \brief Operator < implemented to use Action in std::set. */
     bool operator<(const Action&) const;

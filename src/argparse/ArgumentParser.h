@@ -109,11 +109,21 @@ public:
      */
     [[nodiscard]] bool get_dataset_both() const noexcept;
 
+    /**
+     * \brief Returns the output stream.
+     * \return The log file stream or std::cout if logging is not enabled.
+     */
+    [[nodiscard]] std::ostream& get_output_stream() const;
 
     /**
      * \brief Prints the usage of the application (command-line arguments).
      */
     void print_usage() const;
+
+    /**
+     * \brief Destructor. Closes the log file stream if open.
+     */
+    ~ArgumentParser();
 
     /** \brief Copy constructor removed since this is a Singleton class. */
     ArgumentParser(const ArgumentParser&) = delete;
@@ -156,7 +166,8 @@ private:
     std::string m_plan_file = "plan.txt";  ///< Plan file path.
     bool m_log_enabled = false; ///< True if --log is enabled.
     std::string m_log_file_path; ///< The log file path if logging is enabled.
-
+    std::ostream* m_output_stream = &std::cout; ///< Output stream for logging and results (default: std::cout).
+    std::ofstream m_log_ofstream; ///< If logging to file, this holds the ofstream.
 
     // Accessors private because they can be accessed only by friend class \ref Configuration
 
@@ -189,13 +200,6 @@ private:
      * \return true if visited state checking is enabled, false otherwise.
      */
     [[nodiscard]] bool get_check_visited() const noexcept;
-
-
-    /**
-     * \brief Returns the log file path to use if logging is enabled.
-     * \return The log file path (empty if logging is not enabled).
-     */
-    [[nodiscard]] const std::string& get_log_file_path() const noexcept;
 
     friend class Configuration;
 
