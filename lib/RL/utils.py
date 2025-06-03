@@ -1,153 +1,180 @@
-from typing import Dict, Tuple
+from __future__ import annotations
+
+import re
+from pathlib import Path
 
 import networkx as nx
 import numpy as np
+import pydot
 
 import torch
-from torch_geometric.data import Data
+from torch_geometric.data import Data, HeteroData
+
+F_NODE = 1  # hashed‑ID (not degree)
+F_EDGE = 1  # dummy weight
+_TWO_64 = 2**64  # constant so it is computed once
 
 
-def process_input_graph(G: nx.Graph) -> Tuple[np.ndarray, np.ndarray, Dict[str, int]]:
-    """
-    Converts a NetworkX graph with string edge labels (like 'a,b,c')
-    into an adjacency matrix and an edge feature tensor.
-
-    Args:
-        G (nx.Graph): A NetworkX graph with string-labeled edges.
-
-    Returns:
-        adj_matrix (np.ndarray): Binary adjacency matrix [num_nodes, num_nodes]
-        edge_attr_matrix (np.ndarray): Edge attributes as one-hot label matrix [num_nodes, num_nodes, num_labels]
-        node_to_idx (Dict[str, int]): Mapping from node name to matrix index
-    """
-
-    # 1. Get nodes and index mapping
-    nodes = list(G.nodes())
-    node_to_idx = {node: idx for idx, node in enumerate(nodes)}
-    num_nodes = len(nodes)
-
-    # 2. Extract all unique labels
-    unique_labels = set()
-    for _, _, data in G.edges(data=True):
-        label_str = data.get("label", "").strip('"')
-        if label_str:
-            unique_labels.update(label_str.split(","))
-
-    label_list = sorted(list(unique_labels))  # consistent order
-    label_to_idx = {label: i for i, label in enumerate(label_list)}
-    num_labels = len(label_list)
-
-    # 3. Initialize matrices
-    adj_matrix = np.zeros((num_nodes, num_nodes), dtype=int)
-    edge_attr_matrix = np.zeros((num_nodes, num_nodes, num_labels), dtype=int)
-
-    # 4. Populate matrices
-    for u, v, data in G.edges(data=True):
-        i, j = node_to_idx[u], node_to_idx[v]
-        adj_matrix[i, j] = 1
-
-        label_str = data.get("label", "").strip('"')
-        if label_str:
-            for label in label_str.split(","):
-                if label in label_to_idx:
-                    # print(u, v, label)
-                    edge_attr_matrix[i, j, label_to_idx[label]] = 1
-    """print("\n")
-    print(adj_matrix)
-    print(edge_attr_matrix)
-    print(node_to_idx)"""
-    return adj_matrix, edge_attr_matrix, node_to_idx
+def _hash64(label) -> float:
+    if int(label) == -1:
+        return -1.0
+    else:
+        uid = np.uint64(int(label))
+        return float(uid) / _TWO_64  # ∈ [0,1)
 
 
-def create_data_from_graph(G: nx.DiGraph, dist_from_goal: int, depth: int) -> Data:
-    """
-    Processes the given directed graph and returns a PyG Data object
-    ready to be batched or fed to a GNN.
+# --------------------------------------------------------------------
+# fixed‑width node & edge feats
+# --------------------------------------------------------------------
+def _to_pyg_tensors(G: nx.Graph, node_to_idx: dict[int, int]):
+    N = G.number_of_nodes()
 
-    Args:
-        G (nx.DiGraph): The input graph (nodes, edges with 'label' attributes).
-        dist_from_goal (int): The scalar we want to predict (target).
-        depth (int): An additional scalar that may be useful as a feature.
+    # node‑features
+    x = torch.zeros((N, F_NODE), dtype=torch.float)
+    x[:, 0] = torch.tensor([int(n) for n in G.nodes], dtype=torch.float)
+    x[:, 0] = torch.tensor([_hash64(n) for n in G.nodes], dtype=torch.float)
+    # x[:, 1] = torch.tensor([G.degree(n) for n in G.nodes], dtype=torch.float)
 
-    Returns:
-        Data: torch_geometric.data.Data object with the fields:
-            - x: node features [num_nodes, node_feat_dim]
-            - edge_index: [2, num_edges], describing graph connectivity
-            - edge_attr: [num_edges, edge_feat_dim], describing edge features
-            - y: [1], the scalar target
-    """
-    # 1) Process the graph => adjacency & edge_attr_matrix
-    adj_matrix, edge_attr_matrix, node_to_idx = process_input_graph(G)
-    # num_nodes = adj_matrix.shape[0]
+    # edges
+    src, dst = (
+        zip(*[(node_to_idx[comb[0]], node_to_idx[comb[1]]) for comb in G.edges])
+        if G.edges
+        else ([], [])
+    )
+    edge_index = torch.tensor([src, dst], dtype=torch.long)
+    # edge_attr  = torch.ones((len(src), F_EDGE), dtype=torch.float)  # weight=1
+    edge_attr = torch.zeros((len(src), 1), dtype=torch.float)
+    for c, (u, v, data) in enumerate(G.edges(data=True)):
+        edge_attr[c] = int(data["label"].strip('"'))
+    return x, edge_index, edge_attr
 
-    # 2) NODE FEATURES
-    # Example: each node gets [1.0, depth]
-    x_list = []
-    for node, idx in node_to_idx.items():
-        x_list.append([1.0, float(depth)])
-    x = torch.tensor(x_list, dtype=torch.float)  # shape: [num_nodes, 2]
 
-    # 3) EDGE INDEX
-    # For a directed adjacency matrix, nonzero entry (i, j) => edge from i to j
-    edge_index_np = np.array(np.nonzero(adj_matrix))  # shape: [2, num_edges]
-    edge_index = torch.from_numpy(edge_index_np).long()
+def _build_hetero_sample(
+    G_state: nx.Graph, G_goal: nx.Graph, depth: float, dist_from_goal: float = None
+):
+    idx_state = {n: i for i, n in enumerate(G_state.nodes)}
+    idx_goal = {n: i for i, n in enumerate(G_goal.nodes)}
 
-    # 4) EDGE ATTRIBUTES (Fix the warning)
-    # Gather all edge_attr_matrix rows in one NumPy array:
-    src_indices, tgt_indices = edge_index_np
-    edge_attr_np = edge_attr_matrix[
-        src_indices, tgt_indices, :
-    ]  # shape: [num_edges, num_labels]
-    edge_attr = torch.from_numpy(edge_attr_np).float()
+    data = HeteroData()
 
-    # 5) TARGET
-    y = torch.tensor([dist_from_goal], dtype=torch.float)  # shape: [1]
+    x_s, ei_s, ea_s = _to_pyg_tensors(G_state, idx_state)
+    x_g, ei_g, ea_g = _to_pyg_tensors(G_goal, idx_goal)
+    # ── node features ────────────────────────────────────────────
+    data["state"].x = x_s
+    data["goal"].x = x_g
 
-    # 6) Build final Data object
-    data = Data(x=x, edge_index=edge_index, edge_attr=edge_attr, y=y)
+    # ── homogeneous edges  state→state , goal→goal ───────────────
+    data["state", "to", "state"].edge_index = ei_s
+    data["state", "to", "state"].edge_attr = ea_s
 
+    data["goal", "to", "goal"].edge_index = ei_g
+    data["goal", "to", "goal"].edge_attr = ea_g
+
+    # ── alignment edges state⇄goal (as before) ───────────────────
+    src = [idx_state[n] for n in G_state.nodes if n in idx_goal]
+    dst = [idx_goal[n] for n in G_state.nodes if n in idx_goal]
+
+    def make_edges(s, d):
+        ei = torch.tensor([s, d], dtype=torch.long)
+        ea = torch.ones((len(s), F_EDGE), dtype=torch.float)
+        if len(s) == 0:  # keep schema if empty
+            ei = torch.empty((2, 0), dtype=torch.long)
+            ea = torch.empty((0, F_EDGE), dtype=torch.float)
+        return ei, ea
+
+    ei_fwd, ea_fwd = make_edges(src, dst)
+    ei_rev, ea_rev = make_edges(dst, src)
+
+    data["state", "matches", "goal"].edge_index = ei_fwd
+    data["state", "matches", "goal"].edge_attr = ea_fwd
+    data["goal", "rev_matches", "state"].edge_index = ei_rev
+    data["goal", "rev_matches", "state"].edge_attr = ea_rev
+
+    # ── graph‑level attrs ────────────────────────────────────────
+    data.depth = torch.tensor([depth], dtype=torch.float)
+    if dist_from_goal is not None:
+        data.y = torch.tensor([dist_from_goal], dtype=torch.float)
     return data
 
 
-def predict_from_graph(
-    model: torch.nn.Module,
-    graph_path: str,
-    depth: int,
-    device: torch.device = "cuda",
-) -> float:
+def _build_state_sample(
+    G_state: nx.Graph, depth: float, dist_from_goal: float | None = None
+):
+    idx = {n: i for i, n in enumerate(G_state.nodes)}
+    x, ei, ea = _to_pyg_tensors(G_state, idx)
+
+    data = Data()
+    data.x = x
+    data.edge_index = ei
+    data.edge_attr = ea
+    data.depth = torch.tensor([depth], dtype=torch.float)
+    if dist_from_goal is not None:  # 3️⃣  use the *right* variable
+        data.y = torch.tensor([dist_from_goal], dtype=torch.float)
+    return data
+
+
+def build_sample(G_state, depth, dist=None, G_goal=None):
+    if G_goal is not None:
+        return _build_hetero_sample(G_state, G_goal, depth, dist)
+    else:
+        return _build_state_sample(G_state, depth, dist)
+
+
+def predict_single(sample_graph, model, device="cpu"):
     """
-    Loads a graph from a file, processes it, and runs inference with the trained model.
-
-    Args:
-        model (torch.nn.Module): The trained GNN model.
-        graph_path (str): Path to the .dot file of the graph.
-        depth (int): Depth to include as node feature.
-        device (torch.device): The device to run inference on.
-
-    Returns:
-        float: The predicted distance from the goal.
+    sample_graph : G_s (+ G_g if USE_GOAL)   →  PyG Data/HeteroData
+    model        : trained StateOnlyGNN or HeteroGNN
+    returns      : scalar prediction (Python float)
     """
-    # 1. Load the graph from the .dot file
-    G = nx.Graph(nx.nx_pydot.read_dot(graph_path))
-
-    # 2. Dummy target value (not used for inference, just for Data creation)
-    dummy_dist_from_goal = 0
-
-    # 3. Create PyG Data object
-    data_obj = create_data_from_graph(G, dummy_dist_from_goal, depth)
-
-    # 4. Move data to the appropriate device and add batch index
-    data_obj = data_obj.to(device)
-    data_obj.batch = torch.zeros(
-        data_obj.num_nodes, dtype=torch.long, device=device
-    )  # single graph = batch 0
-
-    # 5. Set model to eval mode and predict
     model.eval()
     with torch.no_grad():
-        pred = model(
-            data_obj.x, data_obj.edge_index, data_obj.edge_attr, data_obj.batch
-        )
-        pred_int = torch.round(pred)
+        g = _ensure_batch_field(_to_device(sample_graph, device))
+        out = model(g)  # model knows whether g is Data or HeteroData
+        return out.item()
 
-    return pred_int.item()
+
+def _to_device(d, device):
+    """Move a Data / HeteroData object to CUDA/CPU recursively."""
+    return d.to(device, non_blocking=True)
+
+
+def _ensure_batch_field(d):
+    """
+    PyG Data/HeteroData created by hand lack the .batch vectors
+    expected by global_mean_pool.  DataLoader adds them automatically,
+    but for single‑graph inference we add them here.
+    """
+    if isinstance(d, Data):
+        if not hasattr(d, "batch"):
+            d.batch = torch.zeros(d.num_nodes, dtype=torch.long, device=d.x.device)
+    else:  # HeteroData
+        for node_type in d.node_types:
+            store = d[node_type]
+            if not hasattr(store, "batch"):
+                store.batch = torch.zeros(
+                    store.num_nodes, dtype=torch.long, device=store.x.device
+                )
+    return d
+
+
+def load_nx_graph(dot_path: str, if_goal: bool):
+    if not if_goal:
+        pydot_graph, = pydot.graph_from_dot_file(dot_path)
+        return nx.DiGraph(nx.nx_pydot.from_pydot(pydot_graph))
+    else:
+        dot_path = Path(dot_path)
+        fixed_path = dot_path.with_name("fixed_" + dot_path.name)
+
+        # Quote negative node IDs like -1
+        with open(dot_path, "r") as f:
+            content = f.read()
+
+        # Add quotes around negative numbers only when they are node identifiers
+        content_fixed = re.sub(r'(?<![\w"]) (-\d+)(?![\w"])', r'"\1"', content)
+
+        # Save to a new file
+        with open(fixed_path, "w") as f:
+            f.write(content_fixed)
+
+        (dot_graph,) = pydot.graph_from_dot_file(fixed_path)
+        return nx.drawing.nx_pydot.from_pydot(dot_graph)

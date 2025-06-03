@@ -5,7 +5,7 @@ from setuptools import find_packages, setup
 
 def get_version():
     """Gets the vmas version."""
-    path = CWD / "vni" / "__init__.py"
+    path = CWD / "epistemic_rl" / "__init__.py"
     content = path.read_text()
 
     for line in content.splitlines():

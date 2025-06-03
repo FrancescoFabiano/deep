@@ -29,7 +29,7 @@ public:
      * \param[in] used_heuristics The heuristic to use.
      */
     template <StateRepresentation T>
-    explicit HeuristicsManager(Heuristics used_heuristics)
+    explicit HeuristicsManager(const Heuristics used_heuristics)
     {
         set_used_h(used_heuristics);
         m_goals = Domain::get_instance().get_goal_description();

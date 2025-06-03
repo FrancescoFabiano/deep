@@ -34,11 +34,10 @@ template <typename T>
 concept StateRepresentation = requires(T rep, const Fluent& f, const FluentsSet& fs,
                                        const FluentFormula& ff, const BeliefFormula& bf,
                                        const FormulaeList& fl, const Action& act,
-                                       std::ostream& os, const T& other)
+                                       std::ofstream& ofs, const T& other)
 {
     /**
-     * @name Entailment Methods
-     * Methods for logical entailment evaluation
+     * @name Entailment Methods for logical entailment evaluation
      */
     ///@{
     { std::as_const(rep).entails(f) } -> std::same_as<bool>;
@@ -51,7 +50,7 @@ concept StateRepresentation = requires(T rep, const Fluent& f, const FluentsSet&
     /**
      * @brief Constructs the initial state.
      */
-    { rep.build_initial(os) };
+    { rep.build_initial() };
 
     /**
      * @brief Reduces the state using bisimulation contraction.
@@ -61,17 +60,18 @@ concept StateRepresentation = requires(T rep, const Fluent& f, const FluentsSet&
 
     /**
      * @brief Successor computation method.
+     * \warning compute_successor is not working if set to const, no idea why
      */
-    { std::as_const(rep).compute_successor(act) } -> std::same_as<T>;
-
+    //{ std::as_const(rep).compute_successor(act) } -> std::same_as<T>;
+    { rep.compute_successor(act) } -> std::same_as<T>;
     /**
      * @name Output Methods
      * Required methods for formatted output.
      */
     ///@{
-    { std::as_const(rep).print(os) };
-    { std::as_const(rep).print_dot_format(os) };
-    { std::as_const(rep).print_dataset_format(os) };
+    { std::as_const(rep).print() };
+    { std::as_const(rep).print_dot_format(ofs) };
+    { std::as_const(rep).print_dataset_format(ofs) };
     ///@}
 
     /**
@@ -237,19 +237,18 @@ public:
 
 
     /** \brief Function that prints the information of *this*.
-	* \param os The output stream to print to.
      */
-    void print(std::ostream& os) const;
+    void print() const;
 
     /** \brief Function that prints the information of *this* in dot format.
-     * \param os The output stream to print to.
+     * \param ofs The output file stream to print to.
      */
-    void print_dot_format(std::ostream& os) const;
+    void print_dot_format(std::ofstream& ofs) const;
 
     /** \brief Function that prints the information of *this* for the generation of the dataset used to train the GNN.
-    * \param os The output stream to print to.
+    * \param ofs The output stream to print to.
     */
-    void print_dataset_format(std::ostream& os) const;
+    void print_dataset_format(std::ofstream& ofs) const;
 
 private:
     /** \brief The type of state m_representation.

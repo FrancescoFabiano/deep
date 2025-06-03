@@ -12,7 +12,8 @@
  * \author Francesco Fabiano
  * \date April 30, 2025
  */
-class SetHelper {
+class SetHelper
+{
 public:
     /**
      * \brief Adds all elements from \p factor2 to \p to_modify.
@@ -21,8 +22,10 @@ public:
      * \param[in] factor2 The set whose elements are added.
      */
     template <class T>
-    static void sum_set(std::set<T>& to_modify, const std::set<T>& factor2) {
-        for (const auto& elem : factor2) {
+    static void sum_set(std::set<T>& to_modify, const std::set<T>& factor2)
+    {
+        for (const auto& elem : factor2)
+        {
             to_modify.insert(elem);
         }
     }
@@ -34,8 +37,10 @@ public:
      * \param[in] factor2 The set whose elements are removed.
      */
     template <class T>
-    static void minus_set(std::set<T>& to_modify, const std::set<T>& factor2) {
-        for (const auto& elem : factor2) {
+    static void minus_set(std::set<T>& to_modify, const std::set<T>& factor2)
+    {
+        for (const auto& elem : factor2)
+        {
             to_modify.erase(elem);
         }
     }

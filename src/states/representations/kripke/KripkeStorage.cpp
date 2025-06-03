@@ -21,7 +21,8 @@ KripkeWorldPointer KripkeStorage::add_world(const KripkeWorld& to_add)
 {
     // Try to insert the world. If it already exists, get the existing one.
     auto [it, inserted] = m_created_worlds.insert(to_add);
-    if (it == m_created_worlds.end()) {
+    if (it == m_created_worlds.end())
+    {
         ExitHandler::exit_with_message(
             ExitHandler::ExitCode::KripkeStorageInsertError,
             "Error: Failed to insert or find KripkeWorld in KripkeStorage.\n"

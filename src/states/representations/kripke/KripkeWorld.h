@@ -83,9 +83,8 @@ public:
     /// \name Utility
     ///@{
     /** \brief Print all information about this world.
-     * \param os The output stream to print to.
      */
-    void print(std::ostream& os) const;
+    void print() const;
     ///@}
 
 private:
@@ -120,10 +119,12 @@ private:
  * \details This function computes how many digits are needed to represent the maximum value of KripkeWorldId.
  * \return The number of decimal digits.
  */
-constexpr unsigned short calculate_max_digits() {
+constexpr unsigned short calculate_max_digits()
+{
     KripkeWorldId max_rep = std::numeric_limits<KripkeWorldId>::max();
     unsigned short digits = 0;
-    while (max_rep > 0) {
+    while (max_rep > 0)
+    {
         max_rep /= 10;
         ++digits;
     }

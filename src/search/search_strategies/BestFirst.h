@@ -39,22 +39,25 @@ struct StateComparator
  * \tparam StateRepr The state representation type (must satisfy StateRepresentation).
  */
 template <StateRepresentation StateRepr>
-class BestFirst {
+class BestFirst
+{
 public:
-
     /**
      * \brief Default constructor.
      */
-    BestFirst() {
-        heuristics_manager = HeuristicsManager(Configuration::get_instance().get_heuristic_opt());
-    };
+    BestFirst()
+    {
+        m_heuristics_manager(Configuration::get_instance().get_heuristic_opt());
+    } ;
 
     /**
      * \brief Push a state into the search container.
      */
-    void push(const State<StateRepr>& s) {
-        HeuristicsManager.set_heuristic_value(s);
-        if (s.get_heuristic_value() < 0) {
+    void push(const State<StateRepr>& s)
+    {
+        m_heuristics_manager.set_heuristic_value(s);
+        if (s.get_heuristic_value() < 0)
+        {
             return; // Skip states with negative heuristic values.
         }
         search_space.push(s);
@@ -63,41 +66,47 @@ public:
     /**
      * \brief Pop a state from the search container.
      */
-    void pop() {
+    void pop()
+    {
         search_space.pop();
     }
 
     /**
      * \brief Peek at the next state in the search container.
      */
-    State<StateRepr> peek() const {
+    State<StateRepr> peek() const
+    {
         return search_space.top();
     }
 
     /**
      * \brief Get the name of the search strategy.
      */
-    static std::string get_name()
+    const std::string & get_name() const
     {
-        return "Best First Search";
+        return m_name + " (" + m_heuristics_manager.get_name() + ")";
     }
 
     /**
      * \brief Reset the search container.
      */
-    void reset() {
+    void reset()
+    {
         search_space = StatePriorityQueue();
     }
 
     /**
      * \brief Check if the search container is empty.
      */
-    [[nodiscard]] bool empty() const {
+    [[nodiscard]] bool empty() const
+    {
         return search_space.empty();
     }
 
 private:
-    using StatePriorityQueue = std::priority_queue<State<StateRepr>, std::vector<State<StateRepr>>, StateComparator<State<StateRepr>>>;
+    using StatePriorityQueue = std::priority_queue<
+        State<StateRepr>, std::vector<State<StateRepr>>, StateComparator<State<StateRepr>>>;
     StatePriorityQueue search_space; ///< The search space represented as a priority queue of states.
-    HeuristicsManager heuristics_manager; ///< Heuristics manager to compute heuristic values for states.
+    HeuristicsManager<StateRepr> m_heuristics_manager; ///< Heuristics manager to compute heuristic values for states.
+    std::string m_name = "Heuristics First Search"; ///< Name of the search strategy.
 };

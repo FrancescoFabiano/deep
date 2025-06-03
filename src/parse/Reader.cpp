@@ -7,6 +7,8 @@
  */
 
 #include "Reader.h"
+
+#include "ArgumentParser.h"
 #include "../utilities/HelperPrint.h"
 
 // prototype of bison-generated parser function
@@ -24,32 +26,36 @@ int Reader::read()
  * \brief Print out all the information that are stored as std::string in the reader object.
  * \see HelperPrint, BeliefFormula::print() const, Proposition::print() const
  */
-void Reader::print(std::ostream& os) const
+void Reader::print() const
 {
+    auto& os = ArgumentParser::get_instance().get_output_stream();
     os << "\n\nAGENT DECLARATION\n---------------------------\n";
-    HelperPrint::print_list(m_agents, os);
+    HelperPrint::print_list(m_agents);
     os << "\n\n";
 
     os << "FLUENT DECLARATION\n----------------------------\n";
-    HelperPrint::print_list(m_fluents, os);
+    HelperPrint::print_list(m_fluents);
     os << "\n\n";
 
     os << "PROPOSITIONS\n----------------------------\n";
-    for (const auto& prop : m_propositions) {
-        prop.print(os);
+    for (const auto& prop : m_propositions)
+    {
+        prop.print();
         os << '\n';
     }
 
     os << "INIT\n----------------------------\n";
-    for (const auto& formula : m_bf_initially) {
-        formula.print(os);
+    for (const auto& formula : m_bf_initially)
+    {
+        formula.print();
         os << '\n';
     }
     os << '\n';
 
     os << "GOAL \n----------------------------\n";
-    for (const auto& formula : m_bf_goal) {
-        formula.print(os);
+    for (const auto& formula : m_bf_goal)
+    {
+        formula.print();
         os << '\n';
     }
     os << "\n\n\n";

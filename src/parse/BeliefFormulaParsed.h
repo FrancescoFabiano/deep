@@ -42,19 +42,19 @@ public:
     /// \name Setters
     ///@{
     /** \brief Setter for the field m_string_fluent_formula. */
-    void set_string_fluent_formula(const StringSetsSet & to_set);
+    void set_string_fluent_formula(const StringSetsSet& to_set);
 
     /** \brief Setter for the field m_string_agent. */
-    void set_string_agent(const std::string & to_set);
+    void set_string_agent(const std::string& to_set);
 
     /** \brief Setter for the field m_string_group_agents. */
-    void set_string_group_agents(const StringsSet & to_set);
+    void set_string_group_agents(const StringsSet& to_set);
 
     /** \brief Setter of the field m_bf1. */
-    void set_bf1(const BeliefFormulaParsed & to_set);
+    void set_bf1(const BeliefFormulaParsed& to_set);
 
     /** \brief Setter of the field m_bf2. */
-    void set_bf2(const BeliefFormulaParsed & to_set);
+    void set_bf2(const BeliefFormulaParsed& to_set);
 
     /** \brief Setter for the field m_formula_type. */
     void set_formula_type(BeliefFormulaType to_set);
@@ -63,7 +63,7 @@ public:
     void set_operator(BeliefFormulaOperator to_set);
 
     /** \brief Setter from a fluent_formula (string-based). */
-    void set_from_ff(const StringSetsSet & to_build);
+    void set_from_ff(const StringSetsSet& to_build);
     ///@}
 
     /// \name Getters
@@ -72,30 +72,29 @@ public:
     [[nodiscard]] BeliefFormulaType get_formula_type() const noexcept;
 
     /** \brief Getter for the field m_string_fluent_formula. */
-    [[nodiscard]] const StringSetsSet & get_string_fluent_formula() const noexcept;
+    [[nodiscard]] const StringSetsSet& get_string_fluent_formula() const noexcept;
 
     /** \brief Getter for the field m_string_agent. */
-    [[nodiscard]] const std::string & get_string_agent() const noexcept;
+    [[nodiscard]] const std::string& get_string_agent() const noexcept;
 
     /** \brief Getter for the field m_string_group_agents. */
-    [[nodiscard]] const StringsSet & get_string_group_agents() const noexcept;
+    [[nodiscard]] const StringsSet& get_string_group_agents() const noexcept;
 
     /** \brief Getter of the \ref BeliefFormulaParsed pointed by m_bf1. */
-    [[nodiscard]] const BeliefFormulaParsed & get_bf1() const;
+    [[nodiscard]] const BeliefFormulaParsed& get_bf1() const;
 
     /** \brief Getter of the \ref BeliefFormulaParsed pointed by m_bf2. */
-    [[nodiscard]] const BeliefFormulaParsed & get_bf2() const;
+    [[nodiscard]] const BeliefFormulaParsed& get_bf2() const;
 
     /** \brief Getter for the field m_operator. */
     [[nodiscard]] BeliefFormulaOperator get_operator() const noexcept;
 
     /** \brief Getter for the field m_string_group_agents (alias for group agents). */
-    [[nodiscard]] const StringsSet & get_group_agents() const noexcept;
+    [[nodiscard]] const StringsSet& get_group_agents() const noexcept;
     ///@}
 
     /** \brief Copy Assignment */
     BeliefFormulaParsed& operator=(const BeliefFormulaParsed& to_copy);
-
 
 private:
     // --- Data members (all string-based) ---

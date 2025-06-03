@@ -1,249 +1,126 @@
-import json
+import argparse
 import os
-from datetime import datetime
-
-import networkx as nx
-import pandas as pd
 import torch
 import torch.nn.functional as F
-from torch.nn import Linear
-from torch.utils.data import random_split
-from torch_geometric.loader import DataLoader
-from torch_geometric.nn import GCNConv, global_mean_pool, NNConv
-from tqdm import tqdm
+from torch_geometric.nn import GCNConv, global_mean_pool, HeteroConv, SAGEConv
 
-import argparse
+from utils import build_sample, predict_single, load_nx_graph
 
 
-from utils import create_data_from_graph, predict_from_graph
-
-
-class GNN(torch.nn.Module):
-    def __init__(
-        self, node_input_dim, edge_input_dim, hidden_dim=64, use_edge_attr=False
-    ):
+class BasicGNN(torch.nn.Module):
+    def __init__(self, hidden_dim: int = 64):
         super().__init__()
-        self.use_edge_attr = use_edge_attr
+        self.g1 = GCNConv(-1, hidden_dim)
+        self.g2 = GCNConv(hidden_dim, hidden_dim)
+        self.out = torch.nn.Linear(hidden_dim + 1, 1)
 
-        if self.use_edge_attr:
-            # MLP for layer 1: must map edge_attr (dim=edge_input_dim)
-            # => shape [node_input_dim * hidden_dim] = [2 * 64] = 128
-            self.edge_mlp1 = torch.nn.Sequential(
-                torch.nn.Linear(edge_input_dim, hidden_dim),
-                torch.nn.ReLU(),
-                torch.nn.Linear(hidden_dim, node_input_dim * hidden_dim),
-            )
-            self.conv1 = NNConv(
-                in_channels=node_input_dim,
-                out_channels=hidden_dim,
-                nn=self.edge_mlp1,
-                aggr="mean",
-            )
-
-            # MLP for layer 2: now in_channels=hidden_dim=64 => we need output [64 * 64] = 4096
-            self.edge_mlp2 = torch.nn.Sequential(
-                torch.nn.Linear(edge_input_dim, hidden_dim),
-                torch.nn.ReLU(),
-                torch.nn.Linear(hidden_dim, hidden_dim * hidden_dim),
-            )
-            self.conv2 = NNConv(
-                in_channels=hidden_dim,
-                out_channels=hidden_dim,
-                nn=self.edge_mlp2,
-                aggr="mean",
-            )
-
-        else:
-            self.conv1 = GCNConv(node_input_dim, hidden_dim)
-            self.conv2 = GCNConv(hidden_dim, hidden_dim)
-
-        self.lin = Linear(hidden_dim, 1)  # Final linear to predict scalar
-
-    def forward(self, x, edge_index, edge_attr, batch):
-        if self.use_edge_attr:
-            x = self.conv1(x, edge_index, edge_attr)
-            x = F.relu(x)
-            x = self.conv2(x, edge_index, edge_attr)
-        else:
-            x = self.conv1(x, edge_index)
-            x = F.relu(x)
-            x = self.conv2(x, edge_index)
-
-        x = global_mean_pool(x, batch)
-        return self.lin(x).squeeze(-1)
+    def forward(self, data):
+        x = F.relu(self.g1(data.x, data.edge_index))
+        x = F.relu(self.g2(x, data.edge_index))
+        pooled = global_mean_pool(x, data.batch)  # [B, H]
+        z = torch.cat([pooled, data.depth.unsqueeze(-1)], dim=-1)
+        return self.out(z).squeeze(-1)
 
 
-def generate_simulation_name(prefix: str = "analysis") -> str:
-    """
-    Generates a simulation name based on the current date and time.
+class HeteroGNN(torch.nn.Module):
+    def __init__(self, hidden_dim: int = 64):
+        super().__init__()
+        self.convs = torch.nn.ModuleList(
+            [
+                HeteroConv(
+                    {
+                        ("state", "to", "state"): GCNConv(-1, hidden_dim),
+                        ("goal", "to", "goal"): GCNConv(-1, hidden_dim),
+                        ("state", "matches", "goal"): SAGEConv((-1, -1), hidden_dim),
+                        ("goal", "rev_matches", "state"): SAGEConv(
+                            (-1, -1), hidden_dim
+                        ),
+                    },
+                    aggr="mean",
+                )
+                for _ in range(2)
+            ]
+        )
+        self.out = torch.nn.Linear(2 * hidden_dim + 1, 1)
 
-    Args:
-        prefix (str): Prefix for the simulation name (default is "Simulation").
+    def forward(self, data):
+        x_dict, ei_dict = data.x_dict, data.edge_index_dict
+        for conv in self.convs:
+            x_dict = conv(x_dict, ei_dict)
+        s = global_mean_pool(x_dict["state"], data["state"].batch)  # [B,H]
+        g = global_mean_pool(x_dict["goal"], data["goal"].batch)  # [B,H]
+        z = torch.cat([s, g, data.depth.unsqueeze(-1)], dim=-1)
+        return self.out(z).squeeze(-1)
 
-    Returns:
-        str: A string containing the prefix and a timestamp.
-    """
-    # Get the current date and time
-    now = datetime.now()
-    # Format the date and time into a readable string
-    timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")
-    # Combine the prefix and timestamp
-    simulation_name = f"{prefix}_{timestamp}"
-    return simulation_name
 
-def main_training():
-    path_data = "./data/ex_d_6.csv"
+def _make_model(if_use_goal: bool):
+    return HeteroGNN() if if_use_goal else BasicGNN()
 
-    simulation_path = generate_simulation_name()
-    os.makedirs(simulation_path, exist_ok=True)
 
-    start_df = pd.read_csv(path_data)
-    start_df = start_df  # [:1000]
-    all_samples = []
+def main_prediction() -> None:
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    for n, rows in tqdm(
-        start_df.iterrows(), total=len(start_df), desc="pre-processing data..."
-    ):
-        # state = rows["State"]
-        path_graph = rows[" Path"]
-        graph = nx.Graph(nx.nx_pydot.read_dot(path_graph))
-        depth = rows[" Depth"]
-        dist_from_goal = rows[" Distance From Goal"]
-
-        data_obj = create_data_from_graph(graph, dist_from_goal, depth)
-        all_samples.append(data_obj)
-
-    torch.save(all_samples, f"{simulation_path}/complete_dataset.pt")
-
-    loaded_samples = torch.load(
-        f"{simulation_path}/complete_dataset.pt", weights_only=False
+    parser = argparse.ArgumentParser(
+        description="Run GNN heuristic prediction on a DOT graph."
     )
-
-    # Define split sizes
-    train_size = int(0.8 * len(loaded_samples))
-    val_size = len(loaded_samples) - train_size
-    # Split
-    train_dataset, val_dataset = random_split(loaded_samples, [train_size, val_size])
-
-    train_loader = DataLoader(train_dataset, batch_size=512, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=512)
-    " ************************************************************************************************************* "
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    use_edge_attr = True  # or False
-
-    # Suppose each node has dim=2 (from create_data_from_graph).
-    node_input_dim = 2
-
-    # If you have n distinct edge labels => edge_attr has shape [num_edges, n].
-    # Let’s say from your data the dimension is 'num_labels'. If you’re not sure,
-    # you can check the shape of `data.edge_attr`.
-    edge_input_dim = 0
-    if use_edge_attr:
-        # Possibly read from a sample:
-        example_data = loaded_samples[0]
-        edge_input_dim = example_data.edge_attr.size(1)  # num_labels
-
-    model = GNN(
-        node_input_dim=node_input_dim,
-        edge_input_dim=edge_input_dim,
-        hidden_dim=64,
-        use_edge_attr=use_edge_attr,
-    ).to(device)
-
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
-    loss_fn = torch.nn.MSELoss()
-
-    num_epochs = 1000
-    model.train()
-    pbar = tqdm(range(num_epochs), desc="Training model...")
-    for epoch in pbar:
-        total_loss = 0
-        for batch in train_loader:
-            batch = batch.to(device)
-            optimizer.zero_grad()
-            pred = model(batch.x, batch.edge_index, batch.edge_attr, batch.batch)
-            loss = loss_fn(pred, batch.y.view(-1))
-            loss.backward()
-            optimizer.step()
-            total_loss += loss.item()
-
-        avg_loss = total_loss / len(train_loader)
-        pbar.set_postfix(loss=f"{avg_loss:.4f}")
-
-    torch.save(model.state_dict(), f"{simulation_path}/complete_gnn_predictor.pt")
-    " ************************************************************************************************************* "
-
-    model.load_state_dict(torch.load(f"{simulation_path}/complete_gnn_predictor.pt"))
-
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model.to(device)
-    model.eval()
-
-    all_preds = []
-    all_targets = []
-
-    with torch.no_grad():
-        for batch in val_loader:
-            batch = batch.to(device)
-            pred = model(batch.x, batch.edge_index, batch.edge_attr, batch.batch)
-            pred_int = torch.round(pred)
-            all_preds.append(pred_int.cpu())
-            all_targets.append(batch.y.view(-1).cpu())
-
-    preds = torch.cat(all_preds)
-    targets = torch.cat(all_targets)
-    mse = F.mse_loss(preds, targets)
-    print(f"\nEvaluation MSE: {mse.item():.4f}")
-
-    file_to_save = {"preds": preds.cpu().numpy(), "targets": targets.cpu().numpy()}
-
-    # Convert all arrays to lists before saving
-    data_serializable = {k: v.tolist() for k, v in file_to_save.items()}
-
-    # Save to JSON file
-    with open("data.json", "w") as f:
-        json.dump(data_serializable, f)
-
-    " ************************************************************************************************************* "
-    print("\n EXAMPLE OF USAGE IN REAL-WORLD SETTINGS: ")
-    rows = start_df.iloc[0, :]
-    path_graph = rows[" Path"]
-    depth = rows[" Depth"]
-
-    pred = predict_from_graph(model, path_graph, depth, device)
-
-    true = rows[" Distance From Goal"]
-    print("Pred: :", pred)
-    print("True: :", true)
-
-def main_prediction():
-    
-    parser = argparse.ArgumentParser(description='Process a graph file path and a depth value.')
-    parser.add_argument('path', type=str, help='Path to the graph file')
-    parser.add_argument('depth', type=int, help='Depth for graph traversal or analysis')
-
+    parser.add_argument("path", type=str, help="Path (long) to graph file")
+    parser.add_argument("depth", type=int, help="Depth parameter")
+    parser.add_argument("n_agents", type=int, help="Number of agents")
+    parser.add_argument(
+        "goal_file",
+        type=str,
+        help="The file containing the goal description in graph format",
+    )
     args = parser.parse_args()
 
-    graph_path = args.path
-    depth = args.depth
+    # TODO: with need to know if we are working with/without hashing and with/without gaol
+    USE_GOAL = True
+    USE_HASH = True
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        
-    model = GNN(
-        node_input_dim=2,
-        edge_input_dim=3,
-        hidden_dim=64,
-        use_edge_attr=True).to(device)
-    
-    model_path = "lib/RL/results/no_goal_formula"
-    model.load_state_dict(torch.load(f"{model_path}/complete_gnn_predictor.pt", map_location=torch.device('cpu')))
+    # Giovanni I've added the parsing of the goal file path as well. This does not need to be executed on every run for
+    # the prediction as it is shared in the problem adding compilation error so you notice this line above:)
 
-    pred = predict_from_graph(model, graph_path, depth, device)
+    s_dot_path = args.path
 
-    # Write to output file
-    with open('prediction.tmp', 'w') as f:
-        f.write(f"VALUE:{pred}\n")
+    G_s = load_nx_graph(s_dot_path, False)
+
+    subdir = s_dot_path.split("out/state/")[1].split("/")[0]
+    model_dir = os.path.join("lib", "RL", "results", subdir)
+
+    if USE_GOAL:
+        # g_dot_path = args.goal_file
+        g_dot_path = (
+            "lib/RL/results/CC_3_2_3__pl_6_poss_hashing_goal/CC_3_2_3__pl_6_goal_tree.dot"
+        )
+        G_g = load_nx_graph(g_dot_path, True)
+    else:
+        G_g = None
+
+    if USE_HASH:
+        model_dir += "_hashing"
+    else:
+        model_dir += "_mapping"
+
+    if USE_GOAL:
+        model_dir += "_goal"
+    else:
+        model_dir += "_nogoal"
+
+    model_file = os.path.join(model_dir, "gnn_predictor.pt")
+
+    model = _make_model(USE_GOAL)
+    model.load_state_dict(torch.load(model_file, map_location=device))
+    model.to(device)
+
+    # 4) Predict
+    depth = int(args.depth)
+    sample = build_sample(G_s, depth, None, G_g)
+    pred_value = predict_single(sample, model, device=device)
+
+    # 5) Output
+    with open("prediction.tmp", "w", encoding="utf-8") as fp:
+        fp.write(f"VALUE:{pred_value}\n")
+
 
 if __name__ == "__main__":
     main_prediction()

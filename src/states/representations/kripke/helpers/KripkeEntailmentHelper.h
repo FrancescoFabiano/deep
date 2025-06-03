@@ -14,7 +14,8 @@
 
 #include "utilities/Define.h"
 
-class KripkeEntailmentHelper {
+class KripkeEntailmentHelper
+{
 public:
     /**
      * \brief Default constructor.
@@ -109,7 +110,8 @@ public:
      * \param[in] kstate The KripkeState to use for reachability.
      * \return True if the formula is entailed, false otherwise.
      */
-    [[nodiscard]] static bool entails(const BeliefFormula& to_check, const KripkeWorldPointer& world, const KripkeState& kstate);
+    [[nodiscard]] static bool entails(const BeliefFormula& to_check, const KripkeWorldPointer& world,
+                                      const KripkeState& kstate);
 
     /**
      * \brief Check if a BeliefFormula is entailed in a given Kripke world, using a KripkeState.
@@ -126,7 +128,8 @@ public:
     * \param[in] kstate The KripkeState to use for reachability.
      * \return True if the formula is entailed in all worlds, false otherwise.
      */
-    [[nodiscard]] static bool entails(const BeliefFormula& to_check, const KripkeWorldPointersSet& worlds,const KripkeState & kstate);
+    [[nodiscard]] static bool entails(const BeliefFormula& to_check, const KripkeWorldPointersSet& worlds,
+                                      const KripkeState& kstate);
 
 
     /**
@@ -144,8 +147,9 @@ public:
     *  \param[in] updated The updated KripkeState.
     *  \return True if all properties are respected, false otherwise.
     */
-    [[nodiscard]] static bool check_properties(const AgentsSet &fully, const AgentsSet &partially, const FluentFormula &effects,
-                          const KripkeState &updated);
+    [[nodiscard]] static bool check_properties(const AgentsSet& fully, const AgentsSet& partially,
+                                               const FluentFormula& effects,
+                                               const KripkeState& updated);
 
     ///@}
     ///

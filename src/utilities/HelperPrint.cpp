@@ -314,7 +314,7 @@ void HelperPrint::print_state(const KripkeState& kstate) const
     os << "*******************************************************************" << std::endl;
 }
 
-void HelperPrint::print_dot_format(const KripkeState& kstate, std::ofstream ofs) const
+void HelperPrint::print_dot_format(const KripkeState& kstate, std::ofstream& ofs) const
 {
     auto& worlds = kstate.get_worlds();
     auto& pointed = kstate.get_pointed();
@@ -480,7 +480,7 @@ void HelperPrint::print_dot_format(const KripkeState& kstate, std::ofstream ofs)
     ofs << "	{rank = max; description};\n";
 }
 
-void HelperPrint::print_dataset_format(const KripkeState& kstate, std::ofstream ofs)
+void HelperPrint::print_dataset_format(const KripkeState& kstate, std::ofstream& ofs)
 {
     std::unordered_map<KripkeWorldId, int> world_map;
     int world_counter = 1;

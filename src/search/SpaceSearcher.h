@@ -13,7 +13,6 @@
 #include <string>
 
 
-
 /**
  * @brief Concept that enforces the required interface for a Search Strategy type `T`.
  *
@@ -22,8 +21,9 @@
  *
  * @tparam T The type to be checked against the required interface.
  */
-template<typename T, StateRepresentation StateRepr>
-concept SearchStrategy = requires(T rep, State<StateRepr> s) {
+template <typename T, StateRepresentation StateRepr>
+concept SearchStrategy = requires(T rep, State<StateRepr> s)
+{
     /// Functor/lambda to push a state into the container.
     { rep.push(s) } -> std::same_as<void>;
     /// Functor/lambda to pop a state from the container.
@@ -33,9 +33,9 @@ concept SearchStrategy = requires(T rep, State<StateRepr> s) {
     /// Functor/lambda to clean container.
     { rep.reset() } -> std::same_as<void>;
     /// Functor/lambda to check if container is empty.
-    { rep.empty() } -> std::same_as<bool>;
+    { std::as_const(rep).empty() } -> std::same_as<bool>;
     /// Return the name of the used strategy.
-    { rep.get_name() } -> std::same_as<std::string>;
+    { std::as_const(rep).get_name() } -> std::same_as<const std::string&>;
 };
 
 
@@ -45,7 +45,8 @@ concept SearchStrategy = requires(T rep, State<StateRepr> s) {
  * \tparam Strategy The search strategy type (must satisfy SearchStrategy).
  */
 template <StateRepresentation StateRepr, SearchStrategy<State<StateRepr>> Strategy>
-class SpaceSearcher {
+class SpaceSearcher
+{
 public:
     /**
      * \brief Constructor with search name and strategy instance.
@@ -90,9 +91,7 @@ public:
     [[nodiscard]]
     std::chrono::duration<double> get_elapsed_seconds() const noexcept;
 
-
 private:
-
     Strategy m_strategy; ///< Search strategy instance.
 
     unsigned int m_expanded_nodes = 0; ///< Counter for expanded nodes.
@@ -108,7 +107,8 @@ private:
      * \return true if a goal state is found, false otherwise.
      */
     [[nodiscard]]
-    bool search_sequential(const State<StateRepr>& initial, const std::vector<Action>& actions, bool check_visited, bool bisimulation_reduction);
+    bool search_sequential(const State<StateRepr>& initial, const std::vector<Action>& actions, bool check_visited,
+                           bool bisimulation_reduction);
 
     /**
      * \brief Executes the search algorithm in parallel (queue-based BFS only).
@@ -120,10 +120,11 @@ private:
      * \param num_threads The number of threads to use.
      * \return true if a goal state is found, false otherwise.
      *
-     * \warning not too throughly tested, use with caution.
+     * \warning not too thoroughly tested, use with caution.
      */
     [[nodiscard]]
-    bool search_parallel(const State<StateRepr>& initial, const std::vector<Action> &actions, bool check_visited, bool bisimulation_reduction, int num_threads);
+    bool search_parallel(const State<StateRepr>& initial, const std::vector<Action>& actions, bool check_visited,
+                         bool bisimulation_reduction, int num_threads);
 
     /// \name Plan Validation
     ///@{
@@ -136,9 +137,9 @@ private:
      * \return true if the plan is valid, false otherwise.
      */
     [[nodiscard]]
-    bool validate_plan(const State<StateRepr>& initial, const std::vector<std::string>& plan, bool check_visited, bool bisimulation_reduction);
+    bool validate_plan(const State<StateRepr>& initial, const std::vector<std::string>& plan, bool check_visited,
+                       bool bisimulation_reduction);
     ///@}
-
 };
 
 

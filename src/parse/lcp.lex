@@ -3,9 +3,9 @@
 %option nounput
 
 %{
-#include "../src/utilities/define.h"
-#include "../src/actions/proposition.h"
-#include "../src/formulae/belief_formula.h"
+#include "../src/utilities/Define.h"
+#include "../src/actions/Proposition.h"
+#include "../src/formulae/BeliefFormula.h"
 
 #include "bison.hpp"
 

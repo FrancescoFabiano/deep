@@ -20,7 +20,8 @@
 /**
  * \brief PortfolioSearch manages and executes multiple search configurations.
  */
-class PortfolioSearch {
+class PortfolioSearch
+{
 public:
     /// \name Constructors & Destructor
     ///@{
@@ -37,14 +38,13 @@ public:
     /**
      * \brief Launches the portfolio-method search (multiple configurations).
      *
-     * \param os Output stream for printing information during the search.
      * \param user_threads The number of threads to use for the search.
      * \param threads_per_search Number of threads to use in each search strategy (default: 1).
      * \return true if a plan was found, false otherwise.
      *
      */
     [[nodiscard]]
-    bool run_portfolio_search(std::ostream& os, int user_threads = 1, int threads_per_search = 1);
+    bool run_portfolio_search(int user_threads = 1, int threads_per_search = 1) const;
 
     /**
      * \brief Parses configurations from a file.

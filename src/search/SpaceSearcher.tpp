@@ -27,7 +27,10 @@ SpaceSearcher<StateRepr, Strategy>::SpaceSearcher(Strategy strategy)
 }
 
 template <StateRepresentation StateRepr, SearchStrategy<State<StateRepr>> Strategy>
-const std::string& SpaceSearcher<StateRepr, Strategy>::get_search_type() const noexcept { return m_strategy.get_name(); }
+const std::string& SpaceSearcher<StateRepr, Strategy>::get_search_type() const noexcept
+{
+    return m_strategy.get_name();
+}
 
 template <StateRepresentation StateRepr, SearchStrategy<State<StateRepr>> Strategy>
 unsigned int SpaceSearcher<StateRepr, Strategy>::get_expanded_nodes() const noexcept
@@ -43,7 +46,8 @@ std::chrono::duration<double> SpaceSearcher<StateRepr, Strategy>::get_elapsed_se
 
 
 template <StateRepresentation StateRepr, SearchStrategy<State<StateRepr>> Strategy>
-bool SpaceSearcher<StateRepr, Strategy>::search(State<StateRepr>& initial, int num_threads, const std::vector<Action>& plan)
+bool SpaceSearcher<StateRepr, Strategy>::search(State<StateRepr>& initial, int num_threads,
+                                                const std::vector<Action>& plan)
 {
     m_expanded_nodes = 0;
 
@@ -93,8 +97,9 @@ bool SpaceSearcher<StateRepr, Strategy>::search(State<StateRepr>& initial, int n
 }
 
 template <StateRepresentation StateRepr, SearchStrategy<State<StateRepr>> Strategy>
-bool SpaceSearcher<StateRepr, Strategy>::search_sequential(const State<StateRepr>& initial, const std::vector<Action>& actions,
-                                                       const bool check_visited, const bool bisimulation_reduction)
+bool SpaceSearcher<StateRepr, Strategy>::search_sequential(const State<StateRepr>& initial,
+                                                           const std::vector<Action>& actions,
+                                                           const bool check_visited, const bool bisimulation_reduction)
 {
     m_strategy.fresh();
 
@@ -139,9 +144,10 @@ bool SpaceSearcher<StateRepr, Strategy>::search_sequential(const State<StateRepr
 }
 
 template <StateRepresentation StateRepr, SearchStrategy<State<StateRepr>> Strategy>
-bool SpaceSearcher<StateRepr, Strategy>::search_parallel(const State<StateRepr>& initial, const std::vector<Action>& actions,
-                                                     const bool check_visited, const bool bisimulation_reduction,
-                                                     const int num_threads)
+bool SpaceSearcher<StateRepr, Strategy>::search_parallel(const State<StateRepr>& initial,
+                                                         const std::vector<Action>& actions,
+                                                         const bool check_visited, const bool bisimulation_reduction,
+                                                         const int num_threads)
 {
     std::unordered_set<State<StateRepr>> visited_states;
     Strategy current_frontier;
@@ -252,7 +258,9 @@ bool SpaceSearcher<StateRepr, Strategy>::search_parallel(const State<StateRepr>&
 
 
 template <StateRepresentation StateRepr, SearchStrategy<State<StateRepr>> Strategy>
-bool SpaceSearcher<StateRepr, Strategy>::validate_plan(const State<StateRepr>& initial, const std::vector<std::string>& plan, const bool check_visited, const bool bisimulation_reduction)
+bool SpaceSearcher<StateRepr, Strategy>::validate_plan(const State<StateRepr>& initial,
+                                                       const std::vector<std::string>& plan, const bool check_visited,
+                                                       const bool bisimulation_reduction)
 {
     std::unordered_set<State<StateRepr>> visited_states;
     if (check_visited)
@@ -290,7 +298,8 @@ bool SpaceSearcher<StateRepr, Strategy>::validate_plan(const State<StateRepr>& i
                 {
                     ExitHandler::exit_with_message(
                         ExitHandler::ExitCode::StateActionNotExecutableError,
-                        std::string("The action \"") + action.get_name() + "\" was not executable while validating the plan."
+                        std::string("The action \"") + action.get_name() +
+                        "\" was not executable while validating the plan."
                     );
                     return false; // Unreachable, but keeps compiler happy
                 }

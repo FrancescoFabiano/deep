@@ -3,7 +3,7 @@
 %defines
 
 %{
-#include "../src/utilities/reader.h"
+#include "../src/parse/Reader.h"
 
 int yyerror(const char *s);
 int yylex(void);

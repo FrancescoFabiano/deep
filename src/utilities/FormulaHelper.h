@@ -19,34 +19,33 @@
 class FormulaHelper
 {
 public:
-
     /** \brief Function that checks if two \ref fluent_set are consistent.
      * 
      * Two \ref fluent_set are consistent if they not contains a \ref fluent and its negation together.*/
-    static bool is_consistent(const FluentsSet &, const FluentsSet &);
+    static bool is_consistent(const FluentsSet&, const FluentsSet&);
 
     /** \brief Function that returns the negation of a given \ref fluent.
      * 
      * @param[in] to_negate: the \ref fluent to negate
      * 
      * @return the negation of \p to_negate.*/
-    static Fluent negate_fluent(const Fluent & to_negate);
+    static Fluent negate_fluent(const Fluent& to_negate);
 
     /** \brief Function that returns the negation of a given \ref fluent_formula.
      * 
      * @param[in] to_negate: the \ref fluent_formula to negate
      * 
      * @return the negation of \p to_negate.*/
-    static FluentFormula negate_fluent_formula(const FluentFormula & to_negate);
+    static FluentFormula negate_fluent_formula(const FluentFormula& to_negate);
 
     /** \brief Function that returns the positive version of a given \ref fluent.
      * 
      * @param[in] to_normalize: the \ref fluent to normalize
      * 
      * @return the normalized of fluent.*/
-    static Fluent normalize_fluent(const Fluent & to_normalize);
+    static Fluent normalize_fluent(const Fluent& to_normalize);
 
-    static bool is_negated(const Fluent & f);
+    static bool is_negated(const Fluent& f);
 
     /** \brief Function to set the truth value of a fluent in a world description.
      *   
@@ -103,22 +102,22 @@ public:
 
     static int length_to_power_two(int length);
 
-    static bool fluentset_empty_intersection(const FluentsSet & set1, const FluentsSet & set2);
-    static bool fluentset_negated_empty_intersection(const FluentsSet & set1, const FluentsSet & set2);
+    static bool fluentset_empty_intersection(const FluentsSet& set1, const FluentsSet& set2);
+    static bool fluentset_negated_empty_intersection(const FluentsSet& set1, const FluentsSet& set2);
 
     /** \brief Function that return the set of \ref agent that entails the obs condition.
      *
      * @param[in] map: the map that contains the tuples to check for entailment.
      * @param[in] state: the state in which to check the entailment.
      * @return the effects that are feasible in *this* with \p start as pointed world*.*/
-    static AgentsSet get_agents_if_entailed(const ObservabilitiesMap & map, const KripkeState & state);
+    static AgentsSet get_agents_if_entailed(const ObservabilitiesMap& map, const KripkeState& state);
 
     /** \brief Function that return the \ref fluent_formula (effect) that entails the exe condition.
      *
      * @param[in] map: the map that contains the tuples to check for entailment.
      * @param[in] state: the state in which to check the entailment.
      * @return the effects that are feasible in \p state.*/
-    static FluentFormula get_effects_if_entailed(const EffectsMap & map, const KripkeState & state);
+    static FluentFormula get_effects_if_entailed(const EffectsMap& map, const KripkeState& state);
 
     /**
      * \brief Concatenate two dynamic_bitsets as strings.
@@ -126,7 +125,8 @@ public:
      * \param[in] bs2 The second bitset.
      * \return The concatenated bitset.
      */
-    static boost::dynamic_bitset<> concatStringDyn(const boost::dynamic_bitset<>& bs1, const boost::dynamic_bitset<>& bs2);
+    static boost::dynamic_bitset<> concatStringDyn(const boost::dynamic_bitset<>& bs1,
+                                                   const boost::dynamic_bitset<>& bs2);
 
     /**
      * \brief Concatenate two dynamic_bitsets using bitwise operators.
@@ -134,7 +134,8 @@ public:
      * \param[in] bs2 The second bitset.
      * \return The concatenated bitset.
      */
-    static boost::dynamic_bitset<> concatOperatorsDyn(const boost::dynamic_bitset<>& bs1, const boost::dynamic_bitset<>& bs2);
+    static boost::dynamic_bitset<> concatOperatorsDyn(const boost::dynamic_bitset<>& bs1,
+                                                      const boost::dynamic_bitset<>& bs2);
 
     /**
      * \brief Concatenate two dynamic_bitsets using a loop.
@@ -142,7 +143,8 @@ public:
      * \param[in] bs2 The second bitset.
      * \return The concatenated bitset.
      */
-    static boost::dynamic_bitset<> concatLoopDyn(const boost::dynamic_bitset<>& bs1, const boost::dynamic_bitset<>& bs2);
+    static boost::dynamic_bitset<>
+    concatLoopDyn(const boost::dynamic_bitset<>& bs1, const boost::dynamic_bitset<>& bs2);
 
     /**
      * \brief Hash a set of fluents into a unique id.

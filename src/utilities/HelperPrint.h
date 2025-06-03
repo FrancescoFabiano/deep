@@ -113,14 +113,14 @@ public:
      * \param kstate The KripkeState to print.
      * \param ofs The output stream to write the DOT format to. This must be a file.
      */
-    void print_dot_format(const KripkeState& kstate, std::ofstream ofs) const;
+    void print_dot_format(const KripkeState& kstate, std::ofstream& ofs) const;
 
     /**
      * \brief Print a KripkeState in format for training the GNN.
      * \param kstate The KripkeState to print.
      * \param ofs The output stream to write the DOT format to. This must be a file.
      */
-    static void print_dataset_format(const KripkeState& kstate, std::ofstream ofs);
+    static void print_dataset_format(const KripkeState& kstate, std::ofstream& ofs);
 
 
     /**

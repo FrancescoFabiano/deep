@@ -15,16 +15,17 @@
  * \struct OutputPaths
  * \brief Contains static constants for commonly used output and log folder paths.
  */
-struct OutputPaths {
-    static constexpr std::string LOGS_FOLDER = "logs";   ///< Path to the log folder.
-    static constexpr std::string OUTPUT_FOLDER = "out";  ///< Path to the output folder.
-    static constexpr std::string DATASET_NN_OUTPUT_FOLDER = OUTPUT_FOLDER + "/NN";  ///< Path to the NN output folder.
-    static constexpr std::string DATASET_TRAINING_FOLDER = DATASET_NN_OUTPUT_FOLDER + "/Training";  ///< Path to the training folder.
-    static constexpr std::string DATASET_INFERENCE_FOLDER = DATASET_NN_OUTPUT_FOLDER + "/Inference";  ///< Path to the inference folder.
-    static constexpr std::string DATASET_NN_DATASET_MAPPED = "map";  ///< The suffix for the NN dataset mapped file.
-    static constexpr std::string DATASET_NN_DATASET_HASHED = "hash";  ///< The suffix for the NN dataset hashed file.
-
-
+struct OutputPaths
+{
+    static constexpr std::string LOGS_FOLDER = "logs"; ///< Path to the log folder.
+    static constexpr std::string OUTPUT_FOLDER = "out"; ///< Path to the output folder.
+    static constexpr std::string DATASET_NN_OUTPUT_FOLDER = OUTPUT_FOLDER + "/NN"; ///< Path to the NN output folder.
+    static constexpr std::string DATASET_TRAINING_FOLDER = DATASET_NN_OUTPUT_FOLDER + "/Training";
+    ///< Path to the training folder.
+    static constexpr std::string DATASET_INFERENCE_FOLDER = DATASET_NN_OUTPUT_FOLDER + "/Inference";
+    ///< Path to the inference folder.
+    static constexpr std::string DATASET_NN_DATASET_MAPPED = "map"; ///< The suffix for the NN dataset mapped file.
+    static constexpr std::string DATASET_NN_DATASET_HASHED = "hash"; ///< The suffix for the NN dataset hashed file.
 };
 
 /**
@@ -140,7 +141,6 @@ using pg_bfs_score = std::map<BeliefFormula, unsigned short>;
 ///
 
 
-
 /// \name Bisimulation
 ///@{\todo Make sure the pointer cannot be unique
 // STRUCTURE DECLARATION
@@ -171,68 +171,75 @@ struct BisCounter;
  * \struct BisAdjList
  * \brief Adjacency list node for bisimulation graph.
  */
-struct BisAdjList {
-    BisIndexType node{};                        ///< Node index.
-    std::shared_ptr<BisCounter> countxS{};      ///< Pointer to the count(x,S) of Paige&Tarjan.
-    std::shared_ptr<BisAdjList> next{};         ///< Next adjacency node.
+struct BisAdjList
+{
+    BisIndexType node{}; ///< Node index.
+    std::shared_ptr<BisCounter> countxS{}; ///< Pointer to the count(x,S) of Paige&Tarjan.
+    std::shared_ptr<BisAdjList> next{}; ///< Next adjacency node.
 };
 
 /**
  * \struct BisAdjList_1
  * \brief Adjacency list for G_1.
  */
-struct BisAdjList_1 {
-    BisIndexType node{};                        ///< Node index.
-    std::shared_ptr<BisAdjList> adj{};          ///< Pointer to adjacency list.
-    std::shared_ptr<BisAdjList_1> next{};       ///< Next adjacency node.
+struct BisAdjList_1
+{
+    BisIndexType node{}; ///< Node index.
+    std::shared_ptr<BisAdjList> adj{}; ///< Pointer to adjacency list.
+    std::shared_ptr<BisAdjList_1> next{}; ///< Next adjacency node.
 };
 
 /**
  * \struct BisCounter
  * \brief Counter for Paige and Tarjan algorithm.
  */
-struct BisCounter {
-    BisIndexType value{};                       ///< Counter value.
-    BisIndexType node{};                        ///< Node index.
+struct BisCounter
+{
+    BisIndexType value{}; ///< Counter value.
+    BisIndexType node{}; ///< Node index.
 };
 
 /**
  * \struct BisGraph
  * \brief Node in the bisimulation graph.
  */
-struct BisGraph {
-    int label{};                                 ///< Node label.
-    BisIndexType rank{};                        ///< Node rank.
-    bool WFflag{};                               ///< Well-founded flag.
-    BisIndexType nextInBlock{};                 ///< Next node in block.
-    BisIndexType prevInBlock{};                 ///< Previous node in block.
-    BisIndexType block{};                       ///< Block index.
-    std::shared_ptr<BisCounter> countxB{};      ///< Pointer to count(x,B).
-    std::shared_ptr<BisAdjList> adj{};          ///< Pointer to adjacency list.
-    std::shared_ptr<BisAdjList_1> adj_1{};      ///< Pointer to G_1 adjacency list.
+struct BisGraph
+{
+    int label{}; ///< Node label.
+    BisIndexType rank{}; ///< Node rank.
+    bool WFflag{}; ///< Well-founded flag.
+    BisIndexType nextInBlock{}; ///< Next node in block.
+    BisIndexType prevInBlock{}; ///< Previous node in block.
+    BisIndexType block{}; ///< Block index.
+    std::shared_ptr<BisCounter> countxB{}; ///< Pointer to count(x,B).
+    std::shared_ptr<BisAdjList> adj{}; ///< Pointer to adjacency list.
+    std::shared_ptr<BisAdjList_1> adj_1{}; ///< Pointer to G_1 adjacency list.
 };
 
 /**
  * \struct Bis_qPartition
  * \brief Information related to Q-Blocks.
  */
-struct Bis_qPartition {
-    BisIndexType size{};                        ///< Size of the block.
-    BisIndexType nextBlock{};                   ///< Next block index.
-    BisIndexType prevBlock{};                   ///< Previous block index.
-    BisIndexType superBlock{};                  ///< Super block index.
-    BisIndexType firstNode{};                   ///< First node in block.
+struct Bis_qPartition
+{
+    BisIndexType size{}; ///< Size of the block.
+    BisIndexType nextBlock{}; ///< Next block index.
+    BisIndexType prevBlock{}; ///< Previous block index.
+    BisIndexType superBlock{}; ///< Super block index.
+    BisIndexType firstNode{}; ///< First node in block.
 };
 
 /**
  * \struct Bis_xPartition
  * \brief Information related to X-Blocks.
  */
-struct Bis_xPartition {
-    BisIndexType nextXBlock{};                  ///< Next X-block index.
-    BisIndexType prevXBlock{};                  ///< Previous X-block index.
-    BisIndexType firstBlock{};                  ///< First block in X-block.
+struct Bis_xPartition
+{
+    BisIndexType nextXBlock{}; ///< Next X-block index.
+    BisIndexType prevXBlock{}; ///< Previous X-block index.
+    BisIndexType firstBlock{}; ///< First block in X-block.
 };
+
 ///@}
 
 /// \name Automata related
@@ -249,28 +256,32 @@ using BisAutomata = BisAutomataStruct;
  * \struct Bis_eElemStruct
  * \brief Edge element for automata.
  */
-struct Bis_eElemStruct {
-    int nbh{};                                   ///< Number of labels (behaviors) of a single edge.
-    VectorBisWrapper<int> bh{};                 ///< Array of behaviors.
-    int tv{};                                    ///< Index of the "To" vertex.
+struct Bis_eElemStruct
+{
+    int nbh{}; ///< Number of labels (behaviors) of a single edge.
+    VectorBisWrapper<int> bh{}; ///< Array of behaviors.
+    int tv{}; ///< Index of the "To" vertex.
 };
 
 /**
  * \struct Bis_vElemStruct
  * \brief Vertex element for automata.
  */
-struct Bis_vElemStruct {
-    int ne{};                                    ///< Number of edges.
-    VectorBisWrapper<Bis_eElem> e{};            ///< Array of edges.
+struct Bis_vElemStruct
+{
+    int ne{}; ///< Number of edges.
+    VectorBisWrapper<Bis_eElem> e{}; ///< Array of edges.
 };
 
 /**
  * \struct BisAutomataStruct
  * \brief Automaton structure.
  */
-struct BisAutomataStruct {
-    int Nvertex{};                               ///< Number of vertices.
-    int Nbehavs{};                               ///< Number of behaviors.
-    VectorBisWrapper<Bis_vElem> Vertex{};       ///< Array of vertices.
+struct BisAutomataStruct
+{
+    int Nvertex{}; ///< Number of vertices.
+    int Nbehavs{}; ///< Number of behaviors.
+    VectorBisWrapper<Bis_vElem> Vertex{}; ///< Array of vertices.
 };
+
 ///@}

@@ -14,7 +14,8 @@
 #include "states/State.h"
 #include "argparse/Configuration.h"
 
-bool PortfolioSearch::run_portfolio_search( std::ostream & os, int user_threads, int threads_per_search) {
+bool PortfolioSearch::run_portfolio_search(const int user_threads, int threads_per_search) const
+{
     using Clock = std::chrono::steady_clock;
     std::atomic<bool> found_goal{false};
     std::atomic<int> winner{-1};
@@ -31,24 +32,29 @@ bool PortfolioSearch::run_portfolio_search( std::ostream & os, int user_threads,
     config_snapshots.resize(configs_to_run);
 
     // Prepare the user configuration for the first thread
-    const auto& user_config = Configuration::get_instance();
+    //const auto& user_config = Configuration::get_instance();
 
+    auto& os = ArgumentParser::get_instance().get_output_stream();
     // --- Measure initial state build time ---
     os << "Building initial state ...\n";
-    auto initial_build_start = Clock::now();
+    const auto initial_build_start = Clock::now();
     State<KripkeState> initial_state;
     initial_state.build_initial();
     const auto initial_build_end = Clock::now();
-    auto initial_build_duration = std::chrono::duration_cast<std::chrono::milliseconds>(initial_build_end - initial_build_start);
+    const auto initial_build_duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+        initial_build_end - initial_build_start);
     os << "Initial state built in " << initial_build_duration.count() << " ms.\n";
     // --- End measure ---
 
-    auto run_search = [&](int idx, const std::map<std::string, std::string>& config_map, bool is_user_config) {
+    auto run_search = [&](int idx, const std::map<std::string, std::string>& config_map, const bool is_user_config)
+    {
         // Each thread gets its own Configuration instance
-        if (!is_user_config) {
+        if (!is_user_config)
+        {
             Configuration::create_instance();
             auto& config = Configuration::get_instance();
-            for (const auto& [key, value] : config_map) {
+            for (const auto& [key, value] : config_map)
+            {
                 config.set_field_by_name(key, value);
             }
         }
@@ -61,31 +67,40 @@ bool PortfolioSearch::run_portfolio_search( std::ostream & os, int user_threads,
         unsigned int expanded = 0;
         bool result = false;
 
-        if (search_type == "BFS") {
-            SpaceSearcher<KripkeState, BreadthFirst<State<KripkeState>>> searcherBFS{BreadthFirst<State<KripkeState>>()};
+        if (search_type == "BFS")
+        {
+            SpaceSearcher<KripkeState, BreadthFirst<State<KripkeState>>> searcherBFS{
+                BreadthFirst<State<KripkeState>>()
+            };
             result = searcherBFS.search(initial_state, threads_per_search);
             used_search_type = searcherBFS.get_search_type();
             elapsed = searcherBFS.get_elapsed_seconds();
             expanded = searcherBFS.get_expanded_nodes();
-        } else if (search_type == "HFS") {
+        }
+        else if (search_type == "HFS")
+        {
             SpaceSearcher<KripkeState, BestFirst<State<KripkeState>>> searcherHFS{BestFirst<State<KripkeState>>()};
             result = searcherHFS.search(initial_state, threads_per_search);
             used_search_type = searcherHFS.get_search_type();
             elapsed = searcherHFS.get_elapsed_seconds();
             expanded = searcherHFS.get_expanded_nodes();
-        } else if (search_type == "DFS") {
+        }
+        else if (search_type == "DFS")
+        {
             SpaceSearcher<KripkeState, DepthFirst<State<KripkeState>>> searcherDFS{DepthFirst<State<KripkeState>>()};
             result = searcherDFS.search(initial_state, threads_per_search);
             used_search_type = searcherDFS.get_search_type();
             elapsed = searcherDFS.get_elapsed_seconds();
             expanded = searcherDFS.get_expanded_nodes();
-        } else {
+        }
+        else
+        {
             ExitHandler::exit_with_message(
                 ExitHandler::ExitCode::PortfolioConfigError,
                 "Unknown search type: " + search_type
             );
         }
-        auto end = Clock::now();
+        //auto end = Clock::now();
 
         times[idx] = elapsed;
         expanded_nodes[idx] = expanded;
@@ -94,40 +109,48 @@ bool PortfolioSearch::run_portfolio_search( std::ostream & os, int user_threads,
         config.print(oss);
         config_snapshots[idx] = oss.str();
 
-        if (result && !found_goal.exchange(true)) {
+        if (result && !found_goal.exchange(true))
+        {
             winner = idx;
         }
     };
 
     // Launch threads
-    for (int i = 0; i < configs_to_run; ++i) {
+    for (int i = 0; i < configs_to_run; ++i)
+    {
         bool is_user_config = (i == 0);
         const auto& config_map = is_user_config ? std::map<std::string, std::string>() : m_search_configurations[i];
         threads.emplace_back(run_search, i, config_map, is_user_config);
     }
 
     // Wait for threads to finish or a goal to be found
-    for (auto& th : threads) {
+    for (auto& th : threads)
+    {
         if (th.joinable()) th.join();
     }
 
-    if (found_goal) {
+    if (found_goal)
+    {
         int idx = winner;
         os << "\nGoal found :) using " << search_types[idx]
-           << " in " << times[idx].count() << "s"
-           << " expanding " << expanded_nodes[idx] << " nodes.\n";
+            << " in " << times[idx].count() << "s"
+            << " expanding " << expanded_nodes[idx] << " nodes.\n";
         os << "Configuration used:\n" << config_snapshots[idx] << std::endl;
         return true;
-    } else {
+    }
+    else
+    {
         os << "\nNo goal found :(" << std::endl;
         return false;
     }
 }
 
-void PortfolioSearch::parse_configurations_from_file(const std::string& file_path) {
+void PortfolioSearch::parse_configurations_from_file(const std::string& file_path)
+{
     m_search_configurations.clear();
     std::ifstream infile(file_path);
-    if (!infile) {
+    if (!infile)
+    {
         ExitHandler::exit_with_message(
             ExitHandler::ExitCode::PortfolioConfigFileError,
             "[PortfolioSearch] Could not open configuration file: " + file_path
@@ -135,24 +158,29 @@ void PortfolioSearch::parse_configurations_from_file(const std::string& file_pat
         // No return needed, exit_with_message will terminate.
     }
     std::string line;
-    while (std::getline(infile, line)) {
+    while (std::getline(infile, line))
+    {
         std::map<std::string, std::string> config;
         std::istringstream iss(line);
         std::string token;
-        while (std::getline(iss, token, ',')) {
-            if (auto pos = token.find('='); pos != std::string::npos) {
+        while (std::getline(iss, token, ','))
+        {
+            if (auto pos = token.find('='); pos != std::string::npos)
+            {
                 std::string key = token.substr(0, pos);
                 std::string value = token.substr(pos + 1);
                 config[key] = value;
             }
         }
-        if (!config.empty()) {
+        if (!config.empty())
+        {
             m_search_configurations.push_back(config);
         }
     }
 }
 
-void PortfolioSearch::set_default_configurations() {
+void PortfolioSearch::set_default_configurations()
+{
     m_search_configurations.clear();
     // Whatever is not set here will is kept from the user input.
     m_search_configurations.push_back({{"search", "BFS"}});

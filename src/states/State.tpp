@@ -157,18 +157,19 @@ bool State<T>::is_goal() const
 }
 
 template <StateRepresentation T>
-void State<T>::print(std::ostream& os) const
+void State<T>::print() const
 {
-    m_representation.print(os);
+    m_representation.print();
 }
 
 template <StateRepresentation T>
-void State<T>::print_dot_format(std::ostream& os) const
+void State<T>::print_dot_format(std::ofstream& ofs) const
 {
-    m_representation.print_dot_format(os);
+    m_representation.print_dot_format(ofs);
 }
 
-template<StateRepresentation T>
-void State<T>::print_dataset_format(std::ostream &os) const {
-        m_representation.print_dataset_format(os);
+template <StateRepresentation T>
+void State<T>::print_dataset_format(std::ofstream& ofs) const
+{
+    m_representation.print_dataset_format(ofs);
 }

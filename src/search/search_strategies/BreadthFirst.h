@@ -17,9 +17,9 @@
  * \tparam StateRepr The state representation type (must satisfy StateRepresentation).
  */
 template <StateRepresentation StateRepr>
-class BreadthFirst {
+class BreadthFirst
+{
 public:
-
     /**
      * \brief Default constructor.
      */
@@ -28,48 +28,54 @@ public:
     /**
      * \brief Push a state into the search container.
      */
-    void push(const State<StateRepr>& s) {
+    void push(const State<StateRepr>& s)
+    {
         search_space.push(s);
     }
 
     /**
      * \brief Pop a state from the search container.
      */
-    void pop() {
+    void pop()
+    {
         search_space.pop();
     }
 
     /**
      * \brief Peek at the next state in the search container.
      */
-    State<StateRepr> peek() const {
+    State<StateRepr> peek() const
+    {
         return search_space.front();
     }
 
     /**
      * \brief Get the name of the search strategy.
      */
-    static std::string get_name()
+    const std::string & get_name() const
     {
-        return "Breadth First Search";
+        return m_name;
     }
 
     /**
      * \brief Reset the search container.
      */
-    void reset() {
+    void reset()
+    {
         search_space = std::queue<State<StateRepr>>();
     }
 
     /**
      * \brief Check if the search container is empty.
      */
-    [[nodiscard]] bool empty() const {
+    [[nodiscard]] bool empty() const
+    {
         return search_space.empty();
     }
 
 private:
     std::queue<State<StateRepr>> search_space;
+    std::string m_name = "Breadth First Search";
 };
 
 /*
@@ -81,3 +87,5 @@ Example usage with SpaceSearcher:
 // Create the strategy and searcher
 BreadthFirst<MyState> bfs_strategy;
 SpaceSearcher<MyState, BreadthFirst<MyState>> searcher("BFS", bfs_strategy);/*
+
+

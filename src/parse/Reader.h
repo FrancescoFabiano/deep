@@ -58,7 +58,6 @@ public:
 
     /**
      * \brief Print all the information stored inside the reader object.
-     * \param os The output stream to print to.
      */
-    void print(std::ostream& os) const;
+    void print() const;
 };
