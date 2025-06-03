@@ -34,12 +34,12 @@ Agent Proposition::get_agent() const
     return Domain::get_instance().get_grounder().ground_agent(m_agent);
 }
 
-const BeliefFormula& Proposition::get_observability_conditions() const noexcept
+const BeliefFormulaParsed& Proposition::get_observability_conditions() const noexcept
 {
     return m_observability_conditions;
 }
 
-const BeliefFormula& Proposition::get_executability_conditions() const noexcept
+const BeliefFormulaParsed& Proposition::get_executability_conditions() const noexcept
 {
     return m_executability_conditions;
 }
@@ -69,17 +69,17 @@ void Proposition::set_agent(const std::string& to_set)
     m_agent = to_set;
 }
 
-void Proposition::set_observability_conditions(const BeliefFormula& to_set)
+void Proposition::set_observability_conditions(const BeliefFormulaParsed& to_set)
 {
     m_observability_conditions = to_set;
 }
 
-void Proposition::set_executability_conditions(const BeliefFormula& to_set)
+void Proposition::set_executability_conditions(const BeliefFormulaParsed& to_set)
 {
     m_executability_conditions = to_set;
 }
 
-std::string Proposition::type_to_string(PropositionType type)
+std::string Proposition::type_to_string(const PropositionType type)
 {
     switch (type)
     {
@@ -122,7 +122,7 @@ void Proposition::print() const
     }
 
     os << "\n Effects:\n";
-    HelperPrint::print_list(m_action_effect, os);
+    HelperPrint::print_list(m_action_effect);
 
     // Uncomment and adapt if you want to print observability/executability conditions
     // os << "\nObservability conditions:\n";

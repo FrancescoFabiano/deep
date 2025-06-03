@@ -23,8 +23,35 @@
 
 #include <memory>
 #include "utilities/Define.h"
-#include "formulae/BeliefFormula.h"
 
+/**
+ * \brief The possible types of \ref BeliefFormula.
+ */
+enum class BeliefFormulaType
+{
+    FLUENT_FORMULA, ///< A \ref BeliefFormula is also a \ref fluent_formula (base case for recursion).
+    BELIEF_FORMULA, ///< A \ref BeliefFormula of the form B(\ref agent, *phi*).
+    PROPOSITIONAL_FORMULA, ///< A \ref BeliefFormula composed with logical operators and \ref BeliefFormula(e).
+    E_FORMULA, ///< A \ref BeliefFormula of the form E([set of \ref agent], *phi*).
+    C_FORMULA, ///< A \ref BeliefFormula of the form C([set of \ref agent], *phi*).
+    BF_EMPTY, ///< When the belief formula is empty.
+    BF_TYPE_FAIL ///< The failure case.
+};
+
+/**
+ * \brief The logical operator for \ref BeliefFormula(e).
+ *
+ * These are used in the case that the \ref bf_type of a \ref BeliefFormula is \ref PROPOSITIONAL_FORMULA.
+ */
+enum class BeliefFormulaOperator
+{
+    BF_AND, ///< The AND between \ref BeliefFormula(e).
+    BF_OR, ///< The OR between \ref BeliefFormula(e).
+    BF_NOT, ///< The NOT of a \ref BeliefFormula.
+    BF_INPAREN, ///< When the \ref BeliefFormula is only surrounded by "()".
+    BF_FAIL
+    ///< When the \ref BeliefFormula is not set properly (shouldn't be accessed if not \ref PROPOSITIONAL_FORMULA).
+};
 
 class BeliefFormulaParsed
 {
@@ -86,12 +113,21 @@ public:
     /** \brief Getter of the \ref BeliefFormulaParsed pointed by m_bf2. */
     [[nodiscard]] const BeliefFormulaParsed& get_bf2() const;
 
+    /** \brief Check if the \ref BeliefFormulaParsed is empty.
+     *  \return True if the \ref BeliefFormulaParsed is empty, false otherwise.
+     */
+    [[nodiscard]]
+    bool is_bf2_null() const;
+
     /** \brief Getter for the field m_operator. */
     [[nodiscard]] BeliefFormulaOperator get_operator() const noexcept;
 
     /** \brief Getter for the field m_string_group_agents (alias for group agents). */
     [[nodiscard]] const StringsSet& get_group_agents() const noexcept;
     ///@}
+    ///
+    void print() const; ///< Print the \ref BeliefFormulaParsed.
+
 
     /** \brief Copy Assignment */
     BeliefFormulaParsed& operator=(const BeliefFormulaParsed& to_copy);

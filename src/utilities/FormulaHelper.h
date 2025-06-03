@@ -15,6 +15,7 @@
 #pragma once
 
 #include "Define.h"
+#include "formulae/BeliefFormula.h"
 
 class FormulaHelper
 {
@@ -99,12 +100,28 @@ public:
      * 
      * @return the description of the world after \p effect has been applied to \p world_description.*/
     static void apply_effect(const FluentFormula& effect, FluentsSet& world_description);
-
+/**
+     * \brief Computes 2 raised to the power of the given length.
+     * \param[in] length The exponent value.
+     * \return 2 to the power of \p length.
+     */
     static int length_to_power_two(int length);
 
+    /**
+     * \brief Checks if two sets of fluents have an empty intersection.
+     * \param[in] set1 The first set of fluents.
+     * \param[in] set2 The second set of fluents.
+     * \return true if the intersection is empty, false otherwise.
+     */
     static bool fluentset_empty_intersection(const FluentsSet& set1, const FluentsSet& set2);
-    static bool fluentset_negated_empty_intersection(const FluentsSet& set1, const FluentsSet& set2);
 
+    /**
+     * \brief Checks if the intersection of set1 and the negation of set2 is empty.
+     * \param[in] set1 The first set of fluents.
+     * \param[in] set2 The second set of fluents.
+     * \return true if there is no fluent in set1 that is the negation of a fluent in set2.
+     */
+    static bool fluentset_negated_empty_intersection(const FluentsSet& set1, const FluentsSet& set2);
     /** \brief Function that return the set of \ref agent that entails the obs condition.
      *
      * @param[in] map: the map that contains the tuples to check for entailment.

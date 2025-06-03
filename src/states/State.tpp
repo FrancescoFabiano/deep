@@ -29,9 +29,9 @@ State<T>::State(const State& prev_state, const Action& executed_action)
 template <StateRepresentation T>
 State<T> State<T>::compute_successor(const Action& executed_action)
 {
-    State<T> next_state{};
-    next_state->set_representation(get_representation().compute_successor());
-    next_state->add_executed_action(executed_action);
+    State<T> next_state;
+    next_state.set_representation(get_representation().compute_successor(executed_action));
+    next_state.add_executed_action(executed_action);
 
     return next_state;
 }
@@ -67,7 +67,6 @@ State<T>& State<T>::operator=(const State& to_assign)
 {
     set_representation(to_assign.get_representation());
     set_executed_actions(to_assign.get_executed_actions());
-    set_plan_length(to_assign.get_plan_length());
     set_heuristic_value(to_assign.get_heuristic_value());
     return (*this);
 }

@@ -37,9 +37,9 @@ public:
     /** \brief String descriptions of all the goal conditions. */
     StringsSet m_goal;
     /** \brief \ref m_initially conditions described as \ref BeliefFormulaParsed (yet to ground). */
-    FormulaeList m_bf_initially;
+    ParsedFormulaeList m_bf_initially;
     /** \brief \ref m_goal conditions described as \ref BeliefFormulaParsed (yet to ground). */
-    FormulaeList m_bf_goal;
+    ParsedFormulaeList m_bf_goal;
     /** \brief String description of propositions, each one of these specifies an action condition (yet to ground). */
     PropositionsList m_propositions;
     ///@}

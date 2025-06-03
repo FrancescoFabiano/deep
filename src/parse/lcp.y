@@ -17,7 +17,7 @@ StringSetsSet join_SL2(StringSetsSet, StringSetsSet);
 void print_string_set(StringsSet);
 void print_string_set_set(StringSetsSet);
 
-extern std::unique_ptr<reader> domain_reader;
+extern std::unique_ptr<Reader> domain_reader;
 
 %}
 
@@ -124,9 +124,7 @@ extern std::unique_ptr<reader> domain_reader;
 %type <prop> announcement
 %type <prop> executing
 %type <prop_list> domain
-/***************DOXASTIC REASONING***************/
-%type <prop> lie
-/***************END DOXASTIC***************/
+
 
 
 
@@ -387,7 +385,7 @@ if_part_bf:
 /* fail */
 {
   $$ = new BeliefFormulaParsed;
-  $$->set_formula_type(BF_EMPTY);
+  $$->set_formula_type(BeliefFormulaType::BF_EMPTY);
 }
 |
 IF BeliefFormulaParsed {
@@ -397,67 +395,61 @@ IF BeliefFormulaParsed {
 BeliefFormulaParsed:
 formula{  
     $$ = new BeliefFormulaParsed;
-    $$->set_formula_type(FLUENT_FORMULA);
+    $$->set_formula_type(BeliefFormulaType::FLUENT_FORMULA);
     $$->set_string_fluent_formula(*$1);
 }
 |
 MB LEFT_PAREN agent COMMA BeliefFormulaParsed RIGHT_PAREN {
    $$ = new BeliefFormulaParsed;
-   $$->set_formula_type(BELIEF_FORMULA);
+   $$->set_formula_type(BeliefFormulaType::BELIEF_FORMULA);
    $$->set_string_agent(*$3);
    $$->set_bf1(*$5);
 }
 |
 BeliefFormulaParsed COMMA BeliefFormulaParsed {
    $$ = new BeliefFormulaParsed;
-   $$->set_formula_type(PROPOSITIONAL_FORMULA);
-   $$->set_operator(BF_AND);
+   $$->set_formula_type(BeliefFormulaType::PROPOSITIONAL_FORMULA);
+   $$->set_operator(BeliefFormulaOperator::BF_AND);
    $$->set_bf1(*$1);
    $$->set_bf2(*$3);
 }
 |
 BeliefFormulaParsed OR BeliefFormulaParsed {
    $$ = new BeliefFormulaParsed;
-   $$->set_formula_type(PROPOSITIONAL_FORMULA);
-   $$->set_operator(BF_OR);
+   $$->set_formula_type(BeliefFormulaType::PROPOSITIONAL_FORMULA);
+   $$->set_operator(BeliefFormulaOperator::BF_OR);
    $$->set_bf1(*$1);
    $$->set_bf2(*$3);
 }
 |
 LEFT_PAREN NEGATION BeliefFormulaParsed RIGHT_PAREN{
    $$ = new BeliefFormulaParsed;
-   $$->set_formula_type(PROPOSITIONAL_FORMULA);
-   $$->set_operator(BF_NOT);
+   $$->set_formula_type(BeliefFormulaType::PROPOSITIONAL_FORMULA);
+   $$->set_operator(BeliefFormulaOperator::BF_NOT);
    $$->set_bf1(*$3);
 }
 |
 LEFT_PAREN BeliefFormulaParsed RIGHT_PAREN{
     $$ = new BeliefFormulaParsed;
-    $$->set_formula_type(PROPOSITIONAL_FORMULA);
-    $$->set_operator(BF_INPAREN);
+    $$->set_formula_type(BeliefFormulaType::PROPOSITIONAL_FORMULA);
+    $$->set_operator(BeliefFormulaOperator::BF_INPAREN);
     $$->set_bf1(*$2);
 }
 |
 ME LEFT_PAREN LEFT_BRAC agent_list RIGHT_BRAC COMMA BeliefFormulaParsed RIGHT_PAREN {
    $$ = new BeliefFormulaParsed;
-   $$->set_formula_type(E_FORMULA);
+   $$->set_formula_type(BeliefFormulaType::E_FORMULA);
    $$->set_string_group_agents(*$4);
    $$->set_bf1(*$7);
 }
 |
 MC LEFT_PAREN LEFT_BRAC agent_list RIGHT_BRAC COMMA BeliefFormulaParsed RIGHT_PAREN {
    $$ = new BeliefFormulaParsed;
-   $$->set_formula_type(C_FORMULA);
+   $$->set_formula_type(BeliefFormulaType::C_FORMULA);
    $$->set_string_group_agents(*$4);
    $$->set_bf1(*$7);
 }
-|
-MD LEFT_PAREN LEFT_BRAC agent_list RIGHT_BRAC COMMA BeliefFormulaParsed RIGHT_PAREN {
-   $$ = new BeliefFormulaParsed;
-   $$->set_formula_type(D_FORMULA);
-   $$->set_string_group_agents(*$4);
-   $$->set_bf1(*$7);
-};
+;
 
 
 
@@ -493,7 +485,7 @@ dynamic_law:
 action CAUSES literal_list if_part_bf SEMICOLON 
 {  
   $$ = new Proposition;
-  $$->set_type(ONTIC);
+  $$->set_type(PropositionType::ONTIC);
   $$->set_action_name(*$1);
   $$->set_executability_conditions(*$4);
   //@TODO:Effect_Conversion | previously   $$->m_action_effect = *$3;
@@ -505,7 +497,7 @@ executability:
 EXECUTABLE action if_part_bf SEMICOLON
 {
   $$ = new Proposition;
-  $$->set_type(EXECUTABILITY);
+  $$->set_type(PropositionType::EXECUTABILITY);
   $$->set_action_name(*$2);
   $$->set_executability_conditions(*$3);
 };
@@ -515,7 +507,7 @@ determine:
 action DETERMINE literal_list if_part_bf SEMICOLON
 {
   $$ = new Proposition;
-  $$->set_type(SENSING);
+  $$->set_type(PropositionType::SENSING);
   $$->set_action_name(*$1);
   //@TODO:Effect_Conversion | previously   $$->m_action_effect = *$3;
   $$->add_action_effect(*$3);
@@ -527,7 +519,7 @@ announcement:
 action ANNOUNCES literal_list if_part_bf SEMICOLON
 {
   $$ = new Proposition;
-  $$->set_type(ANNOUNCEMENT);
+  $$->set_type(PropositionType::ANNOUNCEMENT);
   $$->set_action_name(*$1);
   $$->add_action_effect(*$3);
   $$->set_executability_conditions(*$4);
@@ -535,25 +527,12 @@ action ANNOUNCES literal_list if_part_bf SEMICOLON
 };
 
 
-
-/***************DOXASTIC REASONING***************/
-/* lie condition */
-lie:
-action LIE formula SEMICOLON
-{
-  $$ = new Proposition;
-  $$->set_type(LIES);
-  $$->set_action_name(*$1);
-  $$->set_action_effect(*$3);
-};
-/***************END DOXASTIC***************/
-
 /* awareness condition */
 awareness:
 agent AWAREOF action if_part_bf SEMICOLON
 {
   $$ = new Proposition;
-  $$->set_type(AWARENESS);
+  $$->set_type(PropositionType::AWARENESS);
   $$->set_action_name(*$3);
   $$->set_agent(*$1);
   $$->set_observability_conditions(*$4);
@@ -564,31 +543,13 @@ observance:
 agent OBSERVES action if_part_bf SEMICOLON
 {
   $$ = new Proposition;
-  $$->set_type(OBSERVANCE);
+  $$->set_type(PropositionType::OBSERVANCE);
   $$->set_action_name(*$3);				
   $$->set_agent(*$1);
   $$->set_observability_conditions(*$4);
 };
 
-/* executing */
-executing:
-agent AGEXEC action SEMICOLON
-{
-  $$ = new Proposition;
-  $$->set_type(EXECUTOR);
-  $$->set_action_name(*$3);				
-  $$->set_agent(*$1);
- };
-/* impossibility condition 
-impossibility:
-IMPOSSIBLE action if_part SEMICOLON
-{
-  $$ = new Proposition;
-  $$->set_type(IMPOSSIBILITY);
-  $$->set_action_name(*$2);
-  $$->set_action_precondition(*$3);
-};
-*/
+
 /* Proposition */
 Proposition:
 /*static_law {
@@ -629,18 +590,6 @@ awareness
 {
   $$ = $1;
 }
-|
-executing
-{
-  $$ = $1;
-}
-/***************DOXASTIC REASONING***************/
-|
-lie
-{
-  $$ = $1;
-}
-/***************END DOXASTIC***************/
 ;
 
 /* domain */

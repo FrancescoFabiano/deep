@@ -114,7 +114,7 @@ void PlanningGraph::init(const FormulaeList& goal, const StateLevel& pg_init)
     }
 }
 
-void PlanningGraph::set_satisfiable(bool sat)
+void PlanningGraph::set_satisfiable(const bool sat)
 {
     m_satisfiable = sat;
 }
@@ -278,12 +278,12 @@ void PlanningGraph::add_action_level(const ActionLevel& a_level)
     m_action_levels.push_back(a_level);
 }
 
-void PlanningGraph::set_length(unsigned short length)
+void PlanningGraph::set_length(const unsigned short length)
 {
     m_pg_length = length;
 }
 
-void PlanningGraph::set_sum(unsigned short sum)
+void PlanningGraph::set_sum(const unsigned short sum)
 {
     m_pg_sum = sum;
 }

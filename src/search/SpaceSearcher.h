@@ -21,7 +21,7 @@
  *
  * @tparam T The type to be checked against the required interface.
  */
-template <typename T, StateRepresentation StateRepr>
+template <typename T, typename StateRepr>
 concept SearchStrategy = requires(T rep, State<StateRepr> s)
 {
     /// Functor/lambda to push a state into the container.
@@ -35,7 +35,7 @@ concept SearchStrategy = requires(T rep, State<StateRepr> s)
     /// Functor/lambda to check if container is empty.
     { std::as_const(rep).empty() } -> std::same_as<bool>;
     /// Return the name of the used strategy.
-    { std::as_const(rep).get_name() } -> std::same_as<const std::string&>;
+    { std::as_const(rep).get_name() } -> std::same_as<std::string>;
 };
 
 
@@ -44,7 +44,7 @@ concept SearchStrategy = requires(T rep, State<StateRepr> s)
  * \tparam StateRepr The state representation type (must satisfy StateRepresentation).
  * \tparam Strategy The search strategy type (must satisfy SearchStrategy).
  */
-template <StateRepresentation StateRepr, SearchStrategy<State<StateRepr>> Strategy>
+template <StateRepresentation StateRepr, SearchStrategy<StateRepr> Strategy>
 class SpaceSearcher
 {
 public:
@@ -73,7 +73,7 @@ public:
      * \return The search type/name.
      */
     [[nodiscard]]
-    const std::string& get_search_type() const noexcept;
+    std::string get_search_type() const noexcept;
 
     /**
      * \brief Get the number of expanded nodes by the search strategy.
@@ -113,7 +113,7 @@ private:
      * \return true if a goal state is found, false otherwise.
      */
     [[nodiscard]]
-    bool search_sequential(const State<StateRepr>& initial, const std::vector<Action>& actions, bool check_visited,
+    bool search_sequential(State<StateRepr>& initial, const ActionsSet& actions, bool check_visited,
                            bool bisimulation_reduction);
 
     /**
@@ -129,7 +129,7 @@ private:
      * \warning not too thoroughly tested, use with caution.
      */
     [[nodiscard]]
-    bool search_parallel(const State<StateRepr>& initial, const std::vector<Action>& actions, bool check_visited,
+    bool search_parallel(State<StateRepr>& initial, const ActionsSet& actions, bool check_visited,
                          bool bisimulation_reduction, int num_threads);
 
     /// \name Plan Validation

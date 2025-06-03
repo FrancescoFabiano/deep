@@ -167,6 +167,69 @@ void HelperPrint::print_list_ag(const AgentsSet& to_print) const
     }
 }
 
+void HelperPrint::print_belief_formula_parsed(const BeliefFormulaParsed& to_print)
+{
+    auto& os = ArgumentParser::get_instance().get_output_stream();
+    switch (to_print.get_formula_type())
+    {
+    case BeliefFormulaType::FLUENT_FORMULA:
+        print_list(to_print.get_string_fluent_formula());
+        break;
+    case BeliefFormulaType::BELIEF_FORMULA:
+        os << "B(" << to_print.get_string_agent() << ",(";
+        print_belief_formula_parsed(to_print.get_bf1());
+        os << "))";
+        break;
+    case BeliefFormulaType::C_FORMULA:
+        os << "C([";
+        print_list(to_print.get_group_agents());
+        os << "],";
+        print_belief_formula_parsed(to_print.get_bf1());
+        os << ")";
+        break;
+    case BeliefFormulaType::E_FORMULA:
+        os << "E([";
+        print_list(to_print.get_group_agents());
+        os << "],";
+        print_belief_formula_parsed(to_print.get_bf1());
+        os << ")";
+        os << ")";
+        break;
+    case BeliefFormulaType::PROPOSITIONAL_FORMULA:
+        if (to_print.get_operator() == BeliefFormulaOperator::BF_NOT)
+            os << "NOT(";
+        print_belief_formula_parsed(to_print.get_bf1());
+        if (to_print.get_operator() == BeliefFormulaOperator::BF_NOT)
+            os << ")";
+        if (to_print.get_operator() == BeliefFormulaOperator::BF_AND)
+            os << " AND ";
+        if (to_print.get_operator() == BeliefFormulaOperator::BF_OR)
+            os << " OR ";
+        else if (to_print.get_operator() == BeliefFormulaOperator::BF_FAIL)
+        {
+            ExitHandler::exit_with_message(
+                ExitHandler::ExitCode::BeliefFormulaOperatorUnset,
+                "ERROR IN DECLARATION."
+            );
+        }
+        if (!to_print.is_bf2_null())
+        {
+            print_belief_formula_parsed(to_print.get_bf2());
+        }
+        break;
+    case BeliefFormulaType::BF_EMPTY:
+        os << "Empty\n";
+        break;
+    case BeliefFormulaType::BF_TYPE_FAIL:
+    default:
+        ExitHandler::exit_with_message(
+            ExitHandler::ExitCode::BeliefFormulaTypeUnset,
+            "Unknown BeliefFormula type."
+        );
+        break;
+    }
+}
+
 
 void HelperPrint::print_belief_formula(const BeliefFormula& to_print) const
 {

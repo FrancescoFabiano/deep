@@ -73,7 +73,7 @@ void BeliefFormula::set_formula_type(const BeliefFormulaType to_set)
     m_formula_type = to_set;
 }
 
-[[nodiscard]] BeliefFormulaType BeliefFormula::get_formula_type() const
+[[nodiscard]] BeliefFormulaType BeliefFormula::get_formula_type() const noexcept
 {
     if (m_formula_type == BeliefFormulaType::BF_TYPE_FAIL) {
         ExitHandler::exit_with_message(
@@ -102,7 +102,7 @@ void BeliefFormula::set_fluent_formula_from_fluent(const Fluent& to_set)
     m_fluent_formula.insert(tmp);
 }
 
-[[nodiscard]] const FluentFormula & BeliefFormula::get_fluent_formula() const
+[[nodiscard]] const FluentFormula & BeliefFormula::get_fluent_formula() const noexcept
 {
     if (m_fluent_formula.empty()) {
         ExitHandler::exit_with_message(
@@ -118,7 +118,7 @@ void BeliefFormula::set_agent(const Agent& to_set)
     m_agent = to_set;
 }
 
-[[nodiscard]] const Agent & BeliefFormula::get_agent() const
+[[nodiscard]] const Agent & BeliefFormula::get_agent() const noexcept
 {
     return m_agent;
 }
@@ -155,7 +155,7 @@ bool BeliefFormula::is_bf2_null() const
     return m_bf2 == nullptr;
 }
 
-[[nodiscard]] BeliefFormulaOperator BeliefFormula::get_operator() const
+[[nodiscard]] BeliefFormulaOperator BeliefFormula::get_operator() const noexcept
 {
     if (m_formula_type == BeliefFormulaType::BF_TYPE_FAIL) {
         ExitHandler::exit_with_message(
@@ -177,7 +177,7 @@ void BeliefFormula::set_group_agents(const AgentsSet & to_set)
     m_group_agents = to_set;
 }
 
-[[nodiscard]] const AgentsSet & BeliefFormula::get_group_agents() const
+[[nodiscard]] const AgentsSet & BeliefFormula::get_group_agents() const noexcept
 {
     return m_group_agents;
 }

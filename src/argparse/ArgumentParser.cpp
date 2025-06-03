@@ -217,7 +217,7 @@ ArgumentParser::ArgumentParser() : app("deep")
        ->default_val("plan.txt");
 
     app.add_flag("--log", m_log_enabled,
-                 "Enable logging to a file in the '" + OutputPaths::LOGS_FOLDER +
+                 "Enable logging to a file in the '" + std::string(OutputPaths::LOGS_FOLDER) +
                  "' folder. The log file will be named automatically. If this is not activated, std::cout will be used.");
 }
 

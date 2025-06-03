@@ -24,7 +24,7 @@ bool InitialStateInformation::check_restriction(const BeliefFormula& to_check)
      * - C(B(i,*phi*) \ref BF_OR B(i,-*phi*)) -> only edges conditions.
      * - C(-B(i,*phi*) \ref BeliefFormulaOperator::BF_AND -B(i,-*phi*)) -> only edges conditions.*/
     bool ret = false;
-    auto ff = FluentFormula(); //Useless
+    FluentFormula ff = {}; //Useless
     switch (to_check.get_formula_type())
     {
     case BeliefFormulaType::PROPOSITIONAL_FORMULA:

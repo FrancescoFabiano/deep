@@ -16,6 +16,8 @@
 #include <string>
 #include <ostream>
 
+#include "Define.h"
+
 
 class Configuration
 {
@@ -91,23 +93,23 @@ public:
 
     /**
      * \brief Gets the search strategy.
-     * \return The search strategy string.
+     * \return The search strategy enum.
      */
-    [[nodiscard]] const std::string& get_search_strategy() const noexcept;
+    [[nodiscard]] const SearchType& get_search_strategy() const noexcept;
     /**
      * \brief Sets the search strategy.
-     * \param val The search strategy string.
+     * \param val The search strategy enum.
      */
     void set_search_strategy(const std::string& val);
 
     /**
      * \brief Gets the heuristic option.
-     * \return The heuristic option string.
+     * \return The heuristic option enum.
      */
-    [[nodiscard]] const std::string& get_heuristic_opt() const noexcept;
+    [[nodiscard]] const Heuristics& get_heuristic_opt() const noexcept;
     /**
      * \brief Sets the heuristic option.
-     * \param val The heuristic option string.
+     * \param val The heuristic option enum.
      */
     void set_heuristic_opt(const std::string& val);
 
@@ -117,7 +119,9 @@ public:
     * \param value The value to set the field to.
     */
     void set_field_by_name(const std::string& field, const std::string& value);
+    void set_search_strategy_enum();
 
+    void set_heuristic_enum();
     /**
      * \brief Prints all configuration values to the given output stream.
      * \param os The output stream to print to.
@@ -139,7 +143,9 @@ private:
     bool m_bisimulation_type_bool = true; ///< Bisimulation type as boolean.
     bool m_check_visited = false; ///< Visited state checking flag.
     std::string m_search_strategy = "BFS"; ///< Search strategy string.
+    SearchType m_search_strategy_enum = SearchType::BFS; ///< Search strategy enum.
     std::string m_heuristic_opt = "SUBGOALS"; ///< Heuristic option string.
+    Heuristics m_heuristic_enum = Heuristics::SUBGOALS; ///< Heuristic option enum.
 
     /**
      * \brief Sets the bisimulation type as a boolean.

@@ -45,15 +45,12 @@ public:
     /**
      * \brief Default constructor.
      */
-    BestFirst()
-    {
-        m_heuristics_manager(Configuration::get_instance().get_heuristic_opt());
-    } ;
+    BestFirst() = default;
 
     /**
      * \brief Push a state into the search container.
      */
-    void push(const State<StateRepr>& s)
+    void push(State<StateRepr>& s)
     {
         m_heuristics_manager.set_heuristic_value(s);
         if (s.get_heuristic_value() < 0)
@@ -82,9 +79,9 @@ public:
     /**
      * \brief Get the name of the search strategy.
      */
-    const std::string & get_name() const
+    std::string get_name() const
     {
-        return m_name + " (" + m_heuristics_manager.get_name() + ")";
+        return m_name + " (" + m_heuristics_manager.get_used_h_name() + ")";
     }
 
     /**
@@ -105,7 +102,7 @@ public:
 
 private:
     using StatePriorityQueue = std::priority_queue<
-        State<StateRepr>, std::vector<State<StateRepr>>, StateComparator<State<StateRepr>>>;
+        State<StateRepr>, std::vector<State<StateRepr>>, StateComparator<StateRepr>>;
     StatePriorityQueue search_space; ///< The search space represented as a priority queue of states.
     HeuristicsManager<StateRepr> m_heuristics_manager; ///< Heuristics manager to compute heuristic values for states.
     std::string m_name = "Heuristics First Search"; ///< Name of the search strategy.

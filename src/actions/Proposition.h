@@ -2,7 +2,7 @@
 
 #include <list>
 #include <string>
-#include "formulae/BeliefFormula.h"
+#include "parse/BeliefFormulaParsed.h"
 #include "utilities/Define.h"
 
 /**
@@ -55,10 +55,10 @@ public:
     [[nodiscard]] Agent get_agent() const;
 
     /** \brief Gets the observability conditions. */
-    [[nodiscard]] const BeliefFormula& get_observability_conditions() const noexcept;
+    [[nodiscard]] const BeliefFormulaParsed& get_observability_conditions() const noexcept;
 
     /** \brief Gets the executability conditions. */
-    [[nodiscard]] const BeliefFormula& get_executability_conditions() const noexcept;
+    [[nodiscard]] const BeliefFormulaParsed& get_executability_conditions() const noexcept;
 
     ///@}
 
@@ -80,10 +80,10 @@ public:
     void set_agent(const std::string& to_set);
 
     /** \brief Sets the observability conditions. */
-    void set_observability_conditions(const BeliefFormula& to_set);
+    void set_observability_conditions(const BeliefFormulaParsed& to_set);
 
     /** \brief Sets the executability conditions. */
-    void set_executability_conditions(const BeliefFormula& to_set);
+    void set_executability_conditions(const BeliefFormulaParsed& to_set);
     ///@}
 
     /**
@@ -107,8 +107,8 @@ private:
     std::string m_action_name; ///< The name/id of this proposition.
     StringSetsSet m_action_effect; ///< Effects (for ONTIC, SENSING, ANNOUNCEMENT).
     std::string m_agent; ///< Agent (for OBSERVANCE, AWARENESS).
-    BeliefFormula m_observability_conditions; ///< Observability condition (not grounded).
-    BeliefFormula m_executability_conditions; ///< Executability condition (not grounded).
+    BeliefFormulaParsed m_observability_conditions; ///< Observability condition (not grounded).
+    BeliefFormulaParsed m_executability_conditions; ///< Executability condition (not grounded).
 };
 
 /// \brief A list of Proposition objects.

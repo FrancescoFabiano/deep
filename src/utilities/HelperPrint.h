@@ -4,6 +4,7 @@
 #include "domain/Grounder.h"
 
 
+class BeliefFormulaParsed;
 /**
  * \class HelperPrint
  * \brief Singleton class to facilitate printing of domain structures.
@@ -90,7 +91,13 @@ public:
     void print_list_ag(const AgentsSet& to_print) const;
 
     /**
-     * \brief Print all agent names in a set.
+     * \brief Print the parsed bf.
+     * \param to_print The BeliefFormulaParsed to print.
+     */
+    static void print_belief_formula_parsed(const BeliefFormulaParsed& to_print);
+
+    /**
+     * \brief Print a belief formula using grounder.
      * \param to_print The BeliefFormula to print.
      */
     void print_belief_formula(const BeliefFormula& to_print) const;

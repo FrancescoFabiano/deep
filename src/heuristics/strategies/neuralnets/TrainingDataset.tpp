@@ -1,7 +1,3 @@
-//
-// Created by franc on 5/31/2025.
-//
-
 #include "TrainingDataset.h"
 #include <string>
 #include <fstream>
@@ -352,7 +348,7 @@ bool TrainingDataset<StateRepr>::search_space_exploration()
 
     if (Configuration::get_instance().get_bisimulation())
     {
-        initial_state.calc_min_bisimilar();
+        initial_state.contract_with_bisimulation();
     }
 
     ActionsSet actions = Domain::get_instance().get_actions();
@@ -470,11 +466,11 @@ int TrainingDataset<StateRepr>::dfs_worker(State<StateRepr>& state, const size_t
     {
         if (state.is_executable(action))
         {
-            auto next_state = state.compute_succ(action);
+            auto next_state = state.compute_successor(action);
 
             if (Configuration::get_instance().get_bisimulation())
             {
-                next_state.calc_min_bisimilar();
+                next_state.contract_with_bisimulation();
             }
 
             if (depth >= max_depth)

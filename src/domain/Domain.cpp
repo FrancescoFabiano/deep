@@ -267,7 +267,7 @@ void Domain::build_initially()
                 if (ArgumentParser::get_instance().get_debug())
                 {
                     os << "    Pointed world: ";
-                    HelperPrint::get_instance().print_list(formula.get_fluent_formula(), os);
+                    HelperPrint::get_instance().print_list(formula.get_fluent_formula());
                     os << std::endl;
                 }
                 break;
@@ -281,7 +281,7 @@ void Domain::build_initially()
                 if (ArgumentParser::get_instance().get_debug())
                 {
                     os << "Added to initial conditions: ";
-                    formula.print(os);
+                    formula.print();
                     os << std::endl;
                 }
                 break;
@@ -310,7 +310,7 @@ void Domain::build_goal()
         if (ArgumentParser::get_instance().get_debug())
         {
             os << "    ";
-            formula.print(os);
+            formula.print();
             os << std::endl;
         }
     }

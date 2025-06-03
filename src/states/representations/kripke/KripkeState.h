@@ -213,7 +213,7 @@ private:
      *  \param[in] index The index of the fluent to add.
      *  \param[in] initially_known The set of initially known fluents.
      */
-    void generate_initial_worlds(FluentsSet& permutation, int index, const FluentsSet& initially_known);
+    void generate_initial_worlds(FluentsSet& permutation, unsigned int index, const FluentsSet& initially_known);
 
     /** \brief Check if a KripkeWorld respects initial conditions and add it if so.
      *  \param[in] possible_add The KripkeWorld to check.

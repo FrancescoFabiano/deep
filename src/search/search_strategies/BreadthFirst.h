@@ -52,7 +52,7 @@ public:
     /**
      * \brief Get the name of the search strategy.
      */
-    const std::string & get_name() const
+    std::string get_name() const
     {
         return m_name;
     }
@@ -77,15 +77,4 @@ private:
     std::queue<State<StateRepr>> search_space;
     std::string m_name = "Breadth First Search";
 };
-
-/*
-Example usage with SpaceSearcher:
-
-#include "search/SpaceSearcher.h"
-#include "search/search_strategies/BreadthFirst.h"
-
-// Create the strategy and searcher
-BreadthFirst<MyState> bfs_strategy;
-SpaceSearcher<MyState, BreadthFirst<MyState>> searcher("BFS", bfs_strategy);/*
-
 

@@ -104,8 +104,9 @@ private:
     size_t m_goal_founds = 0; ///< Number of goals found
 
     // --- State tracking ---
-    std::unordered_set<State<StateRepr>> m_visited_states; ///< Set of visited states
-    std::unordered_map<State<StateRepr>, int> m_states_scores; ///< State scores
+    std::set<State<StateRepr>> m_visited_states;
+    ///< Set of visited states \warning cannot use unordered set because I am missing a clear way of hashing the state
+    std::map<State<StateRepr>, int> m_states_scores; ///< State scores
 
     // --- Internal utility functions ---
     /**

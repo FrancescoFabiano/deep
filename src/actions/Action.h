@@ -5,6 +5,7 @@
 #include <string>
 
 #include "Proposition.h"
+#include "formulae/BeliefFormula.h"
 #include "utilities/define.h"
 
 /**

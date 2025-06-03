@@ -18,6 +18,7 @@
 
 #include "utilities/Define.h"
 #include "states/State.h"
+#include "formulae/BeliefFormula.h"
 
 class SatisfiedGoals
 {

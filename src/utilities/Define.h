@@ -17,15 +17,13 @@
  */
 struct OutputPaths
 {
-    static constexpr std::string LOGS_FOLDER = "logs"; ///< Path to the log folder.
-    static constexpr std::string OUTPUT_FOLDER = "out"; ///< Path to the output folder.
-    static constexpr std::string DATASET_NN_OUTPUT_FOLDER = OUTPUT_FOLDER + "/NN"; ///< Path to the NN output folder.
-    static constexpr std::string DATASET_TRAINING_FOLDER = DATASET_NN_OUTPUT_FOLDER + "/Training";
-    ///< Path to the training folder.
-    static constexpr std::string DATASET_INFERENCE_FOLDER = DATASET_NN_OUTPUT_FOLDER + "/Inference";
-    ///< Path to the inference folder.
-    static constexpr std::string DATASET_NN_DATASET_MAPPED = "map"; ///< The suffix for the NN dataset mapped file.
-    static constexpr std::string DATASET_NN_DATASET_HASHED = "hash"; ///< The suffix for the NN dataset hashed file.
+    static constexpr auto LOGS_FOLDER = "logs"; ///< Path to the log folder.
+    static constexpr auto OUTPUT_FOLDER = "out"; ///< Path to the output folder.
+    static constexpr auto DATASET_NN_OUTPUT_FOLDER = "out/NN"; ///< Path to the NN output folder.
+    static constexpr auto DATASET_TRAINING_FOLDER = "out/NN/Training"; ///< Path to the training folder.
+    static constexpr auto DATASET_INFERENCE_FOLDER = "out/NN/Inference"; ///< Path to the inference folder.
+    static constexpr auto DATASET_NN_DATASET_MAPPED = "map"; ///< The suffix for the NN dataset mapped file.
+    static constexpr auto DATASET_NN_DATASET_HASHED = "hash"; ///< The suffix for the NN dataset hashed file.
 };
 
 /**
@@ -69,7 +67,6 @@ using ReverseActionNamesMap = std::map<ActionId, std::string>;
  */
 enum class Heuristics
 {
-    NO_H, ///< Breadth first search.
     L_PG, ///< Planning BisGraph for State-goal distance.
     S_PG, ///< Planning BisGraph for sum of subgoals distances.
     C_PG, ///< Classical planning BisGraph for belief formulae.
@@ -79,10 +76,10 @@ enum class Heuristics
 };
 
 /**
- * \enum search_type
+ * \enum SearchType
  * \brief The possible search strategies.
  */
-enum class search_type
+enum class SearchType
 {
     BFS, ///< Breadth first search.
     DFS, ///< Depth first search.
@@ -90,18 +87,7 @@ enum class search_type
 };
 
 
-/**
- * \struct ML_Dataset_Params
- * \brief Parameters for ML dataset generation.
- */
-struct ML_Dataset_Params
-{
-    bool generate = false;
-    bool useDFS = true; ///< True for DFS, false for BFS.
-    int depth = 10;
-};
-
-/// \name Actions Related
+/// \name Belief Formulae Related
 ///@{
 class BeliefFormula;
 using FormulaeList = std::list<BeliefFormula>; ///< CNF formula of BeliefFormula.

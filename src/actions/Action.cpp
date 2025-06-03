@@ -132,27 +132,27 @@ void Action::add_proposition(const Proposition& to_add)
     {
     case PropositionType::ONTIC:
         set_type(PropositionType::ONTIC);
-        add_effect(to_add.get_action_effect(), to_add.get_executability_conditions());
+        add_effect(to_add.get_action_effect(), BeliefFormula(to_add.get_executability_conditions()));
         break;
     case PropositionType::SENSING:
         set_type(PropositionType::SENSING);
-        add_effect(to_add.get_action_effect(), to_add.get_executability_conditions());
+        add_effect(to_add.get_action_effect(), BeliefFormula(to_add.get_executability_conditions()));
         break;
     case PropositionType::ANNOUNCEMENT:
         set_type(PropositionType::ANNOUNCEMENT);
-        add_effect(to_add.get_action_effect(), to_add.get_executability_conditions());
+        add_effect(to_add.get_action_effect(), BeliefFormula(to_add.get_executability_conditions()));
         break;
     case PropositionType::OBSERVANCE:
         set_type(PropositionType::NOTSET);
-        add_fully_observant(to_add.get_agent(), to_add.get_observability_conditions());
+        add_fully_observant(to_add.get_agent(), BeliefFormula(to_add.get_observability_conditions()));
         break;
     case PropositionType::AWARENESS:
         set_type(PropositionType::NOTSET);
-        add_partially_observant(to_add.get_agent(), to_add.get_observability_conditions());
+        add_partially_observant(to_add.get_agent(), BeliefFormula(to_add.get_observability_conditions()));
         break;
     case PropositionType::EXECUTABILITY:
         set_type(PropositionType::NOTSET);
-        add_executability(to_add.get_executability_conditions());
+        add_executability(BeliefFormula(to_add.get_executability_conditions()));
         break;
     default:
         break;
@@ -192,30 +192,30 @@ void Action::print() const
     for (const auto& exec : m_executability)
     {
         os << " | ";
-        exec.print(os);
+        exec.print();
     }
 
     os << "\n    Effects:";
     for (const auto& [effect, condition] : m_effects)
     {
         os << " | ";
-        HelperPrint::get_instance().print_list(effect, os);
+        HelperPrint::get_instance().print_list(effect);
         os << " if ";
-        condition.print(os);
+        condition.print();
     }
 
     os << "\n    Fully Observant:";
     for (const auto& [agent, condition] : m_fully_observants)
     {
         os << " | " << grounder.deground_agent(agent) << " if ";
-        condition.print(os);
+        condition.print();
     }
 
     os << "\n    Partially Observant:";
     for (const auto& [agent, condition] : m_partially_observants)
     {
         os << " | " << grounder.deground_agent(agent) << " if ";
-        condition.print(os);
+        condition.print();
     }
     os << std::endl;
 }

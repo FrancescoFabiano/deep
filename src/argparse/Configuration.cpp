@@ -83,11 +83,11 @@ bool Configuration::get_check_visited() const noexcept { return m_check_visited;
 void Configuration::set_check_visited(const std::string& val) { m_check_visited = str_to_bool(val); }
 void Configuration::set_check_visited(const bool val) { m_check_visited = val; }
 
-const std::string& Configuration::get_search_strategy() const noexcept { return m_search_strategy; }
-void Configuration::set_search_strategy(const std::string& val) { m_search_strategy = trim(val); }
+const SearchType& Configuration::get_search_strategy() const noexcept { return m_search_strategy_enum; }
+void Configuration::set_search_strategy(const std::string& val) { m_search_strategy = val; set_search_strategy_enum(); }
 
-const std::string& Configuration::get_heuristic_opt() const noexcept { return m_heuristic_opt; }
-void Configuration::set_heuristic_opt(const std::string& val) { m_heuristic_opt = trim(val); }
+const Heuristics& Configuration::get_heuristic_opt() const noexcept { return m_heuristic_enum; }
+void Configuration::set_heuristic_opt(const std::string& val) { m_heuristic_opt = val; set_heuristic_enum(); }
 
 
 // In Configuration.cpp
@@ -107,6 +107,44 @@ void Configuration::set_field_by_name(const std::string& field, const std::strin
         );
     }
     // Optionally handle unknown fields
+}
+
+
+
+void Configuration::set_search_strategy_enum()
+{
+    if (m_search_strategy == "BFS") {
+        m_search_strategy_enum = SearchType::BFS;
+    } else if (m_search_strategy == "DFS") {
+        m_search_strategy_enum = SearchType::DFS;
+    } else if (m_search_strategy == "HFS") {
+        m_search_strategy_enum = SearchType::HFS;
+    } else {
+        ExitHandler::exit_with_message(
+            ExitHandler::ExitCode::ArgParseError,
+            "Invalid search strategy specified: " + m_search_strategy
+        );
+    }
+}
+
+void Configuration::set_heuristic_enum()
+{
+    if (m_heuristic_opt == "SUBGOALS") {
+        m_heuristic_enum = Heuristics::SUBGOALS;
+    } else if (m_heuristic_opt == "L_PG") {
+        m_heuristic_enum = Heuristics::L_PG;
+    } else if (m_heuristic_opt == "S_PG") {
+        m_heuristic_enum = Heuristics::S_PG;
+    } else if (m_heuristic_opt == "C_PG") {
+        m_heuristic_enum = Heuristics::C_PG;
+    } else if (m_heuristic_opt == "GNN") {
+        m_heuristic_enum = Heuristics::GNN;
+    } else {
+        ExitHandler::exit_with_message(
+            ExitHandler::ExitCode::ArgParseError,
+            "Invalid heuristic specified: " + m_heuristic_opt
+        );
+    }
 }
 
 void Configuration::print(std::ostream& os) const

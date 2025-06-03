@@ -7,6 +7,8 @@
  */
 #include "BeliefFormulaParsed.h"
 
+#include "HelperPrint.h"
+
 void BeliefFormulaParsed::set_string_fluent_formula(const StringSetsSet& to_set)
 {
     m_string_fluent_formula = to_set;
@@ -87,6 +89,17 @@ const StringsSet& BeliefFormulaParsed::get_group_agents() const noexcept
 {
     return m_string_group_agents;
 }
+
+void BeliefFormulaParsed::print() const
+{
+    HelperPrint::print_belief_formula_parsed(*this);
+}
+
+bool BeliefFormulaParsed::is_bf2_null() const
+{
+    return m_bf2 == nullptr;
+}
+
 
 BeliefFormulaParsed& BeliefFormulaParsed::operator=(const BeliefFormulaParsed& to_copy) // NOLINT(*-no-recursion, *-unhandled-self-assignment)
 {

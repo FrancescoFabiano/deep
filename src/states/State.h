@@ -23,18 +23,18 @@
 
 
 /**
- * @brief Concept that enforces the required interface for a state representation type `T`.
+ * @brief Concept that enforces the required interface for a state representation type `StateRepr`.
  *
- * This concept defines the contract that a type `T` must fulfill to be used with the `State<T>` class.
- * It ensures that `T` provides entailment checks, executability conditions, printing, and comparison.
+ * This concept defines the contract that a type `StateRepr` must fulfill to be used with the `State<StateRepr>` class.
+ * It ensures that `StateRepr` provides entailment checks, executability conditions, printing, and comparison.
  *
- * @tparam T The type to be checked against the required interface.
+ * @tparam StateRepr The type to be checked against the required interface.
  */
-template <typename T>
-concept StateRepresentation = requires(T rep, const Fluent& f, const FluentsSet& fs,
+template <typename StateRepr>
+concept StateRepresentation = requires(StateRepr rep, const Fluent& f, const FluentsSet& fs,
                                        const FluentFormula& ff, const BeliefFormula& bf,
                                        const FormulaeList& fl, const Action& act,
-                                       std::ofstream& ofs, const T& other)
+                                       std::ofstream& ofs, const StateRepr& other)
 {
     /**
      * @name Entailment Methods for logical entailment evaluation
@@ -62,8 +62,8 @@ concept StateRepresentation = requires(T rep, const Fluent& f, const FluentsSet&
      * @brief Successor computation method.
      * \warning compute_successor is not working if set to const, no idea why
      */
-    //{ std::as_const(rep).compute_successor(act) } -> std::same_as<T>;
-    { rep.compute_successor(act) } -> std::same_as<T>;
+    { std::as_const(rep).compute_successor(act) } -> std::same_as<StateRepr>;
+    //{ rep.compute_successor(act) } -> std::same_as<StateRepr>;
     /**
      * @name Output Methods
      * Required methods for formatted output.
@@ -79,22 +79,22 @@ concept StateRepresentation = requires(T rep, const Fluent& f, const FluentsSet&
      * Required comparison and assignment operators.
      */
     ///@{
-    { rep.operator=(other) } -> std::same_as<T&>;
+    { rep.operator=(other) } -> std::same_as<StateRepr&>;
     { std::as_const(rep).operator<(other) } -> std::same_as<bool>;
     ///@}
 };
 
 
 /**
- * @tparam T The state representation class satisfying StateRepresentation
+ * @tparam StateRepr The state representation class satisfying StateRepresentation
  */
-template <StateRepresentation T>
+template <StateRepresentation StateRepr>
 class State
 {
 public:
     /** \brief Constructor without parameters.
      *
-     * It creates \ref m_representation calling its **T** constructor.*/
+     * It creates \ref m_representation calling its **StateRepr** constructor.*/
     State() = default;
 
     /** \brief Constructor with that set *this* as successor of the given one.
@@ -127,7 +127,7 @@ public:
     /** \brief Getter of \ref m_representation.
      *
      * @return the m_representation of *this*.*/
-    [[nodiscard]] const T& get_representation() const;
+    [[nodiscard]] const StateRepr& get_representation() const;
 
     /** \brief Function that add and \ref action_id to \ref m_executed_actions_id.
         *
@@ -137,7 +137,7 @@ public:
     /** \brief Setter of \ref m_representation.
      *
      * @param[in] to_set: the m_representation to assign to \ref m_representation.*/
-    void set_representation(const T& to_set);
+    void set_representation(const StateRepr& to_set);
 
     /** \brief Function that checks if *this* entails a \ref fluent.
      *
@@ -224,7 +224,7 @@ public:
      *
      * @param [in] to_assign: the \ref state to assign to *this*.
      * @return This with the copied assigned values.*/
-    [[nodiscard]] State& operator=(const State<T>& to_assign);
+    State& operator=(const State<StateRepr>& to_assign);
 
     /** \brief The < operator for set operations.
      *
@@ -233,7 +233,7 @@ public:
      * @param [in] to_compare: the \ref state to to_compare to *this*.
      * @return true: if *this* is smaller than to_compare.
      * @return false: otherwise.*/
-    bool operator<(const State<T>& to_compare) const;
+    bool operator<(const State<StateRepr>& to_compare) const;
 
 
     /** \brief Function that prints the information of *this*.
@@ -254,7 +254,7 @@ private:
     /** \brief The type of state m_representation.
      *
      * One of the Possible representation for a State */
-    T m_representation;
+    StateRepr m_representation;
 
     /** \brief The list of executed \ref action to get from the initial state to *this*.
      *
@@ -274,5 +274,5 @@ private:
     void set_executed_actions(const ActionIdsList& to_set);
 };
 
-/**Implementation of the template class State<T>*/
+/**Implementation of the template class State<StateRepr>*/
 #include "State.tpp"

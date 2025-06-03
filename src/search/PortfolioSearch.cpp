@@ -63,55 +63,62 @@ bool PortfolioSearch::run_portfolio_search() const
             }
         }
         const auto& config = Configuration::get_instance();
-        const std::string search_type = config.get_search_strategy();
+        const SearchType search_type = config.get_search_strategy();
 
         // Select searcher
-        std::string used_search_type;
+        std::string search_type_name;
         std::chrono::duration<double> elapsed{};
         unsigned int expanded = 0;
         bool result = false;
         ActionIdsList actions_id;
-        if (search_type == "BFS")
+        switch (search_type)
         {
-            SpaceSearcher<KripkeState, BreadthFirst<State<KripkeState>>> searcherBFS{
-                BreadthFirst<State<KripkeState>>()
-            };
-            result = searcherBFS.search(initial_state);
-            actions_id = searcherBFS.get_plan_actions_id();
-            used_search_type = searcherBFS.get_search_type();
-            elapsed = searcherBFS.get_elapsed_seconds();
-            expanded = searcherBFS.get_expanded_nodes();
-        }
-        else if (search_type == "DFS")
-        {
-            SpaceSearcher<KripkeState, DepthFirst<State<KripkeState>>> searcherDFS{DepthFirst<State<KripkeState>>()};
-            result = searcherDFS.search(initial_state);
-            actions_id = searcherDFS.get_plan_actions_id();
-            used_search_type = searcherDFS.get_search_type();
-            elapsed = searcherDFS.get_elapsed_seconds();
-            expanded = searcherDFS.get_expanded_nodes();
-        }
-        else if (search_type == "HFS")
-        {
-            SpaceSearcher<KripkeState, BestFirst<State<KripkeState>>> searcherHFS{BestFirst<State<KripkeState>>()};
-            result = searcherHFS.search(initial_state);
-            actions_id = searcherHFS.get_plan_actions_id();
-            used_search_type = searcherHFS.get_search_type();
-            elapsed = searcherHFS.get_elapsed_seconds();
-            expanded = searcherHFS.get_expanded_nodes();
-        }
-        else
-        {
+        case SearchType::BFS:
+            {
+                SpaceSearcher<KripkeState, BreadthFirst<KripkeState>> searcherBFS{
+                    BreadthFirst<KripkeState>()
+                };
+                result = searcherBFS.search(initial_state);
+                actions_id = searcherBFS.get_plan_actions_id();
+                search_type_name = searcherBFS.get_search_type();
+                elapsed = searcherBFS.get_elapsed_seconds();
+                expanded = searcherBFS.get_expanded_nodes();
+                break;
+            }
+        case SearchType::DFS:
+            {
+                SpaceSearcher<KripkeState, DepthFirst<KripkeState>> searcherDFS{
+                    DepthFirst<KripkeState>()
+                };
+                result = searcherDFS.search(initial_state);
+                actions_id = searcherDFS.get_plan_actions_id();
+                search_type_name = searcherDFS.get_search_type();
+                elapsed = searcherDFS.get_elapsed_seconds();
+                expanded = searcherDFS.get_expanded_nodes();
+                break;
+            }
+        case SearchType::HFS:
+            {
+                SpaceSearcher<KripkeState, BestFirst<KripkeState>> searcherHFS{BestFirst<KripkeState>()};
+                result = searcherHFS.search(initial_state);
+                actions_id = searcherHFS.get_plan_actions_id();
+                search_type_name = searcherHFS.get_search_type();
+                elapsed = searcherHFS.get_elapsed_seconds();
+                expanded = searcherHFS.get_expanded_nodes();
+                break;
+            }
+        default:
             ExitHandler::exit_with_message(
                 ExitHandler::ExitCode::PortfolioConfigError,
-                "Unknown search type: " + search_type
+                "Unknown search type"
             );
+            break;
         }
         //auto end = Clock::now();
 
         times[idx] = elapsed;
         expanded_nodes[idx] = expanded;
-        search_types[idx] = used_search_type;
+        search_types[idx] = search_type_name;
         plan_actions_id[idx] = actions_id;
         std::ostringstream oss;
         config.print(oss);
@@ -143,7 +150,7 @@ bool PortfolioSearch::run_portfolio_search() const
         os << "\nGoal found :)";
         os << "\n  Action Executed: ";
         HelperPrint::get_instance().print_list(plan_actions_id[idx]);
-        os  << "\n  Plan length: " << plan_actions_id[idx].size()
+        os << "\n  Plan length: " << plan_actions_id[idx].size()
             << "\n  Search used: " << search_types[idx]
             << "\n  Time elapsed " << times[idx].count() << "s"
             << "\n  Nodes Expanded: " << expanded_nodes[idx] << std::endl;

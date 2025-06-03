@@ -1,7 +1,3 @@
-//
-// Created by franc on 5/17/2025.
-//
-
 #include "Bisimulation.h"
 
 #include "ArgumentParser.h"
@@ -812,7 +808,6 @@ void Bisimulation::PaigeTarjan()
                     //make xEy point to count(x,B)
                     adj->adj->countxS = G[x].countxB;
                     //delete count(x,S)
-                    delete cxS;
                 }
                 adj = adj->next;
             }
@@ -1654,7 +1649,6 @@ void Bisimulation::PaigeTarjan(BisIndexType rank)
                     //make xEy point to count(x,B)
                     adj->adj->countxS = G[x].countxB;
                     //delete count(x,S)
-                    delete cxS;
                 }
                 adj = adj->next;
             }
@@ -2013,7 +2007,7 @@ void Bisimulation::automaton_to_kstate(const BisAutomata& a, const VectorBisWrap
             {
                 for (int k = 0; k < a.Vertex[i].e[j].nbh; k++)
                 {
-                    if (int label = a.Vertex[i].e[j].bh[k]; label < agents_size)
+                    if (const int label = a.Vertex[i].e[j].bh[k]; static_cast<size_t>(label) < agents_size)
                     {
                         kstate.add_edge(world_vec[i], world_vec[a.Vertex[i].e[j].tv], label_to_agent.at(label));
                     }

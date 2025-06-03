@@ -26,34 +26,6 @@
 #include "BeliefFormulaParsed.h"
 #include "utilities/Define.h"
 
-/**
- * \brief The possible types of \ref BeliefFormula.
- */
-enum class BeliefFormulaType
-{
-    FLUENT_FORMULA, ///< A \ref BeliefFormula is also a \ref fluent_formula (base case for recursion).
-    BELIEF_FORMULA, ///< A \ref BeliefFormula of the form B(\ref agent, *phi*).
-    PROPOSITIONAL_FORMULA, ///< A \ref BeliefFormula composed with logical operators and \ref BeliefFormula(e).
-    E_FORMULA, ///< A \ref BeliefFormula of the form E([set of \ref agent], *phi*).
-    C_FORMULA, ///< A \ref BeliefFormula of the form C([set of \ref agent], *phi*).
-    BF_EMPTY, ///< When the belief formula is empty.
-    BF_TYPE_FAIL ///< The failure case.
-};
-
-/**
- * \brief The logical operator for \ref BeliefFormula(e).
- *
- * These are used in the case that the \ref bf_type of a \ref BeliefFormula is \ref PROPOSITIONAL_FORMULA.
- */
-enum class BeliefFormulaOperator
-{
-    BF_AND, ///< The AND between \ref BeliefFormula(e).
-    BF_OR, ///< The OR between \ref BeliefFormula(e).
-    BF_NOT, ///< The NOT of a \ref BeliefFormula.
-    BF_INPAREN, ///< When the \ref BeliefFormula is only surrounded by "()".
-    BF_FAIL
-    ///< When the \ref BeliefFormula is not set properly (shouldn't be accessed if not \ref PROPOSITIONAL_FORMULA).
-};
 
 class BeliefFormula
 {

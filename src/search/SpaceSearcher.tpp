@@ -13,7 +13,6 @@
 #include <set>
 #include <chrono>
 #include <string>
-#include <unordered_set>
 #include <thread>
 #include <atomic>
 #include <algorithm>
@@ -21,38 +20,38 @@
 
 #include "Configuration.h"
 
-template <StateRepresentation StateRepr, SearchStrategy<State<StateRepr>> Strategy>
+template <StateRepresentation StateRepr, SearchStrategy<StateRepr> Strategy>
 SpaceSearcher<StateRepr, Strategy>::SpaceSearcher(Strategy strategy)
 {
     m_strategy = std::move(strategy);
 }
 
-template <StateRepresentation StateRepr, SearchStrategy<State<StateRepr>> Strategy>
-const std::string& SpaceSearcher<StateRepr, Strategy>::get_search_type() const noexcept
+template <StateRepresentation StateRepr, SearchStrategy<StateRepr> Strategy>
+std::string SpaceSearcher<StateRepr, Strategy>::get_search_type() const noexcept
 {
     return m_strategy.get_name();
 }
 
-template <StateRepresentation StateRepr, SearchStrategy<State<StateRepr>> Strategy>
+template <StateRepresentation StateRepr, SearchStrategy<StateRepr> Strategy>
 unsigned int SpaceSearcher<StateRepr, Strategy>::get_expanded_nodes() const noexcept
 {
     return m_expanded_nodes;
 }
 
-template <StateRepresentation StateRepr, SearchStrategy<State<StateRepr>> Strategy>
+template <StateRepresentation StateRepr, SearchStrategy<StateRepr> Strategy>
 std::chrono::duration<double> SpaceSearcher<StateRepr, Strategy>::get_elapsed_seconds() const noexcept
 {
     return m_elapsed_seconds;
 }
 
-template <StateRepresentation StateRepr, SearchStrategy<State<StateRepr>> Strategy>
+template <StateRepresentation StateRepr, SearchStrategy<StateRepr> Strategy>
 const ActionIdsList& SpaceSearcher<StateRepr, Strategy>::get_plan_actions_id() const noexcept
 {
     return m_plan_actions_id;
 }
 
 
-template <StateRepresentation StateRepr, SearchStrategy<State<StateRepr>> Strategy>
+template <StateRepresentation StateRepr, SearchStrategy<StateRepr> Strategy>
 bool SpaceSearcher<StateRepr, Strategy>::search(State<StateRepr>& initial)
 {
     m_expanded_nodes = 0;
@@ -73,7 +72,7 @@ bool SpaceSearcher<StateRepr, Strategy>::search(State<StateRepr>& initial)
 
     if (bisimulation_reduction)
     {
-        initial.calc_min_bisimilar();
+        initial.contract_with_bisimulation();
     }
 
     const auto start_timing = std::chrono::system_clock::now();
@@ -103,14 +102,14 @@ bool SpaceSearcher<StateRepr, Strategy>::search(State<StateRepr>& initial)
     return result;
 }
 
-template <StateRepresentation StateRepr, SearchStrategy<State<StateRepr>> Strategy>
-bool SpaceSearcher<StateRepr, Strategy>::search_sequential(const State<StateRepr>& initial,
-                                                           const std::vector<Action>& actions,
+template <StateRepresentation StateRepr, SearchStrategy<StateRepr> Strategy>
+bool SpaceSearcher<StateRepr, Strategy>::search_sequential(State<StateRepr>& initial,
+                                                           const ActionsSet& actions,
                                                            const bool check_visited, const bool bisimulation_reduction)
 {
-    m_strategy.fresh();
+    m_strategy.reset();
 
-    std::unordered_set<State<StateRepr>> visited_states;
+    std::set<State<StateRepr>> visited_states;  /// \warning cannot use unordered_set because I am missing a clear way of hashing the state
     m_expanded_nodes = 0;
 
     m_strategy.push(initial);
@@ -129,10 +128,10 @@ bool SpaceSearcher<StateRepr, Strategy>::search_sequential(const State<StateRepr
         {
             if (current.is_executable(action))
             {
-                State successor = current.compute_succ(action);
+                State successor = current.compute_successor(action);
                 if (bisimulation_reduction)
                 {
-                    successor.calc_min_bisimilar();
+                    successor.contract_with_bisimulation();
                 }
 
                 if (successor.is_goal())
@@ -151,13 +150,13 @@ bool SpaceSearcher<StateRepr, Strategy>::search_sequential(const State<StateRepr
     return false;
 }
 
-template <StateRepresentation StateRepr, SearchStrategy<State<StateRepr>> Strategy>
-bool SpaceSearcher<StateRepr, Strategy>::search_parallel(const State<StateRepr>& initial,
-                                                         const std::vector<Action>& actions,
+template <StateRepresentation StateRepr, SearchStrategy<StateRepr> Strategy>
+bool SpaceSearcher<StateRepr, Strategy>::search_parallel(State<StateRepr>& initial,
+                                                         const ActionsSet& actions,
                                                          const bool check_visited, const bool bisimulation_reduction,
                                                          const int num_threads)
 {
-    std::unordered_set<State<StateRepr>> visited_states;
+    std::set<State<StateRepr>> visited_states; /// \warning cannot use unordered_set because I am missing a clear way of hashing the state
     Strategy current_frontier;
     current_frontier.push(initial);
 
@@ -183,7 +182,8 @@ bool SpaceSearcher<StateRepr, Strategy>::search_parallel(const State<StateRepr>&
 
         size_t chunk_size = (level_states.size() + num_threads - 1) / num_threads;
         std::atomic<bool> found_goal{false};
-        std::vector<std::unordered_set<State<StateRepr>>> local_visited(num_threads);
+        std::vector<std::set<State<StateRepr>>> local_visited(num_threads); /// \warning cannot use unordered_set because I am missing a clear way of hashing the state
+
         std::vector<Strategy> local_frontiers(num_threads);
 
         for (int t = 0; t < num_threads; ++t)
@@ -201,11 +201,11 @@ bool SpaceSearcher<StateRepr, Strategy>::search_parallel(const State<StateRepr>&
                     {
                         if (popped_state.is_executable(tmp_action))
                         {
-                            State<StateRepr> tmp_state = popped_state.compute_succ(tmp_action);
+                            State<StateRepr> tmp_state = popped_state.compute_successor(tmp_action);
 
                             if (bisimulation_reduction)
                             {
-                                tmp_state.calc_min_bisimilar();
+                                tmp_state.contract_with_bisimulation();
                             }
 
                             if (tmp_state.is_goal())
@@ -220,7 +220,7 @@ bool SpaceSearcher<StateRepr, Strategy>::search_parallel(const State<StateRepr>&
 
                             if (!check_visited || local_visited[t].insert(tmp_state).second)
                             {
-                                local_frontiers.push(tmp_state);
+                                local_frontiers[t].push(tmp_state);
                             }
                         }
                     }
@@ -249,7 +249,7 @@ bool SpaceSearcher<StateRepr, Strategy>::search_parallel(const State<StateRepr>&
 
                 if (!check_visited || visited_states.insert(s).second)
                 {
-                    push_fn(next_frontier, s);
+                    next_frontier.push(s);
                 }
             }
 
@@ -270,11 +270,11 @@ bool SpaceSearcher<StateRepr, Strategy>::search_parallel(const State<StateRepr>&
 }
 
 
-template <StateRepresentation StateRepr, SearchStrategy<State<StateRepr>> Strategy>
+template <StateRepresentation StateRepr, SearchStrategy<StateRepr> Strategy>
 bool SpaceSearcher<StateRepr, Strategy>::validate_plan(const State<StateRepr>& initial, const bool check_visited,
                                                        const bool bisimulation_reduction)
 {
-    std::unordered_set<State<StateRepr>> visited_states;
+    std::set<State<StateRepr>> visited_states; /// \warning cannot use unordered_set because I am missing a clear way of hashing the state
     if (check_visited)
     {
         visited_states.insert(initial);
@@ -294,10 +294,10 @@ bool SpaceSearcher<StateRepr, Strategy>::validate_plan(const State<StateRepr>& i
                 found_action = true;
                 if (current.is_executable(action))
                 {
-                    current = current.compute_succ(action);
+                    current = current.compute_successor(action);
                     if (bisimulation_reduction)
                     {
-                        current.calc_min_bisimilar();
+                        current.contract_with_bisimulation();
                     }
                     if (current.is_goal())
                     {

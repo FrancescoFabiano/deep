@@ -72,7 +72,7 @@ public:
      * \param eState The epistemic state.
      */
     template <StateRepresentation T>
-    void initialize(const FormulaeList& goals, State<T>& eState)
+    void initialize(const FormulaeList& goals, const State<T>& eState)
     {
         build_init_f_map(eState);
         build_init_bf_map(goals, eState);

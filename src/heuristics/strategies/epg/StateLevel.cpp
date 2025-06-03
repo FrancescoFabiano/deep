@@ -1,7 +1,3 @@
-//
-// Created by franc on 5/31/2025.
-//
-
 #include "StateLevel.h"
 
 #include "FormulaHelper.h"
@@ -23,10 +19,10 @@ StateLevel::StateLevel(const PG_FluentsScoreMap& f_map, const PG_BeliefFormulaeM
     set_depth(depth);
 }
 
-void StateLevel::initialize(const FormulaeList& goals)
+void StateLevel::initialize(const FormulaeList& goal)
 {
     build_init_f_map();
-    build_init_bf_map(goals);
+    build_init_bf_map(goal);
 }
 
 void StateLevel::build_init_f_map()

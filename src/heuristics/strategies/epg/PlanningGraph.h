@@ -67,7 +67,7 @@ public:
      * \param[in] eState The initial eState from which to extract the first State level.
      */
     template <StateRepresentation T>
-    explicit PlanningGraph(State<T>& eState)
+    explicit PlanningGraph(const State<T>& eState)
     {
         auto goals = Domain::get_instance().get_goal_description();
         StateLevel pg_init;

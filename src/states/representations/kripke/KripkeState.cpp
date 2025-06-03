@@ -203,12 +203,12 @@ void KripkeState::add_world_beliefs(const KripkeWorldPointer& world, const Kripk
 void KripkeState::build_initial()
 {
     FluentsSet permutation;
-    InitialStateInformation ini_conditions = Domain::get_instance().get_initial_description();
+    const InitialStateInformation ini_conditions = Domain::get_instance().get_initial_description();
     generate_initial_worlds(permutation, 0, ini_conditions.get_initially_known_fluents());
     generate_initial_edges();
 }
 
-void KripkeState::generate_initial_worlds(FluentsSet& permutation, const int index, const FluentsSet& initially_known)
+void KripkeState::generate_initial_worlds(FluentsSet& permutation, const unsigned int index, const FluentsSet& initially_known)
 {
     auto const fluent_number = Domain::get_instance().get_fluent_number();
     auto const bit_size = Domain::get_instance().get_size_fluent();
