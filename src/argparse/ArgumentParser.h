@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <CLI/CLI.hpp>
+#include <fstream>
 
 /**
  * \class ArgumentParser
@@ -120,6 +121,20 @@ public:
     void print_usage() const;
 
     /**
+     * \brief Returns the number of threads to use for each search strategy.
+     * \details This controls the level of parallelism within each search strategy (e.g., multithreaded BFS/HFS).
+     * \return Number of threads per search strategy (default: 1).
+     */
+    [[nodiscard]] int get_threads_per_search() const noexcept;
+
+    /**
+     * \brief Returns the number of portfolio threads (parallel planner configurations).
+     * \details This controls how many planner configurations are run in parallel (portfolio search).
+     * \return Number of portfolio threads (default: 1).
+     */
+    [[nodiscard]] int get_portfolio_threads() const noexcept;
+
+    /**
      * \brief Destructor. Closes the log file stream if open.
      */
     ~ArgumentParser();
@@ -169,6 +184,8 @@ private:
     std::string m_log_file_path; ///< The log file path if logging is enabled.
     std::ostream* m_output_stream = &std::cout; ///< Output stream for logging and results (default: std::cout).
     std::ofstream m_log_ofstream; ///< If logging to file, this holds the ofstream.
+    int m_threads_per_search = 1; ///< Number of threads per search strategy (default: 1).
+    int m_portfolio_threads = 1; ///< Number of portfolio threads (default: 1).
 
     // Accessors private because they can be accessed only by friend class \ref Configuration
 

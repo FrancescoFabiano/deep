@@ -12,38 +12,12 @@
 #include <boost/make_shared.hpp>
 
 #include "Configuration.h"
+#include "PortfolioSearch.h"
 #include "argparse/ArgumentParser.h"
 #include "domain/Domain.h"
-//#include "../src/search/planner.ipp"
-
-
-/*void launch_search(state_type state_struc, bool execute_given_action, bool results_file, parallel_input pin, heuristics used_heur, search_type used_search, ML_Dataset_Params ML_dataset, std::vector<std::string> given_actions, short max_depth, short step)
-{
-	switch ( state_struc ) {
-	case POSSIBILITIES:
-	{
-		planner< state<pstate> > m_planner;
-		if (execute_given_action) {
-			if (results_file) {
-				m_planner.execute_given_actions_timed(given_actions,pin.ptype);
-			} else {
-				m_planner.execute_given_actions(given_actions);
-			}
-			std::cout << "\n\n\n*****THE END*****\n";
-		} else {
-			if (m_planner.search(results_file, pin, used_heur, used_search, ML_dataset, max_depth, step)) {
-				std::cout << "\n\n\n*****THE END*****\n";
-			} else {
-				std::cout << "\n\n\n*****THE SAD END*****\n";
-			}
-		}
-		break;
-	}
-	default:
-		std::cerr << "\nNot implemented yet - 0\n";
-		exit(1);
-	}
-}*/
+#include "neuralnets/TrainingDataset.h"
+#include "utilities/ExitHandler.h"
+#include "states/representations/kripke/KripkeState.h"
 
 
 int main(int argc, char** argv)
@@ -52,8 +26,26 @@ int main(int argc, char** argv)
 
 	ArgumentParser::create_instance(argc, argv);
 	Configuration::create_instance();
-	Domain::create_instance(output);
+	Domain::create_instance();
 
-	exit(0);
+	//Dataset Generation for ML Heuristics
+	if (ArgumentParser::get_instance().get_dataset_mode())
+	{
+		TrainingDataset<KripkeState>::create_instance();
+		if (!TrainingDataset<KripkeState>::get_instance().generate_dataset())
+		{
+			std::exit(static_cast<int>(ExitHandler::ExitCode::SuccessNotPlanningMode));
+		}
+		std::exit(static_cast<int>(ExitHandler::ExitCode::SuccessNotPlanningModeWarning));
+
+	}
+
+	//Standard Search
+	const PortfolioSearch searcher;
+	const bool goal_found = searcher.run_portfolio_search();
+	if (goal_found)
+		std::exit(static_cast<int>(ExitHandler::ExitCode::SuccessFoundGoal));
+	std::exit(static_cast<int>(ExitHandler::ExitCode::SuccessNotFoundGoal));
+
 }
 

@@ -63,12 +63,10 @@ public:
      * \brief Executes the search algorithm.
      *
      * \param initial The initial state to start the search from.
-     * \param num_threads The number of threads to use (if > 1, parallel BFS is used).
-     * \param plan The plan to validate, if this is empty then standard search is executed
      * \return true if a goal state is found, false otherwise.
      */
     [[nodiscard]]
-    bool search(State<StateRepr>& initial, int num_threads, const std::vector<Action>& plan = {});
+    bool search(State<StateRepr>& initial);
 
     /**
      * \brief Get the name of the search strategy.
@@ -91,11 +89,19 @@ public:
     [[nodiscard]]
     std::chrono::duration<double> get_elapsed_seconds() const noexcept;
 
+    /**
+     * \brief Get the list of action IDs in the plan.
+     * \return The list of action IDs.
+     */
+    [[nodiscard]]
+    const ActionIdsList& get_plan_actions_id() const noexcept;
+
 private:
     Strategy m_strategy; ///< Search strategy instance.
 
     unsigned int m_expanded_nodes = 0; ///< Counter for expanded nodes.
     std::chrono::duration<double> m_elapsed_seconds{}; ///< Time taken by the search.
+    ActionIdsList m_plan_actions_id {}; ///< List of actions in the plan.
 
     /**
      * \brief Executes the search algorithm sequentially using the provided container and operations.
@@ -131,13 +137,12 @@ private:
     /**
      * \brief Validates a plan.
      * \param initial The initial state to start the search from.
-     * \param plan The sequence of actions to validate.
      * \param check_visited Whether to check for visited states.
      * \param bisimulation_reduction Whether to apply bisimulation reduction.
      * \return true if the plan is valid, false otherwise.
      */
     [[nodiscard]]
-    bool validate_plan(const State<StateRepr>& initial, const std::vector<std::string>& plan, bool check_visited,
+    bool validate_plan(const State<StateRepr>& initial, bool check_visited,
                        bool bisimulation_reduction);
     ///@}
 };

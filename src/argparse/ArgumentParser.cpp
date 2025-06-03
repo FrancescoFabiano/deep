@@ -12,7 +12,6 @@
 #include <iostream>
 #include <stdexcept>
 
-
 ArgumentParser* ArgumentParser::instance = nullptr;
 
 void ArgumentParser::create_instance(int argc, char** argv)
@@ -99,11 +98,37 @@ void ArgumentParser::parse(int argc, char** argv)
                 "Heuristic option (--heuristic) is only valid with HFS search strategy (--search HFS)."
             );
         }
+
+        // --- Execution plan checks and action loading ---
+        if (m_exec_plan)
+        {
+            if (m_exec_actions.empty())
+            {
+                m_exec_actions = HelperPrint::read_actions_from_file(m_plan_file);
+                if (m_exec_actions.empty())
+                {
+                    ExitHandler::exit_with_message(
+                        ExitHandler::ExitCode::ArgParseError,
+                        "No actions found in the specified plan file: " + m_plan_file
+                    );
+                }
+            }
+        }
+
+        // --- Threads per search and portfolio threads informative message ---
+        if (m_threads_per_search > 1 && m_portfolio_threads > 1)
+        {
+            get_output_stream() << "[INFO] Both multithreaded search and portfolio search are enabled. "
+                "Total threads used will be: "
+                << (m_threads_per_search * m_portfolio_threads)
+                << " (" << m_threads_per_search << " per search x "
+                << m_portfolio_threads << " portfolio threads)." << std::endl;
+        }
     }
     catch (const CLI::CallForHelp&)
     {
         print_usage();
-        std::exit(static_cast<int>(ExitHandler::ExitCode::Success));
+        std::exit(static_cast<int>(ExitHandler::ExitCode::SuccessNotPlanningMode));
     } catch (const CLI::ParseError& e)
     {
         ExitHandler::exit_with_message(
@@ -140,13 +165,16 @@ ArgumentParser::ArgumentParser() : app("deep")
     app.add_flag("--check_visited", m_check_visited,
                  "Enable checking for previously visited states during planning to avoid redundant exploration.");
 
-    // --- Dataset options ---
-    app.add_flag("--dataset", m_dataset_mode, "Enable dataset generation mode for learning or analysis.");
-    app.add_option("--dataset_depth", m_dataset_depth, "Set the maximum depth for dataset generation (default: 10).")
-       ->default_val("10");
-    app.add_flag("--dataset_mapped", m_dataset_mapped,
-                 "Use mapped (compact) node labels in dataset generation. If not set, hashed node labels are used.");
-    app.add_flag("--dataset_both", m_dataset_both, "Generate both mapped and hashed node labels in the dataset.");
+    // --- Multithreading options ---
+    app.add_option("--threads_per_search", m_threads_per_search,
+                   "Set the number of threads to use for each search strategy (default: 1). "
+                   "If set > 1, each search strategy (e.g., BFS/HFS) will use this many threads.")
+       ->default_val("1");
+
+    app.add_option("--portfolio_threads", m_portfolio_threads,
+                   "Set the number of portfolio threads (default: 1). "
+                   "If set > 1, multiple planner configurations will run in parallel.")
+       ->default_val("1");
 
     app.add_option("--search", m_search_strategy,
                    "Select the search strategy: 'BFS' (Best First Search, default), 'DFS' (Depth First Search), or 'HFS' (Heuristic First Search).")
@@ -158,15 +186,34 @@ ArgumentParser::ArgumentParser() : app("deep")
        ->check(CLI::IsMember({"SUBGOALS", "L_PG", "S_PG", "C_PG", "GNN"}))
        ->default_val("SUBGOALS");
 
+    // --- Dataset options ---
+    app.add_flag("--dataset", m_dataset_mode, "Enable dataset generation mode for learning or analysis.");
+    app.add_option("--dataset_depth", m_dataset_depth, "Set the maximum depth for dataset generation (default: 10).")
+       ->default_val("10");
+    app.add_flag("--dataset_mapped", m_dataset_mapped,
+                 "Use mapped (compact) node labels in dataset generation. If not set, hashed node labels are used.");
+    app.add_flag("--dataset_both", m_dataset_both, "Generate both mapped and hashed node labels in the dataset.");
+
+
     app.add_flag("--results_file", m_output_results_file,
                  "Log plan execution time and results to a file for scripting and comparisons.");
 
+    app.add_flag("--execute_plan", m_exec_plan,
+                 "Enable execution mode. If set, the planner will verify a plan instead of searching for one. "
+                 "Actions to execute can be provided directly with --execute_actions, or will be read from the file specified by --plan_file (default: plan.txt). "
+                 "When this option is enabled, all multithreading, search strategy, and heuristic flags are ignored; only plan verification is performed. "
+                 "The plan file should contain a list of actions separated by spaces or commas. Minimal parsing is performed, so the file should be well formatted.");
+
     app.add_option("--execute_actions", m_exec_actions,
-                   "Execute a sequence of actions instead of planning. Provide actions as arguments (e.g., --execute_actions open_a peek_a).")
+                   "Specify a sequence of actions to execute directly, bypassing planning. "
+                   "Example: --execute_actions open_a peek_a. "
+                   "If this option is set, the actions provided will be executed in order. "
+                   "If not set, actions will be loaded from the plan file (see --plan_file).")
        ->expected(-1);
 
-    app.add_flag("--execute", m_exec_plan, "Execute the plan specified in the file given by --plan_file.");
-    app.add_option("--plan_file", m_plan_file, "Specify the file for saving/loading the plan (default: plan.txt).")
+    app.add_option("--plan_file", m_plan_file,
+                   "Specify the file from which to load the plan for execution (default: plan.txt). "
+                   "Used only if --execute_plan is set and --execute_actions is not provided.")
        ->default_val("plan.txt");
 
     app.add_flag("--log", m_log_enabled,
@@ -209,6 +256,9 @@ bool ArgumentParser::get_log_enabled() const noexcept { return m_log_enabled; }
 
 std::ostream& ArgumentParser::get_output_stream() const { return *m_output_stream; }
 
+int ArgumentParser::get_threads_per_search() const noexcept { return m_threads_per_search; }
+int ArgumentParser::get_portfolio_threads() const noexcept { return m_portfolio_threads; }
+
 void ArgumentParser::print_usage() const
 {
     std::cout << app.help() << std::endl;
@@ -220,4 +270,10 @@ void ArgumentParser::print_usage() const
     std::cout << "    Plan using heuristic 'SUBGOALS'\n\n";
     std::cout << "  " << prog_name << " domain.epddl --execute-actions open_a peek_a\n";
     std::cout << "    Execute actions [open_a, peek_a] step by step\n\n";
+    std::cout << "  " << prog_name << " domain.epddl --threads_per_search 4\n";
+    std::cout << "    Run search with 4 threads per search strategy\n\n";
+    std::cout << "  " << prog_name << " domain.epddl --portfolio_threads 3\n";
+    std::cout << "    Run 3 planner configurations in parallel (portfolio search)\n\n";
+    std::cout << "  " << prog_name << " domain.epddl --threads_per_search 2 --portfolio_threads 2\n";
+    std::cout << "    Run 2 planner configurations in parallel, each using 2 threads (total 4 threads)\n\n";
 }

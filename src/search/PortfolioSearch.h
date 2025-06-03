@@ -26,11 +26,6 @@ public:
     /// \name Constructors & Destructor
     ///@{
     PortfolioSearch() = default;
-    ~PortfolioSearch() = default;
-    PortfolioSearch(const PortfolioSearch&) = default;
-    PortfolioSearch(PortfolioSearch&&) noexcept = default;
-    PortfolioSearch& operator=(const PortfolioSearch&) = default;
-    PortfolioSearch& operator=(PortfolioSearch&&) noexcept = default;
     ///@}
 
     /// \name Main Methods
@@ -38,13 +33,11 @@ public:
     /**
      * \brief Launches the portfolio-method search (multiple configurations).
      *
-     * \param user_threads The number of threads to use for the search.
-     * \param threads_per_search Number of threads to use in each search strategy (default: 1).
      * \return true if a plan was found, false otherwise.
      *
      */
     [[nodiscard]]
-    bool run_portfolio_search(int user_threads = 1, int threads_per_search = 1) const;
+    bool run_portfolio_search() const;
 
     /**
      * \brief Parses configurations from a file.

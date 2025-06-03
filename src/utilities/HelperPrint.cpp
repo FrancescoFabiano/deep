@@ -8,6 +8,8 @@
 #include <iomanip>
 #include <ranges>
 #include <sstream>
+#include <fstream>
+#include <regex>
 
 #include "ArgumentParser.h"
 #include "Domain.h"
@@ -562,4 +564,48 @@ void HelperPrint::print_dataset_format(const KripkeState& kstate, std::ofstream&
 std::string HelperPrint::adjust_id_wrt_agents(const int num)
 {
     return std::to_string(num + Domain::get_instance().get_agents().size());
+}
+
+std::vector<std::string> HelperPrint::read_actions_from_file(const std::string& filename)
+{
+    std::ifstream infile(filename);
+    if (!infile.is_open())
+    {
+        ExitHandler::exit_with_message(
+            ExitHandler::ExitCode::PortfolioConfigFileError,
+            "Could not open actions file: " + filename
+        );
+    }
+
+    std::string line;
+    std::vector<std::string> actions;
+    while (std::getline(infile, line))
+    {
+        // Replace all commas with spaces
+        std::ranges::replace(line, ',', ' ');
+
+        std::istringstream iss(line);
+        std::string action;
+        while (iss >> action)
+        {
+            if (action.empty())
+            {
+                ExitHandler::exit_with_message(
+                    ExitHandler::ExitCode::PortfolioConfigFieldError,
+                    "Malformed action (empty) in file: " + filename
+                );
+            }
+            actions.push_back(action);
+        }
+    }
+
+    if (actions.empty())
+    {
+        ExitHandler::exit_with_message(
+            ExitHandler::ExitCode::PortfolioConfigFieldError,
+            "No actions found or malformed content in file: " + filename
+        );
+    }
+
+    return actions;
 }

@@ -26,8 +26,11 @@ public:
     enum class ExitCode : int
     {
         // --- General ---
-        Success = 0, ///< Program completed successfully.
         ExitForCompiler = -1, ///< Used to satisfy the compiler when it does not recognize that the branch will exit.
+        SuccessFoundGoal = 0, ///< Program completed successfully finding a goal.
+        SuccessNotFoundGoal = 1, ///< Program completed successfully without finding a goal.
+        SuccessNotPlanningMode = 2, ///< Program completed successfully without planning mode.
+        SuccessNotPlanningModeWarning = 3, ///< Program completed successfully but something is not as it should be.
 
         // --- ArgumentParser Related (100-119) ---
         ArgParseError = 100, ///< Error occurred during argument parsing in ArgumentParser.

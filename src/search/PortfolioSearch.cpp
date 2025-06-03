@@ -5,6 +5,8 @@
 #include <atomic>
 #include <functional>
 #include <chrono>
+
+#include "HelperPrint.h"
 #include "utilities/ExitHandler.h"
 #include "search/SpaceSearcher.h"
 #include "search_strategies/BestFirst.h"
@@ -14,8 +16,9 @@
 #include "states/State.h"
 #include "argparse/Configuration.h"
 
-bool PortfolioSearch::run_portfolio_search(const int user_threads, int threads_per_search) const
+bool PortfolioSearch::run_portfolio_search() const
 {
+    const auto portfolio_threads = ArgumentParser::get_instance().get_portfolio_threads();
     using Clock = std::chrono::steady_clock;
     std::atomic<bool> found_goal{false};
     std::atomic<int> winner{-1};
@@ -25,7 +28,7 @@ bool PortfolioSearch::run_portfolio_search(const int user_threads, int threads_p
     std::vector<unsigned int> expanded_nodes;
     std::vector<std::string> config_snapshots;
 
-    const int configs_to_run = std::min(user_threads, static_cast<int>(m_search_configurations.size()));
+    const int configs_to_run = std::min(portfolio_threads, static_cast<int>(m_search_configurations.size()));
     times.resize(configs_to_run);
     expanded_nodes.resize(configs_to_run);
     search_types.resize(configs_to_run);
@@ -46,6 +49,7 @@ bool PortfolioSearch::run_portfolio_search(const int user_threads, int threads_p
     os << "Initial state built in " << initial_build_duration.count() << " ms.\n";
     // --- End measure ---
 
+    std::vector<ActionIdsList> plan_actions_id;
     auto run_search = [&](int idx, const std::map<std::string, std::string>& config_map, const bool is_user_config)
     {
         // Each thread gets its own Configuration instance
@@ -66,32 +70,35 @@ bool PortfolioSearch::run_portfolio_search(const int user_threads, int threads_p
         std::chrono::duration<double> elapsed{};
         unsigned int expanded = 0;
         bool result = false;
-
+        ActionIdsList actions_id;
         if (search_type == "BFS")
         {
             SpaceSearcher<KripkeState, BreadthFirst<State<KripkeState>>> searcherBFS{
                 BreadthFirst<State<KripkeState>>()
             };
-            result = searcherBFS.search(initial_state, threads_per_search);
+            result = searcherBFS.search(initial_state);
+            actions_id = searcherBFS.get_plan_actions_id();
             used_search_type = searcherBFS.get_search_type();
             elapsed = searcherBFS.get_elapsed_seconds();
             expanded = searcherBFS.get_expanded_nodes();
         }
-        else if (search_type == "HFS")
-        {
-            SpaceSearcher<KripkeState, BestFirst<State<KripkeState>>> searcherHFS{BestFirst<State<KripkeState>>()};
-            result = searcherHFS.search(initial_state, threads_per_search);
-            used_search_type = searcherHFS.get_search_type();
-            elapsed = searcherHFS.get_elapsed_seconds();
-            expanded = searcherHFS.get_expanded_nodes();
-        }
         else if (search_type == "DFS")
         {
             SpaceSearcher<KripkeState, DepthFirst<State<KripkeState>>> searcherDFS{DepthFirst<State<KripkeState>>()};
-            result = searcherDFS.search(initial_state, threads_per_search);
+            result = searcherDFS.search(initial_state);
+            actions_id = searcherDFS.get_plan_actions_id();
             used_search_type = searcherDFS.get_search_type();
             elapsed = searcherDFS.get_elapsed_seconds();
             expanded = searcherDFS.get_expanded_nodes();
+        }
+        else if (search_type == "HFS")
+        {
+            SpaceSearcher<KripkeState, BestFirst<State<KripkeState>>> searcherHFS{BestFirst<State<KripkeState>>()};
+            result = searcherHFS.search(initial_state);
+            actions_id = searcherHFS.get_plan_actions_id();
+            used_search_type = searcherHFS.get_search_type();
+            elapsed = searcherHFS.get_elapsed_seconds();
+            expanded = searcherHFS.get_expanded_nodes();
         }
         else
         {
@@ -105,6 +112,7 @@ bool PortfolioSearch::run_portfolio_search(const int user_threads, int threads_p
         times[idx] = elapsed;
         expanded_nodes[idx] = expanded;
         search_types[idx] = used_search_type;
+        plan_actions_id[idx] = actions_id;
         std::ostringstream oss;
         config.print(oss);
         config_snapshots[idx] = oss.str();
@@ -132,10 +140,14 @@ bool PortfolioSearch::run_portfolio_search(const int user_threads, int threads_p
     if (found_goal)
     {
         int idx = winner;
-        os << "\nGoal found :) using " << search_types[idx]
-            << " in " << times[idx].count() << "s"
-            << " expanding " << expanded_nodes[idx] << " nodes.\n";
-        os << "Configuration used:\n" << config_snapshots[idx] << std::endl;
+        os << "\nGoal found :)";
+        os << "\n  Action Executed: ";
+        HelperPrint::get_instance().print_list(plan_actions_id[idx]);
+        os  << "\n  Plan length: " << plan_actions_id[idx].size()
+            << "\n  Search used: " << search_types[idx]
+            << "\n  Time elapsed " << times[idx].count() << "s"
+            << "\n  Nodes Expanded: " << expanded_nodes[idx] << std::endl;
+        os << "\nConfiguration used:\n" << config_snapshots[idx] << std::endl;
         return true;
     }
     else

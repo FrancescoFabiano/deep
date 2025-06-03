@@ -122,6 +122,14 @@ public:
      */
     static void print_dataset_format(const KripkeState& kstate, std::ofstream& ofs);
 
+    /**
+     * \brief Reads a sequence of actions from a file.
+     * \details The file should contain actions separated by spaces or commas. Returns a vector of action strings.
+     *          Throws an error via ExitHandler if the file cannot be opened or contains malformed content.
+     * \param filename The file to read actions from.
+     * \return Vector of action strings.
+     */
+    static std::vector<std::string> read_actions_from_file(const std::string& filename);
 
     /**
      * \brief Adjusts the world ID with respect to the number of agents.

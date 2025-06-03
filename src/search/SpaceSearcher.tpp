@@ -17,6 +17,7 @@
 #include <thread>
 #include <atomic>
 #include <algorithm>
+#include <mutex> // <-- Add this
 
 #include "Configuration.h"
 
@@ -44,10 +45,15 @@ std::chrono::duration<double> SpaceSearcher<StateRepr, Strategy>::get_elapsed_se
     return m_elapsed_seconds;
 }
 
+template <StateRepresentation StateRepr, SearchStrategy<State<StateRepr>> Strategy>
+const ActionIdsList& SpaceSearcher<StateRepr, Strategy>::get_plan_actions_id() const noexcept
+{
+    return m_plan_actions_id;
+}
+
 
 template <StateRepresentation StateRepr, SearchStrategy<State<StateRepr>> Strategy>
-bool SpaceSearcher<StateRepr, Strategy>::search(State<StateRepr>& initial, int num_threads,
-                                                const std::vector<Action>& plan)
+bool SpaceSearcher<StateRepr, Strategy>::search(State<StateRepr>& initial)
 {
     m_expanded_nodes = 0;
 
@@ -79,11 +85,12 @@ bool SpaceSearcher<StateRepr, Strategy>::search(State<StateRepr>& initial, int n
     }
 
     // Dispatch
-    if (!plan.empty())
+    if (ArgumentParser::get_instance().get_execute_plan())
     {
         // If a plan is provided, validate it
-        return validate_plan(initial, actions, check_visited, bisimulation_reduction);
+        return validate_plan(initial, check_visited, bisimulation_reduction);
     }
+    const int num_threads = ArgumentParser::get_instance().get_threads_per_search();
     const bool result = (num_threads <= 1)
                             ? search_sequential(initial, actions, check_visited, bisimulation_reduction)
                             : search_parallel(initial, actions, check_visited, bisimulation_reduction, num_threads);
@@ -130,6 +137,7 @@ bool SpaceSearcher<StateRepr, Strategy>::search_sequential(const State<StateRepr
 
                 if (successor.is_goal())
                 {
+                    m_plan_actions_id = successor.get_executed_actions();
                     return true;
                 }
 
@@ -159,6 +167,7 @@ bool SpaceSearcher<StateRepr, Strategy>::search_parallel(const State<StateRepr>&
     }
 
     std::atomic<size_t> total_expanded_nodes{0};
+    std::mutex plan_mutex; // <-- Add this mutex
 
     while (!current_frontier.empty())
     {
@@ -202,6 +211,10 @@ bool SpaceSearcher<StateRepr, Strategy>::search_parallel(const State<StateRepr>&
                             if (tmp_state.is_goal())
                             {
                                 found_goal = true;
+                                {
+                                    std::lock_guard<std::mutex> lock(plan_mutex); // <-- Protect this access
+                                    m_plan_actions_id = tmp_state.get_executed_actions();
+                                }
                                 return;
                             }
 
@@ -258,8 +271,7 @@ bool SpaceSearcher<StateRepr, Strategy>::search_parallel(const State<StateRepr>&
 
 
 template <StateRepresentation StateRepr, SearchStrategy<State<StateRepr>> Strategy>
-bool SpaceSearcher<StateRepr, Strategy>::validate_plan(const State<StateRepr>& initial,
-                                                       const std::vector<std::string>& plan, const bool check_visited,
+bool SpaceSearcher<StateRepr, Strategy>::validate_plan(const State<StateRepr>& initial, const bool check_visited,
                                                        const bool bisimulation_reduction)
 {
     std::unordered_set<State<StateRepr>> visited_states;
@@ -269,6 +281,8 @@ bool SpaceSearcher<StateRepr, Strategy>::validate_plan(const State<StateRepr>& i
     }
 
     State<StateRepr> current = initial;
+
+    const auto& plan = ArgumentParser::get_instance().get_execution_actions();
 
     for (const auto& action_name : plan)
     {
