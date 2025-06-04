@@ -22,6 +22,12 @@ public:
     // --- Constructors/Destructor ---
     KripkeState() = default;
 
+    /**
+     * \brief Copy constructor.
+     * \param other The KripkeState to copy from.
+     */
+    KripkeState(const KripkeState& other);
+
     ~KripkeState() = default;
 
     // --- Setters ---

@@ -27,6 +27,14 @@ State<T>::State(const State& prev_state, const Action& executed_action)
 }
 
 template <StateRepresentation T>
+State<T>::State(const State& other)
+    : m_representation(other.m_representation),
+      m_executed_actions_id(other.m_executed_actions_id),
+      m_heuristic_value(other.m_heuristic_value)
+{
+}
+
+template <StateRepresentation T>
 State<T> State<T>::compute_successor(const Action& executed_action)
 {
     State<T> next_state;

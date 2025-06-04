@@ -118,6 +118,12 @@ KripkeWorldPointer::KripkeWorldPointer(const KripkeWorld& world, unsigned short 
     set_repetition(repetition);
 }
 
+KripkeWorldPointer::KripkeWorldPointer(const KripkeWorldPointer& other)
+{
+    set_ptr(other.get_ptr());
+    set_repetition(other.get_repetition());
+}
+
 KripkeWorldPointer& KripkeWorldPointer::operator=(const KripkeWorldPointer& to_copy)
 {
     if (this != &to_copy)

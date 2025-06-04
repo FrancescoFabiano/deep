@@ -75,7 +75,7 @@ list(APPEND SOURCES ${FLEX_Lexer_OUTPUTS} ${BISON_Parser_OUTPUTS})
 add_executable(deep ${SOURCES})
 
 # Compiler flags
-target_compile_options(deep PRIVATE -g -Wall -ansi -Wfatal-errors -pthread -std=c++20)
+target_compile_options(deep PRIVATE -g -Wall -Wextra -Wpedantic -ansi -Wfatal-errors -pthread -std=c++20)
 
 # Link libraries
 target_link_libraries(deep PRIVATE pthread rt CLI11::CLI11)

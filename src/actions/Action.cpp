@@ -26,6 +26,18 @@ Action::Action(const std::string& name, ActionId id)
     set_id(std::move(id));
 }
 
+Action::Action(const Action& other)
+    : m_name(other.m_name),
+      m_id(other.m_id),
+      m_executor(other.m_executor),
+      m_type(other.m_type),
+      m_executability(other.m_executability),
+      m_fully_observants(other.m_fully_observants),
+      m_partially_observants(other.m_partially_observants),
+      m_effects(other.m_effects)
+{
+}
+
 std::string Action::get_name() const
 {
     return m_name;
@@ -183,7 +195,7 @@ Action& Action::operator=(const Action& act)
 void Action::print() const
 {
     auto& os = ArgumentParser::get_instance().get_output_stream();
-    const Grounder grounder = Domain::get_instance().get_grounder();
+    const auto grounder = Domain::get_instance().get_grounder();
     os << "\nAction " << get_name() << ":" << std::endl;
     os << "    ID: " << get_id() << ":" << std::endl;
     os << "    Type: " << Proposition::type_to_string(get_type()) << std::endl;

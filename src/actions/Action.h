@@ -29,6 +29,12 @@ public:
      * \param[in] id The value to assign to \ref m_id.
      */
     Action(const std::string& name, ActionId id);
+
+    /**
+     * \brief Copy constructor.
+     * \param other The Action to copy from.
+     */
+    Action(const Action& other);
     ///@}
 
     /// \name Getters and Setters

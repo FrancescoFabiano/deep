@@ -171,6 +171,12 @@ public:
      */
     explicit KripkeWorldPointer(const KripkeWorld& world, unsigned short repetition = 0);
 
+    /**
+     * \brief Copy constructor.
+     * \param other The KripkeWorldPointer to copy from.
+     */
+    KripkeWorldPointer(const KripkeWorldPointer& other);
+
     /** \brief Destructor. */
     ~KripkeWorldPointer() = default;
 

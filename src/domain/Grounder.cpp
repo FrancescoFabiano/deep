@@ -28,6 +28,8 @@ Grounder::Grounder(const FluentMap& fluent_map, const AgentsMap& agent_map, cons
     }
 }
 
+
+
 void Grounder::reverse()
 {
     create_reverse_fl();
@@ -213,10 +215,25 @@ void Grounder::set_action_name_map(const ActionNamesMap& given_action_name_map)
     return {};
 }
 
-Grounder& Grounder::operator=(const Grounder& to_assign)
+Grounder& Grounder::operator=(const Grounder& to_copy)
 {
-    set_fluent_map(to_assign.get_fluent_map());
-    set_agent_map(to_assign.get_agent_map());
-    set_action_name_map(to_assign.get_action_name_map());
+    set_fluent_map(to_copy.get_fluent_map());
+    set_agent_map(to_copy.get_agent_map());
+    set_action_name_map(to_copy.get_action_name_map());
+    if (ArgumentParser::get_instance().get_debug())
+    {
+        reverse();
+    }
     return *this;
+}
+
+Grounder::Grounder(const Grounder& other)
+    : m_fluent_map(other.m_fluent_map),
+      m_agent_map(other.m_agent_map),
+      m_action_name_map(other.m_action_name_map),
+      r_fluent_map(other.r_fluent_map),
+      r_agent_map(other.r_agent_map),
+      r_action_name_map(other.r_action_name_map)
+{
+    // Nothing else needed; all members copied.
 }

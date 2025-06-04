@@ -22,6 +22,11 @@ public:
     /// \name Constructors
     ///@{
     Grounder() = default;
+    /**
+     * \brief Copy constructor.
+     * \param other The Grounder to copy from.
+     */
+    Grounder(const Grounder& other);
     Grounder(const FluentMap& given_fluent_map, const AgentsMap& given_agent_map,
              const ActionNamesMap& given_action_name_map);
     ///@}

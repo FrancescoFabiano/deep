@@ -609,3 +609,13 @@ void KripkeState::contract_with_bisimulation()
     KripkeReachabilityHelper::clean_unreachable_worlds(*this);
     Bisimulation::calc_min_bisimilar(*this);
 }
+
+// --- Constructors ---
+
+KripkeState::KripkeState(const KripkeState& other)
+    : m_max_depth(other.m_max_depth),
+      m_worlds(other.m_worlds),
+      m_pointed(other.m_pointed),
+      m_beliefs(other.m_beliefs)
+{
+}

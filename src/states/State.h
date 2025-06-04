@@ -82,6 +82,11 @@ concept StateRepresentation = requires(StateRepr rep, const Fluent& f, const Flu
     { rep.operator=(other) } -> std::same_as<StateRepr&>;
     { std::as_const(rep).operator<(other) } -> std::same_as<bool>;
     ///@}
+    ///
+    /**
+     * @brief Copy constructor requirement.
+     */
+    { StateRepr(other) } -> std::same_as<StateRepr>;
 };
 
 
@@ -96,6 +101,12 @@ public:
      *
      * It creates \ref m_representation calling its **StateRepr** constructor.*/
     State() = default;
+
+    /** \brief Copy constructor.
+     *
+     * @param other The State to copy from.
+     */
+    State(const State& other);
 
     /** \brief Constructor with that set *this* as successor of the given one.
      *
