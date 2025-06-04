@@ -171,6 +171,13 @@ public:
     static KripkeWorldId hash_fluents_into_id(const FluentsSet& fl);
 
     /**
+    * \brief Hash a string into a unique id.
+    * \param[in] string The string (that represents the ideal overflowed number of KripkeWorldPointer) to hash.
+    * \return The unique id.
+    */
+    static KripkeWorldId hash_string_into_id(const std::string& string);
+
+    /**
      * \brief Check if a set of fluents is consistent.
      * \param[in] to_check The set to check.
      * \details Exits with an error if the set is not consistent.

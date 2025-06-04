@@ -125,6 +125,7 @@ bool SpaceSearcher<StateRepr, Strategy>::search_sequential(State<StateRepr>& ini
 
         for (const auto& action : actions)
         {
+
             if (current.is_executable(action))
             {
                 State successor = current.compute_successor(action);

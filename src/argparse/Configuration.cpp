@@ -154,5 +154,8 @@ void Configuration::print(std::ostream& os) const
     os << "  bisimulation_type: " << m_bisimulation_type << '\n';
     os << "  check_visited: " << std::boolalpha << m_check_visited << '\n';
     os << "  search_strategy: " << m_search_strategy << '\n';
-    os << "  heuristic_opt: " << m_heuristic_opt << '\n';
+    if (m_search_strategy_enum == SearchType::HFS)
+    {
+        os << "  heuristic_opt: " << m_heuristic_opt << '\n';
+    }
 }

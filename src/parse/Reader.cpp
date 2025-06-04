@@ -7,6 +7,7 @@
  */
 
 #include "Reader.h"
+#include <memory>
 
 #include "ArgumentParser.h"
 #include "../utilities/HelperPrint.h"
@@ -14,14 +15,26 @@
 // prototype of bison-generated parser function
 int yyparse();
 
-std::unique_ptr<Reader> domain_reader;
+//std::unique_ptr<Reader> domain_reader = std::make_unique<Reader>();
 
 Reader::Reader() = default;
 
-int Reader::read()
+
+std::unique_ptr<Reader> domain_reader; // or just: Reader* domain_reader = nullptr;
+void Reader::read()
 {
-    // Call to the parser function.
-    return yyparse();
+    domain_reader.reset(this);
+    const int ret = yyparse();
+    if (ArgumentParser::get_instance().get_debug()) {
+        auto& os = ArgumentParser::get_instance().get_output_stream();
+        os << "Parsing result: " << ret << std::endl;
+    }
+    if (ret != 0) {
+        ExitHandler::exit_with_message(
+            ExitHandler::ExitCode::ParsingError,
+            "Error: Parsing failed in Reader::read()."
+        );
+    }
 }
 
 /**
@@ -31,6 +44,8 @@ int Reader::read()
 void Reader::print() const
 {
     auto& os = ArgumentParser::get_instance().get_output_stream();
+    os << "========== PARSER OUTPUT BEGIN ==========\n";
+
     os << "\n\nAGENT DECLARATION\n---------------------------\n";
     HelperPrint::print_list(m_agents);
     os << "\n\n";
@@ -45,6 +60,7 @@ void Reader::print() const
         prop.print();
         os << '\n';
     }
+    os << "\n\n";
 
     os << "INIT\n----------------------------\n";
     for (const auto& formula : m_bf_initially)
@@ -60,7 +76,9 @@ void Reader::print() const
         formula.print();
         os << '\n';
     }
-    os << "\n\n\n";
+    os << "\n";
+
+    os << "========== PARSER OUTPUT END ==========\n\n";
 
     /*
     // print statistics

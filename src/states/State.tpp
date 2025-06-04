@@ -39,6 +39,7 @@ State<T> State<T>::compute_successor(const Action& executed_action)
 {
     State<T> next_state;
     next_state.set_representation(get_representation().compute_successor(executed_action));
+    next_state.set_executed_actions(get_executed_actions());
     next_state.add_executed_action(executed_action);
 
     return next_state;

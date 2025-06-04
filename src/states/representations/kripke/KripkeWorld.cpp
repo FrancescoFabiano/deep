@@ -100,19 +100,19 @@ void KripkeWorld::print() const
 
 // *************************************************************************************************************** //
 
-KripkeWorldPointer::KripkeWorldPointer(const std::shared_ptr<const KripkeWorld>& ptr, unsigned short repetition)
+KripkeWorldPointer::KripkeWorldPointer(const std::shared_ptr<const KripkeWorld>& ptr, const unsigned short repetition)
 {
     set_ptr(ptr);
     set_repetition(repetition);
 }
 
-KripkeWorldPointer::KripkeWorldPointer(std::shared_ptr<const KripkeWorld>&& ptr, unsigned short repetition)
+KripkeWorldPointer::KripkeWorldPointer(std::shared_ptr<const KripkeWorld>&& ptr, const unsigned short repetition)
 {
     set_ptr(std::move(ptr));
     set_repetition(repetition);
 }
 
-KripkeWorldPointer::KripkeWorldPointer(const KripkeWorld& world, unsigned short repetition)
+KripkeWorldPointer::KripkeWorldPointer(const KripkeWorld& world, const unsigned short repetition)
 {
     m_ptr = std::make_shared<KripkeWorld>(world);
     set_repetition(repetition);
@@ -149,14 +149,15 @@ void KripkeWorldPointer::set_ptr(std::shared_ptr<const KripkeWorld>&& ptr)
     m_ptr = std::move(ptr);
 }
 
-void KripkeWorldPointer::set_repetition(const unsigned short to_set) noexcept
+void KripkeWorldPointer::set_repetition(const unsigned short repetition) noexcept
 {
-    m_repetition = to_set;
+    m_repetition = repetition;
+    set_id();
 }
 
-void KripkeWorldPointer::increase_repetition(const unsigned short to_increase) noexcept
+void KripkeWorldPointer::increase_repetition(const unsigned short increase) noexcept
 {
-    m_repetition += to_increase;
+    set_repetition(m_repetition + increase);
 }
 
 unsigned short KripkeWorldPointer::get_repetition() const noexcept
@@ -194,64 +195,36 @@ KripkeWorldId KripkeWorldPointer::get_fluent_based_id() const noexcept
 /** \warning This function does a lot of check for overflow, it might impact the performance since it used very often. Check for better solutions*/
 KripkeWorldId KripkeWorldPointer::get_id() const noexcept
 {
+    return m_id;
+}
+
+void KripkeWorldPointer::set_id() noexcept
+{
     if (m_ptr)
     {
         const KripkeWorldId id = m_ptr->get_id();
         const unsigned short repetition = get_repetition();
 
+
+        std::string id_str = std::to_string(id);
         // Count digits in id
-        unsigned short digits = 1;
-        unsigned short temp = id;
-        while (temp >= 10)
+        const auto digits = id_str.size();
+        const auto zeros_to_add = max_KripkeWorldID_digits - digits;
+        /// This is the maximum number of digits we can have in a KripkeWorldId. So we keep fixed size, appending zeros and then repertition to keep it unique
+
+
+        for (size_t i = 0; i < zeros_to_add; ++i)
         {
-            temp /= 10;
-            ++digits;
+           id_str += '0'; // Append zeros to the id string
         }
 
-        // Count digits in id
-        unsigned short digits_rep = 1;
-        unsigned short temp_rep = repetition;
-        while (temp_rep >= 10)
-        {
-            temp_rep /= 10;
-            ++digits_rep;
-        }
-
-        // Calculate the number of trailing zeros needed
-        const unsigned short zeros_to_add = max_digits - digits;
-
-        if (zeros_to_add < digits_rep)
-        {
-            ExitHandler::exit_with_message(
-                ExitHandler::ExitCode::KripkeWorldPointerIdError,
-                "Overflow detected. There are not enough digits in KripkeWorldId to accommodate the repetition value.");
-        }
+        id_str += std::to_string(repetition); // Append the repetition count
 
 
-        KripkeWorldId id_with_zeros = id;
-        for (unsigned short i = 0; i < zeros_to_add; ++i)
-        {
-            if (id_with_zeros > (std::numeric_limits<KripkeWorldId>::max() / 10))
-            {
-                ExitHandler::exit_with_message(
-                    ExitHandler::ExitCode::KripkeWorldPointerIdError,
-                    "Overflow detected when adding trailing zeros to repetition in KripkeWorldPointer::get_id()."
-                );
-            }
-            id_with_zeros *= 10;
-        }
-
-        // Check for overflow in the final addition
-        if (id_with_zeros > std::numeric_limits<KripkeWorldId>::max() - repetition)
-        {
-            ExitHandler::exit_with_message(
-                ExitHandler::ExitCode::KripkeWorldPointerIdError,
-                "Overflow detected when adding repetition to id in KripkeWorldPointer::get_id()."
-            );
-        }
-
-        return id_with_zeros + repetition;
+        m_id = FormulaHelper::hash_string_into_id(id_str);
+        return;
     }
+    m_id = 0; // Reset to zero if m_ptr is null
     ExitHandler::exit_with_message(
         ExitHandler::ExitCode::KripkeWorldPointerNullError,
         "Error: Null KripkeWorldPointer in get_id().\n  Tip: Ensure all KripkeWorldPointer objects are properly initialized before use."

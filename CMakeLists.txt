@@ -65,7 +65,7 @@ find_package(FLEX REQUIRED)
 find_package(BISON REQUIRED)
 
 FLEX_TARGET(Lexer src/parse/lcp.lex ${BUILD_DIR}/lex.cpp)
-BISON_TARGET(Parser src/parse/lcp.y ${BUILD_DIR}/bison.cpp COMPILE_FLAGS "-Wcounterexamples")
+BISON_TARGET(Parser src/parse/lcp.y ${BUILD_DIR}/bison.cpp)
 ADD_FLEX_BISON_DEPENDENCY(Lexer Parser)
 
 # Add generated parser and lexer files to the build

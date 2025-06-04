@@ -25,21 +25,26 @@
  * \date May 2025
  */
 
-HelperPrint* HelperPrint::instance = nullptr;
-
-
 HelperPrint::HelperPrint()
 {
-    instance->set_grounder(Domain::get_instance().get_grounder());
 }
 
 HelperPrint& HelperPrint::get_instance()
 {
-    if (!instance)
+    static HelperPrint instance;
+    return instance;
+}
+
+const Grounder& HelperPrint::get_grounder() const
+{
+    if (!m_set_grounder)
     {
-        instance = new HelperPrint();
+        ExitHandler::exit_with_message(
+            ExitHandler::ExitCode::PrintUnsetGrounderError,
+            "Tried to access grounder, but it is not set in HelperPrint."
+        );
     }
-    return *instance;
+    return m_grounder;
 }
 
 void HelperPrint::set_grounder(const Grounder& gr)

@@ -195,7 +195,7 @@ Action& Action::operator=(const Action& act)
 void Action::print() const
 {
     auto& os = ArgumentParser::get_instance().get_output_stream();
-    const auto grounder = Domain::get_instance().get_grounder();
+    const auto grounder = HelperPrint::get_instance().get_grounder();
     os << "\nAction " << get_name() << ":" << std::endl;
     os << "    ID: " << get_id() << ":" << std::endl;
     os << "    Type: " << Proposition::type_to_string(get_type()) << std::endl;

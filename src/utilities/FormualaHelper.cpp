@@ -324,6 +324,11 @@ KripkeWorldId FormulaHelper::hash_fluents_into_id(const FluentsSet& fl)
     return boost::hash_range(fl.begin(), fl.end());
 }
 
+KripkeWorldId FormulaHelper::hash_string_into_id(const std::string& string)
+{
+    return boost::hash_range(string.begin(), string.end());
+}
+
 bool FormulaHelper::consistent(const FluentsSet& to_check)
 {
     for (auto it = to_check.begin(); it != to_check.end(); ++it)

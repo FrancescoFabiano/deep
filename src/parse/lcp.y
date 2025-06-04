@@ -128,6 +128,7 @@ extern std::unique_ptr<Reader> domain_reader;
 
 %%
 input:
+|
 fluent_decls 
 action_decls
 agent_decls 
@@ -208,13 +209,11 @@ literal:
 fluent {
   $$ = $1;
 }
-/* WARNIG REMOVAL
 |
 NEGATION fluent
 {
   $$ = new std::string(*$1 + *$2);
-}*/
-;
+};
 
 literal_list:
 literal
@@ -238,7 +237,6 @@ literal {
 
   $$->insert(s1);
 }
-/* WARNIG REMOVAL
 | formula COMMA formula
 {
   StringSetsSet::iterator it1;
@@ -264,8 +262,7 @@ literal {
 | LEFT_PAREN formula RIGHT_PAREN
 {
   $$ = $2;
-}*/
-;
+};
 
 /* fluent declaration */
 fluent_decl: 

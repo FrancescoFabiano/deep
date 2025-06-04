@@ -31,9 +31,6 @@ public:
      * \warning the \ref set_domain has to called in the main file only.*/
     static Domain& get_instance();
 
-    /** \brief Setter for the domains parameters.     */
-    static void create_instance();
-
     /** \brief Function that builds all the domain information.     */
     void build();
 
@@ -64,10 +61,8 @@ public:
     Domain& operator=(const Domain&) = delete;
 
 private:
-    static Domain* instance; ///< Singleton instance
-
     std::string m_name; ///< The name of the file that contains the description of *this*.
-    std::unique_ptr<Reader> m_reader; ///< The pointer to a \ref Reader object.
+    Reader m_reader; ///< The pointer to a \ref Reader object.
     Grounder m_grounder; ///< A \ref grounder object used to store the name of the information.
     FluentsSet m_fluents; ///< Set containing all the (grounded) \ref fluent of the domain.
     ActionsSet m_actions; ///< Set containing all the \ref action (with effects, conditions, obs etc.) of the domain.

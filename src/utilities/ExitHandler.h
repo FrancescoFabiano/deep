@@ -36,6 +36,9 @@ public:
         ArgParseError = 100, ///< Error occurred during argument parsing in ArgumentParser.
         ArgParseInstanceError = 101, ///< Error occurred during ArgumentParser singleton instance.
 
+        // --- Parsing Related (150-169) ---
+        ParsingError = 150, ///< Error occurred during parsing in Reader.
+
         // --- Domain Related (200-219) ---
         DomainFileOpenError = 200, ///< Failed to open domain input file.
         DomainInstanceError = 201, ///< Domain singleton instance error.

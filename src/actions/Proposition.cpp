@@ -26,12 +26,12 @@ const std::string& Proposition::get_action_name() const noexcept
 
 FluentFormula Proposition::get_action_effect() const
 {
-    return Domain::get_instance().get_grounder().ground_fluent(m_action_effect);
+    return HelperPrint::get_instance().get_grounder().ground_fluent(m_action_effect);
 }
 
 Agent Proposition::get_agent() const
 {
-    return Domain::get_instance().get_grounder().ground_agent(m_agent);
+    return HelperPrint::get_instance().get_grounder().ground_agent(m_agent);
 }
 
 const BeliefFormulaParsed& Proposition::get_observability_conditions() const noexcept
@@ -121,8 +121,8 @@ void Proposition::print() const
         break;
     }
 
-    os << "\n Effects:\n";
-    HelperPrint::print_list(m_action_effect);
+
+    if (!m_action_effect.empty()) HelperPrint::print_list(m_action_effect);
 
     // Uncomment and adapt if you want to print observability/executability conditions
     // os << "\nObservability conditions:\n";
@@ -130,5 +130,5 @@ void Proposition::print() const
     // os << "\nExecutability conditions:\n";
     // m_executability_conditions.print();
 
-    os << std::endl;
+    //os << std::endl;
 }

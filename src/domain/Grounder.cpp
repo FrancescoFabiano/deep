@@ -16,10 +16,10 @@
  */
 
 
-Grounder::Grounder(const FluentMap& fluent_map, const AgentsMap& agent_map, const ActionNamesMap& action_name_map)
+Grounder::Grounder(const FluentMap& given_fluent_map, const AgentsMap& given_agent_map, const ActionNamesMap& action_name_map)
 {
-    set_fluent_map(fluent_map);
-    set_agent_map(agent_map);
+    set_fluent_map(given_fluent_map);
+    set_agent_map(given_agent_map);
     set_action_name_map(action_name_map);
 
     if (ArgumentParser::get_instance().get_debug())

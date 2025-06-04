@@ -18,7 +18,7 @@ void BeliefFormula::set_from_ff(const FluentFormula & to_build)
 }
 
 BeliefFormula::BeliefFormula(const BeliefFormulaParsed &to_ground) {
-    const auto grounder = Domain::get_instance().get_grounder();
+    const auto grounder = HelperPrint::get_instance().get_grounder();
     set_formula_type(to_ground.get_formula_type());
     switch (m_formula_type) {
         case BeliefFormulaType::FLUENT_FORMULA:
@@ -52,7 +52,12 @@ BeliefFormula::BeliefFormula(const BeliefFormulaParsed &to_ground) {
             break;
         case BeliefFormulaType::E_FORMULA:
         case BeliefFormulaType::C_FORMULA:
+            set_group_agents(grounder.ground_agent(to_ground.get_string_group_agents()));
+            set_bf1(to_ground.get_bf1());
+        break;
         case BeliefFormulaType::BF_EMPTY:
+            // For empty executability conditions etc, leave this as is
+            break;
         case BeliefFormulaType::BF_TYPE_FAIL:
         default:
             ExitHandler::exit_with_message(

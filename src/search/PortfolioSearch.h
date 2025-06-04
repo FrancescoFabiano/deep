@@ -25,7 +25,7 @@ class PortfolioSearch
 public:
     /// \name Constructors & Destructor
     ///@{
-    PortfolioSearch() = default;
+    PortfolioSearch();
     ///@}
 
     /// \name Main Methods

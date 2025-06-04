@@ -43,6 +43,12 @@ public:
     void set_grounder(const Grounder& gr);
 
     /**
+         * \brief Get the grounder used for de-grounding fluents.
+         * \return Reference to the grounder.
+         */
+    const Grounder& get_grounder() const;
+
+    /**
      * \brief Print all std::string in a set (conjunctive set of fluents).
      * \param to_print The set to print.
      */
@@ -146,7 +152,6 @@ public:
     static std::string adjust_id_wrt_agents(int num);
 
 private:
-    static HelperPrint* instance; ///< Singleton instance
     Grounder m_grounder; ///< Used to de-ground fluents for printing.
     bool m_set_grounder = false; ///< True if \ref m_grounder has been set.
 

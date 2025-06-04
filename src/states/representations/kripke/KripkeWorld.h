@@ -232,6 +232,11 @@ public:
      */
     [[nodiscard]] KripkeWorldId get_id() const noexcept;
 
+    /** \brief Set the id of the pointed world based on its content.
+     *  \details This method computes a unique id based on the fluent set and repetition (using hashing).
+     */
+    void set_id() noexcept;
+
     /** \brief Get the numerical id of the pointed world.
      *  \return The id.
      */
@@ -269,6 +274,7 @@ private:
     ///@{
     /** \brief The wrapped pointer. */
     std::shared_ptr<const KripkeWorld> m_ptr;
+    KripkeWorldId m_id = 0;
     /** \brief The repetition count for oblivious observations. */
     unsigned short m_repetition = 0;
     ///@}

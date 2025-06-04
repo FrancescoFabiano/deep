@@ -5,6 +5,7 @@
 #include <atomic>
 #include <functional>
 #include <chrono>
+#include <mutex>
 
 #include "HelperPrint.h"
 #include "utilities/ExitHandler.h"
@@ -21,6 +22,9 @@
 template<>
 TrainingDataset<KripkeState>* TrainingDataset<KripkeState>::instance = nullptr;
 
+PortfolioSearch::PortfolioSearch(){set_default_configurations();}
+
+
 bool PortfolioSearch::run_portfolio_search() const
 {
     const auto portfolio_threads = ArgumentParser::get_instance().get_portfolio_threads();
@@ -32,6 +36,7 @@ bool PortfolioSearch::run_portfolio_search() const
     std::vector<std::chrono::duration<double>> times;
     std::vector<unsigned int> expanded_nodes;
     std::vector<std::string> config_snapshots;
+    std::mutex result_mutex;
 
     const int configs_to_run = std::min(portfolio_threads, static_cast<int>(m_search_configurations.size()));
     times.resize(configs_to_run);
@@ -39,12 +44,9 @@ bool PortfolioSearch::run_portfolio_search() const
     search_types.resize(configs_to_run);
     config_snapshots.resize(configs_to_run);
 
-    // Prepare the user configuration for the first thread
-    //const auto& user_config = Configuration::get_instance();
-
     auto& os = ArgumentParser::get_instance().get_output_stream();
     // --- Measure initial state build time ---
-    os << "Building initial state ...\n";
+    os << "\nBuilding initial state ...\n";
     const auto initial_build_start = Clock::now();
     State<KripkeState> initial_state;
     initial_state.build_initial();
@@ -54,9 +56,19 @@ bool PortfolioSearch::run_portfolio_search() const
     os << "Initial state built in " << initial_build_duration.count() << " ms.\n";
     // --- End measure ---
 
-    std::vector<ActionIdsList> plan_actions_id;
+    std::vector<ActionIdsList> plan_actions_id(configs_to_run);
+
     auto run_search = [&](int idx, const std::map<std::string, std::string>& config_map, const bool is_user_config)
     {
+        // --- DEBUG: Print reached at start of thread ---
+        if (ArgumentParser::get_instance().get_debug()){
+            static std::mutex cout_mutex;
+            std::lock_guard<std::mutex> lock(cout_mutex);
+            std::cout << "[Thread " << idx << "] Entered run_search lambda." << std::endl;
+        }
+
+        if (found_goal) return; // Early exit if another thread found the goal
+
         // Each thread gets its own Configuration instance
         if (!is_user_config)
         {
@@ -70,12 +82,12 @@ bool PortfolioSearch::run_portfolio_search() const
         const auto& config = Configuration::get_instance();
         const SearchType search_type = config.get_search_strategy();
 
-        // Select searcher
         std::string search_type_name;
         std::chrono::duration<double> elapsed{};
         unsigned int expanded = 0;
         bool result = false;
         ActionIdsList actions_id;
+
         switch (search_type)
         {
         case SearchType::BFS:
@@ -113,25 +125,32 @@ bool PortfolioSearch::run_portfolio_search() const
                 break;
             }
         default:
+            if (ArgumentParser::get_instance().get_debug()){
+                static std::mutex cout_mutex;
+                std::lock_guard<std::mutex> lock(cout_mutex);
+                std::cout << "[Thread " << idx << "] Unknown search type!" << std::endl;
+            }
             ExitHandler::exit_with_message(
                 ExitHandler::ExitCode::PortfolioConfigError,
                 "Unknown search type"
             );
             break;
         }
-        //auto end = Clock::now();
 
-        times[idx] = elapsed;
-        expanded_nodes[idx] = expanded;
-        search_types[idx] = search_type_name;
-        plan_actions_id[idx] = actions_id;
-        std::ostringstream oss;
-        config.print(oss);
-        config_snapshots[idx] = oss.str();
-
-        if (result && !found_goal.exchange(true))
         {
-            winner = idx;
+            std::lock_guard<std::mutex> lock(result_mutex);
+            times[idx] = elapsed;
+            expanded_nodes[idx] = expanded;
+            search_types[idx] = search_type_name;
+            plan_actions_id[idx] = actions_id;
+            std::ostringstream oss;
+            config.print(oss);
+            config_snapshots[idx] = oss.str();
+
+            if (result && !found_goal.exchange(true))
+            {
+                winner = idx;
+            }
         }
     };
 
@@ -159,7 +178,7 @@ bool PortfolioSearch::run_portfolio_search() const
             << "\n  Search used: " << search_types[idx]
             << "\n  Time elapsed " << times[idx].count() << "s"
             << "\n  Nodes Expanded: " << expanded_nodes[idx] << std::endl;
-        os << "\nConfiguration used:\n" << config_snapshots[idx] << std::endl;
+        //os << "\nConfiguration used:\n" << config_snapshots[idx] << std::endl;
         return true;
     }
     else
@@ -213,5 +232,5 @@ void PortfolioSearch::set_default_configurations()
     m_search_configurations.push_back({{"search", "HFS"}, {"heuristic", "S_PG"}});
     m_search_configurations.push_back({{"search", "HFS"}, {"heuristic", "C_PG"}});
     m_search_configurations.push_back({{"search", "HFS"}, {"heuristic", "GNN"}});
-    m_search_configurations.push_back({{"strategy", "DFS"}});
+    m_search_configurations.push_back({{"search", "DFS"}});
 }

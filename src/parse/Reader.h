@@ -52,9 +52,8 @@ public:
     /**
      * \brief Reads the info from the domain file.
      * \details Called to parse the file containing the domain and store the information into the fields of the reader class.
-     * \return The same int value returned from the parsing process.
      */
-    static int read();
+    void read();
 
     /**
      * \brief Print all the information stored inside the reader object.

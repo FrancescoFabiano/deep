@@ -26,6 +26,7 @@ struct OutputPaths
     static constexpr auto DATASET_NN_DATASET_HASHED = "hash"; ///< The suffix for the NN dataset hashed file.
 };
 
+
 /**
  * \def NEGATION_SYMBOL
  * \brief The negation symbol to negate a fluent.
@@ -115,6 +116,8 @@ using event_type_relation = std::set<std::pair<event_type, event_type>>;
 class KripkeState;
 class KripkeWorld;
 using KripkeWorldId = std::size_t; ///< ID of a KripkeWorld
+inline std::size_t max_dimension_KripkeWorldID_size = std::numeric_limits<KripkeWorldId>::max();
+inline std::size_t max_KripkeWorldID_digits = std::to_string(max_dimension_KripkeWorldID_size).length();
 class KripkeWorldPointer;
 using KripkeWorldPointersSet = std::set<KripkeWorldPointer>;
 using KripkeWorldPointersMap = std::map<Agent, KripkeWorldPointersSet>;

@@ -24,7 +24,7 @@ int main(int argc, char** argv)
 {
     ArgumentParser::create_instance(argc, argv);
     Configuration::create_instance();
-    Domain::create_instance();
+    //Domain::create_instance();
 
     //Dataset Generation for ML Heuristics
     if (ArgumentParser::get_instance().get_dataset_mode())
