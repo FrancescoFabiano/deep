@@ -1,9 +1,9 @@
-/* Parser for AL language */
-
 %defines
 
+/* Parser for AL language */
+
 %{
-#include "../src/parse/Reader.h"
+#include "Reader.h"
 
 int yyerror(const char *s);
 int yylex(void);
@@ -122,7 +122,6 @@ extern std::unique_ptr<Reader> domain_reader;
 %type <prop> awareness
 %type <prop> observance
 %type <prop> announcement
-%type <prop> executing
 %type <prop_list> domain
 
 

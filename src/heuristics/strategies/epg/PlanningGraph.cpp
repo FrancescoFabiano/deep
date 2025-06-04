@@ -11,25 +11,12 @@
 #include "ArgumentParser.h"
 #include "utilities/ExitHandler.h"
 
-PlanningGraph::PlanningGraph()
-{
-    auto goals = Domain::get_instance().get_goal_description();
-    StateLevel pg_init;
-    pg_init.initialize(goals);
-    init(goals, pg_init);
-}
 
 PlanningGraph::PlanningGraph(const PlanningGraph& pg)
 {
     set_pg(pg);
 }
 
-PlanningGraph::PlanningGraph(const FormulaeList& goal)
-{
-    StateLevel pg_init;
-    pg_init.initialize(goal);
-    init(goal, pg_init);
-}
 
 void PlanningGraph::init(const FormulaeList& goal, const StateLevel& pg_init)
 {
@@ -119,7 +106,6 @@ void PlanningGraph::set_satisfiable(const bool sat)
     m_satisfiable = sat;
 }
 
-[[nodiscard]]
 bool PlanningGraph::is_satisfiable() const
 {
     return m_satisfiable;
@@ -288,13 +274,11 @@ void PlanningGraph::set_sum(const unsigned short sum)
     m_pg_sum = sum;
 }
 
-[[nodiscard]]
 unsigned short PlanningGraph::get_length() const
 {
     return m_pg_length;
 }
 
-[[nodiscard]]
 unsigned short PlanningGraph::get_sum() const
 {
     return m_pg_sum;
@@ -305,43 +289,36 @@ void PlanningGraph::set_goal(const FormulaeList& goal)
     m_goal = goal;
 }
 
-[[nodiscard]]
 const std::vector<StateLevel>& PlanningGraph::get_state_levels() const
 {
     return m_state_levels;
 }
 
-[[nodiscard]]
 const std::vector<ActionLevel>& PlanningGraph::get_action_levels() const
 {
     return m_action_levels;
 }
 
-[[nodiscard]]
 const PG_FluentsScoreMap& PlanningGraph::get_f_scores() const
 {
     return m_state_levels.back().get_f_map();
 }
 
-[[nodiscard]]
 const PG_BeliefFormulaeMap& PlanningGraph::get_bf_scores() const
 {
     return m_state_levels.back().get_bf_map();
 }
 
-[[nodiscard]]
 const FormulaeList& PlanningGraph::get_goal() const
 {
     return m_goal;
 }
 
-[[nodiscard]]
 const ActionsSet& PlanningGraph::get_never_executed() const
 {
     return m_never_executed;
 }
 
-[[nodiscard]]
 const FormulaeSet& PlanningGraph::get_belief_formula_false() const
 {
     return m_belief_formula_false;
@@ -371,10 +348,10 @@ void PlanningGraph::print() const
 
     os << "\n\n**********ePLANNING-GRAPH PRINT**********\n";
     unsigned short count = 0;
-    for (auto it_state_level = m_state_levels.begin(); it_state_level != m_state_levels.end(); ++it_state_level)
+    for (const auto& m_state_level : m_state_levels)
     {
-        const auto& fluents_score = it_state_level->get_f_map();
-        const auto& bf_score = it_state_level->get_bf_map();
+        const auto& fluents_score = m_state_level.get_f_map();
+        const auto& bf_score = m_state_level.get_bf_map();
 
         os << "\n\t*******State Level " << count << "*******\n";
         os << "\n\t\t****Fluents****\n\n";

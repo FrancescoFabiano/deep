@@ -24,8 +24,10 @@ class HeuristicsManager
 public:
     /**
      * \brief Constructs a HeuristicsManager with the chosen heuristic.
+     *
+     * \param initial_state The initial state used by the planning graph.
      */
-    explicit HeuristicsManager();
+    explicit HeuristicsManager(const State<StateRepr>& initial_state);
 
     /**
      * \brief Computes and sets the heuristic value for a given state.

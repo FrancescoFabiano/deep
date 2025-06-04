@@ -24,7 +24,7 @@ public:
     /**
      * \brief Default constructor.
      */
-    DepthFirst() = default;
+    explicit DepthFirst([[maybe_unused]] const State<StateRepr>& initial_state) {}
 
     /**
      * \brief Push a state into the search container.

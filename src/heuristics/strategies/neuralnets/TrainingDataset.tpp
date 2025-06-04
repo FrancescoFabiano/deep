@@ -455,7 +455,7 @@ int TrainingDataset<StateRepr>::dfs_worker(State<StateRepr>& state, const size_t
 
     int best_successor_score = -1;
     bool has_successor = false;
-    auto max_depth = ArgumentParser::get_instance().get_dataset_depth();
+    size_t max_depth = static_cast<size_t>(ArgumentParser::get_instance().get_dataset_depth());
     // Create a local vector from action_set
     std::vector<Action> local_actions(actions->begin(), actions->end());
 
@@ -569,8 +569,8 @@ std::string TrainingDataset<StateRepr>::format_row(const State<StateRepr>& state
 template <StateRepresentation StateRepr>
 std::string TrainingDataset<StateRepr>::print_state_for_dataset(const State<StateRepr>& state)
 {
-    std::string base_filename = std::string(6 - std::to_string(++m_file_counter).length(), '0') + std::to_string(
-        m_file_counter);
+    ++m_file_counter;
+    std::string base_filename = std::string(6 - std::to_string(m_file_counter).length(), '0') + std::to_string(m_file_counter);
 
     if (ArgumentParser::get_instance().get_dataset_mapped() || ArgumentParser::get_instance().get_dataset_both())
     {

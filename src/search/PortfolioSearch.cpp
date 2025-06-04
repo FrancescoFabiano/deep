@@ -16,6 +16,11 @@
 #include "states/State.h"
 #include "argparse/Configuration.h"
 
+
+// I am adding this to be seen by the linker because it is a static templated singleton
+template<>
+TrainingDataset<KripkeState>* TrainingDataset<KripkeState>::instance = nullptr;
+
 bool PortfolioSearch::run_portfolio_search() const
 {
     const auto portfolio_threads = ArgumentParser::get_instance().get_portfolio_threads();
@@ -76,7 +81,7 @@ bool PortfolioSearch::run_portfolio_search() const
         case SearchType::BFS:
             {
                 SpaceSearcher<KripkeState, BreadthFirst<KripkeState>> searcherBFS{
-                    BreadthFirst<KripkeState>()
+                    BreadthFirst<KripkeState>(initial_state)
                 };
                 result = searcherBFS.search(initial_state);
                 actions_id = searcherBFS.get_plan_actions_id();
@@ -88,7 +93,7 @@ bool PortfolioSearch::run_portfolio_search() const
         case SearchType::DFS:
             {
                 SpaceSearcher<KripkeState, DepthFirst<KripkeState>> searcherDFS{
-                    DepthFirst<KripkeState>()
+                    DepthFirst<KripkeState>(initial_state)
                 };
                 result = searcherDFS.search(initial_state);
                 actions_id = searcherDFS.get_plan_actions_id();
@@ -99,7 +104,7 @@ bool PortfolioSearch::run_portfolio_search() const
             }
         case SearchType::HFS:
             {
-                SpaceSearcher<KripkeState, BestFirst<KripkeState>> searcherHFS{BestFirst<KripkeState>()};
+                SpaceSearcher<KripkeState, BestFirst<KripkeState>> searcherHFS{BestFirst<KripkeState>(initial_state)};
                 result = searcherHFS.search(initial_state);
                 actions_id = searcherHFS.get_plan_actions_id();
                 search_type_name = searcherHFS.get_search_type();

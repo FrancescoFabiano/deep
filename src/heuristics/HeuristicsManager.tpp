@@ -3,7 +3,7 @@
 #include <ranges>
 
 template <StateRepresentation StateRepr>
-HeuristicsManager<StateRepr>::HeuristicsManager()
+HeuristicsManager<StateRepr>::HeuristicsManager(const State<StateRepr>& initial_state)
 {
     set_used_h(Configuration::get_instance().get_heuristic_opt());
     m_goals = Domain::get_instance().get_goal_description();
@@ -18,18 +18,25 @@ HeuristicsManager<StateRepr>::HeuristicsManager()
         break;
     case Heuristics::C_PG:
         {
-            if (const PlanningGraph pg; pg.is_satisfiable())
+            expand_goals();
+            if (const PlanningGraph pg(m_goals,initial_state); pg.is_satisfiable())
             {
                 m_pg_max_score = 0;
                 m_fluents_score = pg.get_f_scores();
                 m_bf_score = pg.get_bf_scores();
                 for (const auto& score_f : m_fluents_score | std::views::values)
                 {
-                    m_pg_max_score += score_f; // Accumulate positive scores for normalization.
+                    if (score_f > 0)
+                    {
+                        m_pg_max_score += score_f; // Accumulate positive scores for normalization.
+                    }
                 }
                 for (const auto& score_bf : m_bf_score | std::views::values)
                 {
-                    m_pg_max_score += score_bf; // Accumulate positive scores for normalization.
+                    if (score_bf > 0)
+                    {
+                        m_pg_max_score += score_bf; // Accumulate positive scores for normalization.
+                    }
                 }
             }
             else
@@ -59,13 +66,13 @@ void HeuristicsManager<StateRepr>::set_heuristic_value(State<StateRepr>& eState)
     {
     case Heuristics::L_PG:
         {
-            const PlanningGraph pg(eState);
+            const PlanningGraph pg(m_goals, eState);
             eState.set_heuristic_value(pg.is_satisfiable() ? pg.get_length() : -1);
             break;
         }
     case Heuristics::S_PG:
         {
-            const PlanningGraph pg(eState);
+            const PlanningGraph pg(m_goals, eState);
             eState.set_heuristic_value(pg.is_satisfiable() ? pg.get_sum() : -1);
             break;
         }
@@ -118,7 +125,7 @@ void HeuristicsManager<StateRepr>::set_heuristic_value(State<StateRepr>& eState)
 template <StateRepresentation StateRepr>
 void HeuristicsManager<StateRepr>::expand_goals(const unsigned short nesting)
 {
-    FormulaeList original_goal = m_goals;
+    const FormulaeList original_goal = m_goals;
     for (const auto& formula : original_goal)
     {
         produce_subgoals(nesting, 0, formula, formula.get_group_agents());
@@ -159,7 +166,7 @@ void HeuristicsManager<StateRepr>::produce_subgoals(const unsigned short nesting
 }
 
 template <StateRepresentation StateRepr>
-void HeuristicsManager<StateRepr>::set_used_h(Heuristics used_h) noexcept
+void HeuristicsManager<StateRepr>::set_used_h(const Heuristics used_h) noexcept
 {
     m_used_heuristics = used_h;
 }
@@ -191,7 +198,7 @@ std::string HeuristicsManager<StateRepr>::get_used_h_name() const noexcept
                 ExitHandler::ExitCode::HeuristicsBadDeclaration,
                 "Wrong Heuristic Selection in HeuristicsManager. Please check the heuristic type."
             );
-            return "Error"; // This line will never be reached, but added to avoid compiler warning.
+            // This line will never be reached, but added to avoid compiler warning.
             std::exit(static_cast<int>(ExitHandler::ExitCode::ExitForCompiler));
         }
     }

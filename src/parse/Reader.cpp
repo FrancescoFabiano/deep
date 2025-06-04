@@ -14,6 +14,8 @@
 // prototype of bison-generated parser function
 int yyparse();
 
+std::unique_ptr<Reader> domain_reader;
+
 Reader::Reader() = default;
 
 int Reader::read()

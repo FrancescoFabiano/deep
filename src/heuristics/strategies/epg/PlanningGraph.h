@@ -20,8 +20,9 @@
 #include <chrono>
 
 /**
-    * \brief Struct to encapsulate timing variables for PlanningGraph timing.
-    */
+ * \struct Clocks
+ * \brief Struct to encapsulate timing variables for PlanningGraph timing.
+ */
 struct Clocks
 {
     std::chrono::duration<double> t1{0};
@@ -43,46 +44,19 @@ public:
     ///@{
 
     /**
-     * \brief Default constructor. Sets the initial State level and the goal from the domain.
-     *
-     * This version should be used when a single planning BisGraph is created from the initial State.
-     */
-    explicit PlanningGraph();
-
-    /**
-     * \brief Constructor that sets the initial State level from the domain and the goal as given.
-     * \param[in] goal The formula_list that describes the given goals.
-     */
-    explicit PlanningGraph(const FormulaeList& goal);
-
-    /**
      * \brief Copy constructor.
      * \param[in] pg The PlanningGraph to copy.
      */
     PlanningGraph(const PlanningGraph& pg);
 
     /**
-     * \brief Constructor that sets the initial State level from a given eState and the goal from the domain.
-     * \tparam T The state representation type.
-     * \param[in] eState The initial eState from which to extract the first State level.
-     */
-    template <StateRepresentation T>
-    explicit PlanningGraph(const State<T>& eState)
-    {
-        auto goals = Domain::get_instance().get_goal_description();
-        StateLevel pg_init;
-        pg_init.initialize(goals, eState);
-        init(goals, pg_init);
-    }
-
-    /**
      * \brief Constructor that sets the initial State level from a given eState and goal description.
-     * \tparam T The state representation type.
+     * \tparam StateRepr The state representation type.
      * \param[in] goal The formula_list that describes the given goals.
      * \param[in] eState The initial eState from which to extract the first State level.
      */
-    template <StateRepresentation T>
-    PlanningGraph(const FormulaeList& goal, State<T>& eState)
+    template <StateRepresentation StateRepr>
+    PlanningGraph(const FormulaeList& goal, const State<StateRepr>& eState)
     {
         StateLevel pg_init;
         pg_init.initialize(goal, eState);

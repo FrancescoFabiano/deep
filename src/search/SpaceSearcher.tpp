@@ -22,9 +22,8 @@
 
 template <StateRepresentation StateRepr, SearchStrategy<StateRepr> Strategy>
 SpaceSearcher<StateRepr, Strategy>::SpaceSearcher(Strategy strategy)
-{
-    m_strategy = std::move(strategy);
-}
+    : m_strategy(std::move(strategy))
+{}
 
 template <StateRepresentation StateRepr, SearchStrategy<StateRepr> Strategy>
 std::string SpaceSearcher<StateRepr, Strategy>::get_search_type() const noexcept
@@ -157,7 +156,7 @@ bool SpaceSearcher<StateRepr, Strategy>::search_parallel(State<StateRepr>& initi
                                                          const int num_threads)
 {
     std::set<State<StateRepr>> visited_states; /// \warning cannot use unordered_set because I am missing a clear way of hashing the state
-    Strategy current_frontier;
+    Strategy current_frontier(initial);
     current_frontier.push(initial);
 
     if (check_visited)
@@ -168,10 +167,10 @@ bool SpaceSearcher<StateRepr, Strategy>::search_parallel(State<StateRepr>& initi
     std::atomic<size_t> total_expanded_nodes{0};
     std::mutex plan_mutex; // <-- Add this mutex
 
-    while (!current_frontier.empty())
+    if (!current_frontier.empty())
     {
         std::vector<std::thread> threads;
-        Strategy next_frontier;
+        Strategy next_frontier(initial);
         std::vector<State<StateRepr>> level_states = {};
 
         while (!current_frontier.empty())
@@ -184,8 +183,11 @@ bool SpaceSearcher<StateRepr, Strategy>::search_parallel(State<StateRepr>& initi
         std::atomic<bool> found_goal{false};
         std::vector<std::set<State<StateRepr>>> local_visited(num_threads); /// \warning cannot use unordered_set because I am missing a clear way of hashing the state
 
-        std::vector<Strategy> local_frontiers(num_threads);
-
+        std::vector<Strategy> local_frontiers;
+        local_frontiers.reserve(num_threads);
+        for (int t = 0; t < num_threads; ++t) {
+            local_frontiers.emplace_back(initial);
+        }
         for (int t = 0; t < num_threads; ++t)
         {
             threads.emplace_back([&, t]()

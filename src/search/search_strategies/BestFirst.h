@@ -44,8 +44,14 @@ class BestFirst
 public:
     /**
      * \brief Default constructor.
+     *
+     * \param initial_state The initial state used to initialize the heuristics' manager.
      */
-    BestFirst() = default;
+    explicit BestFirst(const State<StateRepr>& initial_state)
+        : m_heuristics_manager(initial_state) // initialize here
+    {
+        // No need to assign again inside the constructor body
+    }
 
     /**
      * \brief Push a state into the search container.
@@ -79,7 +85,7 @@ public:
     /**
      * \brief Get the name of the search strategy.
      */
-    std::string get_name() const
+    [[nodiscard]] std::string get_name() const
     {
         return m_name + " (" + m_heuristics_manager.get_used_h_name() + ")";
     }

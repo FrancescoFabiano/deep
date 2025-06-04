@@ -4,7 +4,6 @@
 #include "SetHelper.h"
 #include "ExitHandler.h"
 
-#include <ranges>
 #include <utility>
 
 StateLevel::StateLevel(const StateLevel& to_assign)
@@ -17,117 +16,6 @@ StateLevel::StateLevel(const PG_FluentsScoreMap& f_map, const PG_BeliefFormulaeM
     set_f_map(f_map);
     set_bf_map(bf_map);
     set_depth(depth);
-}
-
-void StateLevel::initialize(const FormulaeList& goal)
-{
-    build_init_f_map();
-    build_init_bf_map(goal);
-}
-
-void StateLevel::build_init_f_map()
-{
-    const auto& initial_fluents = Domain::get_instance().get_initial_description().get_initially_known_fluents();
-    for (const auto& fluent : initial_fluents)
-    {
-        m_pg_f_map.emplace(fluent, 0);
-    }
-
-    const auto& fluents = Domain::get_instance().get_fluents();
-    for (const auto& fluent : fluents)
-    {
-        m_pg_f_map.emplace(fluent, -1);
-    }
-}
-
-void StateLevel::insert_subformula_bf(const FormulaeList& fl, short value)
-{
-    for (const auto& formula : fl)
-    {
-        insert_subformula_bf(formula, value);
-    }
-}
-
-void StateLevel::insert_subformula_bf(const BeliefFormula& bf, short value)
-{
-    //We set all the subformulas to be TRUE for initially. Maybe it is wrong
-    //Maybe we don't need the subformulas at all
-    switch (bf.get_formula_type())
-    {
-    case BeliefFormulaType::BELIEF_FORMULA:
-        if (m_pg_bf_map.emplace(bf, value).second)
-        {
-            insert_subformula_bf(bf.get_bf1(), value);
-        }
-        break;
-    case BeliefFormulaType::PROPOSITIONAL_FORMULA:
-        switch (bf.get_operator())
-        {
-        case BeliefFormulaOperator::BF_NOT:
-            if (m_pg_bf_map.emplace(bf, 0).second)
-            {
-                insert_subformula_bf(bf.get_bf1(), value);
-            }
-            break;
-        case BeliefFormulaOperator::BF_OR:
-        case BeliefFormulaOperator::BF_AND:
-            if (m_pg_bf_map.emplace(bf, value).second)
-            {
-                insert_subformula_bf(bf.get_bf1(), value);
-                insert_subformula_bf(bf.get_bf2(), value);
-            }
-            break;
-        case BeliefFormulaOperator::BF_FAIL:
-        default:
-            ExitHandler::exit_with_message(
-                ExitHandler::ExitCode::BeliefFormulaOperatorUnset,
-                "Error: Unexpected operator in PROPOSITIONAL_FORMULA while generating subformulas for the Planning Graph."
-            );
-        }
-        break;
-    case BeliefFormulaType::C_FORMULA:
-        if (m_pg_bf_map.emplace(bf, value).second)
-        {
-            insert_subformula_bf(bf.get_bf1(), value);
-        }
-        break;
-    case BeliefFormulaType::FLUENT_FORMULA:
-    case BeliefFormulaType::BF_EMPTY:
-        break;
-    case BeliefFormulaType::BF_TYPE_FAIL:
-    default:
-        ExitHandler::exit_with_message(
-            ExitHandler::ExitCode::BeliefFormulaTypeUnset,
-            "Error: Unexpected formula type in insert_subformula_bf while generating subformulas for the Planning Graph."
-        );
-    }
-}
-
-void StateLevel::build_init_bf_map(const FormulaeList& goals)
-{
-    insert_subformula_bf(Domain::get_instance().get_initial_description().get_initial_conditions(), 0);
-    insert_subformula_bf(goals, -1);
-
-    const auto& actions = Domain::get_instance().get_actions();
-    for (const auto& action : actions)
-    {
-        for (const auto& effects : action.get_effects() | std::views::values)
-        {
-            insert_subformula_bf(effects, -1);
-        }
-        if (!action.get_executability().empty())
-        {
-            insert_subformula_bf(action.get_executability(), -1);
-        }
-        for (const auto& fully_obs : action.get_fully_observants() | std::views::values)
-        {
-            insert_subformula_bf(fully_obs, -1);
-        }
-        for (const auto& part_obs : action.get_partially_observants() | std::views::values)
-        {
-            insert_subformula_bf(part_obs, -1);
-        }
-    }
 }
 
 void StateLevel::set_f_map(const PG_FluentsScoreMap& to_set)
@@ -216,7 +104,7 @@ short StateLevel::get_score_from_depth() const
     return static_cast<short>(m_depth);
 }
 
-void StateLevel::modify_fluent_value(const Fluent& key, short value)
+void StateLevel::modify_fluent_value(const Fluent& key, const short value)
 {
     auto it = m_pg_f_map.find(key);
     if (it != m_pg_f_map.end())
@@ -237,8 +125,7 @@ void StateLevel::modify_fluent_value(const Fluent& key, short value)
 
 void StateLevel::modify_bf_value(const BeliefFormula& key, short value)
 {
-    auto it = m_pg_bf_map.find(key);
-    if (it != m_pg_bf_map.end())
+    if (const auto it = m_pg_bf_map.find(key); it != m_pg_bf_map.end())
     {
         if (it->second < 0)
         {
@@ -584,7 +471,7 @@ bool StateLevel::apply_epistemic_effects(
     const AgentsSet& fully,
     const AgentsSet& partially,
     bool& modified_pg,
-    unsigned short vis_cond)
+    const unsigned short vis_cond)
 {
     if (pg_entailment(bf))
     {

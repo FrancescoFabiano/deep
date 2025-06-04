@@ -12,6 +12,7 @@
 #pragma once
 
 #include <map>
+#include <ranges>
 
 #include "BeliefFormula.h"
 #include "State.h"
@@ -36,7 +37,7 @@ public:
     ///@{
 
     /**
-     * \brief Default constructor. Sets the depth to 0 and initializes the maps.
+     * \brief Constructor to initialize an empty state level.
      */
     StateLevel() = default;
 
@@ -58,21 +59,14 @@ public:
 
     /// \name Initialization
     ///@{
-
-    /**
-     * \brief Initializes the state level with the given goal formulae list.
-     * \param goal The list of goal formulae.
-     */
-    void initialize(const FormulaeList& goal);
-
     /**
      * \brief Initializes the state level with the given goal formulae list and e-state.
-     * \tparam T The state representation type.
+     * \tparam StateRepr The state representation type.
      * \param goals The list of goal formulae.
      * \param eState The epistemic state.
      */
-    template <StateRepresentation T>
-    void initialize(const FormulaeList& goals, const State<T>& eState)
+    template <StateRepresentation StateRepr>
+    void initialize(const FormulaeList& goals, const State<StateRepr>& eState)
     {
         build_init_f_map(eState);
         build_init_bf_map(goals, eState);
@@ -201,10 +195,10 @@ public:
     ///@}
 
 private:
-    /// \brief The map that associates each grounded fluent to TRUE or FALSE.
+    /// \brief The map that associates each grounded fluent to the first level in which is activated, -1 otherwise.
     PG_FluentsScoreMap m_pg_f_map = {};
 
-    /// \brief The map that associates each grounded BeliefFormula to TRUE or FALSE.
+    /// \brief The map that associates each grounded BeliefFormula to the first level in which is activated, -1 otherwise.
     PG_BeliefFormulaeMap m_pg_bf_map = {};
 
     /// \brief The depth of this state level.
@@ -243,38 +237,66 @@ private:
     // --- Initialization helpers ---
 
     /**
-     * \brief Builds the initial fluent map for this state level.
+     * \brief Builds the initial fluent map for this state level. It checks which are the known fluents in the given state.
+     * \tparam StateRepr The state representation type.
+     * \param state The epistemic state.
      */
-    void build_init_f_map();
+    template <StateRepresentation StateRepr>
+    void build_init_f_map(const State<StateRepr>& state)
+    {
+        for (const auto& fluent : Domain::get_instance().get_fluents())
+        {
+            if (state.entails(fluent))
+            {
+                m_pg_f_map.emplace(fluent, 0);
+            }
+            else
+                m_pg_f_map.emplace(fluent, -1);
+        }
+    }
 
     /**
      * \brief Builds the initial belief formula map for this state level.
+     * \tparam StateRepr The state representation type.
      * \param goals The list of goal formulae.
+     * \param state The epistemic state.
      */
-    void build_init_bf_map(const FormulaeList& goals);
+    template <StateRepresentation StateRepr>
+    void build_init_bf_map(const FormulaeList& goals,const State<StateRepr>& state)
+    {
+        insert_subformula_bf(Domain::get_instance().get_initial_description().get_initial_conditions(), state);
+        insert_subformula_bf(goals, state);
 
-    /**
-     * \brief Inserts all subformulas of a list of belief formulas into the belief formula map with a given value.
-     * \param fl The list of belief formulas.
-     * \param value The value to assign to each subformula.
-     */
-    void insert_subformula_bf(const FormulaeList& fl, short value);
-
-    /**
-     * \brief Inserts all subformulas of a belief formula into the belief formula map with a given value.
-     * \param bf The belief formula.
-     * \param value The value to assign to each subformula.
-     */
-    void insert_subformula_bf(const BeliefFormula& bf, short value);
+        const auto& actions = Domain::get_instance().get_actions();
+        for (const auto& action : actions)
+        {
+            for (const auto& effects : action.get_effects() | std::views::values)
+            {
+                insert_subformula_bf(effects, state);
+            }
+            if (!action.get_executability().empty())
+            {
+                insert_subformula_bf(action.get_executability(), state);
+            }
+            for (const auto& fully_obs : action.get_fully_observants() | std::views::values)
+            {
+                insert_subformula_bf(fully_obs, state);
+            }
+            for (const auto& part_obs : action.get_partially_observants() | std::views::values)
+            {
+                insert_subformula_bf(part_obs, state);
+            }
+        }
+    }
 
     /**
      * \brief Inserts all subformulas of a list of belief formulas into the belief formula map using entailment from the given state.
-     * \tparam T The state representation type.
+     * \tparam StateRepr The state representation type.
      * \param fl The list of belief formulas.
      * \param eState The epistemic state.
      */
-    template <StateRepresentation T>
-    void insert_subformula_bf(const FormulaeList& fl, State<T>& eState)
+    template <StateRepresentation StateRepr>
+    void insert_subformula_bf(const FormulaeList& fl, const State<StateRepr>& eState)
     {
         for (const auto& formula : fl)
         {
@@ -284,12 +306,12 @@ private:
 
     /**
      * \brief Inserts all subformulas of a belief formula into the belief formula map using entailment from the given state.
-     * \tparam T The state representation type.
+     * \tparam StateRepr The state representation type.
      * \param bf The belief formula.
      * \param eState The epistemic state.
      */
-    template <StateRepresentation T>
-    void insert_subformula_bf(const BeliefFormula& bf, State<T>& eState)
+    template <StateRepresentation StateRepr>
+    void insert_subformula_bf(const BeliefFormula& bf, const State<StateRepr>& eState)
     {
         short value = eState.entails(bf) ? 0 : -1;
 

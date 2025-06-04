@@ -23,8 +23,7 @@ public:
     /**
      * \brief Default constructor.
      */
-    BreadthFirst() = default;
-
+    explicit BreadthFirst([[maybe_unused]] const State<StateRepr>& initial_state) {}
     /**
      * \brief Push a state into the search container.
      */
