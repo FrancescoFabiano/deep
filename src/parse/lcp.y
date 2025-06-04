@@ -84,7 +84,6 @@ extern std::unique_ptr<Reader> domain_reader;
 
 %type <str_val> fluent
 %type <str_list> fluent_set
-%type <str_list> fluent_det_list
 
 %type <str_val> literal
 %type <str_list> literal_list
@@ -102,7 +101,6 @@ extern std::unique_ptr<Reader> domain_reader;
 %type <str_list> action_decls
 
 /*DEBUG_WARNING_REMOVAL %type <str_list> if_ DEBUG_WARNING_REMOVAL*/
-%type <str_list2> if_part_fluent
 %type <bf> if_part_bf
 %type <bf> init
 %type <init_nodes> init_spec
@@ -129,8 +127,7 @@ extern std::unique_ptr<Reader> domain_reader;
 
 
 %%
-input:		
-|
+input:
 fluent_decls 
 action_decls
 agent_decls 
@@ -195,12 +192,6 @@ id LEFT_PAREN param_list RIGHT_PAREN
   $$ = new std::string(*$1 + "(" + *$3 + ")");
 };
 
-fluent_det_list:
-fluent {
-  $$ = new StringsSet;
-  $$->insert(*$1);
-};
-
 fluent_set:
 fluent {
   $$ = new StringsSet;
@@ -217,11 +208,13 @@ literal:
 fluent {
   $$ = $1;
 }
+/* WARNIG REMOVAL
 |
 NEGATION fluent
 {
   $$ = new std::string(*$1 + *$2);
-};
+}*/
+;
 
 literal_list:
 literal
@@ -245,6 +238,7 @@ literal {
 
   $$->insert(s1);
 }
+/* WARNIG REMOVAL
 | formula COMMA formula
 {
   StringSetsSet::iterator it1;
@@ -270,7 +264,8 @@ literal {
 | LEFT_PAREN formula RIGHT_PAREN
 {
   $$ = $2;
-};
+}*/
+;
 
 /* fluent declaration */
 fluent_decl: 
@@ -449,20 +444,6 @@ MC LEFT_PAREN LEFT_BRAC agent_list RIGHT_BRAC COMMA BeliefFormulaParsed RIGHT_PA
    $$->set_bf1(*$7);
 }
 ;
-
-
-
-/* if part for fluent_formula */
-if_part_fluent: 
-/* empty */
-{
-  $$ = new StringSetsSet;
-}
-|
-IF formula {
-  $$ = $2;
-};
-
 
 
 
