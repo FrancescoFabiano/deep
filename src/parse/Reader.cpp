@@ -10,7 +10,7 @@
 #include <memory>
 
 #include "ArgumentParser.h"
-#include "../utilities/HelperPrint.h"
+#include "utilities/HelperPrint.h"
 
 // prototype of bison-generated parser function
 int yyparse();
@@ -20,10 +20,10 @@ int yyparse();
 Reader::Reader() = default;
 
 
-std::unique_ptr<Reader> domain_reader; // or just: Reader* domain_reader = nullptr;
+ // or just: Reader* domain_reader = nullptr;
 void Reader::read()
 {
-    domain_reader.reset(this);
+
     const int ret = yyparse();
     if (ArgumentParser::get_instance().get_debug()) {
         auto& os = ArgumentParser::get_instance().get_output_stream();

@@ -13,6 +13,7 @@
 #include "Configuration.h"
 #include "HelperPrint.h"
 #include "utilities/FormulaHelper.h"
+#include "parse/Reader.h"
 
 Domain::Domain()
 {
@@ -29,11 +30,14 @@ Domain::Domain()
         exit(static_cast<int>(ExitHandler::ExitCode::ExitForCompiler));
     }
 
-    // Parse the domain file and fill m_reader via domain_reader
-    m_reader.read();
+    // Global declaration so it accessed by the bison parser
+    /// \todo Change this when new parser is added
+    domain_reader->read();
 
+    // Global declaration so it accessed by the bison parser
+    /// \todo Change this when new parser is added
     if (ArgumentParser::get_instance().get_debug())
-        m_reader.print();
+        domain_reader->print();
 
     build();
 }
@@ -114,10 +118,10 @@ void Domain::build_agents()
     auto& os = ArgumentParser::get_instance().get_output_stream();
     os << "Building agent list..." << std::endl;
     int i = 0;
-    const int agents_length = FormulaHelper::length_to_power_two(static_cast<int>(m_reader.m_agents.size()));
+    const int agents_length = FormulaHelper::length_to_power_two(static_cast<int>(domain_reader->m_agents.size()));
 
     /////@TODO This will be replaced by epddl parser. Reader needs to be changed and make sure to have getter and setter
-    for (const auto& agent_name : m_reader.m_agents)
+    for (const auto& agent_name : domain_reader->m_agents)
     {
         Agent agent(agents_length, i);
         domain_agent_map.insert({agent_name, agent});
@@ -139,10 +143,10 @@ void Domain::build_fluents()
 
     os << "Building fluent literals..." << std::endl;
     int i = 0;
-    int bit_size = FormulaHelper::length_to_power_two(static_cast<int>(m_reader.m_fluents.size()));
+    int bit_size = FormulaHelper::length_to_power_two(static_cast<int>(domain_reader->m_fluents.size()));
 
     /////@TODO This will be replaced by epddl parser. Reader needs to be changed and make sure to have getter and setter
-    for (const auto& fluent_name : m_reader.m_fluents)
+    for (const auto& fluent_name : domain_reader->m_fluents)
     {
         Fluent fluentReal(bit_size + 1, i);
         fluentReal.set(fluentReal.size() - 1, false);
@@ -171,11 +175,11 @@ void Domain::build_actions()
 
     os << "Building action list..." << std::endl;
     int i = 0;
-    int number_of_actions = static_cast<int>(m_reader.m_actions.size());
+    int number_of_actions = static_cast<int>(domain_reader->m_actions.size());
     int bit_size = FormulaHelper::length_to_power_two(number_of_actions);
 
     /////@TODO This will be replaced by epddl parser. Reader needs to be changed and make sure to have getter and setter
-    for (const auto& action_name : m_reader.m_actions)
+    for (const auto& action_name : domain_reader->m_actions)
     {
         ActionId action_bitset(bit_size, i);
         Action tmp_action(action_name, action_bitset);
@@ -211,7 +215,7 @@ void Domain::build_propositions()
     os << "Adding propositions to actions..." << std::endl;
 
     /////@TODO This will be replaced by epddl parser. Reader needs to be changed and make sure to have getter and setter
-    for (auto& prop : m_reader.m_propositions)
+    for (auto& prop : domain_reader->m_propositions)
     {
         auto action_to_modify = m_grounder.ground_action(prop.get_action_name());
         for (auto it = m_actions.begin(); it != m_actions.end(); ++it)
@@ -236,7 +240,7 @@ void Domain::build_initially()
     os << "Adding to pointed world and initial conditions..." << std::endl;
 
     /////@TODO This will be replaced by epddl parser. Reader needs to be changed and make sure to have getter and setter
-    for (auto& formula_parsed : m_reader.m_bf_initially)
+    for (auto& formula_parsed : domain_reader->m_bf_initially)
     {
         const auto formula = BeliefFormula(formula_parsed);
 
@@ -288,7 +292,7 @@ void Domain::build_goal()
     os << "Adding to Goal..." << std::endl;
 
     /////@TODO This will be replaced by epddl parser. Reader needs to be changed and make sure to have getter and setter
-    for (auto& formula_parsed : m_reader.m_bf_goal)
+    for (auto& formula_parsed : domain_reader->m_bf_goal)
     {
         const auto formula = BeliefFormula(formula_parsed);
         m_goal_description.push_back(formula);

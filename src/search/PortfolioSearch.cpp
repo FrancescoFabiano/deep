@@ -45,11 +45,13 @@ bool PortfolioSearch::run_portfolio_search() const
     config_snapshots.resize(configs_to_run);
 
     auto& os = ArgumentParser::get_instance().get_output_stream();
+
     // --- Measure initial state build time ---
     os << "\nBuilding initial state ...\n";
     const auto initial_build_start = Clock::now();
     State<KripkeState> initial_state;
     initial_state.build_initial();
+
     const auto initial_build_end = Clock::now();
     const auto initial_build_duration = std::chrono::duration_cast<std::chrono::milliseconds>(
         initial_build_end - initial_build_start);

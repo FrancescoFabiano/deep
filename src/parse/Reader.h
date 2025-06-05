@@ -18,7 +18,7 @@
 
 #pragma once
 
-#include "../utilities/Define.h"
+#include "utilities/Define.h"
 #include "actions/Proposition.h"
 
 class Reader
@@ -60,3 +60,7 @@ public:
      */
     void print() const;
 };
+
+// Global declaration so it accessed by the bison parser
+/// \todo Change this when new parser is added
+inline auto domain_reader = std::make_unique<Reader>();

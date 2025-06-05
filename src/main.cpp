@@ -37,6 +37,7 @@ int main(int argc, char** argv)
         std::exit(static_cast<int>(ExitHandler::ExitCode::SuccessNotPlanningModeWarning));
     }
 
+
     //Standard Search
     const PortfolioSearch searcher;
     const bool goal_found = searcher.run_portfolio_search();

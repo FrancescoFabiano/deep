@@ -32,32 +32,31 @@ static bool str_to_bool(const std::string& s)
 }
 
 
-// Static thread-local instance pointer
-thread_local Configuration* Configuration::instance = nullptr;
+// Remove this:
+// thread_local Configuration* Configuration::instance = nullptr;
+
+thread_local bool Configuration::m_initialized = false;
 
 void Configuration::create_instance()
 {
-    if (!instance)
-    {
-        instance = new Configuration();
-
-        // Copy values from ArgumentParser singleton using setters
-        const ArgumentParser& parser = ArgumentParser::get_instance();
-        instance->set_bisimulation(parser.get_bisimulation());
-        instance->set_bisimulation_type(parser.get_bisimulation_type());
-        instance->set_check_visited(parser.get_check_visited());
-        instance->set_search_strategy(parser.get_search_strategy());
-        instance->set_heuristic_opt(parser.get_heuristic());
-    }
+    // This will initialize the thread-local singleton instance on first call per thread.
+    (void)get_instance();
 }
 
 Configuration& Configuration::get_instance()
 {
-    if (!instance)
-    {
-        create_instance();
+    thread_local Configuration instance;
+    if (!m_initialized) {
+        // Copy values from ArgumentParser singleton using setters
+        const ArgumentParser& parser = ArgumentParser::get_instance();
+        instance.set_bisimulation(parser.get_bisimulation());
+        instance.set_bisimulation_type(parser.get_bisimulation_type());
+        instance.set_check_visited(parser.get_check_visited());
+        instance.set_search_strategy(parser.get_search_strategy());
+        instance.set_heuristic_opt(parser.get_heuristic());
+        m_initialized = true;
     }
-    return *instance;
+    return instance;
 }
 
 Configuration::Configuration() = default;

@@ -23,23 +23,20 @@ class Configuration
 {
 public:
     /**
-     * \brief Creates the singleton instance of Configuration by copying values from ArgumentParser.
+     * \brief Returns the thread-local singleton instance of Configuration.
      *
-     * This method explicitly creates the singleton instance of Configuration
-     * by copying all relevant values from the ArgumentParser singleton.
-     * It should be called once after ArgumentParser is initialized.
-     */
-    static void create_instance();
-
-    /**
-     * \brief Returns the singleton instance of Configuration.
-     *
-     * This method returns a single instance of Configuration,
-     * ensuring the application only has one configuration instance.
-     *
-     * \return Reference to the singleton instance.
+     * Each thread gets its own instance.
      */
     static Configuration& get_instance();
+
+    /**
+     * \brief Creates the thread-local singleton instance of Configuration by copying values from ArgumentParser.
+     *
+     * This method explicitly creates the thread-local singleton instance of Configuration
+     * by copying all relevant values from the ArgumentParser singleton.
+     * It should be called once per thread after ArgumentParser is initialized.
+     */
+    static void create_instance();
 
     /** \brief Copy constructor removed since this is a Singleton class. */
     Configuration(const Configuration&) = delete;
@@ -134,9 +131,6 @@ private:
      */
     Configuration();
 
-    // Singleton instance (thread-local)
-    static thread_local Configuration* instance;
-
     // Configuration fields
     bool m_bisimulation = false; ///< Bisimulation enabled flag.
     std::string m_bisimulation_type = "FB"; ///< Bisimulation type string.
@@ -151,4 +145,9 @@ private:
      * \brief Sets the bisimulation type as a boolean.
      */
     void set_bisimulation_type_bool();
+
+    /**
+     * \brief Thread-local flag to track initialization per thread.
+     */
+    static thread_local bool m_initialized;
 };

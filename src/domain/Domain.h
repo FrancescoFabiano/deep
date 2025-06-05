@@ -3,7 +3,6 @@
 #include "Grounder.h"
 #include "InitialStateInformation.h"
 #include "utilities/define.h"
-#include "parse/Reader.h"
 #include "actions/Action.h"
 
 /**
@@ -62,7 +61,6 @@ public:
 
 private:
     std::string m_name; ///< The name of the file that contains the description of *this*.
-    Reader m_reader; ///< The pointer to a \ref Reader object.
     Grounder m_grounder; ///< A \ref grounder object used to store the name of the information.
     FluentsSet m_fluents; ///< Set containing all the (grounded) \ref fluent of the domain.
     ActionsSet m_actions; ///< Set containing all the \ref action (with effects, conditions, obs etc.) of the domain.
