@@ -173,7 +173,7 @@ const FluentsSet& KripkeWorldPointer::get_fluent_set() const
     }
     ExitHandler::exit_with_message(
         ExitHandler::ExitCode::KripkeWorldPointerNullError,
-        "Error: Null KripkeWorldPointer in get_fluent_set().\n  Tip: Ensure all KripkeWorldPointer objects are properly initialized before use."
+        "Error: Null KripkeWorldPointer in get_fluent_set().\nTip: Ensure all KripkeWorldPointer objects are properly initialized before use."
     );
     static FluentsSet dummy;
     return dummy;
@@ -187,7 +187,7 @@ KripkeWorldId KripkeWorldPointer::get_fluent_based_id() const noexcept
     }
     ExitHandler::exit_with_message(
         ExitHandler::ExitCode::KripkeWorldPointerNullError,
-        "Error: Null KripkeWorldPointer in get_fluent_based_id().\n  Tip: Ensure all KripkeWorldPointer objects are properly initialized before use."
+        "Error: Null KripkeWorldPointer in get_fluent_based_id().\nTip: Ensure all KripkeWorldPointer objects are properly initialized before use."
     );
     return 0;
 }
@@ -227,7 +227,7 @@ void KripkeWorldPointer::set_id() noexcept
     m_id = 0; // Reset to zero if m_ptr is null
     ExitHandler::exit_with_message(
         ExitHandler::ExitCode::KripkeWorldPointerNullError,
-        "Error: Null KripkeWorldPointer in get_id().\n  Tip: Ensure all KripkeWorldPointer objects are properly initialized before use."
+        "Error: Null KripkeWorldPointer in get_id().\nTip: Ensure all KripkeWorldPointer objects are properly initialized before use."
     );
     // This line is unreachable, but added to avoid compiler warnings.
     std::exit(static_cast<int>(ExitHandler::ExitCode::ExitForCompiler));
@@ -244,7 +244,7 @@ KripkeWorldId KripkeWorldPointer::get_internal_world_id() const noexcept
     }
     ExitHandler::exit_with_message(
         ExitHandler::ExitCode::KripkeWorldPointerNullError,
-        "Error: Null KripkeWorldPointer in get_internal_world_id().\n  Tip: Ensure all KripkeWorldPointer objects are properly initialized before use."
+        "Error: Null KripkeWorldPointer in get_internal_world_id().\nTip: Ensure all KripkeWorldPointer objects are properly initialized before use."
     );
     return 0;
 }

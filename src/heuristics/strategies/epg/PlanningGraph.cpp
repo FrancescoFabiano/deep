@@ -9,6 +9,7 @@
 
 #include "PlanningGraph.h"
 #include "ArgumentParser.h"
+#include "HelperPrint.h"
 #include "utilities/ExitHandler.h"
 
 
@@ -357,7 +358,7 @@ void PlanningGraph::print() const
         os << "\n\t\t****Fluents****\n\n";
         for (const auto& [fluent, score] : fluents_score)
         {
-            os << "\t\t\t" << Domain::get_instance().get_grounder().deground_fluent(fluent) << " -> " << score <<
+            os << "\t\t\t" << HelperPrint::get_instance().get_grounder().deground_fluent(fluent) << " -> " << score <<
                 std::endl;
         }
         os << "\n\t\t****Belief Formulae****\n\n";

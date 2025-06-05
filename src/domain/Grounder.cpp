@@ -16,16 +16,12 @@
  */
 
 
-Grounder::Grounder(const FluentMap& given_fluent_map, const AgentsMap& given_agent_map, const ActionNamesMap& action_name_map)
+Grounder::Grounder(const FluentMap& given_fluent_map, const AgentsMap& given_agent_map, const ActionNamesMap& given_action_name_map)
 {
     set_fluent_map(given_fluent_map);
     set_agent_map(given_agent_map);
-    set_action_name_map(action_name_map);
-
-    if (ArgumentParser::get_instance().get_debug())
-    {
-        reverse();
-    }
+    set_action_name_map(given_action_name_map);
+    reverse();
 }
 
 
@@ -98,7 +94,7 @@ void Grounder::set_action_name_map(const ActionNamesMap& given_action_name_map)
 
     ExitHandler::exit_with_message(
         ExitHandler::ExitCode::DomainUndeclaredFluent,
-        "ERROR: Fluent '" + to_ground + "' is undeclared."
+        "ERROR (ground): Fluent '" + to_ground + "' is undeclared (grounding)."
     );
     return Fluent{}; // Unreachable, but avoids compiler warning
 }
@@ -127,7 +123,7 @@ void Grounder::set_action_name_map(const ActionNamesMap& given_action_name_map)
 
     ExitHandler::exit_with_message(
         ExitHandler::ExitCode::DomainUndeclaredAgent,
-        "ERROR: Agent '" + to_ground + "' is undeclared."
+        "ERROR (ground): Agent '" + to_ground + "' is undeclared."
     );
     return Agent{}; // Unreachable
 }
@@ -148,7 +144,7 @@ void Grounder::set_action_name_map(const ActionNamesMap& given_action_name_map)
 
     ExitHandler::exit_with_message(
         ExitHandler::ExitCode::DomainUndeclaredAction,
-        "ERROR: Action '" + to_ground + "' is undeclared."
+        "ERROR (ground): Action '" + to_ground + "' is undeclared."
     );
     return ActionId{}; // Unreachable
 }
@@ -161,22 +157,23 @@ void Grounder::set_action_name_map(const ActionNamesMap& given_action_name_map)
 
     ExitHandler::exit_with_message(
         ExitHandler::ExitCode::DomainUndeclaredFluent,
-        "ERROR: Fluent '" + boost::lexical_cast<std::string>(to_deground) + "' is undeclared.");
+        "ERROR (deground): Fluent '" + boost::lexical_cast<std::string>(to_deground) + "' is undeclared."
+    );
     return {};
 }
 
-[[nodiscard]] StringsSet Grounder::deground_fluent(const FluentsSet& x) const
+[[nodiscard]] StringsSet Grounder::deground_fluent(const FluentsSet& to_deground) const
 {
     StringsSet y;
-    for (const auto& id : x)
+    for (const auto& id : to_deground)
         y.insert(deground_fluent(id));
     return y;
 }
 
-[[nodiscard]] StringSetsSet Grounder::deground_fluent(const FluentFormula& x) const
+[[nodiscard]] StringSetsSet Grounder::deground_fluent(const FluentFormula& to_deground) const
 {
     StringSetsSet y;
-    for (const auto& ids : x)
+    for (const auto& ids : to_deground)
         y.insert(deground_fluent(ids));
     return y;
 }
@@ -189,7 +186,7 @@ void Grounder::set_action_name_map(const ActionNamesMap& given_action_name_map)
 
     ExitHandler::exit_with_message(
         ExitHandler::ExitCode::DomainUndeclaredAgent,
-        "ERROR: Agent '" + boost::lexical_cast<std::string>(to_deground) + "' is undeclared."
+        "ERROR (deground): Agent '" + boost::lexical_cast<std::string>(to_deground) + "' is undeclared."
     );
     return {};
 }
@@ -210,19 +207,20 @@ void Grounder::set_action_name_map(const ActionNamesMap& given_action_name_map)
 
     ExitHandler::exit_with_message(
         ExitHandler::ExitCode::DomainUndeclaredAction,
-        "ERROR: Action '" + boost::lexical_cast<std::string>(to_deground) + "' is undeclared."
+        "ERROR (deground): Action '" + boost::lexical_cast<std::string>(to_deground) + "' is undeclared."
     );
     return {};
 }
 
 Grounder& Grounder::operator=(const Grounder& to_copy)
 {
-    set_fluent_map(to_copy.get_fluent_map());
-    set_agent_map(to_copy.get_agent_map());
-    set_action_name_map(to_copy.get_action_name_map());
-    if (ArgumentParser::get_instance().get_debug())
-    {
-        reverse();
+    if (this != &to_copy) {
+        m_fluent_map = to_copy.m_fluent_map;
+        m_agent_map = to_copy.m_agent_map;
+        m_action_name_map = to_copy.m_action_name_map;
+        r_fluent_map = to_copy.r_fluent_map;
+        r_agent_map = to_copy.r_agent_map;
+        r_action_name_map = to_copy.r_action_name_map;
     }
     return *this;
 }

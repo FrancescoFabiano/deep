@@ -1,5 +1,7 @@
 #pragma once
 
+#include <chrono>
+
 #include "Define.h"
 #include "domain/Grounder.h"
 
@@ -150,6 +152,16 @@ public:
      * \return The adjusted world ID as a string.
      */
     static std::string adjust_id_wrt_agents(int num);
+
+
+    /**
+     * \brief Pretty print a duration in a human-readable format.
+     * \details Converts the given duration to a string with appropriate time units (e.g., seconds, milliseconds).
+     * \param duration The duration to pretty print.
+     * \return A string representing the duration in a human-readable format.
+     */
+    static std::string pretty_print_duration(const std::chrono::duration<double>& duration);
+
 
 private:
     Grounder m_grounder; ///< Used to de-ground fluents for printing.

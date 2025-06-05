@@ -388,7 +388,7 @@ void HelperPrint::print_dot_format(const KripkeState& kstate, std::ofstream& ofs
 {
     auto& worlds = kstate.get_worlds();
     auto& pointed = kstate.get_pointed();
-
+    ofs << "digraph G {" << std::endl;
     ofs << "//WORLDS List:" << std::endl;
     std::map<FluentsSet, int> map_world_to_index;
     std::map<unsigned short, char> map_rep_to_name;
@@ -548,6 +548,8 @@ void HelperPrint::print_dot_format(const KripkeState& kstate, std::ofstream& ofs
     }
     ofs << "	</table>>]\n";
     ofs << "	{rank = max; description};\n";
+
+    ofs << "}" << std::endl;
 }
 
 void HelperPrint::print_dataset_format(const KripkeState& kstate, std::ofstream& ofs)
@@ -676,4 +678,25 @@ std::vector<std::string> HelperPrint::read_actions_from_file(const std::string& 
     }
 
     return actions;
+}
+
+
+std::string HelperPrint::pretty_print_duration(const std::chrono::duration<double>& duration)
+{
+    using namespace std::chrono;
+    auto ms = duration_cast<milliseconds>(duration).count();
+    auto s = ms / 1000;
+    ms = ms % 1000;
+    auto min = s / 60;
+    s = s % 60;
+    const auto h = min / 60;
+    min = min % 60;
+
+    std::ostringstream oss;
+    if (h > 0)
+        oss << h << "h ";
+    if (min > 0 || h > 0)
+        oss << min << "m ";
+    oss << s << "s " << ms << "ms";
+    return oss.str();
 }

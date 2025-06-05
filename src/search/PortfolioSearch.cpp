@@ -19,10 +19,10 @@
 
 
 // I am adding this to be seen by the linker because it is a static templated singleton
-template<>
+template <>
 TrainingDataset<KripkeState>* TrainingDataset<KripkeState>::instance = nullptr;
 
-PortfolioSearch::PortfolioSearch(){set_default_configurations();}
+PortfolioSearch::PortfolioSearch() { set_default_configurations(); }
 
 
 bool PortfolioSearch::run_portfolio_search() const
@@ -51,7 +51,6 @@ bool PortfolioSearch::run_portfolio_search() const
     const auto initial_build_start = Clock::now();
     State<KripkeState> initial_state;
     initial_state.build_initial();
-
     const auto initial_build_end = Clock::now();
     const auto initial_build_duration = std::chrono::duration_cast<std::chrono::milliseconds>(
         initial_build_end - initial_build_start);
@@ -63,7 +62,8 @@ bool PortfolioSearch::run_portfolio_search() const
     auto run_search = [&](int idx, const std::map<std::string, std::string>& config_map, const bool is_user_config)
     {
         // --- DEBUG: Print reached at start of thread ---
-        if (ArgumentParser::get_instance().get_debug()){
+        if (ArgumentParser::get_instance().get_debug())
+        {
             static std::mutex cout_mutex;
             std::lock_guard<std::mutex> lock(cout_mutex);
             std::cout << "[Thread " << idx << "] Entered run_search lambda." << std::endl;
@@ -127,7 +127,8 @@ bool PortfolioSearch::run_portfolio_search() const
                 break;
             }
         default:
-            if (ArgumentParser::get_instance().get_debug()){
+            if (ArgumentParser::get_instance().get_debug())
+            {
                 static std::mutex cout_mutex;
                 std::lock_guard<std::mutex> lock(cout_mutex);
                 std::cout << "[Thread " << idx << "] Unknown search type!" << std::endl;
@@ -178,14 +179,19 @@ bool PortfolioSearch::run_portfolio_search() const
         HelperPrint::get_instance().print_list(plan_actions_id[idx]);
         os << "\n  Plan length: " << plan_actions_id[idx].size()
             << "\n  Search used: " << search_types[idx]
-            << "\n  Time elapsed " << times[idx].count() << "s"
-            << "\n  Nodes Expanded: " << expanded_nodes[idx] << std::endl;
-        //os << "\nConfiguration used:\n" << config_snapshots[idx] << std::endl;
+            << "\n  Nodes Expanded: " << expanded_nodes[idx]
+            << "\n  Time elapsed " << std::chrono::duration_cast<std::chrono::milliseconds>(times[idx]).count() <<
+            " ms";
+        if (std::chrono::duration_cast<std::chrono::milliseconds>(times[idx]).count() > 1000)
+        {
+            os << "\n  Pretty time: " << HelperPrint::get_instance().pretty_print_duration(times[idx]);
+        }
+        os << std::endl<< std::endl;
         return true;
     }
     else
     {
-        os << "\nNo goal found :(" << std::endl;
+        os << "\nNo goal found :(" << std::endl<< std::endl;
         return false;
     }
 }

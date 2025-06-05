@@ -48,8 +48,8 @@ bool KripkeEntailmentHelper::entails(const FluentFormula& to_check, const Kripke
             "Error: Attempted to check entailment of an empty FluentFormula in KripkeEntailmentHelper::entails().\n"
         );
     }
-    // Returns true if the formula is entailed in all reachable worlds.
-    return std::ranges::all_of(to_check, [&](const FluentsSet& fluentSet)
+    // Returns true if the formula is entailed in at least one reachable world.
+    return std::ranges::any_of(to_check, [&](const FluentsSet& fluentSet)
     {
         return entails(fluentSet, world);
     });

@@ -241,6 +241,7 @@ void KripkeState::generate_initial_worlds(FluentsSet& permutation, const unsigne
 void KripkeState::add_initial_world(const KripkeWorld& possible_add)
 {
     const InitialStateInformation ini_conditions = Domain::get_instance().get_initial_description();
+
     if (KripkeEntailmentHelper::entails(ini_conditions.get_ff_forS5(), possible_add))
     {
         add_world(possible_add);

@@ -48,11 +48,6 @@ Domain& Domain::get_instance()
     return instance;
 }
 
-const Grounder& Domain::get_grounder() const noexcept
-{
-    return m_grounder;
-}
-
 const FluentsSet& Domain::get_fluents() const noexcept
 {
     return m_fluents;
@@ -103,16 +98,18 @@ void Domain::build()
 {
     auto& os = ArgumentParser::get_instance().get_output_stream();
     os << "\n\n========== DOMAIN OUTPUT BEGIN ==========\n";
-    build_agents();
-    build_fluents();
-    build_actions();
+
+    Grounder grounder;
+    build_agents(grounder);
+    build_fluents(grounder);
+    build_actions(grounder);
     build_initially();
     build_goal();
     os << "========== DOMAIN OUTPUT END ==========\n\n";
 
 }
 
-void Domain::build_agents()
+void Domain::build_agents(Grounder & grounder)
 {
     AgentsMap domain_agent_map;
     auto& os = ArgumentParser::get_instance().get_output_stream();
@@ -133,10 +130,10 @@ void Domain::build_agents()
             os << "Agent " << agent_name << " is " << agent << std::endl;
         };
     }
-    m_grounder.set_agent_map(domain_agent_map);
+    grounder.set_agent_map(domain_agent_map);
 }
 
-void Domain::build_fluents()
+void Domain::build_fluents(Grounder & grounder)
 {
     FluentMap domain_fluent_map;
     auto& os = ArgumentParser::get_instance().get_output_stream();
@@ -165,10 +162,10 @@ void Domain::build_fluents()
             os << "Literal not " << fluent_name << " is " << (i - 1) << " " << fluent_negate_real << std::endl;
         }
     }
-    m_grounder.set_fluent_map(domain_fluent_map);
+    grounder.set_fluent_map(domain_fluent_map);
 }
 
-void Domain::build_actions()
+void Domain::build_actions(Grounder & grounder)
 {
     ActionNamesMap domain_action_name_map;
     auto& os = ArgumentParser::get_instance().get_output_stream();
@@ -193,9 +190,9 @@ void Domain::build_actions()
         }
     }
 
-    m_grounder.set_action_name_map(domain_action_name_map);
-    HelperPrint::get_instance().set_grounder(m_grounder);
+    grounder.set_action_name_map(domain_action_name_map);
 
+    HelperPrint::get_instance().set_grounder(grounder);
     build_propositions();
 
 
@@ -217,7 +214,7 @@ void Domain::build_propositions()
     /////@TODO This will be replaced by epddl parser. Reader needs to be changed and make sure to have getter and setter
     for (auto& prop : domain_reader->m_propositions)
     {
-        auto action_to_modify = m_grounder.ground_action(prop.get_action_name());
+        auto action_to_modify = HelperPrint::get_instance().get_grounder().ground_action(prop.get_action_name());
         for (auto it = m_actions.begin(); it != m_actions.end(); ++it)
         {
             ActionId actionTemp = action_to_modify;

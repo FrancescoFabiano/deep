@@ -341,9 +341,9 @@ bool FormulaHelper::consistent(const FluentsSet& to_check)
             std::string error =
                 "Consistency check failed in FormulaHelper::consistent: set contains a fluent and its negation.\n";
             error += "Clashing fluents: \"";
-            error += Domain::get_instance().get_grounder().deground_fluent(*it);
+            error += HelperPrint::get_instance().get_grounder().deground_fluent(*it);
             error += "\" and \"";
-            error += Domain::get_instance().get_grounder().deground_fluent(neg);
+            error += HelperPrint::get_instance().get_grounder().deground_fluent(neg);
             //oss << "\nFull set: ";
             //HelperPrint::get_instance().print_list(to_check, oss);
             ExitHandler::exit_with_message(

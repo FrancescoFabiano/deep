@@ -8,6 +8,7 @@
 
 #include "InitialStateInformation.h"
 
+#include "ArgumentParser.h"
 #include "BeliefFormula.h"
 #include "utilities/ExitHandler.h"
 
@@ -87,6 +88,13 @@ bool InitialStateInformation::check_restriction(const BeliefFormula& to_check)
     default:
         ret = false;
         break;
+    }
+    if (!ret)
+    {
+        auto& os = ArgumentParser::get_instance().get_output_stream();
+        os << "[WARNING] The initial condition ";
+        to_check.print();
+        os << " does not respect the initial state restriction (finitary S5)." << std::endl;
     }
     return ret;
 }

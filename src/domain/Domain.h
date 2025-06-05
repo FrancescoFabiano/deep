@@ -33,8 +33,6 @@ public:
     /** \brief Function that builds all the domain information.     */
     void build();
 
-    /** \brief Getter of the field \ref m_grounder. */
-    [[nodiscard]] const Grounder& get_grounder() const noexcept;
     /** \brief Getter of the field \ref m_fluents. */
     [[nodiscard]] const FluentsSet& get_fluents() const noexcept;
     /** \brief Function that returns the number of \ref fluent in the domain. */
@@ -61,21 +59,28 @@ public:
 
 private:
     std::string m_name; ///< The name of the file that contains the description of *this*.
-    Grounder m_grounder; ///< A \ref grounder object used to store the name of the information.
+    //Grounder m_grounder; ///< A \ref grounder object used to store the name of the information.
     FluentsSet m_fluents; ///< Set containing all the (grounded) \ref fluent of the domain.
     ActionsSet m_actions; ///< Set containing all the \ref action (with effects, conditions, obs etc.) of the domain.
     AgentsSet m_agents; ///< Set containing all the (grounded) \ref agent of the domain.
     InitialStateInformation m_initial_description; ///< The description of the initial State.
     FormulaeList m_goal_description; ///< The formula that describes the goal.
 
-    /** \brief Function that stores the agent information from the file.     */
-    void build_agents();
+    /**
+     * \brief Stores agent information from the input file.
+     * \param grounder The Grounder object being filled with agent information, which will later be assigned to the helper print.
+     */
+    void build_agents(Grounder& grounder);
 
-    /** \brief Function that stores the fluent information from the file.     */
-    void build_fluents();
+    /** \brief Function that stores the fluent information from the file.
+     * \param grounder The Grounder object being filled with agent information, which will later be assigned to the helper print.
+     */
+    void build_fluents(Grounder& grounder);
 
-    /** \brief Function that stores the action information (with effects, conditions, etc.) from the file.     */
-    void build_actions();
+    /** \brief Function that stores the action information (with effects, conditions, etc.) from the file.
+     * \param grounder The Grounder object being filled with agent information, which will later be assigned to the helper print.
+     */
+    void build_actions(Grounder& grounder);
 
     /** \brief Function that adds each proposition to the correct action.
      */
