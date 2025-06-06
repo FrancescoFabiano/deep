@@ -289,19 +289,23 @@ bool SpaceSearcher<StateRepr, Strategy>::validate_plan(const State<StateRepr>& i
         visited_states.insert(initial);
     }
 
-    std::string dot_files_folder = std::string(OutputPaths::EXEC_PLAN_FOLDER) + "/" + Domain::get_instance().get_name() + "/";
+    std::string dot_files_folder = std::string(OutputPaths::EXEC_PLAN_FOLDER) + "/" + Domain::get_instance().get_name()
+        + "/";
     std::filesystem::create_directories(dot_files_folder);
     std::string dot_file_path = dot_files_folder;
-    std::string dot_extension = ".dot";
-    bool first;
+    bool is_first = true;
 
 
     State<StateRepr> current = initial;
+    print_dot_for_execute_plan(true, false, is_first, dot_file_path, "initial", current, dot_files_folder);
 
     const auto& plan = ArgumentParser::get_instance().get_execution_actions();
 
-    for (const auto& action_name : plan)
+    for (auto it = plan.begin(); it != plan.end(); ++it)
     {
+        const auto& action_name = *it;
+        bool is_last = (std::next(it) == plan.end());
+
         bool found_action = false;
         for (const auto& action : Domain::get_instance().get_actions())
         {
@@ -316,33 +320,17 @@ bool SpaceSearcher<StateRepr, Strategy>::validate_plan(const State<StateRepr>& i
                     {
                         current.contract_with_bisimulation();
                     }
-                    if (ArgumentParser::get_instance().get_debug())
-                    {
-                        if (first) first = false;
-                        else dot_file_path += "-";
-                        dot_file_path += action_name + dot_extension;
-
-                        std::string ofstream_name = dot_file_path + dot_extension;
-                        if (std::ofstream ofs(ofstream_name); ofs.is_open())
-                        {
-                            current.print_dot_format(ofs);
-                            ofs.close();
-                        }
-
-                        //DEBUG
-                        std::string bis_ofstream_name = action_name + "_bis" + dot_extension;
-                        if (std::ofstream bis_ofs(bis_ofstream_name); bis_ofs.is_open())
-                        {
-                            current.print_dot_format(bis_ofs);
-                            bis_ofs.close();
-                        }
-                        std::string script_cmd = "./scripts/dot_to_pdf.sh " + dot_files_folder;
-                        std::system(script_cmd.c_str());
-                        //DEBUG
-                    }
+                    print_dot_for_execute_plan(false, is_last, is_first, dot_file_path, action_name, current,
+                                               dot_files_folder);
                     if (current.is_goal())
                     {
                         m_plan_actions_id = current.get_executed_actions();
+                        if (!is_last)
+                        {
+                            auto& os = ArgumentParser::get_instance().get_output_stream();
+                            os << "\n[WARNING] Plan found before the entire plan was used.";
+                            os << std::endl;
+                        }
                         return true;
                     }
                     if (check_visited && !visited_states.insert(current).second)
@@ -352,6 +340,13 @@ bool SpaceSearcher<StateRepr, Strategy>::validate_plan(const State<StateRepr>& i
                             "\n[WARNING] While executing the plan, found an already visited state after the execution of the actions:\n";
                         HelperPrint::get_instance().print_list(current.get_executed_actions());
                         os << "\nThis means that the plan is not optimal." << std::endl;
+                    }
+                    if (is_last)
+                    {
+                        auto& os = ArgumentParser::get_instance().get_output_stream();
+                        os << "\n[WARNING] No plan found after the execution of :\n";
+                        HelperPrint::get_instance().print_list(current.get_executed_actions());
+                        os << std::endl;
                     }
                 }
                 else
@@ -376,4 +371,56 @@ bool SpaceSearcher<StateRepr, Strategy>::validate_plan(const State<StateRepr>& i
         }
     }
     return current.is_goal();
+}
+
+template <StateRepresentation StateRepr, SearchStrategy<StateRepr> Strategy>
+void SpaceSearcher<StateRepr, Strategy>::print_dot_for_execute_plan(const bool initial, const bool last, bool& first,
+                                                                    std::string& dot_file_path,
+                                                                    const std::string& action_name,
+                                                                    const State<StateRepr>& current,
+                                                                    const std::string& dot_files_folder)
+{
+    if (!ArgumentParser::get_instance().get_debug())
+        return;
+
+    constexpr std::string_view dot_extension = ".dot";
+
+    if (!initial)
+    {
+        if (first) first = false;
+        else dot_file_path += "-";
+    }
+
+    std::string print_name;
+    if (!initial)
+    {
+        dot_file_path += action_name;
+        print_name = dot_file_path;
+    }
+    else
+    {
+        print_name = dot_file_path + "initial";
+    }
+
+    std::string ofstream_name = print_name + std::string(dot_extension);
+    if (std::ofstream ofs(ofstream_name); ofs.is_open())
+    {
+        current.print_dot_format(ofs);
+    }
+
+
+    //DEBUG
+    std::string bis_ofstream_name = print_name + "_bis" + std::string(dot_extension);
+    if (std::ofstream bis_ofs(bis_ofstream_name); bis_ofs.is_open())
+    {
+        current.print_dot_format(bis_ofs);
+    }
+    //DEBUG
+
+
+    if (last)
+    {
+        std::string script_cmd = "./scripts/dot_to_png.sh " + dot_files_folder;
+        std::system(script_cmd.c_str());
+    }
 }

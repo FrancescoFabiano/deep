@@ -144,6 +144,20 @@ private:
     [[nodiscard]]
     bool validate_plan(const State<StateRepr>& initial, bool check_visited,
                        bool bisimulation_reduction);
+
+    /**
+     * \brief Prints a DOT representation for an action in the execution plan.
+     *
+     * \param initial Boolean indicating if this the initial state.
+     * \param last Boolean indicating if this is the last step.
+     * \param first Reference to a boolean indicating if this is the first step (used to initialize the DOT filename).
+     * \param dot_file_path Reference to the path of the DOT file to write to.
+     * \param action_name The name of the action being executed.
+     * \param current The current state after executing the action.
+     * \param dot_files_folder The folder where DOT files are stored.
+     */
+    static void print_dot_for_execute_plan(const bool initial, const bool last, bool & first, std::string & dot_file_path, const std::string& action_name, const State<StateRepr>& current, const std::string& dot_files_folder);
+
     ///@}
 };
 
