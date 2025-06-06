@@ -39,10 +39,8 @@ public:
     {
         if (index >= data.size())
         {
-            ExitHandler::exit_with_message(
-                ExitHandler::ExitCode::BisimulationWrapperOutOfBounds,
-                "Index " + std::to_string(index) + " is out of bounds in one of the bisimulation vectors"
-            );
+            size_t new_size = std::max(index + 1, data.size() + 100);
+            data.resize(new_size);
         }
         return data[index];
     }

@@ -184,7 +184,7 @@ bool PortfolioSearch::run_portfolio_search() const
             " ms";
         if (std::chrono::duration_cast<std::chrono::milliseconds>(times[idx]).count() > 1000)
         {
-            os << "\n  Pretty time: " << HelperPrint::pretty_print_duration(times[idx]);
+            os << " (" << HelperPrint::pretty_print_duration(times[idx]) << ")";
         }
         os << std::endl<< std::endl;
         return true;

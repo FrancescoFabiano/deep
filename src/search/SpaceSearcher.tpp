@@ -82,21 +82,22 @@ bool SpaceSearcher<StateRepr, Strategy>::search(State<StateRepr>& initial)
         return true;
     }
 
+    bool result;
     // Dispatch
     if (ArgumentParser::get_instance().get_execute_plan())
     {
         // If a plan is provided, validate it
-        return validate_plan(initial, check_visited, bisimulation_reduction);
+        result = validate_plan(initial, check_visited, bisimulation_reduction);
     }
-    const int num_threads = ArgumentParser::get_instance().get_threads_per_search();
-    const bool result = (num_threads <= 1)
-                            ? search_sequential(initial, actions, check_visited, bisimulation_reduction)
-                            : search_parallel(initial, actions, check_visited, bisimulation_reduction, num_threads);
-
-    if (result)
+    else
     {
-        m_elapsed_seconds = std::chrono::system_clock::now() - start_timing;
+        const int num_threads = ArgumentParser::get_instance().get_threads_per_search();
+        result = (num_threads <= 1)
+                                ? search_sequential(initial, actions, check_visited, bisimulation_reduction)
+                                : search_parallel(initial, actions, check_visited, bisimulation_reduction, num_threads);
     }
+
+    m_elapsed_seconds = std::chrono::system_clock::now() - start_timing;
 
     return result;
 }
@@ -297,6 +298,7 @@ bool SpaceSearcher<StateRepr, Strategy>::validate_plan(const State<StateRepr>& i
                 found_action = true;
                 if (current.is_executable(action))
                 {
+                    ++m_expanded_nodes;
                     current = current.compute_successor(action);
                     if (bisimulation_reduction)
                     {
@@ -304,6 +306,7 @@ bool SpaceSearcher<StateRepr, Strategy>::validate_plan(const State<StateRepr>& i
                     }
                     if (current.is_goal())
                     {
+                        m_plan_actions_id = current.get_executed_actions();
                         return true;
                     }
                     if (check_visited)

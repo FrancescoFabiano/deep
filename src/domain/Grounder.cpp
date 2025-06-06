@@ -57,19 +57,19 @@ void Grounder::create_reverse_ac()
 void Grounder::set_fluent_map(const FluentMap& given_fluent_map)
 {
     m_fluent_map = given_fluent_map;
-    //create_reverse_fl();
+    create_reverse_fl();
 }
 
 void Grounder::set_agent_map(const AgentsMap& given_agent_map)
 {
     m_agent_map = given_agent_map;
-    //create_reverse_ag();
+    create_reverse_ag();
 }
 
 void Grounder::set_action_name_map(const ActionNamesMap& given_action_name_map)
 {
     m_action_name_map = given_action_name_map;
-    //create_reverse_ac();
+    create_reverse_ac();
 }
 
 [[nodiscard]] const FluentMap& Grounder::get_fluent_map() const
@@ -201,8 +201,7 @@ void Grounder::set_action_name_map(const ActionNamesMap& given_action_name_map)
 
 [[nodiscard]] std::string Grounder::deground_action(const ActionId& to_deground) const
 {
-    const auto it = r_action_name_map.find(to_deground);
-    if (it != r_action_name_map.end())
+    if (const auto it = r_action_name_map.find(to_deground); it != r_action_name_map.end())
         return it->second;
 
     ExitHandler::exit_with_message(

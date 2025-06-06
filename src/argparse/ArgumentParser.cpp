@@ -249,7 +249,15 @@ const std::string& ArgumentParser::get_search_strategy() const noexcept { return
 
 bool ArgumentParser::get_execute_plan() const noexcept { return m_exec_plan; }
 const std::string& ArgumentParser::get_plan_file() const noexcept { return m_plan_file; }
-const std::vector<std::string>& ArgumentParser::get_execution_actions() const noexcept { return m_exec_actions; }
+
+const std::vector<std::string>& ArgumentParser::get_execution_actions() noexcept
+{
+    for (auto& action : m_exec_actions)
+    {
+        std::erase(action, ',');
+    }
+    return m_exec_actions;
+}
 
 bool ArgumentParser::get_results_file() const noexcept { return m_output_results_file; }
 bool ArgumentParser::get_log_enabled() const noexcept { return m_log_enabled; }

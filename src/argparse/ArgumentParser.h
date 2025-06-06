@@ -83,7 +83,7 @@ public:
      * \brief Retrieves the sequence of actions to execute.
      * \return A vector containing the actions to be executed.
      */
-    [[nodiscard]] const std::vector<std::string>& get_execution_actions() const noexcept;
+    [[nodiscard]] const std::vector<std::string>& get_execution_actions() noexcept;
 
     /**
      * \brief Checks if the results should be logged to a file.
