@@ -175,6 +175,7 @@ bool PortfolioSearch::run_portfolio_search() const
     {
         int idx = winner;
         os << "\nGoal found :)";
+        os << "\n  Problem filename: " << Domain::get_instance().get_name();
         os << "\n  Action Executed: ";
         HelperPrint::get_instance().print_list(plan_actions_id[idx]);
         os << "\n  Plan length: " << plan_actions_id[idx].size()

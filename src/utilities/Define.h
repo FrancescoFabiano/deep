@@ -19,6 +19,7 @@ struct OutputPaths
 {
     static constexpr auto LOGS_FOLDER = "logs"; ///< Path to the log folder.
     static constexpr auto OUTPUT_FOLDER = "out"; ///< Path to the output folder.
+    static constexpr auto EXEC_PLAN_FOLDER = "out/plan_exec/"; ///< Path to the output folder.
     static constexpr auto DATASET_NN_OUTPUT_FOLDER = "out/NN"; ///< Path to the NN output folder.
     static constexpr auto DATASET_TRAINING_FOLDER = "out/NN/Training"; ///< Path to the training folder.
     static constexpr auto DATASET_INFERENCE_FOLDER = "out/NN/Inference"; ///< Path to the inference folder.

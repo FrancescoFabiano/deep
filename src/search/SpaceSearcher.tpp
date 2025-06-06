@@ -23,7 +23,8 @@
 template <StateRepresentation StateRepr, SearchStrategy<StateRepr> Strategy>
 SpaceSearcher<StateRepr, Strategy>::SpaceSearcher(Strategy strategy)
     : m_strategy(std::move(strategy))
-{}
+{
+}
 
 template <StateRepresentation StateRepr, SearchStrategy<StateRepr> Strategy>
 std::string SpaceSearcher<StateRepr, Strategy>::get_search_type() const noexcept
@@ -93,8 +94,8 @@ bool SpaceSearcher<StateRepr, Strategy>::search(State<StateRepr>& initial)
     {
         const int num_threads = ArgumentParser::get_instance().get_threads_per_search();
         result = (num_threads <= 1)
-                                ? search_sequential(initial, actions, check_visited, bisimulation_reduction)
-                                : search_parallel(initial, actions, check_visited, bisimulation_reduction, num_threads);
+                     ? search_sequential(initial, actions, check_visited, bisimulation_reduction)
+                     : search_parallel(initial, actions, check_visited, bisimulation_reduction, num_threads);
     }
 
     m_elapsed_seconds = std::chrono::system_clock::now() - start_timing;
@@ -109,7 +110,8 @@ bool SpaceSearcher<StateRepr, Strategy>::search_sequential(State<StateRepr>& ini
 {
     m_strategy.reset();
 
-    std::set<State<StateRepr>> visited_states;  /// \warning cannot use unordered_set because I am missing a clear way of hashing the state
+    std::set<State<StateRepr>> visited_states;
+    /// \warning cannot use unordered_set because I am missing a clear way of hashing the state
     m_expanded_nodes = 0;
 
     m_strategy.push(initial);
@@ -126,7 +128,6 @@ bool SpaceSearcher<StateRepr, Strategy>::search_sequential(State<StateRepr>& ini
 
         for (const auto& action : actions)
         {
-
             if (current.is_executable(action))
             {
                 State successor = current.compute_successor(action);
@@ -157,7 +158,8 @@ bool SpaceSearcher<StateRepr, Strategy>::search_parallel(State<StateRepr>& initi
                                                          const bool check_visited, const bool bisimulation_reduction,
                                                          const int num_threads)
 {
-    std::set<State<StateRepr>> visited_states; /// \warning cannot use unordered_set because I am missing a clear way of hashing the state
+    std::set<State<StateRepr>> visited_states;
+    /// \warning cannot use unordered_set because I am missing a clear way of hashing the state
     Strategy current_frontier(initial);
     current_frontier.push(initial);
 
@@ -183,11 +185,13 @@ bool SpaceSearcher<StateRepr, Strategy>::search_parallel(State<StateRepr>& initi
 
         size_t chunk_size = (level_states.size() + num_threads - 1) / num_threads;
         std::atomic<bool> found_goal{false};
-        std::vector<std::set<State<StateRepr>>> local_visited(num_threads); /// \warning cannot use unordered_set because I am missing a clear way of hashing the state
+        std::vector<std::set<State<StateRepr>>> local_visited(num_threads);
+        /// \warning cannot use unordered_set because I am missing a clear way of hashing the state
 
         std::vector<Strategy> local_frontiers;
         local_frontiers.reserve(num_threads);
-        for (int t = 0; t < num_threads; ++t) {
+        for (int t = 0; t < num_threads; ++t)
+        {
             local_frontiers.emplace_back(initial);
         }
         for (int t = 0; t < num_threads; ++t)
@@ -278,11 +282,19 @@ template <StateRepresentation StateRepr, SearchStrategy<StateRepr> Strategy>
 bool SpaceSearcher<StateRepr, Strategy>::validate_plan(const State<StateRepr>& initial, const bool check_visited,
                                                        const bool bisimulation_reduction)
 {
-    std::set<State<StateRepr>> visited_states; /// \warning cannot use unordered_set because I am missing a clear way of hashing the state
+    std::set<State<StateRepr>> visited_states;
+    /// \warning cannot use unordered_set because I am missing a clear way of hashing the state
     if (check_visited)
     {
         visited_states.insert(initial);
     }
+
+    std::string dot_files_folder = std::string(OutputPaths::EXEC_PLAN_FOLDER) + "/" + Domain::get_instance().get_name() + "/";
+    std::filesystem::create_directories(dot_files_folder);
+    std::string dot_file_path = dot_files_folder;
+    std::string dot_extension = ".dot";
+    bool first;
+
 
     State<StateRepr> current = initial;
 
@@ -304,14 +316,42 @@ bool SpaceSearcher<StateRepr, Strategy>::validate_plan(const State<StateRepr>& i
                     {
                         current.contract_with_bisimulation();
                     }
+                    if (ArgumentParser::get_instance().get_debug())
+                    {
+                        if (first) first = false;
+                        else dot_file_path += "-";
+                        dot_file_path += action_name + dot_extension;
+
+                        std::string ofstream_name = dot_file_path + dot_extension;
+                        if (std::ofstream ofs(ofstream_name); ofs.is_open())
+                        {
+                            current.print_dot_format(ofs);
+                            ofs.close();
+                        }
+
+                        //DEBUG
+                        std::string bis_ofstream_name = action_name + "_bis" + dot_extension;
+                        if (std::ofstream bis_ofs(bis_ofstream_name); bis_ofs.is_open())
+                        {
+                            current.print_dot_format(bis_ofs);
+                            bis_ofs.close();
+                        }
+                        std::string script_cmd = "./scripts/dot_to_pdf.sh " + dot_files_folder;
+                        std::system(script_cmd.c_str());
+                        //DEBUG
+                    }
                     if (current.is_goal())
                     {
                         m_plan_actions_id = current.get_executed_actions();
                         return true;
                     }
-                    if (check_visited)
+                    if (check_visited && !visited_states.insert(current).second)
                     {
-                        visited_states.insert(current);
+                        auto& os = ArgumentParser::get_instance().get_output_stream();
+                        os <<
+                            "\n[WARNING] While executing the plan, found an already visited state after the execution of the actions:\n";
+                        HelperPrint::get_instance().print_list(current.get_executed_actions());
+                        os << "\nThis means that the plan is not optimal." << std::endl;
                     }
                 }
                 else

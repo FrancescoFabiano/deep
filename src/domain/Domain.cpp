@@ -19,6 +19,8 @@ Domain::Domain()
 {
     const auto& argument_parser = ArgumentParser::get_instance();
     const std::string input_file = argument_parser.get_input_file();
+    const std::filesystem::path domain_path(input_file);
+    m_name = domain_path.stem().string();
 
     if (freopen(input_file.c_str(), "r", stdin) == nullptr)
     {
