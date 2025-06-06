@@ -608,6 +608,7 @@ bool KripkeState::entails(const FormulaeList& to_check) const
 void KripkeState::contract_with_bisimulation()
 {
     KripkeReachabilityHelper::clean_unreachable_worlds(*this);
+    m_max_depth--;
     Bisimulation::calc_min_bisimilar(*this);
 }
 

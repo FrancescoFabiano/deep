@@ -142,26 +142,31 @@ void Domain::build_fluents(Grounder & grounder)
 
     os << "Building fluent literals..." << std::endl;
     int i = 0;
-    int bit_size = FormulaHelper::length_to_power_two(static_cast<int>(domain_reader->m_fluents.size()));
+    const int bit_size = FormulaHelper::length_to_power_two(static_cast<int>(domain_reader->m_fluents.size())) + 1; // +1 for the negation bit
 
     /////@TODO This will be replaced by epddl parser. Reader needs to be changed and make sure to have getter and setter
     for (const auto& fluent_name : domain_reader->m_fluents)
     {
-        Fluent fluentReal(bit_size + 1, i);
-        fluentReal.set(fluentReal.size() - 1, false);
-        domain_fluent_map.insert({fluent_name, fluentReal});
-        m_fluents.insert(fluentReal);
+        Fluent fluent_real(bit_size, i);
+        os << "Fluent Real is " << fluent_real << std::endl;
+        fluent_real.set(fluent_real.size() - 1, true);
+        os << "Fluent Real + neg bit is " << fluent_real << std::endl;
 
-        Fluent fluent_negate_real(bit_size + 1, i);
-        fluent_negate_real.set(fluent_negate_real.size() - 1, true);
+        domain_fluent_map.insert({fluent_name, fluent_real});
+        m_fluents.insert(fluent_real);
+
+        Fluent fluent_negate_real(bit_size, i);
+        os << "Fluent Neg is " << fluent_negate_real << std::endl;
+        //fluent_negate_real.set(fluent_negate_real.size() - 1, false); Do nothing since it is already false by deafult
+        os << "Fluent Neg is + neg bit is " << fluent_negate_real << std::endl;
         domain_fluent_map.insert({NEGATION_SYMBOL + fluent_name, fluent_negate_real});
         m_fluents.insert(fluent_negate_real);
         ++i;
 
         if (ArgumentParser::get_instance().get_debug())
         {
-            os << "Literal " << fluent_name << " is " << " " << fluentReal << std::endl;
-            os << "Literal not " << fluent_name << " is " << (i - 1) << " " << fluent_negate_real << std::endl;
+            os << "Literal " << fluent_name << " is " << fluent_real << std::endl;
+            os << "Literal not " << fluent_name << " is " << fluent_negate_real << std::endl;
         }
     }
     grounder.set_fluent_map(domain_fluent_map);

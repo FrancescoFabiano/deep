@@ -96,7 +96,8 @@ void Grounder::set_action_name_map(const ActionNamesMap& given_action_name_map)
         ExitHandler::ExitCode::DomainUndeclaredFluent,
         "ERROR (ground): Fluent '" + to_ground + "' is undeclared (grounding)."
     );
-    return Fluent{}; // Unreachable, but avoids compiler warning
+    // This line is unreachable, but it avoids a compiler warning about not returning a value.
+    std::exit(static_cast<int>(ExitHandler::ExitCode::ExitForCompiler));
 }
 
 [[nodiscard]] FluentsSet Grounder::ground_fluent(const StringsSet& to_ground) const
@@ -224,8 +225,8 @@ Grounder& Grounder::operator=(const Grounder& to_copy)
     return *this;
 }
 
-Grounder::Grounder(const Grounder& other)
-    : m_fluent_map(other.m_fluent_map),
+Grounder::Grounder(const Grounder& other)=default;
+/*  : m_fluent_map(other.m_fluent_map),
       m_agent_map(other.m_agent_map),
       m_action_name_map(other.m_action_name_map),
       r_fluent_map(other.r_fluent_map),
@@ -233,4 +234,4 @@ Grounder::Grounder(const Grounder& other)
       r_action_name_map(other.r_action_name_map)
 {
     // Nothing else needed; all members copied.
-}
+}*/

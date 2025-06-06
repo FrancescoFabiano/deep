@@ -247,6 +247,26 @@ public:
     bool operator<(const State<StateRepr>& to_compare) const;
 
 
+    /**
+     * \brief Equality operator.
+     *
+     * Two states are equal if neither is less than the other.
+     *
+     * \param to_compare The state to compare with.
+     * \return true if the states are equal, false otherwise.
+     */
+    bool operator==(const State<StateRepr>& to_compare) const;
+
+    /**
+     * \brief Inequality operator.
+     *
+     * Two states are not equal if one is less than the other.
+     *
+     * \param to_compare The state to compare with.
+     * \return true if the states are not equal, false otherwise.
+     */
+    bool operator!=(const State<StateRepr>& to_compare) const;
+
     /** \brief Function that prints the information of *this*.
      */
     void print() const;

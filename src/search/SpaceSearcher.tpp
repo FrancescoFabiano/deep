@@ -410,13 +410,22 @@ void SpaceSearcher<StateRepr, Strategy>::print_dot_for_execute_plan(const bool i
 
 
     //DEBUG
+    State<StateRepr> temp = current;
+    temp.contract_with_bisimulation();
     std::string bis_ofstream_name = print_name + "_bis" + std::string(dot_extension);
     if (std::ofstream bis_ofs(bis_ofstream_name); bis_ofs.is_open())
     {
-        current.print_dot_format(bis_ofs);
+        temp.print_dot_format(bis_ofs);
     }
     //DEBUG
 
+    if (temp != current)
+    {
+        auto& os = ArgumentParser::get_instance().get_output_stream();
+        os << "\nThe state and its bisimulation differ after the actions:";
+        HelperPrint::get_instance().print_list(current.get_executed_actions());
+        os << std::endl;
+    }
 
     if (last)
     {

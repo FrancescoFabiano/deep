@@ -18,7 +18,10 @@
 Fluent FormulaHelper::negate_fluent(const Fluent& to_negate)
 {
     Fluent fluent_negated = to_negate;
-    fluent_negated.set(to_negate.size() - 1, to_negate[to_negate.size() - 1] == 0 ? true : false);
+    // Negate the last bit of the fluent, which represents its polarity.
+    // If the last bit is false (negated), set it to true (positive), otherwise set it to false (negated).
+    const bool last_bit = to_negate[to_negate.size() - 1];
+    fluent_negated.set(to_negate.size() - 1, !last_bit);
     return fluent_negated;
 }
 
@@ -60,7 +63,7 @@ Fluent FormulaHelper::normalize_fluent(const Fluent& to_normalize)
 
 bool FormulaHelper::is_negated(const Fluent& f)
 {
-    return f[f.size() - 1] != 0;
+    return f[f.size() - 1] == false;
 }
 
 bool FormulaHelper::is_consistent(const FluentsSet& fl1, const FluentsSet& fl2)

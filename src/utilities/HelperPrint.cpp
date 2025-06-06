@@ -530,19 +530,28 @@ void HelperPrint::print_dot_format(const KripkeState& kstate, std::ofstream& ofs
     ofs << "	<table border = \"0\" cellborder = \"1\" cellspacing = \"0\" >\n";
     for (const auto& world_ptr : worlds)
     {
-        const auto& tmp_fs = world_ptr.get_fluent_set();
-        bool print_first = false;
-        ofs << "		<tr><td>" << map_rep_to_name[world_ptr.get_repetition()] << "_" << map_world_to_index[tmp_fs] <<
-            "</td> <td>";
-        for (const auto& fluent : tmp_fs)
+        bool print_first_done = false;
+        std::vector<std::pair<std::string, bool>> sorted_fluents;
+        for (const auto& tmp_f : world_ptr.get_fluent_set())
         {
-            if (print_first) ofs << ", ";
-            print_first = true;
-            if (FormulaHelper::is_negated(fluent))
-                color = "<font color=\"#0000ff\"> ";
-            else
-                color = "<font color=\"#ff1020\">";
-            ofs << color << m_grounder.deground_fluent(fluent) << "</font>";
+            bool is_neg = FormulaHelper::is_negated(tmp_f);
+            std::string key = m_grounder.deground_fluent(tmp_f);
+            if (is_neg && !key.empty())
+            {
+                key = key.substr(1); // Remove first char if negated
+            }
+            sorted_fluents.emplace_back(key, is_neg);
+        }
+        std::ranges::sort(sorted_fluents,
+                          [](const auto& a, const auto& b) { return a.first < b.first; });
+
+        for (const auto& [key, is_neg] : sorted_fluents)
+        {
+            if (print_first_done) ofs << ", ";
+            print_first_done = true;
+            std::string color_fluent = is_neg ? "<font color=\"#228B22\">" : "<font color=\"#e53935\">";
+            std::string prefix = is_neg ? NEGATION_SYMBOL : " ";
+            ofs << color_fluent << prefix << key << "</font>";
         }
         ofs << "</td></tr>\n";
     }
