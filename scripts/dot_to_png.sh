@@ -5,6 +5,6 @@ for file in "$@"/*;
 do
    if [ "${file##*.}" = "dot" ]; then
 	  dot -Tpng "$file" > "${file%.*}".png
-	  rm "${file%.*}".dot
+	  #rm "${file%.*}".dot
    fi
 done

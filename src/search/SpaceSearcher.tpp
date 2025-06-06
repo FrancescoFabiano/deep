@@ -19,6 +19,7 @@
 #include <mutex> // <-- Add this
 
 #include "Configuration.h"
+#include "HelperPrint.h"
 
 template <StateRepresentation StateRepr, SearchStrategy<StateRepr> Strategy>
 SpaceSearcher<StateRepr, Strategy>::SpaceSearcher(Strategy strategy)
