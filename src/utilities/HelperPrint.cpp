@@ -388,7 +388,7 @@ void HelperPrint::print_dot_format(const KripkeState& kstate, std::ofstream& ofs
 {
     auto& worlds = kstate.get_worlds();
     auto& pointed = kstate.get_pointed();
-    ofs << "digraph G {" << std::endl;
+    ofs << "digraph K {" << std::endl;
     ofs << "//WORLDS List:" << std::endl;
     std::map<FluentsSet, int> map_world_to_index;
     std::map<unsigned short, char> map_rep_to_name;
@@ -531,8 +531,10 @@ void HelperPrint::print_dot_format(const KripkeState& kstate, std::ofstream& ofs
     for (const auto& world_ptr : worlds)
     {
         bool print_first_done = false;
+        auto temp_fs = world_ptr.get_fluent_set();
         std::vector<std::pair<std::string, bool>> sorted_fluents;
-        for (const auto& tmp_f : world_ptr.get_fluent_set())
+        ofs << "		<tr><td>" << map_rep_to_name[world_ptr.get_repetition()] << "_" << map_world_to_index[temp_fs] << "</td> <td>";
+        for (const auto& tmp_f : temp_fs)
         {
             bool is_neg = FormulaHelper::is_negated(tmp_f);
             std::string key = m_grounder.deground_fluent(tmp_f);
