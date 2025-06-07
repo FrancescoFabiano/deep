@@ -389,7 +389,9 @@ void HelperPrint::print_dot_format(const KripkeState& kstate, std::ofstream& ofs
     auto& worlds = kstate.get_worlds();
     auto& pointed = kstate.get_pointed();
     ofs << "digraph K {" << std::endl;
-    ofs << "//WORLDS List:" << std::endl;
+    ofs << "\n\trankdir=BT;" << std::endl;
+
+    ofs << "\n\t//WORLDS List:" << std::endl;
     std::map<FluentsSet, int> map_world_to_index;
     std::map<unsigned short, char> map_rep_to_name;
     char found_rep = static_cast<char>(Domain::get_instance().get_agents().size() + 'A');
@@ -397,7 +399,7 @@ void HelperPrint::print_dot_format(const KripkeState& kstate, std::ofstream& ofs
 
     for (const auto& world_ptr : worlds)
     {
-        ofs << "	node [shape = " << ((world_ptr == pointed) ? "doublecircle" : "circle") << "] ";
+        ofs << "\tnode [shape = " << ((world_ptr == pointed) ? "doublecircle" : "circle") << "] ";
 
         const auto& tmp_fs = world_ptr.get_fluent_set();
         if (!map_world_to_index.contains(tmp_fs))
@@ -423,7 +425,7 @@ void HelperPrint::print_dot_format(const KripkeState& kstate, std::ofstream& ofs
     }
 
     ofs << "\n\n";
-    ofs << "//RANKS List:" << std::endl;
+    ofs << "\t//RANKS List:" << std::endl;
 
     std::map<int, KripkeWorldPointersSet> for_rank_print;
     for (const auto& world_ptr : worlds)
@@ -433,7 +435,7 @@ void HelperPrint::print_dot_format(const KripkeState& kstate, std::ofstream& ofs
 
     for (const auto& set : for_rank_print | std::views::values)
     {
-        ofs << "	{rank = same; ";
+        ofs << "\t{rank = same; ";
         for (const auto& world_ptr : set)
         {
             ofs << "\"" << map_rep_to_name[world_ptr.get_repetition()] << "_" << map_world_to_index[world_ptr.
@@ -443,7 +445,7 @@ void HelperPrint::print_dot_format(const KripkeState& kstate, std::ofstream& ofs
     }
 
     ofs << "\n\n";
-    ofs << "//EDGES List:" << std::endl;
+    ofs << "\t//EDGES List:" << std::endl;
 
     std::map<std::tuple<std::string, std::string>, std::set<std::string>> edges;
 
@@ -489,7 +491,7 @@ void HelperPrint::print_dot_format(const KripkeState& kstate, std::ofstream& ofs
 
     for (const auto& [key, agents] : edges)
     {
-        ofs << "	\"";
+        ofs << "\t\"";
         ofs << std::get<0>(key);
         ofs << "\" -> \"";
         ofs << std::get<1>(key);
@@ -507,7 +509,7 @@ void HelperPrint::print_dot_format(const KripkeState& kstate, std::ofstream& ofs
 
     for (const auto& [key, agents] : to_print_double)
     {
-        ofs << "	\"";
+        ofs << "\t\"";
         ofs << std::get<0>(key);
         ofs << "\" -> \"";
         ofs << std::get<1>(key);
@@ -526,16 +528,16 @@ void HelperPrint::print_dot_format(const KripkeState& kstate, std::ofstream& ofs
     std::string color = "<font color=\"#ffffff\">";
     std::string true_fluent_color = "<font color=\"#228B22\">";
     std::string false_fluent_color = "<font color=\"#e53935\">";
-    ofs << "\n\n//WORLDS description Table:" << std::endl;
-    ofs << "	node [shape = plain]\n\n";
-    ofs << "	description[label=<\n";
-    ofs << "	<table border = \"0\" cellborder = \"1\" cellspacing = \"0\" >\n";
+    ofs << "\n\n\t//WORLDS description Table:" << std::endl;
+    ofs << "\tnode [shape = plain]\n\n";
+    ofs << "\tdescription[label=<\n";
+    ofs << "\t<table border = \"0\" cellborder = \"1\" cellspacing = \"0\" >\n";
     for (const auto& world_ptr : worlds)
     {
         bool print_first_done = false;
         auto temp_fs = world_ptr.get_fluent_set();
         std::vector<std::pair<std::string, bool>> sorted_fluents;
-        ofs << "		<tr><td>" << map_rep_to_name[world_ptr.get_repetition()] << "_" << map_world_to_index[temp_fs] << "</td> <td>";
+        ofs << "\t\t<tr><td>" << map_rep_to_name[world_ptr.get_repetition()] << "_" << map_world_to_index[temp_fs] << "</td> <td>";
         for (const auto& tmp_f : temp_fs)
         {
             bool is_neg = FormulaHelper::is_negated(tmp_f);
@@ -559,8 +561,8 @@ void HelperPrint::print_dot_format(const KripkeState& kstate, std::ofstream& ofs
         }
         ofs << "</td></tr>\n";
     }
-    ofs << "	</table>>]\n";
-    ofs << "	{rank = max; description};\n";
+    ofs << "\t</table>>]\n";
+    ofs << "\t{rank = max; description};\n";
 
     ofs << "}" << std::endl;
 }

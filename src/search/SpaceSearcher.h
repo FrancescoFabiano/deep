@@ -21,7 +21,7 @@
  *
  * @tparam T The type to be checked against the required interface.
  */
-template <typename T, typename StateRepr>
+template<typename T, typename StateRepr>
 concept SearchStrategy = requires(T rep, State<StateRepr> s)
 {
     /// Functor/lambda to push a state into the container.
@@ -29,7 +29,7 @@ concept SearchStrategy = requires(T rep, State<StateRepr> s)
     /// Functor/lambda to pop a state from the container.
     { rep.pop() } -> std::same_as<void>;
     /// Functor/lambda to peek at the next state in the container.
-    { rep.peek() } -> std::same_as<State<StateRepr>>;
+    { rep.peek() } -> std::same_as<State<StateRepr> >;
     /// Functor/lambda to clean container.
     { rep.reset() } -> std::same_as<void>;
     /// Functor/lambda to check if container is empty.
@@ -44,9 +44,8 @@ concept SearchStrategy = requires(T rep, State<StateRepr> s)
  * \tparam StateRepr The state representation type (must satisfy StateRepresentation).
  * \tparam Strategy The search strategy type (must satisfy SearchStrategy).
  */
-template <StateRepresentation StateRepr, SearchStrategy<StateRepr> Strategy>
-class SpaceSearcher
-{
+template<StateRepresentation StateRepr, SearchStrategy<StateRepr> Strategy>
+class SpaceSearcher {
 public:
     /**
      * \brief Constructor with search name and strategy instance.
@@ -66,7 +65,7 @@ public:
      * \return true if a goal state is found, false otherwise.
      */
     [[nodiscard]]
-    bool search(State<StateRepr>& initial);
+    bool search(State<StateRepr> &initial);
 
     /**
      * \brief Get the name of the search strategy.
@@ -94,14 +93,14 @@ public:
      * \return The list of action IDs.
      */
     [[nodiscard]]
-    const ActionIdsList& get_plan_actions_id() const noexcept;
+    const ActionIdsList &get_plan_actions_id() const noexcept;
 
 private:
     Strategy m_strategy; ///< Search strategy instance.
 
     unsigned int m_expanded_nodes = 0; ///< Counter for expanded nodes.
     std::chrono::duration<double> m_elapsed_seconds{}; ///< Time taken by the search.
-    ActionIdsList m_plan_actions_id {}; ///< List of actions in the plan.
+    ActionIdsList m_plan_actions_id{}; ///< List of actions in the plan.
 
     /**
      * \brief Executes the search algorithm sequentially using the provided container and operations.
@@ -113,7 +112,7 @@ private:
      * \return true if a goal state is found, false otherwise.
      */
     [[nodiscard]]
-    bool search_sequential(State<StateRepr>& initial, const ActionsSet& actions, bool check_visited,
+    bool search_sequential(State<StateRepr> &initial, const ActionsSet &actions, bool check_visited,
                            bool bisimulation_reduction);
 
     /**
@@ -129,7 +128,7 @@ private:
      * \warning not too thoroughly tested, use with caution.
      */
     [[nodiscard]]
-    bool search_parallel(State<StateRepr>& initial, const ActionsSet& actions, bool check_visited,
+    bool search_parallel(State<StateRepr> &initial, const ActionsSet &actions, bool check_visited,
                          bool bisimulation_reduction, int num_threads);
 
     /// \name Plan Validation
@@ -142,7 +141,7 @@ private:
      * \return true if the plan is valid, false otherwise.
      */
     [[nodiscard]]
-    bool validate_plan(const State<StateRepr>& initial, bool check_visited,
+    bool validate_plan(const State<StateRepr> &initial, bool check_visited,
                        bool bisimulation_reduction);
 
     /**
@@ -150,13 +149,12 @@ private:
      *
      * \param initial Boolean indicating if this the initial state.
      * \param last Boolean indicating if this is the last step.
-     * \param first Reference to a boolean indicating if this is the first step (used to initialize the DOT filename).
-     * \param dot_file_path Reference to the path of the DOT file to write to.
      * \param action_name The name of the action being executed.
      * \param current The current state after executing the action.
      * \param dot_files_folder The folder where DOT files are stored.
      */
-    static void print_dot_for_execute_plan(const bool initial, const bool last, bool & first, std::string & dot_file_path, const std::string& action_name, const State<StateRepr>& current, const std::string& dot_files_folder);
+    static void print_dot_for_execute_plan(const bool initial, const bool last, const std::string &action_name,
+                                           const State<StateRepr> &current, const std::string &dot_files_folder);
 
     ///@}
 };

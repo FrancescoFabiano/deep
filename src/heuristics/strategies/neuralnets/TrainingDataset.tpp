@@ -10,11 +10,9 @@
 #include "ExitHandler.h"
 
 // --- Singleton implementation ---
-template <StateRepresentation StateRepr>
-TrainingDataset<StateRepr>& TrainingDataset<StateRepr>::get_instance()
-{
-    if (!instance)
-    {
+template<StateRepresentation StateRepr>
+TrainingDataset<StateRepr> &TrainingDataset<StateRepr>::get_instance() {
+    if (!instance) {
         ExitHandler::exit_with_message(
             ExitHandler::ExitCode::NNInstanceError,
             "GNN instance not created. Call create_instance() first."
@@ -25,63 +23,50 @@ TrainingDataset<StateRepr>& TrainingDataset<StateRepr>::get_instance()
     return *instance;
 }
 
-template <StateRepresentation StateRepr>
-const std::string& TrainingDataset<StateRepr>::get_folder() const
-{
+template<StateRepresentation StateRepr>
+const std::string &TrainingDataset<StateRepr>::get_folder() const {
     return m_folder;
 }
 
 
-template <StateRepresentation StateRepr>
-TrainingDataset<StateRepr>::TrainingDataset()
-{
+template<StateRepresentation StateRepr>
+TrainingDataset<StateRepr>::TrainingDataset() {
     const std::string domain_name = Domain::get_instance().get_name();
 
-    if (ArgumentParser::get_instance().get_dataset_mode())
-    {
+    if (ArgumentParser::get_instance().get_dataset_mode()) {
         m_folder = OutputPaths::DATASET_TRAINING_FOLDER + domain_name + "/";
         m_training_raw_files_folder = m_folder + "RawFiles/";
 
 
         const std::string filename = domain_name + "_depth_" + std::to_string(
-            ArgumentParser::get_instance().get_dataset_depth()) + ".csv";
+                                         ArgumentParser::get_instance().get_dataset_depth()) + ".csv";
 
         m_filepath_csv = m_folder + filename;
         // Use std::filesystem for directory creation (C++17+)
-        try
-        {
+        try {
             std::filesystem::create_directories(m_folder);
             std::filesystem::create_directories(m_training_raw_files_folder);
             if (ArgumentParser::get_instance().get_dataset_mapped() && !ArgumentParser::get_instance().
-                get_dataset_both())
-            {
+                get_dataset_both()) {
                 std::filesystem::create_directories(
                     m_training_raw_files_folder + OutputPaths::DATASET_NN_DATASET_MAPPED + "/");
             }
             if (!ArgumentParser::get_instance().get_dataset_mapped() && !ArgumentParser::get_instance().
-                get_dataset_both())
-            {
+                get_dataset_both()) {
                 std::filesystem::create_directories(
                     m_training_raw_files_folder + OutputPaths::DATASET_NN_DATASET_HASHED + "/");
             }
-        }
-        catch (const std::filesystem::filesystem_error& e)
-        {
+        } catch (const std::filesystem::filesystem_error &e) {
             ExitHandler::exit_with_message(
                 ExitHandler::ExitCode::NNDirectoryCreationError,
                 std::string("Error creating directories: ") + e.what()
             );
         }
-    }
-    else
-    {
+    } else {
         m_folder = OutputPaths::DATASET_INFERENCE_FOLDER + domain_name + "/";
-        try
-        {
+        try {
             std::filesystem::create_directories(m_folder);
-        }
-        catch (const std::filesystem::filesystem_error& e)
-        {
+        } catch (const std::filesystem::filesystem_error &e) {
             ExitHandler::exit_with_message(
                 ExitHandler::ExitCode::NNDirectoryCreationError,
                 std::string("Error creating directories: ") + e.what()
@@ -99,21 +84,17 @@ TrainingDataset<StateRepr>::TrainingDataset()
     generate_goal_tree();
 }
 
-template <StateRepresentation StateRepr>
-void TrainingDataset<StateRepr>::create_instance()
-{
-    if (!instance)
-    {
+template<StateRepresentation StateRepr>
+void TrainingDataset<StateRepr>::create_instance() {
+    if (!instance) {
         instance = new TrainingDataset();
     }
 }
 
-template <StateRepresentation StateRepr>
-bool TrainingDataset<StateRepr>::generate_dataset()
-{
+template<StateRepresentation StateRepr>
+bool TrainingDataset<StateRepr>::generate_dataset() {
     std::ofstream result(m_filepath_csv);
-    if (!result.is_open())
-    {
+    if (!result.is_open()) {
         ExitHandler::exit_with_message(
             ExitHandler::ExitCode::NNTrainingFileError,
             "Error opening file: " + m_filepath_csv
@@ -127,12 +108,10 @@ bool TrainingDataset<StateRepr>::generate_dataset()
 }
 
 
-template <StateRepresentation StateRepr>
-void TrainingDataset<StateRepr>::generate_goal_tree()
-{
+template<StateRepresentation StateRepr>
+void TrainingDataset<StateRepr>::generate_goal_tree() {
     std::ofstream dot_file(m_goal_file_path);
-    if (!dot_file.is_open())
-    {
+    if (!dot_file.is_open()) {
         ExitHandler::exit_with_message(
             ExitHandler::ExitCode::NNTrainingFileError,
             "Error opening file: " + m_goal_file_path
@@ -145,8 +124,7 @@ void TrainingDataset<StateRepr>::generate_goal_tree()
 
     size_t next_id = m_fluent_to_id.size() + m_agent_to_id.size() + 2;
     const std::string parent_name = "-1";
-    for (const auto& goal : goal_list)
-    {
+    for (const auto &goal: goal_list) {
         print_goal_subtree(goal, ++goal_counter, next_id, parent_name, dot_file);
     }
 
@@ -154,12 +132,10 @@ void TrainingDataset<StateRepr>::generate_goal_tree()
     dot_file.close();
 }
 
-template <StateRepresentation StateRepr>
-size_t TrainingDataset<StateRepr>::get_id_from_map(const std::unordered_map<boost::dynamic_bitset<>, size_t>& id_map,
-                                                   const boost::dynamic_bitset<>& key, const std::string& type_name)
-{
-    if (const auto it = id_map.find(key); it != id_map.end())
-    {
+template<StateRepresentation StateRepr>
+size_t TrainingDataset<StateRepr>::get_id_from_map(const std::unordered_map<boost::dynamic_bitset<>, size_t> &id_map,
+                                                   const boost::dynamic_bitset<> &key, const std::string &type_name) {
+    if (const auto it = id_map.find(key); it != id_map.end()) {
         return it->second;
     }
     ExitHandler::exit_with_message(
@@ -170,57 +146,47 @@ size_t TrainingDataset<StateRepr>::get_id_from_map(const std::unordered_map<boos
     std::exit(static_cast<int>(ExitHandler::ExitCode::ExitForCompiler));
 }
 
-template <StateRepresentation StateRepr>
-void TrainingDataset<StateRepr>::populate_ids_from_bitset(const std::set<boost::dynamic_bitset<>>& keys_set,
-                                                          std::unordered_map<boost::dynamic_bitset<>, size_t>& id_map,
-                                                          size_t start_id)
-{
+template<StateRepresentation StateRepr>
+void TrainingDataset<StateRepr>::populate_ids_from_bitset(const std::set<boost::dynamic_bitset<> > &keys_set,
+                                                          std::unordered_map<boost::dynamic_bitset<>, size_t> &id_map,
+                                                          const size_t start_id) {
     size_t current_id = start_id;
-    for (const auto& key : keys_set)
-    {
+    for (const auto &key: keys_set) {
         id_map[key] = current_id++;
     }
 }
 
-template <StateRepresentation StateRepr>
-size_t TrainingDataset<StateRepr>::get_unique_f_id_from_map(const Fluent& fl) const
-{
+template<StateRepresentation StateRepr>
+size_t TrainingDataset<StateRepr>::get_unique_f_id_from_map(const Fluent &fl) const {
     return get_id_from_map(m_fluent_to_id, fl, "Fluent");
 }
 
-template <StateRepresentation StateRepr>
-size_t TrainingDataset<StateRepr>::get_unique_a_id_from_map(const Agent& ag) const
-{
+template<StateRepresentation StateRepr>
+size_t TrainingDataset<StateRepr>::get_unique_a_id_from_map(const Agent &ag) const {
     return get_id_from_map(m_agent_to_id, ag, "Agent");
 }
 
-template <StateRepresentation StateRepr>
-void TrainingDataset<StateRepr>::populate_fluent_ids(const size_t start_id)
-{
+template<StateRepresentation StateRepr>
+void TrainingDataset<StateRepr>::populate_fluent_ids(const size_t start_id) {
     populate_ids_from_bitset(Domain::get_instance().get_fluents(), m_fluent_to_id, start_id);
 }
 
-template <StateRepresentation StateRepr>
-void TrainingDataset<StateRepr>::populate_agent_ids(const size_t start_id)
-{
+template<StateRepresentation StateRepr>
+void TrainingDataset<StateRepr>::populate_agent_ids(const size_t start_id) {
     populate_ids_from_bitset(Domain::get_instance().get_agents(), m_agent_to_id, start_id);
 }
 
-template <StateRepresentation StateRepr>
-void TrainingDataset<StateRepr>::print_goal_subtree(const BeliefFormula& to_print, const size_t goal_counter,
-                                                    size_t& next_id,
-                                                    const std::string& parent_node, std::ofstream& ofs)
-{
+template<StateRepresentation StateRepr>
+void TrainingDataset<StateRepr>::print_goal_subtree(const BeliefFormula &to_print, const size_t goal_counter,
+                                                    size_t &next_id,
+                                                    const std::string &parent_node, std::ofstream &ofs) {
     size_t current_node_id = ++next_id;
     std::string node_name;
 
-    switch (to_print.get_formula_type())
-    {
-    case BeliefFormulaType::FLUENT_FORMULA:
-        {
+    switch (to_print.get_formula_type()) {
+        case BeliefFormulaType::FLUENT_FORMULA: {
             std::string m_parent_node = parent_node;
-            if (to_print.get_fluent_formula().size() > 1)
-            {
+            if (to_print.get_fluent_formula().size() > 1) {
                 //REMOVE LETTERS node_name = "F_OR" + std::to_string(current_node_id);
                 node_name = std::to_string(current_node_id);
                 current_node_id = ++next_id;
@@ -229,33 +195,29 @@ void TrainingDataset<StateRepr>::print_goal_subtree(const BeliefFormula& to_prin
                 m_parent_node = node_name;
             }
 
-            for (const auto& fls_set : to_print.get_fluent_formula())
-            {
+            for (const auto &fls_set: to_print.get_fluent_formula()) {
                 std::string m_m_parent_node = m_parent_node;
 
-                if (fls_set.size() > 1)
-                {
+                if (fls_set.size() > 1) {
                     //REMOVE LETTERS node_name = "F_AND" + std::to_string(current_node_id);
                     node_name = std::to_string(current_node_id);
                     current_node_id = ++next_id;
                     //ofs << "  " << node_name << " [label=\"" << current_node_id << "\"];\n";
                     ofs << "  " << m_parent_node << " -> " << node_name << " [label=\"" << goal_counter <<
-                        "\"];\n";
+                            "\"];\n";
                     m_m_parent_node = node_name;
                 }
 
-                for (const auto& fl : fls_set)
-                {
+                for (const auto &fl: fls_set) {
                     //REMOVE LETTERS ofs << "  " << m_m_parent_node << " -> F" << get_unique_f_id_from_map(fl) << " [label=\"" << goal_counter << "\"];\n";
                     ofs << "  " << m_m_parent_node << " -> " << get_unique_f_id_from_map(fl) << " [label=\"" <<
-                        goal_counter << "\"];\n";
+                            goal_counter << "\"];\n";
                 }
             }
             break;
         }
 
-    case BeliefFormulaType::BELIEF_FORMULA:
-        {
+        case BeliefFormulaType::BELIEF_FORMULA: {
             //REMOVE LETTERS node_name = "B" + std::to_string(current_node_id);
             node_name = std::to_string(current_node_id);
             //ofs << "  " << node_name << " [label=\"" << current_node_id << "\"];\n";
@@ -263,48 +225,42 @@ void TrainingDataset<StateRepr>::print_goal_subtree(const BeliefFormula& to_prin
             //REMOVE LETTERS ofs << "  " << node_name << " -> A" << get_unique_a_id_from_map(to_print.get_agent()) << " [label=\"" << goal_counter << "\"];\n";
             //REMOVE LETTERS ofs << "  A" << get_unique_a_id_from_map(to_print.get_agent()) << " -> " << node_name << " [label=\"" << goal_counter << "\"];\n";
             ofs << "  " << node_name << " -> " << get_unique_a_id_from_map(to_print.get_agent()) << " [label=\"" <<
-                goal_counter << "\"];\n";
+                    goal_counter << "\"];\n";
             ofs << "  " << get_unique_a_id_from_map(to_print.get_agent()) << " -> " << node_name << " [label=\"" <<
-                goal_counter << "\"];\n";
+                    goal_counter << "\"];\n";
 
             print_goal_subtree(to_print.get_bf1(), goal_counter, next_id, node_name, ofs);
             break;
         }
 
-    case BeliefFormulaType::C_FORMULA:
-        {
+        case BeliefFormulaType::C_FORMULA: {
             //REMOVE LETTERS node_name = "C" + std::to_string(current_node_id);
             node_name = std::to_string(current_node_id);
             //ofs << "  " << node_name << " [label=\"" << current_node_id << "\"];\n";
             ofs << "  " << parent_node << " -> " << node_name << " [label=\"" << goal_counter << "\"];\n";
 
-            for (const auto& ag : to_print.get_group_agents())
-            {
+            for (const auto &ag: to_print.get_group_agents()) {
                 //REMOVE LETTERS ofs << "  " << node_name << " -> A" << get_unique_a_id_from_map(ag) << " [label=\"" << goal_counter << "\"];\n";
                 //REMOVE LETTERS ofs << "  A" << get_unique_a_id_from_map(ag) << " -> " << node_name << " [label=\"" << goal_counter << "\"];\n";
                 ofs << "  " << node_name << " -> " << get_unique_a_id_from_map(ag) << " [label=\"" << goal_counter
-                    << "\"];\n";
+                        << "\"];\n";
                 ofs << "  " << get_unique_a_id_from_map(ag) << " -> " << node_name << " [label=\"" << goal_counter
-                    << "\"];\n";
+                        << "\"];\n";
             }
 
             print_goal_subtree(to_print.get_bf1(), goal_counter, next_id, node_name, ofs);
             break;
         }
 
-    case BeliefFormulaType::PROPOSITIONAL_FORMULA:
-        {
-            switch (to_print.get_operator())
-            {
-            case BeliefFormulaOperator::BF_NOT:
-            case BeliefFormulaOperator::BF_AND:
-            case BeliefFormulaOperator::BF_OR:
-                {
+        case BeliefFormulaType::PROPOSITIONAL_FORMULA: {
+            switch (to_print.get_operator()) {
+                case BeliefFormulaOperator::BF_NOT:
+                case BeliefFormulaOperator::BF_AND:
+                case BeliefFormulaOperator::BF_OR: {
                     break;
                 }
-            case BeliefFormulaOperator::BF_FAIL:
-            default:
-                {
+                case BeliefFormulaOperator::BF_FAIL:
+                default: {
                     ExitHandler::exit_with_message(
                         ExitHandler::ExitCode::BeliefFormulaOperatorUnset,
                         "Error in reading a Belief Formula during the GOAL dot generation."
@@ -319,18 +275,16 @@ void TrainingDataset<StateRepr>::print_goal_subtree(const BeliefFormula& to_prin
             ofs << "  " << parent_node << " -> " << node_name << " [label=\"" << goal_counter << "\"];\n";
             print_goal_subtree(to_print.get_bf1(), goal_counter, next_id, node_name, ofs);
 
-            if (!to_print.is_bf2_null())
-            {
+            if (!to_print.is_bf2_null()) {
                 print_goal_subtree(to_print.get_bf2(), goal_counter, next_id, node_name, ofs);
             }
 
             break;
         }
 
-    case BeliefFormulaType::BF_EMPTY:
-    case BeliefFormulaType::BF_TYPE_FAIL:
-    default:
-        {
+        case BeliefFormulaType::BF_EMPTY:
+        case BeliefFormulaType::BF_TYPE_FAIL:
+        default: {
             ExitHandler::exit_with_message(
                 ExitHandler::ExitCode::BeliefFormulaTypeUnset,
                 "Error in reading a Belief Formula during the GOAL dot generation."
@@ -340,14 +294,12 @@ void TrainingDataset<StateRepr>::print_goal_subtree(const BeliefFormula& to_prin
     }
 }
 
-template <StateRepresentation StateRepr>
-bool TrainingDataset<StateRepr>::search_space_exploration()
-{
+template<StateRepresentation StateRepr>
+bool TrainingDataset<StateRepr>::search_space_exploration() {
     State<StateRepr> initial_state;
     initial_state.build_initial();
 
-    if (Configuration::get_instance().get_bisimulation())
-    {
+    if (Configuration::get_instance().get_bisimulation()) {
         initial_state.contract_with_bisimulation();
     }
 
@@ -362,12 +314,11 @@ bool TrainingDataset<StateRepr>::search_space_exploration()
 
     auto end_time = std::chrono::system_clock::now();
     std::chrono::duration<double> elapsed = end_time - start_time;
-    auto& os = ArgumentParser::get_instance().get_output_stream();
+    auto &os = ArgumentParser::get_instance().get_output_stream();
     os << "\nDataset Generated in " << elapsed.count() << " seconds" << std::endl;
 
     std::ofstream result_file(m_filepath_csv, std::ofstream::app);
-    for (const auto& row : global_dataset)
-    {
+    for (const auto &row: global_dataset) {
         result_file << row << "\n";
     }
     result_file.close();
@@ -375,62 +326,49 @@ bool TrainingDataset<StateRepr>::search_space_exploration()
     return result;
 }
 
-template <StateRepresentation StateRepr>
-bool TrainingDataset<StateRepr>::dfs_exploration(State<StateRepr>& initial_state, ActionsSet* actions,
-                                                 std::vector<std::string>& global_dataset)
-{
-    auto max_depth = ArgumentParser::get_instance().get_dataset_depth();
+template<StateRepresentation StateRepr>
+bool TrainingDataset<StateRepr>::dfs_exploration(State<StateRepr> &initial_state, ActionsSet *actions,
+                                                 std::vector<std::string> &global_dataset) {
+    const auto max_depth = ArgumentParser::get_instance().get_dataset_depth();
     m_visited_states.clear();
 
-    size_t branching_factor = actions->size();
-    if (branching_factor <= 1)
-    {
+    const size_t branching_factor = actions->size();
+    if (branching_factor <= 1) {
         m_total_possible_nodes_log = log(max_depth + 1);
-    }
-    else
-    {
+    } else {
         // Calculate expected log of total nodes
-        double numerator_log = (max_depth + 1) * std::log(branching_factor);
-        double denominator_log = std::log(branching_factor - 1);
+        const double numerator_log = (max_depth + 1) * std::log(branching_factor);
+        const double denominator_log = std::log(branching_factor - 1);
         m_total_possible_nodes_log = numerator_log - denominator_log;
     }
 
-    auto& os = ArgumentParser::get_instance().get_output_stream();
+    auto &os = ArgumentParser::get_instance().get_output_stream();
 
     os << "Total possible nodes exceed threshold." << std::endl;
     os << "Approximate number of nodes (exp(log)) = " << std::exp(m_total_possible_nodes_log) << std::endl;
     os << "Threshold number of nodes = " << m_threshold_node_generation << std::endl;
-    if (m_total_possible_nodes_log > m_threshold_node_generation_log)
-    {
+    if (m_total_possible_nodes_log > m_threshold_node_generation_log) {
         os << "Decision: using SPARSE DFS." << std::endl;
-    }
-    else
-    {
+    } else {
         os << "Decision: using COMPLETE DFS." << std::endl;
     }
 
     dfs_worker(initial_state, 0, actions, global_dataset);
 
-    if (m_goal_founds > 0)
-    {
+    if (m_goal_founds > 0) {
         os << "Number of goals found: " << m_goal_founds << std::endl;
-    }
-    else
-    {
+    } else {
         os << "[WARNING] No goals found, this is not a good training set (recreate it)." << std::endl;
     }
 
     return !global_dataset.empty();
 }
 
-template <StateRepresentation StateRepr>
-int TrainingDataset<StateRepr>::dfs_worker(State<StateRepr>& state, const size_t depth, ActionsSet* actions,
-                                           std::vector<std::string>& global_dataset)
-{
-    if (m_current_nodes >= m_threshold_node_generation)
-    {
-        if (state.is_goal())
-        {
+template<StateRepresentation StateRepr>
+int TrainingDataset<StateRepr>::dfs_worker(State<StateRepr> &state, const size_t depth, ActionsSet *actions,
+                                           std::vector<std::string> &global_dataset) {
+    if (m_current_nodes >= m_threshold_node_generation) {
+        if (state.is_goal()) {
             global_dataset.push_back(format_row(state, depth, 0));
             return 0;
         }
@@ -441,13 +379,11 @@ int TrainingDataset<StateRepr>::dfs_worker(State<StateRepr>& state, const size_t
 
     int current_score = -1;
 
-    if (m_visited_states.count(state))
-    {
+    if (m_visited_states.count(state)) {
         return m_states_scores[state];
     }
 
-    if (state.is_goal())
-    {
+    if (state.is_goal()) {
         current_score = 0;
         m_goal_founds++;
         m_goal_recently_found = true;
@@ -455,37 +391,30 @@ int TrainingDataset<StateRepr>::dfs_worker(State<StateRepr>& state, const size_t
 
     int best_successor_score = -1;
     bool has_successor = false;
-    size_t max_depth = static_cast<size_t>(ArgumentParser::get_instance().get_dataset_depth());
+    const size_t max_depth = static_cast<size_t>(ArgumentParser::get_instance().get_dataset_depth());
     // Create a local vector from action_set
     std::vector<Action> local_actions(actions->begin(), actions->end());
 
     // Shuffle local_actions
     std::ranges::shuffle(local_actions, m_gen);
 
-    for (const auto& action : local_actions)
-    {
-        if (state.is_executable(action))
-        {
+    for (const auto &action: local_actions) {
+        if (state.is_executable(action)) {
             auto next_state = state.compute_successor(action);
 
-            if (Configuration::get_instance().get_bisimulation())
-            {
+            if (Configuration::get_instance().get_bisimulation()) {
                 next_state.contract_with_bisimulation();
             }
 
-            if (depth >= max_depth)
-            {
+            if (depth >= max_depth) {
                 break;
-            }
-            else
-            {
+            } else {
                 double discard_probability = 0.0;
                 // Only start discarding if total search space is big
-                if (m_total_possible_nodes_log > m_threshold_node_generation_log)
-                {
+                if (m_total_possible_nodes_log > m_threshold_node_generation_log) {
                     const auto depth_ratio = static_cast<double>(depth) / static_cast<double>(max_depth);
                     const auto fullness_ratio = static_cast<double>(m_current_nodes) / static_cast<double>(
-                        m_threshold_node_generation);
+                                                    m_threshold_node_generation);
 
                     // Start discard_probability low, increase as depth grows
                     discard_probability = 0.2 * std::pow(depth_ratio, 2);
@@ -497,8 +426,7 @@ int TrainingDataset<StateRepr>::dfs_worker(State<StateRepr>& state, const size_t
                         0.01 * std::pow(static_cast<double>(m_discard_augmentation_factor) / (3 * max_depth), 2), 0.1);
 
                     // Boost if a nearby goal was found
-                    if (m_goal_recently_found)
-                    {
+                    if (m_goal_recently_found) {
                         discard_probability += 0.2;
                     }
 
@@ -506,8 +434,7 @@ int TrainingDataset<StateRepr>::dfs_worker(State<StateRepr>& state, const size_t
                     discard_probability = std::min(discard_probability, 0.8);
                 }
 
-                if (m_dis(m_gen) < discard_probability)
-                {
+                if (m_dis(m_gen) < discard_probability) {
                     m_goal_recently_found = false;
                     m_discard_augmentation_factor = 0.0;
                     continue; // Randomly skip exploration
@@ -518,10 +445,8 @@ int TrainingDataset<StateRepr>::dfs_worker(State<StateRepr>& state, const size_t
 
                 int child_score = dfs_worker(next_state, depth + 1, actions, global_dataset);
 
-                if (child_score >= 0)
-                {
-                    if (!has_successor || child_score < best_successor_score)
-                    {
+                if (child_score >= 0) {
+                    if (!has_successor || child_score < best_successor_score) {
                         best_successor_score = child_score;
                     }
                     has_successor = true;
@@ -530,8 +455,7 @@ int TrainingDataset<StateRepr>::dfs_worker(State<StateRepr>& state, const size_t
         }
     }
 
-    if (current_score == -1 && has_successor)
-    {
+    if (current_score == -1 && has_successor) {
         current_score = best_successor_score + 1;
     }
 
@@ -543,21 +467,18 @@ int TrainingDataset<StateRepr>::dfs_worker(State<StateRepr>& state, const size_t
 }
 
 
-template <StateRepresentation StateRepr>
-std::string TrainingDataset<StateRepr>::format_row(const State<StateRepr>& state, const size_t depth, const int score)
-{
+template<StateRepresentation StateRepr>
+std::string TrainingDataset<StateRepr>::format_row(const State<StateRepr> &state, const size_t depth, const int score) {
     std::stringstream ss;
     auto base_filename = print_state_for_dataset(state);
 
     std::string filename_hash = format_name(base_filename, OutputPaths::DATASET_NN_DATASET_HASHED);
     std::string filename_emap = format_name(base_filename, OutputPaths::DATASET_NN_DATASET_MAPPED);
 
-    if (ArgumentParser::get_instance().get_dataset_mapped() && !ArgumentParser::get_instance().get_dataset_both())
-    {
+    if (ArgumentParser::get_instance().get_dataset_mapped() && !ArgumentParser::get_instance().get_dataset_both()) {
         filename_hash = "NOT CALCULATED";
     }
-    if (!ArgumentParser::get_instance().get_dataset_mapped() && !ArgumentParser::get_instance().get_dataset_both())
-    {
+    if (!ArgumentParser::get_instance().get_dataset_mapped() && !ArgumentParser::get_instance().get_dataset_both()) {
         filename_emap = "NOT CALCULATED";
     }
 
@@ -566,36 +487,32 @@ std::string TrainingDataset<StateRepr>::format_row(const State<StateRepr>& state
     return ss.str();
 }
 
-template <StateRepresentation StateRepr>
-std::string TrainingDataset<StateRepr>::print_state_for_dataset(const State<StateRepr>& state)
-{
+template<StateRepresentation StateRepr>
+std::string TrainingDataset<StateRepr>::print_state_for_dataset(const State<StateRepr> &state) {
     ++m_file_counter;
-    std::string base_filename = std::string(6 - std::to_string(m_file_counter).length(), '0') + std::to_string(m_file_counter);
+    std::string base_filename = std::string(6 - std::to_string(m_file_counter).length(), '0') + std::to_string(
+                                    m_file_counter);
 
-    if (ArgumentParser::get_instance().get_dataset_mapped() || ArgumentParser::get_instance().get_dataset_both())
-    {
+    if (ArgumentParser::get_instance().get_dataset_mapped() || ArgumentParser::get_instance().get_dataset_both()) {
         print_state_for_dataset_internal(state, base_filename, OutputPaths::DATASET_NN_DATASET_MAPPED);
     }
-    if (!ArgumentParser::get_instance().get_dataset_mapped() || ArgumentParser::get_instance().get_dataset_both())
-    {
+    if (!ArgumentParser::get_instance().get_dataset_mapped() || ArgumentParser::get_instance().get_dataset_both()) {
         print_state_for_dataset_internal(state, base_filename, OutputPaths::DATASET_NN_DATASET_HASHED);
     }
 
     return base_filename;
 }
 
-template <StateRepresentation StateRepr>
-void TrainingDataset<StateRepr>::print_state_for_dataset_internal(const State<StateRepr>& state,
-                                                                  const std::string& base_filename,
-                                                                  const std::string& type) const
-{
+template<StateRepresentation StateRepr>
+void TrainingDataset<StateRepr>::print_state_for_dataset_internal(const State<StateRepr> &state,
+                                                                  const std::string &base_filename,
+                                                                  const std::string &type) const {
     std::ofstream out(format_name(base_filename, type));
     state.print_dataset_format(out);
     out.close();
 }
 
-template <StateRepresentation StateRepr>
-std::string TrainingDataset<StateRepr>::format_name(const std::string& base_filename, const std::string& type) const
-{
+template<StateRepresentation StateRepr>
+std::string TrainingDataset<StateRepr>::format_name(const std::string &base_filename, const std::string &type) const {
     return m_training_raw_files_folder + type + "/" + base_filename + "_" + type + ".dot";
 }

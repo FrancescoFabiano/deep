@@ -6,8 +6,7 @@
 #include "KripkeState.h"
 
 /***IO_FC2.cpp****/
-void Bisimulation::FillStructures(const BisAutomata& A)
-{
+void Bisimulation::FillStructures(const BisAutomata &A) {
     X[0].prevXBlock = BIS_NIL;
     X[0].nextXBlock = 1;
     X[0].firstBlock = BIS_NIL;
@@ -15,8 +14,7 @@ void Bisimulation::FillStructures(const BisAutomata& A)
     X[A.Nbehavs - 1].nextXBlock = BIS_NIL;
     X[A.Nbehavs - 1].firstBlock = BIS_NIL;
 
-    for (BisIndexType i = 1; i < (A.Nbehavs - 1); i++)
-    {
+    for (BisIndexType i = 1; i < (A.Nbehavs - 1); i++) {
         X[i].nextXBlock = i + 1;
         X[i].prevXBlock = i - 1;
         X[i].firstBlock = BIS_NIL;
@@ -40,16 +38,14 @@ void Bisimulation::FillStructures(const BisAutomata& A)
  *
  * \note The output is not returned since the array G is global.
 */
-void Bisimulation::CreateG(const int num_v, const VectorBisWrapper<Bis_vElem>& G_temp)
-{
+void Bisimulation::CreateG(const int num_v, const VectorBisWrapper<Bis_vElem> &G_temp) {
     BisIndexType v;
 
     // Create "num_v" vertices in G. These are the states also present in the input graph G_temp
     // (with only labeled edges) and, by implementation convention, will all have label 0
     // (in reality, their label could take any value). All these states will therefore belong,
     // as indicated by "G[v].block = 0", to block 0, i.e., to the element of the array X with index 0.
-    for (v = 0; v < num_v; v++)
-    {
+    for (v = 0; v < num_v; v++) {
         G[v].block = 0;
         G[v].label = 0;
     }
@@ -73,15 +69,13 @@ void Bisimulation::CreateG(const int num_v, const VectorBisWrapper<Bis_vElem>& G
     // label "i" to the one with label "j". Obviously, the first of the "n" states will have
     // an incoming edge from the state "v" we're considering, while the last of the "n" states
     // will have an outgoing edge to the state the original edge was pointing to.
-    for (v = 0; v < num_v; v++)
-    {
+    for (v = 0; v < num_v; v++) {
         // Pointer to the adjacency list of the current state, which will be created by the following
         // lines of code
-        std::shared_ptr<BisAdjList>* curr_adj = &(G[v].adj);
+        std::shared_ptr<BisAdjList> *curr_adj = &(G[v].adj);
 
         // Loop that processes all outgoing edges from "v"
-        for (BisIndexType e = 0; e < G_temp[v].ne; e++)
-        {
+        for (BisIndexType e = 0; e < G_temp[v].ne; e++) {
             // I create a new state (the first in the chain of labels). As mentioned earlier,
             // the "block" field is initialized with the index of the element in X that represents
             // the label of the state being created
@@ -98,8 +92,7 @@ void Bisimulation::CreateG(const int num_v, const VectorBisWrapper<Bis_vElem>& G
 
             // I create the states from the second onward in the chain of labels. This loop is
             // executed only if the edge we're considering has more than one label
-            for (BisIndexType b = 1; b < G_temp[v].e[e].nbh; b++)
-            {
+            for (BisIndexType b = 1; b < G_temp[v].e[e].nbh; b++) {
                 // I create a new state
                 G[numberOfNodes].block = G_temp[v].e[e].bh[b];
                 G[numberOfNodes].label = G_temp[v].e[e].bh[b];
@@ -137,13 +130,11 @@ void Bisimulation::CreateG(const int num_v, const VectorBisWrapper<Bis_vElem>& G
 *
 *   \param[in] n the total number of distinct labels
 */
-void Bisimulation::SetPointers(const int n)
-{
+void Bisimulation::SetPointers(const int n) {
     // Allocate temporary array used in the following loop
     VectorBisWrapper<BisIndexType> lastNodeInBlock(n, BIS_NIL);
 
-    for (BisIndexType i = 0; i < numberOfNodes; i++)
-    {
+    for (BisIndexType i = 0; i < numberOfNodes; i++) {
         // Retrieve the block to which state "i" belongs
         BisIndexType block = G[i].block;
 
@@ -152,8 +143,7 @@ void Bisimulation::SetPointers(const int n)
         // then state "i" becomes its representative.
         // That is, the first state found with label "k"
         // becomes the representative of the block for label "k".
-        if (X[block].firstBlock == BIS_NIL)
-        {
+        if (X[block].firstBlock == BIS_NIL) {
             X[block].firstBlock = i;
             G[i].prevInBlock = BIS_NIL;
             G[i].nextInBlock = BIS_NIL;
@@ -163,8 +153,7 @@ void Bisimulation::SetPointers(const int n)
         // using the "prevInBlock" and "nextInBlock" pointers.
         // The "curr_node" array is used to keep track of the last state seen
         // for each label (hence the size of curr_node is equal to the total number of labels).
-        else
-        {
+        else {
             const BisIndexType prev = lastNodeInBlock[block];
             G[i].prevInBlock = prev;
             G[i].nextInBlock = BIS_NIL;
@@ -176,13 +165,10 @@ void Bisimulation::SetPointers(const int n)
     }
 }
 
-void Bisimulation::Inverse()
-{
-    for (BisIndexType i = 0; i < numberOfNodes; i++)
-    {
+void Bisimulation::Inverse() {
+    for (BisIndexType i = 0; i < numberOfNodes; i++) {
         auto adj = G[i].adj;
-        while (adj != nullptr)
-        {
+        while (adj != nullptr) {
             adj->countxS = nullptr;
             const auto a = std::make_shared<BisAdjList_1>();
             a->node = i;
@@ -194,34 +180,30 @@ void Bisimulation::Inverse()
     }
 }
 
-void Bisimulation::print(const BisAutomata* A)
-{
+void Bisimulation::print(const BisAutomata *A) {
     // Extract basic automaton information
     int numVertices = A->Nvertex;
     int numBehaviors = A->Nbehavs;
-    const VectorBisWrapper<Bis_vElem>& vertices = A->Vertex;
+    const VectorBisWrapper<Bis_vElem> &vertices = A->Vertex;
 
-    auto& os = ArgumentParser::get_instance().get_output_stream();
+    auto &os = ArgumentParser::get_instance().get_output_stream();
     // Output summary of the automaton
     os << "Number of Vertices: " << numVertices << "\n"
-        << "Number of Behaviors: " << numBehaviors << "\n\n";
+            << "Number of Behaviors: " << numBehaviors << "\n\n";
 
     os << "Vertices and their outgoing edges:\n";
 
     // Iterate through all vertices
-    for (int i = 0; i < numVertices; ++i)
-    {
-        const auto& vertex = vertices[i];
+    for (int i = 0; i < numVertices; ++i) {
+        const auto &vertex = vertices[i];
         os << "\nVertex[" << i << "] has " << vertex.ne << " edges:\n";
 
         // Iterate through each edge of the vertex
-        for (int j = 0; j < vertex.ne; ++j)
-        {
-            const auto& edge = vertex.e[j];
+        for (int j = 0; j < vertex.ne; ++j) {
+            const auto &edge = vertex.e[j];
 
             // Print all labels (behaviors) on the edge
-            for (int k = 0; k < edge.nbh; ++k)
-            {
+            for (int k = 0; k < edge.nbh; ++k) {
                 os << edge.bh[k];
                 if (k < edge.nbh - 1) os << ".";
             }
@@ -232,8 +214,7 @@ void Bisimulation::print(const BisAutomata* A)
     }
 }
 
-Bisimulation::Bisimulation()
-{
+Bisimulation::Bisimulation() {
     VectorBisWrapper<BisGraph> G{BisPreAllocatedIndex};
     VectorBisWrapper<Bis_qPartition> Q{BisPreAllocatedIndex};
     VectorBisWrapper<Bis_xPartition> X{BisPreAllocatedIndex};
@@ -253,8 +234,7 @@ Bisimulation::Bisimulation()
  *       the eliminated nodes. This is handled later by `MarkDeletedNodes` and
  *       `DeleteNodes`.
  */
-void Bisimulation::GetMinimizedAutoma(BisAutomata& A)
-{
+void Bisimulation::GetMinimizedAutoma(BisAutomata &A) {
     // Marks states to be deleted that were eliminated during minimization.
     MarkDeletedNodes();
 
@@ -276,8 +256,7 @@ void Bisimulation::GetMinimizedAutoma(BisAutomata& A)
  *       field of each state, which indicates the block it belongs to.
  *
  */
-void Bisimulation::MarkDeletedNodes()
-{
+void Bisimulation::MarkDeletedNodes() {
     // Variables
     BisIndexType i;
 
@@ -288,20 +267,17 @@ void Bisimulation::MarkDeletedNodes()
         Q[i].size = BisNotUsed;
 
     // Mark states that should be deleted
-    for (i = 0; i < numberOfNodes; i++)
-    {
+    for (i = 0; i < numberOfNodes; i++) {
         // Get the block to which state ''i'' belongs
 
         // If the block has no representative yet, mark this state as the representative
-        if (BisIndexType q = G[i].block; Q[q].size == BisNotUsed)
-        {
+        if (BisIndexType q = G[i].block; Q[q].size == BisNotUsed) {
             Q[q].size = BisUsed;
             Q[q].firstNode = i;
         }
         // Otherwise, mark the state for deletion because it's bisimilar to the block's representative.
         // Use `nextInBlock` field as it will no longer be used.
-        else
-        {
+        else {
             G[i].nextInBlock = BisToDelete;
         }
     }
@@ -322,25 +298,18 @@ void Bisimulation::MarkDeletedNodes()
  *
  * @param A Pointer to the input automaton with labeled edges.
  */
-void Bisimulation::DeleteNodes(BisAutomata& A) const
-{
+void Bisimulation::DeleteNodes(BisAutomata &A) const {
     // Iterate over all vertices in the automaton
-    for (BisIndexType i = 0; i < A.Nvertex; ++i)
-    {
+    for (BisIndexType i = 0; i < A.Nvertex; ++i) {
         // If this state is marked for deletion
-        if (G[i].nextInBlock == BisToDelete)
-        {
+        if (G[i].nextInBlock == BisToDelete) {
             // Mark state as deleted by setting number of edges to BIS_DELETED
             A.Vertex[i].ne = BisDeleted;
-        }
-        else
-        {
+        } else {
             // For states that remain, update edges pointing to deleted states
-            for (int j = 0; j < A.Vertex[i].ne; ++j)
-            {
-                auto& edge = A.Vertex[i].e[j];
-                if (G[edge.tv].nextInBlock == BisToDelete)
-                {
+            for (int j = 0; j < A.Vertex[i].ne; ++j) {
+                auto &edge = A.Vertex[i].e[j];
+                if (G[edge.tv].nextInBlock == BisToDelete) {
                     // Redirect edge to the representative of the deleted state's block
                     edge.tv = Q[G[edge.tv].block].firstNode;
                 }
@@ -352,13 +321,11 @@ void Bisimulation::DeleteNodes(BisAutomata& A) const
 
 /*\***paigeTarjan.cpp****/
 //initialise Paige and Tarjan
-int Bisimulation::InitPaigeTarjan()
-{
+int Bisimulation::InitPaigeTarjan() {
     BisIndexType i, end = 0, temp;
 
     //initialisation of the graph (G,Q,X)
-    for (BisIndexType l = 0; l != BIS_NIL; l = temp)
-    {
+    for (BisIndexType l = 0; l != BIS_NIL; l = temp) {
         //for each label block
         temp = X[l].nextXBlock;
         if (temp == BIS_NIL)
@@ -392,8 +359,7 @@ int Bisimulation::InitPaigeTarjan()
     QBlockLimit = numberOfNodes;
     freeXBlock = 1;
 
-    for (i = end + 1; i < numberOfNodes; i++)
-    {
+    for (i = end + 1; i < numberOfNodes; i++) {
         Q[i].size = 0;
         Q[i].nextBlock = i + 1;
         Q[i].superBlock = BIS_NIL;
@@ -419,16 +385,14 @@ int Bisimulation::InitPaigeTarjan()
     C = 0;
     //initialisation of the counters
     //initially there is a count per node count(x,U)=|E({x})|
-    for (i = 0; i < numberOfNodes; i++)
-    {
+    for (i = 0; i < numberOfNodes; i++) {
         auto adj = G[i].adj;
         //to avoid the creation of a BisCounter set to zero
         if (adj == nullptr)
             continue;
         const auto cxS = std::make_shared<BisCounter>();
         cxS->value = 0;
-        while (adj != nullptr)
-        {
+        while (adj != nullptr) {
             (cxS->value)++;
             /*each edge xEy contains a pointer to count(x,U);
             remember that each edge y(E-1)x contains a pointer to the edge xEy!*/
@@ -441,8 +405,7 @@ int Bisimulation::InitPaigeTarjan()
 
 
 //compute Paige and Tarjan
-void Bisimulation::PaigeTarjan()
-{
+void Bisimulation::PaigeTarjan() {
     //pointer to the X-Blocks S and S1
     BisIndexType B, S_B; //pointer to the Q-Blocks B and S-B
     BisIndexType oldD, newD; //old and new block of x belonging to E-1(B)
@@ -450,8 +413,7 @@ void Bisimulation::PaigeTarjan()
     std::shared_ptr<BisAdjList_1> adj = nullptr;
     std::shared_ptr<BisCounter> cxS = nullptr;
 
-    while (C != BIS_NIL)
-    {
+    while (C != BIS_NIL) {
         /*Step 1(select a refining block) & Step 2(update X)*/
         //select some block S from C
         const BisIndexType S = C;
@@ -461,16 +423,13 @@ void Bisimulation::PaigeTarjan()
 
         /*examine the first two blocks in the of blocks of Q contained in S;
         let B be the smaller, remove B from S*/
-        if (Q[X[S].firstBlock].size < Q[Q[X[S].firstBlock].nextBlock].size)
-        {
+        if (Q[X[S].firstBlock].size < Q[Q[X[S].firstBlock].nextBlock].size) {
             B = X[S].firstBlock;
             S_B = Q[X[S].firstBlock].nextBlock;
             X[S].firstBlock = S_B;
             Q[B].nextBlock = BIS_NIL;
             Q[S_B].prevBlock = BIS_NIL;
-        }
-        else
-        {
+        } else {
             B = Q[X[S].firstBlock].nextBlock;
             S_B = X[S].firstBlock;
             Q[S_B].nextBlock = Q[B].nextBlock;
@@ -490,8 +449,7 @@ void Bisimulation::PaigeTarjan()
         //X[S1].countxS is initialised in step 3
 
         //check if S is still compound
-        if (Q[S_B].nextBlock == BIS_NIL)
-        {
+        if (Q[S_B].nextBlock == BIS_NIL) {
             //not compound: remove S from C
             C = X[C].nextXBlock;
             if (C != BIS_NIL)
@@ -511,17 +469,14 @@ void Bisimulation::PaigeTarjan()
         create a new BisCounter record and make G[x].countxB point to it*/
         BisIndexType y = b1List = Q[B].firstNode;
         b_1List = BIS_NIL;
-        while (y != BIS_NIL)
-        {
+        while (y != BIS_NIL) {
             //for each y belonging to B
             B1[y] = G[y].nextInBlock; //copy the elements of B in B1
             adj = G[y].adj_1;
-            while (adj != nullptr)
-            {
+            while (adj != nullptr) {
                 //for each node in the adj_1 of y
                 x = adj->node;
-                if (B_1[x] == numberOfNodes)
-                {
+                if (B_1[x] == numberOfNodes) {
                     //node not already added to E-1(B)
                     B_1[x] = b_1List;
                     b_1List = x;
@@ -530,8 +485,7 @@ void Bisimulation::PaigeTarjan()
                     cxS->node = x;
                     cxS->value = 1;
                     G[x].countxB = cxS; /*1*/
-                }
-                else
+                } else
                     (G[x].countxB->value)++;
                 adj = adj->next; //next node in the adj_1 of y
             }
@@ -544,20 +498,17 @@ void Bisimulation::PaigeTarjan()
         dList = BIS_NIL;
         //do this by scanning the elements of E-1(B)
         x = b_1List;
-        while (x != BIS_NIL)
-        {
+        while (x != BIS_NIL) {
             //for each x belonging to E-1(B)
             //determine the block D of Q containing it
             oldD = G[x].block; //index of D (old block of x)
             //and create an associated block D1 if one does not already exist
-            if (splitD[oldD] == numberOfNodes)
-            {
+            if (splitD[oldD] == numberOfNodes) {
                 //block D not already split
                 splitD[oldD] = dList;
                 dList = oldD;
                 //create a new block D1
-                if (freeQBlock == BIS_NIL)
-                {
+                if (freeQBlock == BIS_NIL) {
                     freeQBlock = QBlockLimit++;
                     Q[freeQBlock].size = 0;
                     Q[freeQBlock].nextBlock = BIS_NIL;
@@ -578,8 +529,7 @@ void Bisimulation::PaigeTarjan()
                 if (Q[newD].nextBlock != BIS_NIL)
                     Q[Q[newD].nextBlock].prevBlock = newD;
                 Q[newD].superBlock = Q[oldD].superBlock;
-            }
-            else
+            } else
                 newD = Q[oldD].nextBlock;
             //move x from D to D1
             if (G[x].prevInBlock != BIS_NIL)
@@ -605,10 +555,8 @@ void Bisimulation::PaigeTarjan()
 
         //dList points to the list of new blocks splitD
         BisIndexType d = dList;
-        while (d != BIS_NIL)
-        {
-            if (Q[d].firstNode == BIS_NIL)
-            {
+        while (d != BIS_NIL) {
+            if (Q[d].firstNode == BIS_NIL) {
                 //D empty: remove it and free its space
                 if (Q[d].prevBlock != BIS_NIL)
                     Q[Q[d].prevBlock].nextBlock = Q[d].nextBlock;
@@ -624,13 +572,10 @@ void Bisimulation::PaigeTarjan()
                 //free Q[d]
                 Q[d].nextBlock = freeQBlock;
                 freeQBlock = d;
-            }
-            else
-            {
+            } else {
                 /*if D nonempty and the superBlock containing D and D1 has been
                 made compound by the split, add this block to C*/
-                if (Q[d].prevBlock == BIS_NIL && Q[Q[d].nextBlock].nextBlock == BIS_NIL)
-                {
+                if (Q[d].prevBlock == BIS_NIL && Q[Q[d].nextBlock].nextBlock == BIS_NIL) {
                     //D and D1 are the only blocks in this just split Xblock
                     X[Q[d].superBlock].nextXBlock = C;
                     X[Q[d].superBlock].prevXBlock = BIS_NIL;
@@ -654,17 +599,14 @@ void Bisimulation::PaigeTarjan()
         To save space we use again the array B_1 to store E-1(B) - E-1(S - B)*/
         y = b1List;
         b_1List = BIS_NIL;
-        while (y != BIS_NIL)
-        {
+        while (y != BIS_NIL) {
             //for each y belonging to B1
             adj = G[y].adj_1;
-            while (adj != nullptr)
-            {
+            while (adj != nullptr) {
                 //for each node in the adj_1 of y -> scan xEy, y in B
                 x = adj->node;
                 if (G[x].countxB->value == adj->adj->countxS->value)
-                    if (B_1[x] == numberOfNodes)
-                    {
+                    if (B_1[x] == numberOfNodes) {
                         //x is a node not already added to E-1(S - B)
                         B_1[x] = b_1List;
                         b_1List = x;
@@ -681,20 +623,17 @@ void Bisimulation::PaigeTarjan()
         dList = BIS_NIL;
         //do this by scanning the elements of E-1(B) - E-1(S - B)
         x = b_1List;
-        while (x != BIS_NIL)
-        {
+        while (x != BIS_NIL) {
             //to process an element x belonging to E-1(B) - E-1(S - B)
             //determine the block D of Q containing it
             oldD = G[x].block; //index of D (old block of x)
             //and create an associated block D1 if one does not already exist
-            if (splitD[oldD] == numberOfNodes)
-            {
+            if (splitD[oldD] == numberOfNodes) {
                 //block D not already split
                 splitD[oldD] = dList;
                 dList = oldD;
                 //create a new block D1
-                if (freeQBlock == BIS_NIL)
-                {
+                if (freeQBlock == BIS_NIL) {
                     freeQBlock = QBlockLimit++;
                     Q[freeQBlock].size = 0;
                     Q[freeQBlock].nextBlock = BIS_NIL;
@@ -715,8 +654,7 @@ void Bisimulation::PaigeTarjan()
                 if (Q[newD].nextBlock != BIS_NIL)
                     Q[Q[newD].nextBlock].prevBlock = newD;
                 Q[newD].superBlock = Q[oldD].superBlock;
-            }
-            else
+            } else
                 newD = Q[oldD].nextBlock;
             //move x from D to D1
             if (G[x].prevInBlock != BIS_NIL)
@@ -742,10 +680,8 @@ void Bisimulation::PaigeTarjan()
 
         //dList points to the list of new blocks splitD
         d = dList;
-        while (d != BIS_NIL)
-        {
-            if (Q[d].firstNode == BIS_NIL)
-            {
+        while (d != BIS_NIL) {
+            if (Q[d].firstNode == BIS_NIL) {
                 //D empty: remove it and free its space
                 if (Q[d].prevBlock != BIS_NIL)
                     Q[Q[d].prevBlock].nextBlock = Q[d].nextBlock;
@@ -760,13 +696,10 @@ void Bisimulation::PaigeTarjan()
                 //free Q[d]
                 Q[d].nextBlock = freeQBlock;
                 freeQBlock = d;
-            }
-            else
-            {
+            } else {
                 /*if D nonempty and the superBlock containing D and D1 has been
                 made compound by the split, add this block to C*/
-                if (Q[d].prevBlock == BIS_NIL && Q[Q[d].nextBlock].nextBlock == BIS_NIL)
-                {
+                if (Q[d].prevBlock == BIS_NIL && Q[Q[d].nextBlock].nextBlock == BIS_NIL) {
                     //D and D1 are the only blocks in this just split Xblock
                     X[Q[d].superBlock].nextXBlock = C;
                     X[Q[d].superBlock].prevXBlock = BIS_NIL;
@@ -788,22 +721,17 @@ void Bisimulation::PaigeTarjan()
         and make xEy point to count(x,B) (to which x points).
         Discard B1 (re-initialise it).*/
         y = b1List;
-        while (y != BIS_NIL)
-        {
+        while (y != BIS_NIL) {
             //for each y belonging to B
             adj = G[y].adj_1;
-            while (adj != nullptr)
-            {
+            while (adj != nullptr) {
                 //for each node in the adj_1 of y -> scan xEy, y in B
                 x = adj->node;
                 cxS = adj->adj->countxS;
-                if (cxS->value != 1)
-                {
+                if (cxS->value != 1) {
                     (cxS->value)--;
                     adj->adj->countxS = G[x].countxB;
-                }
-                else
-                {
+                } else {
                     //count(x,S) becomes zero
                     //make xEy point to count(x,B)
                     adj->adj->countxS = G[x].countxB;
@@ -826,13 +754,11 @@ void Bisimulation::PaigeTarjan()
    Q[].prevBlock represents the color of the nodes during the DFS visit,
    Q[].superBlock represents the forefathers in the SCC,
    Q[].firstNode represents the finishing time of the first DFS visit in SCC()*/
-void Bisimulation::Rank()
-{
+void Bisimulation::Rank() {
     BisIndexType i;
 
     //initialisation of the nodes
-    for (i = 0; i < numberOfNodes; i++)
-    {
+    for (i = 0; i < numberOfNodes; i++) {
         //color is BIS_WHITE
         Q[i].prevBlock = BIS_WHITE;
         //'i' is forefather of itself
@@ -855,21 +781,17 @@ void Bisimulation::Rank()
 
     /*second DFS visit in order of decreasing finishing time (Q[].firstNode)
     as computed in the first DFS visit*/
-    for (i = numberOfNodes - 1; i >= 0; i--)
-    {
+    for (i = numberOfNodes - 1; i >= 0; i--) {
         /*(1)*/
         BisIndexType temp = Q[i].firstNode; //node that has to be visited
-        if ((Q[temp].prevBlock) == BIS_BLACK)
-        {
+        if ((Q[temp].prevBlock) == BIS_BLACK) {
             SecondDFS_visit(temp, temp);
             //to normalize the ranks:
             BisIndexType r = G[temp].rank;
-            if (r != -1)
-            {
+            if (r != -1) {
                 if ((r % 2) != 0)
                     Q[r / 2].size = 2;
-                else
-                {
+                else {
                     if (Q[r / 2].size == 0)
                         Q[r / 2].size = 1;
                 }
@@ -913,13 +835,11 @@ Q[].size is used to normalize the ranks: for an explanation see InitFba*/
 /*modified version of DFS_visit to optimise the computation of Rank();
   firstDFS_visit visits G-1 and stores the finishing time in Q[].firstNode;
   'i' is the node being visited*/
-void Bisimulation::FirstDFS_visit(BisIndexType i)
-{
+void Bisimulation::FirstDFS_visit(BisIndexType i) {
     //visit G-1
     auto adj_1 = G[i].adj_1;
     Q[i].prevBlock = BIS_GRAY;
-    while (adj_1 != nullptr)
-    {
+    while (adj_1 != nullptr) {
         BisIndexType j = adj_1->node;
         if (Q[j].prevBlock == BIS_WHITE)
             FirstDFS_visit(j);
@@ -937,8 +857,7 @@ void Bisimulation::FirstDFS_visit(BisIndexType i)
   Q[].superBlock;
   'i' is the node being visited, ff is its forefather;
   remember that the meaning of the colors is inverted: BIS_WHITE <--> BIS_BLACK*/
-void Bisimulation::SecondDFS_visit(BisIndexType i, BisIndexType ff)
-{
+void Bisimulation::SecondDFS_visit(BisIndexType i, BisIndexType ff) {
     //stores the temporary value of the rank computed from the children of a node
     BisIndexType tempRank;
 
@@ -953,31 +872,25 @@ void Bisimulation::SecondDFS_visit(BisIndexType i, BisIndexType ff)
         G[i].WFflag = false;
 
     auto adj = G[i].adj;
-    while (adj != nullptr)
-    {
+    while (adj != nullptr) {
         BisIndexType j = adj->node;
         //it is the first time we visit j that is in the same SCC of i
-        if (Q[j].prevBlock == BIS_BLACK)
-        {
+        if (Q[j].prevBlock == BIS_BLACK) {
             Q[j].superBlock = ff;
             SecondDFS_visit(j, ff);
         }
-        if (Q[i].superBlock == Q[j].superBlock)
-        {
+        if (Q[i].superBlock == Q[j].superBlock) {
             //SCC(i) == SCC(j)
             //the rank should not increase
             tempRank = G[j].rank;
             //'i' is non-well-founded
             G[i].WFflag = false;
-        }
-        else
-        {
+        } else {
             //SCC(i) != SCC(j)
             if (G[j].WFflag == true) //j well-founded
             //the rank should increase of 1
                 tempRank = G[Q[j].superBlock].rank + 1;
-            else
-            {
+            else {
                 //j not well-founded
                 //the rank should not increase
                 tempRank = G[Q[j].superBlock].rank;
@@ -999,8 +912,7 @@ void Bisimulation::SecondDFS_visit(BisIndexType i, BisIndexType ff)
 
 /*it returns an exit code: 0 means proceed the computation with
 FastBisimulationAlgorithm()*/
-int Bisimulation::InitFBA()
-{
+int Bisimulation::InitFBA() {
     BisIndexType i;
 
     //to normalize the ranks
@@ -1012,8 +924,7 @@ int Bisimulation::InitFBA()
 
     /*here we could find out some special cases, in which
     we know what kind of graph we have:  */
-    if (maxRank == numberOfNodes - 1)
-    {
+    if (maxRank == numberOfNodes - 1) {
         //std::cout << "LINEAR GRAPH";
         return 1;
     }
@@ -1027,8 +938,7 @@ int Bisimulation::InitFBA()
       return 3;
     }*/
 
-    for (i = 0; i < numberOfNodes; i++)
-    {
+    for (i = 0; i < numberOfNodes; i++) {
         //all the nodes will have proper rank
         BisIndexType temp = Q[Q[i].superBlock].nextBlock; //is the rank of the forefather
         if (temp == -1 || temp == 0)
@@ -1059,14 +969,12 @@ int Bisimulation::InitFBA()
     so we can build the bisimulation structures that are composed by
     X-blocks and Q-blocks regarding both ranks and labels*/
     for (BisIndexType l = 0; l != BIS_NIL; l = X[l].nextXBlock) //for each label block
-        for (i = X[l].firstBlock; i != BIS_NIL; i = tmpi)
-        {
+        for (i = X[l].firstBlock; i != BIS_NIL; i = tmpi) {
             //for each node
             //the node 'i' has to be inserted in the block j corresponding to rank j-1
             tmpi = G[i].nextInBlock;
             j = G[i].rank + 1;
-            if (Q[j].firstNode == BIS_NIL)
-            {
+            if (Q[j].firstNode == BIS_NIL) {
                 //the block is empty: add i
                 G[i].nextInBlock = BIS_NIL;
                 G[i].prevInBlock = BIS_NIL;
@@ -1076,9 +984,7 @@ int Bisimulation::InitFBA()
                 Q[j].nextBlock = BIS_NIL;
                 Q[j].superBlock = j;
                 Q[j].prevBlock = BIS_NIL;
-            }
-            else if (G[Q[j].firstNode].label == G[i].label)
-            {
+            } else if (G[Q[j].firstNode].label == G[i].label) {
                 /*the block is not empty and contains nodes with the same label of
                 the node being inserted*/
                 G[i].nextInBlock = Q[j].firstNode;
@@ -1087,9 +993,7 @@ int Bisimulation::InitFBA()
                 G[i].block = j;
                 Q[j].firstNode = i;
                 (Q[j].size)++;
-            }
-            else
-            {
+            } else {
                 /*the block is not empty and contains nodes with a different label (A)
                 from the label (B) of the node being inserted; it is necessary to
                 create a new block. The nodes with label A should be moved to the new
@@ -1131,8 +1035,7 @@ int Bisimulation::InitFBA()
         } //end fors
 
     //initialisation of Q and X
-    for (i = 0; i < maxRank + 2; i++)
-    {
+    for (i = 0; i < maxRank + 2; i++) {
         X[i].nextXBlock = i + 1;
         X[i].prevXBlock = i - 1;
         X[i].firstBlock = i;
@@ -1144,8 +1047,7 @@ int Bisimulation::InitFBA()
     C = 0;
 
     //clearing of X (continue initialisation)
-    for (i = maxRank + 2; i < freeQBlock; i++)
-    {
+    for (i = maxRank + 2; i < freeQBlock; i++) {
         //freeQBlock < nON
         X[i].prevXBlock = BIS_NIL;
         X[i].firstBlock = BIS_NIL;
@@ -1153,8 +1055,7 @@ int Bisimulation::InitFBA()
     }
 
     //clearing of Q and X (continue initialisation)
-    for (i = freeQBlock; i < numberOfNodes; i++)
-    {
+    for (i = freeQBlock; i < numberOfNodes; i++) {
         Q[i].size = 0;
         Q[i].nextBlock = i + 1;
         Q[i].prevBlock = BIS_NIL;
@@ -1176,16 +1077,14 @@ int Bisimulation::InitFBA()
     //initially there is a count per node count(x,U)=|E({x})|
     std::shared_ptr<BisAdjList> adj = nullptr;
     std::shared_ptr<BisCounter> cxS = nullptr;
-    for (i = 0; i < numberOfNodes; i++)
-    {
+    for (i = 0; i < numberOfNodes; i++) {
         adj = G[i].adj;
         //to avoid the creation of a BisCounter set to zero
         if (adj == nullptr)
             continue;
         cxS = std::make_shared<BisCounter>();
         cxS->value = 0;
-        while (adj != nullptr)
-        {
+        while (adj != nullptr) {
             (cxS->value)++;
             //each edge xEy contains a pointer to count(x,U);
             //remember that each edge y(E-1)x contains a pointer to the edge xEy!
@@ -1199,22 +1098,17 @@ int Bisimulation::InitFBA()
     of different rank and G[i].adj_1 stores only the edges going to 'i' from
     nodes having the same rank*/
 
-    for (i = 0; i < numberOfNodes; i++)
-    {
+    for (i = 0; i < numberOfNodes; i++) {
         j = G[i].rank;
         std::shared_ptr<BisAdjList_1> adj_1 = G[i].adj_1;
         std::shared_ptr<BisAdjList_1> a = nullptr;
         std::shared_ptr<BisAdjList_1> b = nullptr;
-        while (adj_1 != nullptr)
-        {
+        while (adj_1 != nullptr) {
             std::shared_ptr<BisAdjList_1> next = adj_1->next;
-            if (j == G[adj_1->node].rank)
-            {
+            if (j == G[adj_1->node].rank) {
                 adj_1->next = a;
                 a = adj_1;
-            }
-            else
-            {
+            } else {
                 adj_1->next = b;
                 b = adj_1;
             }
@@ -1230,8 +1124,7 @@ int Bisimulation::InitFBA()
 //compute Paige and Tarjan modified for the fast bisimulation algorithm.
 //It analysed only the nodes of Rank: rank that are in the Xblock C.
 
-void Bisimulation::PaigeTarjan(BisIndexType rank)
-{
+void Bisimulation::PaigeTarjan(BisIndexType rank) {
     //pointer to the X-Blocks S and S1
     BisIndexType B, S_B; //pointer to the Q-Blocks B and S-B
     BisIndexType oldD, newD; //old and new block of x belonging to E-1(B)
@@ -1244,8 +1137,7 @@ void Bisimulation::PaigeTarjan(BisIndexType rank)
     //REMINDER: XBlock that are not in C but have Rank: rank
     rankPartition = BIS_NIL;
 
-    while (C != BIS_NIL && rank == G[Q[X[C].firstBlock].firstNode].rank)
-    {
+    while (C != BIS_NIL && rank == G[Q[X[C].firstBlock].firstNode].rank) {
         /*Step 1(select a refining block) & Step 2(update X)*/
         //select some block S from C
         BisIndexType S = C;
@@ -1255,16 +1147,13 @@ void Bisimulation::PaigeTarjan(BisIndexType rank)
 
         /*examine the first two blocks in the of blocks of Q contained in S;
         let B be the smaller, remove B from S*/
-        if (Q[X[S].firstBlock].size < Q[Q[X[S].firstBlock].nextBlock].size)
-        {
+        if (Q[X[S].firstBlock].size < Q[Q[X[S].firstBlock].nextBlock].size) {
             B = X[S].firstBlock;
             S_B = Q[X[S].firstBlock].nextBlock;
             X[S].firstBlock = S_B;
             Q[B].nextBlock = BIS_NIL;
             Q[S_B].prevBlock = BIS_NIL;
-        }
-        else
-        {
+        } else {
             B = Q[X[S].firstBlock].nextBlock;
             S_B = X[S].firstBlock;
             Q[S_B].nextBlock = Q[B].nextBlock;
@@ -1288,8 +1177,7 @@ void Bisimulation::PaigeTarjan(BisIndexType rank)
         //X[S1].countxS is initialised in step 3
 
         //check if S is still compound
-        if (Q[S_B].nextBlock == BIS_NIL)
-        {
+        if (Q[S_B].nextBlock == BIS_NIL) {
             //not compound: remove S from C
             C = X[C].nextXBlock;
             if (C != BIS_NIL)
@@ -1314,17 +1202,14 @@ void Bisimulation::PaigeTarjan(BisIndexType rank)
         create a new BisCounter record and make G[x].countxB point to it*/
         BisIndexType y = b1List = Q[B].firstNode;
         b_1List = BIS_NIL;
-        while (y != BIS_NIL)
-        {
+        while (y != BIS_NIL) {
             //for each y belonging to B
             B1[y] = G[y].nextInBlock; //copy the elements of B in B1
             adj = G[y].adj_1;
-            while (adj != nullptr)
-            {
+            while (adj != nullptr) {
                 //for each node in the adj_1 of y
                 x = adj->node;
-                if (B_1[x] == numberOfNodes)
-                {
+                if (B_1[x] == numberOfNodes) {
                     //node not already added to E-1(B)
                     B_1[x] = b_1List;
                     b_1List = x;
@@ -1333,8 +1218,7 @@ void Bisimulation::PaigeTarjan(BisIndexType rank)
                     cxS->node = x;
                     cxS->value = 1;
                     G[x].countxB = cxS; /*1*/
-                }
-                else
+                } else
                     (G[x].countxB->value)++;
                 adj = adj->next; //next node in the adj_1 of y
             }
@@ -1347,20 +1231,17 @@ void Bisimulation::PaigeTarjan(BisIndexType rank)
         dList = BIS_NIL;
         //do this by scanning the elements of E-1(B)
         x = b_1List;
-        while (x != BIS_NIL)
-        {
+        while (x != BIS_NIL) {
             //for each x belonging to E-1(B)
             //determine the block D of Q containing it
             oldD = G[x].block; //index of D (old block of x)
             //and create an associated block D1 if one does not already exist
-            if (splitD[oldD] == numberOfNodes)
-            {
+            if (splitD[oldD] == numberOfNodes) {
                 //block D not already split
                 splitD[oldD] = dList;
                 dList = oldD;
                 //create a new block D1
-                if (freeQBlock == BIS_NIL)
-                {
+                if (freeQBlock == BIS_NIL) {
                     freeQBlock = QBlockLimit++;
                     Q[freeQBlock].size = 0;
                     Q[freeQBlock].nextBlock = BIS_NIL;
@@ -1383,8 +1264,7 @@ void Bisimulation::PaigeTarjan(BisIndexType rank)
                 if (Q[newD].nextBlock != BIS_NIL)
                     Q[Q[newD].nextBlock].prevBlock = newD;
                 Q[newD].superBlock = Q[oldD].superBlock;
-            }
-            else //block D already split
+            } else //block D already split
                 newD = Q[oldD].nextBlock;
             //move x from D to D1
             if (G[x].prevInBlock != BIS_NIL)
@@ -1410,11 +1290,9 @@ void Bisimulation::PaigeTarjan(BisIndexType rank)
 
         //dList points to the list of new blocks splitD
         BisIndexType d = dList;
-        while (d != BIS_NIL)
-        {
+        while (d != BIS_NIL) {
             super = Q[d].superBlock;
-            if (Q[d].firstNode == BIS_NIL)
-            {
+            if (Q[d].firstNode == BIS_NIL) {
                 //D empty: remove it and free its space
                 if (Q[d].prevBlock != BIS_NIL)
                     Q[Q[d].prevBlock].nextBlock = Q[d].nextBlock;
@@ -1430,9 +1308,7 @@ void Bisimulation::PaigeTarjan(BisIndexType rank)
                 //free Q[d]
                 Q[d].nextBlock = freeQBlock;
                 freeQBlock = d;
-            }
-            else
-            {
+            } else {
                 /*if D nonempty and the superBlock containing D and D1 (super) has been
                 made compound by the split, add this block to C
                 REMINDER: and remove super from rankPartition
@@ -1440,8 +1316,7 @@ void Bisimulation::PaigeTarjan(BisIndexType rank)
                 since we are computing within a particular rank (BisAdjList_1 of G has been
                 cut) D and hence D1 have Rank: rank (and also super has) we just need to
                 add super at the beginning of the list pointed by C of */
-                if (Q[d].prevBlock == BIS_NIL && Q[Q[d].nextBlock].nextBlock == BIS_NIL)
-                {
+                if (Q[d].prevBlock == BIS_NIL && Q[Q[d].nextBlock].nextBlock == BIS_NIL) {
                     //D and D1 are the only blocks in this just split Xblock
                     //REMINDER: remove super from rankPartition
                     if (X[super].prevXBlock != BIS_NIL)
@@ -1477,17 +1352,14 @@ void Bisimulation::PaigeTarjan(BisIndexType rank)
         nodes having different rank, hence we don't need to do anything special!*/
         y = b1List;
         b_1List = BIS_NIL;
-        while (y != BIS_NIL)
-        {
+        while (y != BIS_NIL) {
             //for each y belonging to B1
             adj = G[y].adj_1;
-            while (adj != nullptr)
-            {
+            while (adj != nullptr) {
                 //for each node in the adj_1 of y -> scan xEy, y in B
                 x = adj->node;
                 if (G[x].countxB->value == adj->adj->countxS->value)
-                    if (B_1[x] == numberOfNodes)
-                    {
+                    if (B_1[x] == numberOfNodes) {
                         //x is a node not already added to E-1(S - B)
                         B_1[x] = b_1List;
                         b_1List = x;
@@ -1504,20 +1376,17 @@ void Bisimulation::PaigeTarjan(BisIndexType rank)
         dList = BIS_NIL;
         //do this by scanning the elements of E-1(B) - E-1(S - B)
         x = b_1List;
-        while (x != BIS_NIL)
-        {
+        while (x != BIS_NIL) {
             //to process an element x belonging to E-1(B) - E-1(S - B)
             //determine the block D of Q containing it
             oldD = G[x].block; //index of D (old block of x)
             //and create an associated block D1 if one does not already exist
-            if (splitD[oldD] == numberOfNodes)
-            {
+            if (splitD[oldD] == numberOfNodes) {
                 //block D not already split
                 splitD[oldD] = dList;
                 dList = oldD;
                 //create a new block D1
-                if (freeQBlock == BIS_NIL)
-                {
+                if (freeQBlock == BIS_NIL) {
                     freeQBlock = QBlockLimit++;
                     Q[freeQBlock].size = 0;
                     Q[freeQBlock].nextBlock = BIS_NIL;
@@ -1540,8 +1409,7 @@ void Bisimulation::PaigeTarjan(BisIndexType rank)
                 if (Q[newD].nextBlock != BIS_NIL)
                     Q[Q[newD].nextBlock].prevBlock = newD;
                 Q[newD].superBlock = Q[oldD].superBlock;
-            }
-            else //block D already split
+            } else //block D already split
                 newD = Q[oldD].nextBlock;
             //move x from D to D1
             if (G[x].prevInBlock != BIS_NIL)
@@ -1567,11 +1435,9 @@ void Bisimulation::PaigeTarjan(BisIndexType rank)
 
         //dList points to the list of new blocks splitD
         d = dList;
-        while (d != BIS_NIL)
-        {
+        while (d != BIS_NIL) {
             super = Q[d].superBlock;
-            if (Q[d].firstNode == BIS_NIL)
-            {
+            if (Q[d].firstNode == BIS_NIL) {
                 //D empty: remove it and free its space
                 if (Q[d].prevBlock != BIS_NIL)
                     Q[Q[d].prevBlock].nextBlock = Q[d].nextBlock;
@@ -1586,9 +1452,7 @@ void Bisimulation::PaigeTarjan(BisIndexType rank)
                 //free Q[d]
                 Q[d].nextBlock = freeQBlock;
                 freeQBlock = d;
-            }
-            else
-            {
+            } else {
                 /*if D nonempty and the superBlock containing D and D1 (super) has been
                 made compound by the split, add this block to C
                 REMINDER: and remove super from rankPartition
@@ -1596,8 +1460,7 @@ void Bisimulation::PaigeTarjan(BisIndexType rank)
                 since we are computing within a particular rank (BisAdjList_1 of G has been
                 cut) D and hence D1 have Rank: rank (and also super has) we just need to
                 add super at the beginning of the list pointed by C of */
-                if (Q[d].prevBlock == BIS_NIL && Q[Q[d].nextBlock].nextBlock == BIS_NIL)
-                {
+                if (Q[d].prevBlock == BIS_NIL && Q[Q[d].nextBlock].nextBlock == BIS_NIL) {
                     //D and D1 are the only blocks in this just split Xblock
                     //REMINDER: remove super from rankPartition
                     if (X[super].prevXBlock != BIS_NIL)
@@ -1629,22 +1492,17 @@ void Bisimulation::PaigeTarjan(BisIndexType rank)
         and make xEy point to count(x,B) (to which x points).
         Discard B1 (re-initialise it).*/
         y = b1List;
-        while (y != BIS_NIL)
-        {
+        while (y != BIS_NIL) {
             //for each y belonging to B
             adj = G[y].adj_1;
-            while (adj != nullptr)
-            {
+            while (adj != nullptr) {
                 //for each node in the adj_1 of y -> scan xEy, y in B
                 x = adj->node;
                 cxS = adj->adj->countxS;
-                if (cxS->value != 1)
-                {
+                if (cxS->value != 1) {
                     (cxS->value)--;
                     adj->adj->countxS = G[x].countxB;
-                }
-                else
-                {
+                } else {
                     //count(x,S) becomes zero
                     //make xEy point to count(x,B)
                     adj->adj->countxS = G[x].countxB;
@@ -1666,8 +1524,7 @@ void Bisimulation::PaigeTarjan(BisIndexType rank)
 some differences: once used for the split, B is not anymore necessary; so B1, S1
 and the counters are not computed; since we are interested in the edges between
 nodes of different rank we scan borderEdges[] instead of G[].adj_1*/
-void Bisimulation::Split(BisIndexType B)
-{
+void Bisimulation::Split(BisIndexType B) {
     BisIndexType newD; //old and new block of x belonging to E-1(B)
     std::shared_ptr<BisAdjList_1> adj = nullptr;
     BisIndexType x;
@@ -1681,16 +1538,13 @@ void Bisimulation::Split(BisIndexType B)
     Duplicates are suppressed by marking elements: B_1*/
     BisIndexType y = b1List = Q[B].firstNode;
     b_1List = BIS_NIL;
-    while (y != BIS_NIL)
-    {
+    while (y != BIS_NIL) {
         //for each y belonging to B
         adj = borderEdges[y]; //instead G[y].adj_1;
-        while (adj != nullptr)
-        {
+        while (adj != nullptr) {
             //for each node in the adj_1 of y
             x = adj->node;
-            if (B_1[x] == numberOfNodes)
-            {
+            if (B_1[x] == numberOfNodes) {
                 //node not already added to E-1(B)
                 B_1[x] = b_1List;
                 b_1List = x;
@@ -1706,20 +1560,17 @@ void Bisimulation::Split(BisIndexType B)
     dList = BIS_NIL;
     //do this by scanning the elements of E-1(B)
     x = b_1List;
-    while (x != BIS_NIL)
-    {
+    while (x != BIS_NIL) {
         //for each x belonging to E-1(B)
         //determine the block D of Q containing it
         BisIndexType oldD = G[x].block; //index of D (old block of x)
         //and create an associated block D1 if one does not already exist
-        if (splitD[oldD] == numberOfNodes)
-        {
+        if (splitD[oldD] == numberOfNodes) {
             //block D not already split
             splitD[oldD] = dList;
             dList = oldD;
             //create a new block D1
-            if (freeQBlock == BIS_NIL)
-            {
+            if (freeQBlock == BIS_NIL) {
                 //check for free space in memory
                 freeQBlock = QBlockLimit++;
                 Q[freeQBlock].size = 0;
@@ -1743,8 +1594,7 @@ void Bisimulation::Split(BisIndexType B)
             if (Q[newD].nextBlock != BIS_NIL)
                 Q[Q[newD].nextBlock].prevBlock = newD;
             Q[newD].superBlock = Q[oldD].superBlock;
-        }
-        else
+        } else
             newD = Q[oldD].nextBlock;
         //move x from D to D1
         if (G[x].prevInBlock != BIS_NIL)
@@ -1770,10 +1620,8 @@ void Bisimulation::Split(BisIndexType B)
 
     //dList points to the list of new blocks splitD
     BisIndexType d = dList;
-    while (d != BIS_NIL)
-    {
-        if (Q[d].firstNode == BIS_NIL)
-        {
+    while (d != BIS_NIL) {
+        if (Q[d].firstNode == BIS_NIL) {
             //D empty: remove it and free its space
             if (Q[d].prevBlock != BIS_NIL)
                 Q[Q[d].prevBlock].nextBlock = Q[d].nextBlock;
@@ -1803,8 +1651,7 @@ void Bisimulation::Split(BisIndexType B)
 
 //compute FastBisimulationAlgorithms
 
-void Bisimulation::FastBisimulationAlgorithm()
-{
+void Bisimulation::FastBisimulationAlgorithm() {
     /*VERY IMPORTANT:
     before computing the minimisation for that rank component,
     each rank component is represented by only ONE XBlock
@@ -1816,22 +1663,18 @@ void Bisimulation::FastBisimulationAlgorithm()
     component). Hence, we do not need to compute PT or PTB on this kind of blocks.
     Exception 2: also if there is only a QBlock representing a rank component it
     is not necessary to compute PT or PTB on it*/
-    for (BisIndexType i = -1; i <= maxRank; i++)
-    {
+    for (BisIndexType i = -1; i <= maxRank; i++) {
         /*in the case of the Exceptions above, we remove the XBlock, representing
         the rank component, from C and store it in rankPartition, ready to the
         successive sequence of simple splits */
         if ((Q[X[C].firstBlock].nextBlock == BIS_NIL) ||
-            G[Q[X[C].firstBlock].firstNode].WFflag)
-        {
+            G[Q[X[C].firstBlock].firstNode].WFflag) {
             rankPartition = C;
             C = X[C].nextXBlock;
             X[C].prevXBlock = BIS_NIL;
             X[rankPartition].prevXBlock = BIS_NIL;
             X[rankPartition].nextXBlock = BIS_NIL;
-        }
-        else
-        {
+        } else {
             //if (MultipleNodes(C))
             PaigeTarjan(i); //rank = i
             //else
@@ -1841,8 +1684,7 @@ void Bisimulation::FastBisimulationAlgorithm()
         /*the sub-graph of rank 'i' is minimised and all the blocks are in the chain
         pointed by rankPartition*/
         if (i != maxRank) //i==maxRak means last rank and no more split
-            while (rankPartition != BIS_NIL)
-            {
+            while (rankPartition != BIS_NIL) {
                 for (BisIndexType l = X[rankPartition].firstBlock; l != BIS_NIL; l = Q[l].nextBlock)
                     Split(l);
                 //free the XBlock just used in the split
@@ -1858,16 +1700,14 @@ void Bisimulation::FastBisimulationAlgorithm()
 
 /*----------------------------------------------------------------------------*/
 
-bool Bisimulation::MinimizeAutomaPT(BisAutomata& A)
-{
+bool Bisimulation::MinimizeAutomaPT(BisAutomata &A) {
     FillStructures(A);
     // std::cerr << "\nDEBUG: [MinimizeAutomaPT] filled structures...\n";
     Inverse();
     // std::cerr << "\nDEBUG: [MinimizeAutomaPT] calculated inverse...\n";
 
 
-    if (InitPaigeTarjan() == 0)
-    {
+    if (InitPaigeTarjan() == 0) {
         // std::cerr << "\nDEBUG: [MinimizeAutomaPT] done init...\n";
         PaigeTarjan();
 
@@ -1880,15 +1720,13 @@ bool Bisimulation::MinimizeAutomaPT(BisAutomata& A)
     return false;
 }
 
-bool Bisimulation::MinimizeAutomaFB(BisAutomata& A)
-{
+bool Bisimulation::MinimizeAutomaFB(BisAutomata &A) {
     //std::cerr << "\nDEBUG: IN MINIMIZE\n" << std::flush;
     FillStructures(A);
     Inverse();
 
     Rank();
-    if (InitFBA() == 0)
-    {
+    if (InitFBA() == 0) {
         FastBisimulationAlgorithm();
 
         GetMinimizedAutoma(A);
@@ -1899,22 +1737,21 @@ bool Bisimulation::MinimizeAutomaFB(BisAutomata& A)
 
 
 /*-------------------------------Conversion---------------------------------------------*/
-BisAutomata Bisimulation::kstate_to_automaton(VectorBisWrapper<KripkeWorldPointer>& pworld_vec,
-                                              const std::map<Agent, BisLabel>& agent_to_label,
-                                              const KripkeState& kstate)
-{
+BisAutomata Bisimulation::kstate_to_automaton(VectorBisWrapper<KripkeWorldPointer> &pworld_vec,
+                                              const std::map<Agent, BisLabel> &agent_to_label,
+                                              const KripkeState &kstate) {
     std::map<int, int> compact_indices;
     std::map<KripkeWorldPointer, int> index_map;
     BisLabelsMap label_map;
 
-    const auto& worlds = kstate.get_worlds();
-    const auto& agents = Domain::get_instance().get_agents();
+    const auto &worlds = kstate.get_worlds();
+    const auto &agents = Domain::get_instance().get_agents();
     int Nvertex = static_cast<int>(worlds.size());
     const int ag_set_size = static_cast<int>(agents.size());
 
     VectorBisWrapper<Bis_vElem> Vertex(Nvertex);
 
-    const auto& pointed = kstate.get_pointed();
+    const auto &pointed = kstate.get_pointed();
     index_map[pointed] = 0;
     pworld_vec.push_back(pointed);
     compact_indices[static_cast<int>(pointed.get_internal_world_id())] = 0;
@@ -1923,15 +1760,12 @@ BisAutomata Bisimulation::kstate_to_automaton(VectorBisWrapper<KripkeWorldPointe
 
     int idx = 1, compact_id = 1;
 
-    for (const auto& world : worlds)
-    {
-        if (world != pointed)
-        {
+    for (const auto &world: worlds) {
+        if (world != pointed) {
             index_map[world] = idx;
             pworld_vec.push_back(world);
 
-            if (compact_indices.insert({world.get_internal_world_id(), compact_id}).second)
-            {
+            if (compact_indices.insert({world.get_internal_world_id(), compact_id}).second) {
                 compact_id++;
             }
 
@@ -1944,35 +1778,28 @@ BisAutomata Bisimulation::kstate_to_automaton(VectorBisWrapper<KripkeWorldPointe
 
     int bhtabSize = ag_set_size + compact_id;
 
-    for (const auto& [source, belief_map] : kstate.get_beliefs())
-    {
-        for (const auto& [agent, targets] : belief_map)
-        {
-            for (const auto& target : targets)
-            {
+    for (const auto &[source, belief_map]: kstate.get_beliefs()) {
+        for (const auto &[agent, targets]: belief_map) {
+            for (const auto &target: targets) {
                 label_map[source][target].insert(agent_to_label.at(agent));
                 Vertex[index_map[source]].ne++;
             }
         }
     }
 
-    for (int i = 0; i < Nvertex; ++i)
-    {
+    for (int i = 0; i < Nvertex; ++i) {
         Vertex[i].ne++; // For self-loop?
         Vertex[i].e = VectorBisWrapper<Bis_eElem>(Vertex[i].ne);
     }
 
-    for (const auto& [from_world, edges] : label_map)
-    {
+    for (const auto &[from_world, edges]: label_map) {
         int from = index_map[from_world];
         int j = 0;
 
-        for (const auto& [to_world, labels] : edges)
-        {
+        for (const auto &[to_world, labels]: edges) {
             const int to = index_map[to_world];
 
-            for (const auto& label : labels)
-            {
+            for (const auto &label: labels) {
                 Vertex[from].e[j].nbh = 1;
                 Vertex[from].e[j].bh = VectorBisWrapper<int>(1);
                 Vertex[from].e[j].tv = to;
@@ -1982,7 +1809,7 @@ BisAutomata Bisimulation::kstate_to_automaton(VectorBisWrapper<KripkeWorldPointe
         }
     }
 
-    auto* a = new BisAutomata;
+    auto *a = new BisAutomata;
     a->Nvertex = Nvertex;
     a->Nbehavs = bhtabSize;
     a->Vertex = Vertex;
@@ -1990,25 +1817,19 @@ BisAutomata Bisimulation::kstate_to_automaton(VectorBisWrapper<KripkeWorldPointe
     return *a;
 }
 
-void Bisimulation::automaton_to_kstate(const BisAutomata& a, const VectorBisWrapper<KripkeWorldPointer>& world_vec,
-                                       const std::map<BisLabel, Agent>& label_to_agent, KripkeState& kstate)
-{
+void Bisimulation::automaton_to_kstate(const BisAutomata &a, const VectorBisWrapper<KripkeWorldPointer> &world_vec,
+                                       const std::map<BisLabel, Agent> &label_to_agent, KripkeState &kstate) {
     KripkeWorldPointersSet worlds;
     kstate.clear_beliefs();
 
     auto agents_size = Domain::get_instance().get_agents().size();
 
-    for (int i = 0; i < a.Nvertex; i++)
-    {
-        if (a.Vertex[i].ne > 0)
-        {
+    for (int i = 0; i < a.Nvertex; i++) {
+        if (a.Vertex[i].ne > 0) {
             worlds.insert(world_vec[i]);
-            for (int j = 0; j < a.Vertex[i].ne; j++)
-            {
-                for (int k = 0; k < a.Vertex[i].e[j].nbh; k++)
-                {
-                    if (const int label = a.Vertex[i].e[j].bh[k]; static_cast<size_t>(label) < agents_size)
-                    {
+            for (int j = 0; j < a.Vertex[i].ne; j++) {
+                for (int k = 0; k < a.Vertex[i].e[j].nbh; k++) {
+                    if (const int label = a.Vertex[i].e[j].bh[k]; static_cast<size_t>(label) < agents_size) {
                         kstate.add_edge(world_vec[i], world_vec[a.Vertex[i].e[j].tv], label_to_agent.at(label));
                     }
                 }
@@ -2019,29 +1840,28 @@ void Bisimulation::automaton_to_kstate(const BisAutomata& a, const VectorBisWrap
     kstate.set_worlds(worlds);
 }
 
-void Bisimulation::calc_min_bisimilar(KripkeState& kstate)
-{
+void Bisimulation::calc_min_bisimilar(KripkeState &kstate) {
     VectorBisWrapper<KripkeWorldPointer> pworld_vec;
     pworld_vec.reserve(kstate.get_worlds().size());
 
     std::map<BisLabel, Agent> label_to_agent;
     std::map<Agent, BisLabel> agent_to_label;
 
-    const auto& agents = Domain::get_instance().get_agents();
+    const auto &agents = Domain::get_instance().get_agents();
     BisLabel ag_label = 0;
 
-    for (const auto& agent : agents)
-    {
+    for (const auto &agent: agents) {
         label_to_agent[ag_label] = agent;
         agent_to_label[agent] = ag_label++;
     }
 
     BisAutomata automaton = kstate_to_automaton(pworld_vec, agent_to_label, kstate);
 
+    /*Removed check from configuration, is kinda of redundant
     if (!Configuration::get_instance().get_bisimulation())
     {
         return;
-    }
+    }*/
 
     Bisimulation bisimulation;
 
@@ -2050,12 +1870,9 @@ void Bisimulation::calc_min_bisimilar(KripkeState& kstate)
                              ? bisimulation.MinimizeAutomaFB(automaton)
                              : bisimulation.MinimizeAutomaPT(automaton);
 
-    if (success)
-    {
+    if (success) {
         automaton_to_kstate(automaton, pworld_vec, label_to_agent, kstate);
-    }
-    else
-    {
+    } else {
         ExitHandler::exit_with_message(
             ExitHandler::ExitCode::BisimulationFailed,
             use_FB
