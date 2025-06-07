@@ -524,6 +524,8 @@ void HelperPrint::print_dot_format(const KripkeState& kstate, std::ofstream& ofs
     }
 
     std::string color = "<font color=\"#ffffff\">";
+    std::string true_fluent_color = "<font color=\"#228B22\">";
+    std::string false_fluent_color = "<font color=\"#e53935\">";
     ofs << "\n\n//WORLDS description Table:" << std::endl;
     ofs << "	node [shape = plain]\n\n";
     ofs << "	description[label=<\n";
@@ -551,7 +553,7 @@ void HelperPrint::print_dot_format(const KripkeState& kstate, std::ofstream& ofs
         {
             if (print_first_done) ofs << ", ";
             print_first_done = true;
-            std::string color_fluent = is_neg ? "<font color=\"#228B22\">" : "<font color=\"#e53935\">";
+            std::string color_fluent = is_neg ? false_fluent_color : true_fluent_color;
             std::string prefix = is_neg ? NEGATION_SYMBOL : " ";
             ofs << color_fluent << prefix << key << "</font>";
         }
