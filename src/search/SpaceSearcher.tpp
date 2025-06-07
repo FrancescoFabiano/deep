@@ -17,6 +17,7 @@
 #include <atomic>
 #include <algorithm>
 #include <mutex> // <-- Add this
+#include <ranges>
 
 #include "Configuration.h"
 #include "HelperPrint.h"
@@ -115,10 +116,16 @@ bool SpaceSearcher<StateRepr, Strategy>::search_sequential(State<StateRepr> &ini
 
         for (const auto &action: actions) {
             if (current.is_executable(action)) {
+
                 State successor = current.compute_successor(action);
+
+                /// DEBUG \todo remove this, only for bisimulation testing
+                //if (ArgumentParser::get_instance().get_debug()) check_bisimulation_equivalence(successor);
+
                 if (bisimulation_reduction) {
                     successor.contract_with_bisimulation();
                 }
+
 
                 if (successor.is_goal()) {
                     m_plan_actions_id = successor.get_executed_actions();
@@ -376,4 +383,81 @@ void SpaceSearcher<StateRepr, Strategy>::print_dot_for_execute_plan(const bool i
         std::string script_cmd = "./scripts/dot_to_png.sh " + dot_files_folder;
         std::system(script_cmd.c_str());
     }
+}
+
+template<StateRepresentation StateRepr, SearchStrategy<StateRepr> Strategy>
+void SpaceSearcher<StateRepr, Strategy>::check_bisimulation_equivalence(const State<StateRepr>& state) const {
+    if (!ArgumentParser::get_instance().get_debug())
+        return;
+
+
+    bool are_bisimilar = true;
+    State<StateRepr> temp = state;
+    temp.contract_with_bisimulation();
+    auto & os = ArgumentParser::get_instance().get_output_stream();
+
+    if (temp == state) {
+        // If the state is already bisimilar, no need to check further
+        return;
+    }
+    else
+    {
+        os << "[DEBUG] Checking bisimulation equivalence for possibly different states.";
+    }
+
+    std::string fail_case = "";
+
+    auto &domain_instance = Domain::get_instance();
+    auto to_check1 = domain_instance.get_initial_description().get_initial_conditions();
+    if (state.entails(to_check1) != temp.entails(to_check1)) {
+        are_bisimilar = false;
+        fail_case = "initial_conditions";
+    }
+
+    auto to_check2 = domain_instance.get_initial_description().get_ff_forS5();
+    if (state.entails(to_check2) != temp.entails(to_check2)) {
+        are_bisimilar = false;
+        fail_case = "ff_forS5";
+    }
+
+    auto to_check3 = domain_instance.get_goal_description();
+    if (state.entails(to_check3) != temp.entails(to_check3)) {
+        are_bisimilar = false;
+        fail_case = "goal_description";
+    }
+
+    for (const auto& tmp_action: domain_instance.get_actions()) {
+        for (auto condition: tmp_action.get_effects() | std::views::values) {
+            if (state.entails(condition) != temp.entails(condition)) {
+                are_bisimilar = false;
+                fail_case = "action_effects of action " + tmp_action.get_name();
+            }
+        }
+        auto to_check5 = tmp_action.get_executability();
+        if (state.entails(to_check5) != temp.entails(to_check5)) {
+            are_bisimilar = false;
+            fail_case = "action_executability of action  " + tmp_action.get_name();
+        }
+        for (auto condition: tmp_action.get_fully_observants() | std::views::values) {
+            if (state.entails(condition) != temp.entails(condition)) {
+                are_bisimilar = false;
+                fail_case = "Full Observability of action " + tmp_action.get_name();
+            }
+        }
+        for (auto condition: tmp_action.get_partially_observants() | std::views::values) {
+            if (state.entails(condition) != temp.entails(condition)) {
+                are_bisimilar = false;
+                fail_case = "Full Observability of action " + tmp_action.get_name();
+            }
+        }
+    }
+
+    if (!are_bisimilar) {
+        ExitHandler::exit_with_message(
+            ExitHandler::ExitCode::SearchBisimulationError,
+            "Bisimulation reduction failed: there is some discrepancy in " + fail_case + ". Use debugger to investigate."
+        );
+    }
+    os << " All good:)" << std::endl;
+
 }

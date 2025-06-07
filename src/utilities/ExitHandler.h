@@ -75,6 +75,9 @@ public:
         // --- Heuristics Related (650-669) ---
         HeuristicsBadDeclaration = 650, ///< Heuristic type not declared properly in HeuristicsManager.
 
+        // --- Bisimulation Related (670-679) ---
+        SearchBisimulationError = 670, ///< Bisimulation reduction failed. Some formulae are entailed differently from bisimilar states.
+
         // --- KripkeWorldPointer/Storage Related (700-719) ---
         KripkeWorldPointerNullError = 700, ///< Null pointer dereference in KripkeWorldPointer.
         KripkeWorldPointerIdError = 701, ///< KripkeWorldPointer id overflow or underflow.
