@@ -120,7 +120,7 @@ bool SpaceSearcher<StateRepr, Strategy>::search_sequential(State<StateRepr> &ini
                 State successor = current.compute_successor(action);
 
                 /// DEBUG \todo remove this, only for bisimulation testing
-                //if (ArgumentParser::get_instance().get_debug()) check_bisimulation_equivalence(successor);
+                if (ArgumentParser::get_instance().get_debug()) check_bisimulation_equivalence(successor);
 
                 if (bisimulation_reduction) {
                     successor.contract_with_bisimulation();
@@ -396,14 +396,14 @@ void SpaceSearcher<StateRepr, Strategy>::check_bisimulation_equivalence(const St
     temp.contract_with_bisimulation();
     auto & os = ArgumentParser::get_instance().get_output_stream();
 
+    // ReSharper disable once CppDFAConstantConditions
     if (temp == state) {
         // If the state is already bisimilar, no need to check further
         return;
     }
-    else
-    {
-        os << "[DEBUG] Checking bisimulation equivalence for possibly different states.";
-    }
+    // ReSharper disable once CppDFAUnreachableCode
+    os << "[DEBUG] Checking bisimulation equivalence for possibly different states.";
+
 
     std::string fail_case = "";
 
@@ -415,7 +415,7 @@ void SpaceSearcher<StateRepr, Strategy>::check_bisimulation_equivalence(const St
     }
 
     auto to_check2 = domain_instance.get_initial_description().get_ff_forS5();
-    if (state.entails(to_check2) != temp.entails(to_check2)) {
+    if (!to_check2.empty() && (state.entails(to_check2) != temp.entails(to_check2))) {
         are_bisimilar = false;
         fail_case = "ff_forS5";
     }

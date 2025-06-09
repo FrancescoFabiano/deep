@@ -181,7 +181,7 @@ bool PortfolioSearch::run_portfolio_search() const
         os << "\n  Plan length: " << plan_actions_id[idx].size()
             << "\n  Search used: " << search_types[idx]
             << "\n  Nodes Expanded: " << expanded_nodes[idx]
-            << "\n  Time elapsed " << std::chrono::duration_cast<std::chrono::milliseconds>(times[idx]).count() <<
+            << "\n  Time elapsed: " << std::chrono::duration_cast<std::chrono::milliseconds>(times[idx]).count() <<
             " ms";
         if (std::chrono::duration_cast<std::chrono::milliseconds>(times[idx]).count() > 1000)
         {

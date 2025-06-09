@@ -23,12 +23,12 @@ bool KripkeEntailmentHelper::entails(const Fluent& to_check, const KripkeWorld& 
 
 bool KripkeEntailmentHelper::entails(const FluentsSet& to_check, const KripkeWorld& world)
 {
-    //Maybe just set to True (It was like this in EFP)
+    //Maybe just set to True (It was like that in EFP)
     if (to_check.empty())
     {
         ExitHandler::exit_with_message(
             ExitHandler::ExitCode::KripkeWorldEntailmentError,
-            "Error: Attempted to check entailment of an empty FluentFormula in KripkeEntailmentHelper::entails().\n"
+            "[ERROR] Attempted to check entailment of an empty FluentFormula in KripkeEntailmentHelper::entails(FluentsSet,KripkeWorld).\n"
         );
     }
     // Returns true if the formula is entailed in all reachable worlds.
@@ -40,12 +40,12 @@ bool KripkeEntailmentHelper::entails(const FluentsSet& to_check, const KripkeWor
 
 bool KripkeEntailmentHelper::entails(const FluentFormula& to_check, const KripkeWorld& world)
 {
-    //Maybe just set to True (It was like this in EFP)
+    //Maybe just set to True (It was like that in EFP)
     if (to_check.empty())
     {
         ExitHandler::exit_with_message(
             ExitHandler::ExitCode::KripkeWorldEntailmentError,
-            "Error: Attempted to check entailment of an empty FluentFormula in KripkeEntailmentHelper::entails().\n"
+            "[ERROR] Attempted to check entailment of an empty FluentFormula in KripkeEntailmentHelper::entails(FluentFormula, world).\n"
         );
     }
     // Returns true if the formula is entailed in at least one reachable world.
@@ -65,7 +65,7 @@ bool KripkeEntailmentHelper::entails(const Fluent& to_check, const KripkeWorldPo
     {
         ExitHandler::exit_with_message(
             ExitHandler::ExitCode::KripkeWorldPointerNullError,
-            "Error: Null KripkeWorldPointer in KripkeEntailmentHelper::entails(Fluent, KripkeWorldPointer)."
+            "[ERROR] Null KripkeWorldPointer in KripkeEntailmentHelper::entails(Fluent, KripkeWorldPointer)."
         );
     }
     return entails(to_check, *world.get_ptr());
@@ -77,7 +77,7 @@ bool KripkeEntailmentHelper::entails(const FluentsSet& to_check, const KripkeWor
     {
         ExitHandler::exit_with_message(
             ExitHandler::ExitCode::KripkeWorldPointerNullError,
-            "Error: Null KripkeWorldPointer in KripkeEntailmentHelper::entails(FluentsSet, KripkeWorldPointer)."
+            "[ERROR] Null KripkeWorldPointer in KripkeEntailmentHelper::entails(FluentsSet, KripkeWorldPointer)."
         );
     }
     return entails(to_check, *world.get_ptr());
@@ -89,7 +89,7 @@ bool KripkeEntailmentHelper::entails(const FluentFormula& to_check, const Kripke
     {
         ExitHandler::exit_with_message(
             ExitHandler::ExitCode::KripkeWorldPointerNullError,
-            "Error: Null KripkeWorldPointer in KripkeEntailmentHelper::entails(FluentFormula, KripkeWorldPointer)."
+            "[ERROR] Null KripkeWorldPointer in KripkeEntailmentHelper::entails(FluentFormula, KripkeWorldPointer)."
         );
     }
     return entails(to_check, *world.get_ptr());
@@ -144,7 +144,7 @@ bool KripkeEntailmentHelper::entails(const BeliefFormula& to_check, const Kripke
         default:
             ExitHandler::exit_with_message(
                 ExitHandler::ExitCode::BeliefFormulaOperatorUnset,
-                "Error: Invalid operator in propositional formula during entailment."
+                "[ERROR] Invalid operator in propositional formula during entailment."
             );
         }
         break;
@@ -166,7 +166,7 @@ bool KripkeEntailmentHelper::entails(const BeliefFormula& to_check, const Kripke
     default:
         ExitHandler::exit_with_message(
             ExitHandler::ExitCode::BeliefFormulaTypeUnset,
-            "Error: Invalid formula type in BeliefFormula during entailment."
+            "[ERROR] Invalid formula type in BeliefFormula during entailment."
         );
     }
 
