@@ -505,7 +505,8 @@ bool KripkeState::entails(const FormulaeList &to_check) const {
 
 void KripkeState::contract_with_bisimulation() {
     KripkeReachabilityHelper::clean_unreachable_worlds(*this);
-    Bisimulation::calc_min_bisimilar(*this);
+    Bisimulation b;
+    b.calc_min_bisimilar(*this);
 }
 
 // --- Constructors ---

@@ -39,7 +39,7 @@ public:
     {
         if (index >= data.size())
         {
-            size_t new_size = std::max(index + 1, data.size() + 10000);
+            size_t new_size = std::max(index + 1, data.size() + 100);
             data.resize(new_size);
         }
         return data[index];

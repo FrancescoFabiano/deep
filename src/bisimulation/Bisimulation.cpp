@@ -143,6 +143,7 @@ void Bisimulation::SetPointers(const int n) {
         // then state "i" becomes its representative.
         // That is, the first state found with label "k"
         // becomes the representative of the block for label "k".
+
         if (X[block].firstBlock == BIS_NIL) {
             X[block].firstBlock = i;
             G[i].prevInBlock = BIS_NIL;
@@ -835,7 +836,7 @@ Q[].size is used to normalize the ranks: for an explanation see InitFba*/
 /*modified version of DFS_visit to optimise the computation of Rank();
   firstDFS_visit visits G-1 and stores the finishing time in Q[].firstNode;
   'i' is the node being visited*/
-void Bisimulation::FirstDFS_visit(BisIndexType i) {
+void Bisimulation::FirstDFS_visit(const BisIndexType i) {
     //visit G-1
     auto adj_1 = G[i].adj_1;
     Q[i].prevBlock = BIS_GRAY;
@@ -857,7 +858,7 @@ void Bisimulation::FirstDFS_visit(BisIndexType i) {
   Q[].superBlock;
   'i' is the node being visited, ff is its forefather;
   remember that the meaning of the colors is inverted: BIS_WHITE <--> BIS_BLACK*/
-void Bisimulation::SecondDFS_visit(BisIndexType i, BisIndexType ff) {
+void Bisimulation::SecondDFS_visit(const BisIndexType i, const BisIndexType ff) {
     //stores the temporary value of the rank computed from the children of a node
     BisIndexType tempRank;
 
@@ -1001,7 +1002,7 @@ int Bisimulation::InitFBA() {
                 index rank(+1)*/
 
                 //create a new block
-                BisIndexType newBlock = freeQBlock++; //index of the new block
+                const BisIndexType newBlock = freeQBlock++; //index of the new block
 
                 //move nodes with label A to the new block
                 Q[newBlock].size = Q[j].size;
@@ -1124,7 +1125,7 @@ int Bisimulation::InitFBA() {
 //compute Paige and Tarjan modified for the fast bisimulation algorithm.
 //It analysed only the nodes of Rank: rank that are in the Xblock C.
 
-void Bisimulation::PaigeTarjan(BisIndexType rank) {
+void Bisimulation::PaigeTarjan(const BisIndexType rank) {
     //pointer to the X-Blocks S and S1
     BisIndexType B, S_B; //pointer to the Q-Blocks B and S-B
     BisIndexType oldD, newD; //old and new block of x belonging to E-1(B)
@@ -1524,7 +1525,7 @@ void Bisimulation::PaigeTarjan(BisIndexType rank) {
 some differences: once used for the split, B is not anymore necessary; so B1, S1
 and the counters are not computed; since we are interested in the edges between
 nodes of different rank we scan borderEdges[] instead of G[].adj_1*/
-void Bisimulation::Split(BisIndexType B) {
+void Bisimulation::Split(const BisIndexType B) {
     BisIndexType newD; //old and new block of x belonging to E-1(B)
     std::shared_ptr<BisAdjList_1> adj = nullptr;
     BisIndexType x;
@@ -1688,7 +1689,7 @@ void Bisimulation::FastBisimulationAlgorithm() {
                 for (BisIndexType l = X[rankPartition].firstBlock; l != BIS_NIL; l = Q[l].nextBlock)
                     Split(l);
                 //free the XBlock just used in the split
-                BisIndexType rP = X[rankPartition].nextXBlock;
+                const BisIndexType rP = X[rankPartition].nextXBlock;
                 X[rankPartition].nextXBlock = freeXBlock;
                 freeXBlock = rankPartition;
                 X[rankPartition].prevXBlock = BIS_NIL;
@@ -1701,11 +1702,6 @@ void Bisimulation::FastBisimulationAlgorithm() {
 /*----------------------------------------------------------------------------*/
 
 bool Bisimulation::MinimizeAutomaPT(BisAutomata &A) {
-    FillStructures(A);
-    // std::cerr << "\nDEBUG: [MinimizeAutomaPT] filled structures...\n";
-    Inverse();
-    // std::cerr << "\nDEBUG: [MinimizeAutomaPT] calculated inverse...\n";
-
 
     if (InitPaigeTarjan() == 0) {
         // std::cerr << "\nDEBUG: [MinimizeAutomaPT] done init...\n";
@@ -1721,9 +1717,6 @@ bool Bisimulation::MinimizeAutomaPT(BisAutomata &A) {
 }
 
 bool Bisimulation::MinimizeAutomaFB(BisAutomata &A) {
-    //std::cerr << "\nDEBUG: IN MINIMIZE\n" << std::flush;
-    FillStructures(A);
-    Inverse();
 
     Rank();
     if (InitFBA() == 0) {
@@ -1857,18 +1850,19 @@ void Bisimulation::calc_min_bisimilar(KripkeState &kstate) {
 
     BisAutomata automaton = kstate_to_automaton(pworld_vec, agent_to_label, kstate);
 
+    FillStructures(automaton);
+    Inverse();
+
     /*Removed check from configuration, is kinda of redundant
     if (!Configuration::get_instance().get_bisimulation())
     {
         return;
     }*/
 
-    Bisimulation bisimulation;
-
     const bool use_FB = Configuration::get_instance().get_bisimulation_type_bool();
     const bool success = use_FB
-                             ? bisimulation.MinimizeAutomaFB(automaton)
-                             : bisimulation.MinimizeAutomaPT(automaton);
+                             ? MinimizeAutomaFB(automaton)
+                             : MinimizeAutomaPT(automaton);
 
     if (success) {
         automaton_to_kstate(automaton, pworld_vec, label_to_agent, kstate);

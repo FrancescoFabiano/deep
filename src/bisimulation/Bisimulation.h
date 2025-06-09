@@ -75,7 +75,7 @@ public:
      * @brief Function that minimizes the KripkeState using bisimulation.
      * @param[out] kstate The input Kripke state to minimize.
      */
-    static void calc_min_bisimilar(KripkeState& kstate);
+    void calc_min_bisimilar(KripkeState& kstate);
     ///@}
 
 private:
