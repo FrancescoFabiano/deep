@@ -34,7 +34,7 @@ TrainingDataset<StateRepr>::TrainingDataset() {
     const std::string domain_name = Domain::get_instance().get_name();
 
     if (ArgumentParser::get_instance().get_dataset_mode()) {
-        m_folder = OutputPaths::DATASET_TRAINING_FOLDER + domain_name + "/";
+        m_folder = std::string(OutputPaths::DATASET_TRAINING_FOLDER) + "/" + domain_name + "/";
         m_training_raw_files_folder = m_folder + "RawFiles/";
 
 
@@ -46,12 +46,12 @@ TrainingDataset<StateRepr>::TrainingDataset() {
         try {
             std::filesystem::create_directories(m_folder);
             std::filesystem::create_directories(m_training_raw_files_folder);
-            if (ArgumentParser::get_instance().get_dataset_mapped() && !ArgumentParser::get_instance().
+            if (ArgumentParser::get_instance().get_dataset_mapped() || ArgumentParser::get_instance().
                 get_dataset_both()) {
                 std::filesystem::create_directories(
-                    m_training_raw_files_folder + OutputPaths::DATASET_NN_DATASET_MAPPED + "/");
+                    m_training_raw_files_folder + std::string(OutputPaths::DATASET_NN_DATASET_MAPPED) + "/");
             }
-            if (!ArgumentParser::get_instance().get_dataset_mapped() && !ArgumentParser::get_instance().
+            if (!ArgumentParser::get_instance().get_dataset_mapped() || ArgumentParser::get_instance().
                 get_dataset_both()) {
                 std::filesystem::create_directories(
                     m_training_raw_files_folder + OutputPaths::DATASET_NN_DATASET_HASHED + "/");
@@ -332,8 +332,7 @@ bool TrainingDataset<StateRepr>::dfs_exploration(State<StateRepr> &initial_state
     const auto max_depth = ArgumentParser::get_instance().get_dataset_depth();
     m_visited_states.clear();
 
-    const size_t branching_factor = actions->size();
-    if (branching_factor <= 1) {
+    if (const size_t branching_factor = actions->size(); branching_factor <= 1) {
         m_total_possible_nodes_log = log(max_depth + 1);
     } else {
         // Calculate expected log of total nodes
@@ -391,7 +390,7 @@ int TrainingDataset<StateRepr>::dfs_worker(State<StateRepr> &state, const size_t
 
     int best_successor_score = -1;
     bool has_successor = false;
-    const size_t max_depth = static_cast<size_t>(ArgumentParser::get_instance().get_dataset_depth());
+    const auto max_depth = static_cast<size_t>(ArgumentParser::get_instance().get_dataset_depth());
     // Create a local vector from action_set
     std::vector<Action> local_actions(actions->begin(), actions->end());
 
@@ -443,7 +442,7 @@ int TrainingDataset<StateRepr>::dfs_worker(State<StateRepr> &state, const size_t
                 // Increase the augmentation factor for non-discarded series
                 m_discard_augmentation_factor++;
 
-                int child_score = dfs_worker(next_state, depth + 1, actions, global_dataset);
+                const int child_score = dfs_worker(next_state, depth + 1, actions, global_dataset);
 
                 if (child_score >= 0) {
                     if (!has_successor || child_score < best_successor_score) {
@@ -508,11 +507,12 @@ void TrainingDataset<StateRepr>::print_state_for_dataset_internal(const State<St
                                                                   const std::string &base_filename,
                                                                   const std::string &type) const {
     std::ofstream out(format_name(base_filename, type));
-    state.print_dataset_format(out);
+    state.print_dataset_format(out,type == OutputPaths::DATASET_NN_DATASET_HASHED);
     out.close();
 }
 
 template<StateRepresentation StateRepr>
 std::string TrainingDataset<StateRepr>::format_name(const std::string &base_filename, const std::string &type) const {
-    return m_training_raw_files_folder + type + "/" + base_filename + "_" + type + ".dot";
+    std::string result_filename = m_training_raw_files_folder + type + "/" + base_filename + "_" + type + ".dot";
+    return result_filename;
 }

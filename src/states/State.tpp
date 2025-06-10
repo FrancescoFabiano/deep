@@ -188,7 +188,7 @@ void State<StateRepr>::print_dot_format(std::ofstream& ofs) const
 }
 
 template <StateRepresentation StateRepr>
-void State<StateRepr>::print_dataset_format(std::ofstream& ofs) const
+void State<StateRepr>::print_dataset_format(std::ofstream& ofs, const bool use_hash) const
 {
-    m_representation.print_dataset_format(ofs);
+    m_representation.print_dataset_format(ofs, use_hash);
 }

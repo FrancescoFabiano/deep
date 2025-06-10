@@ -567,11 +567,10 @@ void HelperPrint::print_dot_format(const KripkeState& kstate, std::ofstream& ofs
     ofs << "}" << std::endl;
 }
 
-void HelperPrint::print_dataset_format(const KripkeState& kstate, std::ofstream& ofs)
+void HelperPrint::print_dataset_format(const KripkeState& kstate, std::ofstream& ofs, const bool use_hash)
 {
     std::unordered_map<KripkeWorldId, int> world_map;
     int world_counter = 1;
-    const bool use_hash = !ArgumentParser::get_instance().get_dataset_mapped();
 
 
     // Assign compact IDs

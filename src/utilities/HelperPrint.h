@@ -134,8 +134,9 @@ public:
      * \brief Print a KripkeState in format for training the GNN.
      * \param kstate The KripkeState to print.
      * \param ofs The output stream to write the DOT format to. This must be a file.
+     * \param use_hash Flag to indicate whether to use hash IDs or adjusted IDs (needed because sometime both is set)
      */
-    static void print_dataset_format(const KripkeState& kstate, std::ofstream& ofs);
+    static void print_dataset_format(const KripkeState& kstate, std::ofstream& ofs, const bool use_hash);
 
     /**
      * \brief Reads a sequence of actions from a file.

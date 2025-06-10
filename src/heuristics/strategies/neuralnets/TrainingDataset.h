@@ -98,7 +98,7 @@ private:
 
     // --- Node and search statistics ---
     size_t m_current_nodes = 0; ///< Current number of nodes
-    size_t m_threshold_node_generation = 50000; ///< Node generation threshold
+    size_t m_threshold_node_generation = 500; ///< Node generation threshold
     double m_threshold_node_generation_log = std::log(50000 * 3); ///< Log threshold for node generation
     double m_total_possible_nodes_log = 0; ///< Log of total possible nodes
     bool m_goal_recently_found = false; ///< Flag for recent goal finding

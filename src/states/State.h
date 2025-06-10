@@ -34,7 +34,7 @@ template <typename StateRepr>
 concept StateRepresentation = requires(StateRepr rep, const Fluent& f, const FluentsSet& fs,
                                        const FluentFormula& ff, const BeliefFormula& bf,
                                        const FormulaeList& fl, const Action& act,
-                                       std::ofstream& ofs, const StateRepr& other)
+                                       std::ofstream& ofs, const StateRepr& other, const bool use_hash)
 {
     /**
      * @name Entailment Methods for logical entailment evaluation
@@ -71,7 +71,7 @@ concept StateRepresentation = requires(StateRepr rep, const Fluent& f, const Flu
     ///@{
     { std::as_const(rep).print() };
     { std::as_const(rep).print_dot_format(ofs) };
-    { std::as_const(rep).print_dataset_format(ofs) };
+    { std::as_const(rep).print_dataset_format(ofs,use_hash) };
     ///@}
 
     /**
@@ -278,8 +278,9 @@ public:
 
     /** \brief Function that prints the information of *this* for the generation of the dataset used to train the GNN.
     * \param ofs The output stream to print to.
+    * \param use_hash Flag to indicate whether to use hash IDs or adjusted IDs (needed because sometime both is set)
     */
-    void print_dataset_format(std::ofstream& ofs) const;
+    void print_dataset_format(std::ofstream& ofs, const bool use_hash) const;
 
 private:
     /** \brief The type of state m_representation.
