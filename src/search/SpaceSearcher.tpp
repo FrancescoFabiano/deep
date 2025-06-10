@@ -120,7 +120,7 @@ bool SpaceSearcher<StateRepr, Strategy>::search_sequential(State<StateRepr> &ini
                 State successor = current.compute_successor(action);
 
                 /// DEBUG \todo remove this, only for bisimulation testing
-                //if (ArgumentParser::get_instance().get_debug()) check_bisimulation_equivalence(successor);
+                ///if (ArgumentParser::get_instance().get_debug()) check_bisimulation_equivalence(successor);
 
                 if (bisimulation_reduction) {
                     successor.contract_with_bisimulation();

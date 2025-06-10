@@ -254,15 +254,15 @@ KripkeWorldId KripkeWorldPointer::get_internal_world_id() const noexcept
 
 bool KripkeWorldPointer::operator<(const KripkeWorldPointer& to_compare) const noexcept
 {
-    return get_id() < to_compare.get_id();
+    return m_id < to_compare.get_id();
 }
 
 bool KripkeWorldPointer::operator>(const KripkeWorldPointer& to_compare) const noexcept
 {
-    return get_id() > to_compare.get_id();
+    return m_id > to_compare.get_id();
 }
 
 bool KripkeWorldPointer::operator==(const KripkeWorldPointer& to_compare) const noexcept
 {
-    return get_id() == to_compare.get_id();
+    return m_id == to_compare.get_id();
 }
