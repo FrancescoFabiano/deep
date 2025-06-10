@@ -121,7 +121,8 @@ KripkeWorldPointer::KripkeWorldPointer(const KripkeWorld& world, const unsigned 
 KripkeWorldPointer::KripkeWorldPointer(const KripkeWorldPointer& other)
 {
     set_ptr(other.get_ptr());
-    set_repetition(other.get_repetition());
+    m_repetition = other.get_repetition();
+    m_id = other.get_id();
 }
 
 KripkeWorldPointer& KripkeWorldPointer::operator=(const KripkeWorldPointer& to_copy)
@@ -129,7 +130,8 @@ KripkeWorldPointer& KripkeWorldPointer::operator=(const KripkeWorldPointer& to_c
     if (this != &to_copy)
     {
         set_ptr(to_copy.get_ptr());
-        set_repetition(to_copy.get_repetition());
+        m_repetition = to_copy.get_repetition();
+        m_id = to_copy.get_id();
     }
     return *this;
 }

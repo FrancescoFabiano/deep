@@ -22,6 +22,7 @@
 
 #include "VectorBisWrapper.h"
 #include "utilities/Define.h"
+#include "BisimulationVectorStorage.h"
 
 /**
  * \brief Main class for Bisimulation minimization.
@@ -86,23 +87,32 @@ private:
     BisIndexType freeQBlock = 0, QBlockLimit = 0;
     BisIndexType freeXBlock = 0;
 
-    VectorBisWrapper<BisGraph> G{BisPreAllocatedIndex};
-    VectorBisWrapper<Bis_qPartition> Q{BisPreAllocatedIndex};
-    VectorBisWrapper<Bis_xPartition> X{BisPreAllocatedIndex};
-
-    VectorBisWrapper<std::shared_ptr<BisAdjList_1>> borderEdges{};
     int t = 0; // timestamp
 
     BisIndexType maxRank = BIS_NIL;
     BisIndexType rankPartition = BIS_NIL;
 
-
-    VectorBisWrapper<BisIndexType> B1{BisPreAllocatedIndex};
-    VectorBisWrapper<BisIndexType> B_1{BisPreAllocatedIndex};
-    VectorBisWrapper<BisIndexType> splitD{BisPreAllocatedIndex};
     BisIndexType b1List = 0, b_1List = 0, dList = 0;
 
     std::map<int, int> m_compact_indices;
+
+
+    VectorBisWrapper<BisGraph> G{BisPreAllocatedIndex};
+    //VectorBisWrapper<Bis_qPartition> Q{BisPreAllocatedIndex};
+    //VectorBisWrapper<Bis_xPartition> X{BisPreAllocatedIndex};
+    //VectorBisWrapper<BisIndexType> B1{BisPreAllocatedIndex};
+    //VectorBisWrapper<BisIndexType> B_1{BisPreAllocatedIndex};
+    //VectorBisWrapper<BisIndexType> splitD{BisPreAllocatedIndex};
+    //VectorBisWrapper<std::shared_ptr<BisAdjList_1>> borderEdges{};
+
+     //VectorBisWrapper<BisGraph>& G = BisimulationVectorStorage::get_instance().G;
+     VectorBisWrapper<Bis_qPartition>& Q = BisimulationVectorStorage::get_instance().Q;
+     VectorBisWrapper<Bis_xPartition>& X = BisimulationVectorStorage::get_instance().X;
+     VectorBisWrapper<BisIndexType>& B1 = BisimulationVectorStorage::get_instance().B1;
+     VectorBisWrapper<BisIndexType>& B_1 = BisimulationVectorStorage::get_instance().B_1;
+     VectorBisWrapper<BisIndexType>& splitD = BisimulationVectorStorage::get_instance().splitD;
+     VectorBisWrapper<std::shared_ptr<BisAdjList_1>>& borderEdges = BisimulationVectorStorage::get_instance().borderEdges;
+
 
     // --- Internal methods ---
 

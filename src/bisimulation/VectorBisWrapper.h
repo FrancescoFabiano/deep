@@ -37,10 +37,9 @@ public:
     // Maybe modify bounds to allow for bisimulation
     T& operator[](size_t index)
     {
-        if (index >= data.size())
+        if (const size_t sz = data.size(); index >= sz)
         {
-            size_t new_size = std::max(index + 1, data.size() + 100);
-            data.resize(new_size);
+            data.resize(std::max(index + 100, sz + 100));
         }
         return data[index];
     }

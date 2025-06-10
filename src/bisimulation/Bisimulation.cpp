@@ -136,7 +136,7 @@ void Bisimulation::SetPointers(const int n) {
 
     for (BisIndexType i = 0; i < numberOfNodes; i++) {
         // Retrieve the block to which state "i" belongs
-        BisIndexType block = G[i].block;
+        const BisIndexType block = G[i].block;
 
         // If this block does not yet have a representative
         // (i.e., the "firstBlock" field is still NIL),
