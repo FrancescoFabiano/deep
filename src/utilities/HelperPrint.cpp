@@ -537,7 +537,8 @@ void HelperPrint::print_dot_format(const KripkeState& kstate, std::ofstream& ofs
         bool print_first_done = false;
         auto temp_fs = world_ptr.get_fluent_set();
         std::vector<std::pair<std::string, bool>> sorted_fluents;
-        ofs << "\t\t<tr><td>" << map_rep_to_name[world_ptr.get_repetition()] << "_" << map_world_to_index[temp_fs] << "</td> <td>";
+        ofs << "\t\t<tr><td>" << map_rep_to_name[world_ptr.get_repetition()] << "_" << map_world_to_index[temp_fs] <<
+            "</td> <td>";
         for (const auto& tmp_f : temp_fs)
         {
             bool is_neg = FormulaHelper::is_negated(tmp_f);
@@ -567,10 +568,11 @@ void HelperPrint::print_dot_format(const KripkeState& kstate, std::ofstream& ofs
     ofs << "}" << std::endl;
 }
 
-void HelperPrint::print_dataset_format(const KripkeState& kstate, std::ofstream& ofs, const bool use_hash)
+void HelperPrint::print_dataset_format(const KripkeState& kstate, std::ofstream& ofs, const bool use_hash, const bool is_merged)
 {
-    std::unordered_map<KripkeWorldId, int> world_map;
-    int world_counter = 1;
+    std::unordered_map<KripkeWorldId, std::string> world_map;
+    const auto training_dataset = &TrainingDataset<KripkeState>::get_instance();
+    int world_counter = training_dataset->get_shift_state_ids();
 
 
     // Assign compact IDs
@@ -578,20 +580,38 @@ void HelperPrint::print_dataset_format(const KripkeState& kstate, std::ofstream&
     {
         if (const auto hash = pw.get_id(); !world_map.contains(hash))
         {
-            world_map[hash] = world_counter++;
+            world_map[hash] = std::to_string(world_counter++);
         }
     }
 
     ofs << "digraph G {" << std::endl;
 
-    // Print nodes Removed to minimize the size of the dataset
-    /*for (const auto& [hash, id] : world_map) {
-        ofs << (use_hash ? std::to_string(hash) : adjust_id_wrt_agents(id)) << ";" << std::endl;
-    }*/
-
     // Pointed world
     const auto pointed_hash = kstate.get_pointed().get_id();
-    ofs << (use_hash ? std::to_string(pointed_hash) : adjust_id_wrt_agents(world_map[pointed_hash]))
+
+    /// For now, we do not adjust if we use hash. The overlap should be minimal and not relevant
+    /// If it becomes relevant, simply add the shift to the hash (checking for overflow)
+
+
+    // In here we print the initial node, the connection to it and the whole goal subgraph
+    if (is_merged)
+    {
+        ofs << TrainingDataset<KripkeState>::get_epsilon_node_id() << " -> " << TrainingDataset<KripkeState>::get_goal_parent_id() << " [label=\""
+                << TrainingDataset<KripkeState>::get_to_goal_edge_id()
+                << "\"];" << std::endl;
+        ofs << training_dataset->get_goal_string();
+
+        ofs << TrainingDataset<KripkeState>::get_epsilon_node_id() << " -> " << (use_hash ? std::to_string(pointed_hash) : world_map[pointed_hash]) << " [label=\""
+        << TrainingDataset<KripkeState>::get_to_state_edge_id()
+        << "\"];" << std::endl;
+    }
+
+    // Print nodes Removed to minimize the size of the dataset
+    /*for (const auto& [hash, id] : world_map) {
+        ofs << (use_hash ? std::to_string(hash) : id) << ";" << std::endl;
+    }*/
+
+     ofs << (use_hash ? std::to_string(pointed_hash) : world_map[pointed_hash])
         << " [shape=doublecircle];" << std::endl;
 
     // Edges
@@ -611,8 +631,8 @@ void HelperPrint::print_dataset_format(const KripkeState& kstate, std::ofstream&
     }
 
     /*     for (const auto& [edge, agents] : edge_map) {
-            auto from_label = use_hash ? std::to_string(edge.first) : adjust_id_wrt_agents(world_map[edge.first]);
-            auto to_label = use_hash ? std::to_string(edge.second) : adjust_id_wrt_agents(world_map[edge.second]);
+            auto from_label = use_hash ? std::to_string(edge.first) : world_map[edge.first];
+            auto to_label = use_hash ? std::to_string(edge.second) : world_map[edge.second];
 
             ofs << from_label << " -> " << to_label << " [label=\"";
             bool first = true;
@@ -625,18 +645,17 @@ void HelperPrint::print_dataset_format(const KripkeState& kstate, std::ofstream&
         } */
 
     //One edge per agent
-    const auto gnn_instance = &TrainingDataset<KripkeState>::get_instance();
     for (const auto& [edge, agents] : edge_map)
     {
-        auto from_label = use_hash ? std::to_string(edge.first) : adjust_id_wrt_agents(world_map[edge.first]);
-        auto to_label = use_hash ? std::to_string(edge.second) : adjust_id_wrt_agents(world_map[edge.second]);
+        auto from_label = use_hash ? std::to_string(edge.first) : world_map[edge.first];
+        auto to_label = use_hash ? std::to_string(edge.second) : world_map[edge.second];
 
 
         //Agents will always be printed as integer starting from 0 as in the goal generation
         for (const auto& ag : agents)
         {
             ofs << from_label << " -> " << to_label << " [label=\""
-                << gnn_instance->get_unique_a_id_from_map(ag)
+                << training_dataset->get_unique_a_id_from_map(ag)
                 << "\"];" << std::endl;
         }
     }
@@ -644,11 +663,6 @@ void HelperPrint::print_dataset_format(const KripkeState& kstate, std::ofstream&
     ofs << "}" << std::endl;
 }
 
-
-std::string HelperPrint::adjust_id_wrt_agents(const int num)
-{
-    return std::to_string(num + Domain::get_instance().get_agents().size());
-}
 
 std::vector<std::string> HelperPrint::read_actions_from_file(const std::string& filename)
 {
@@ -693,7 +707,6 @@ std::vector<std::string> HelperPrint::read_actions_from_file(const std::string& 
 
     return actions;
 }
-
 
 std::string HelperPrint::pretty_print_duration(const std::chrono::duration<double>& duration)
 {

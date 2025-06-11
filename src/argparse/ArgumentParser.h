@@ -110,6 +110,19 @@ public:
     [[nodiscard]] bool get_dataset_both() const noexcept;
 
     /**
+     * \brief Gets the flag indicating if dataset entry point is the couple goal,state.
+     * \return true if dataset entry point is the couple goal,state, false otherwise.
+     */
+    [[nodiscard]] bool get_dataset_merged() const noexcept;
+
+    /**
+     * \brief Gets the flag indicating if both merged entry points are used.
+     * \return true if both merged entry points are used, false otherwise.
+     */
+    [[nodiscard]] bool get_dataset_merged_both() const noexcept;
+
+
+    /**
      * \brief Returns the output stream.
      * \return The log file stream or std::cout if logging is not enabled.
      */
@@ -171,6 +184,8 @@ private:
     bool m_dataset_mode = false; ///< Flag to indicate dataset mode.
     int m_dataset_depth = 10; ///< Maximum depth for dataset generation.
     bool m_dataset_mapped = false;
+    bool m_dataset_merged = false; ///< Flag to indicate if dataset entry point is the couple goal,state.
+    bool m_dataset_merged_both = false;  ///< Flag to indicate if both merged entry points are used.
     ///< Flag for using mapped (compact) node labels in dataset generation. If false we use hashed node labels.
     bool m_dataset_both = false;
     ///< Flag to indicate if both mapped and hashed node labels should be used in dataset generation.

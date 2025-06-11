@@ -170,7 +170,10 @@ ArgumentParser::ArgumentParser() : app("deep") {
     app.add_flag("--dataset_mapped", m_dataset_mapped,
                  "Use mapped (compact) node labels in dataset generation. If not set, hashed node labels are used.");
     app.add_flag("--dataset_both", m_dataset_both, "Generate both mapped and hashed node labels in the dataset.");
-
+    app.add_flag("--dataset_merged", m_dataset_merged,
+                 "Enable merged dataset generation mode.");
+    app.add_flag("--dataset_merged_both", m_dataset_merged_both,
+                 "Enable both merged and non-merged dataset generation.");
 
     app.add_flag("--results_file", m_output_results_file,
                  "Log plan execution time and results to a file for scripting and comparisons.");
@@ -218,6 +221,8 @@ bool ArgumentParser::get_dataset_mode() const noexcept { return m_dataset_mode; 
 int ArgumentParser::get_dataset_depth() const noexcept { return m_dataset_depth; }
 bool ArgumentParser::get_dataset_mapped() const noexcept { return m_dataset_mapped; }
 bool ArgumentParser::get_dataset_both() const noexcept { return m_dataset_both; }
+bool ArgumentParser::get_dataset_merged() const noexcept { return m_dataset_merged; }
+bool ArgumentParser::get_dataset_merged_both() const noexcept { return m_dataset_merged_both; }
 
 const std::string &ArgumentParser::get_heuristic() const noexcept { return m_heuristic_opt; }
 const std::string &ArgumentParser::get_search_strategy() const noexcept { return m_search_strategy; }

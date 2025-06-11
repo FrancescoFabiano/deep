@@ -135,8 +135,9 @@ public:
      * \param kstate The KripkeState to print.
      * \param ofs The output stream to write the DOT format to. This must be a file.
      * \param use_hash Flag to indicate whether to use hash IDs or adjusted IDs (needed because sometime both is set)
+     * \param is_merged Flag to indicate if each dataset entry is merged <goal,state> or not.
      */
-    static void print_dataset_format(const KripkeState& kstate, std::ofstream& ofs, const bool use_hash);
+    static void print_dataset_format(const KripkeState& kstate, std::ofstream& ofs, const bool use_hash, const bool is_merged);
 
     /**
      * \brief Reads a sequence of actions from a file.
@@ -146,13 +147,6 @@ public:
      * \return Vector of action strings.
      */
     static std::vector<std::string> read_actions_from_file(const std::string& filename);
-
-    /**
-     * \brief Adjusts the world ID with respect to the number of agents.
-     * \param num The original world ID.
-     * \return The adjusted world ID as a string.
-     */
-    static std::string adjust_id_wrt_agents(int num);
 
 
     /**

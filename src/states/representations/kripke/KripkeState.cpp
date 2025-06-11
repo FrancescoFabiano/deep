@@ -124,8 +124,8 @@ void KripkeState::print_dot_format(std::ofstream &ofs) const {
     HelperPrint::get_instance().print_dot_format(*this, ofs);
 }
 
-void KripkeState::print_dataset_format(std::ofstream &ofs, const bool use_hash) const {
-    HelperPrint::print_dataset_format(*this, ofs, use_hash);
+void KripkeState::print_dataset_format(std::ofstream &ofs, const bool use_hash, const bool is_merged) const {
+    HelperPrint::print_dataset_format(*this, ofs, use_hash,is_merged);
 }
 
 // --- Structure Building ---

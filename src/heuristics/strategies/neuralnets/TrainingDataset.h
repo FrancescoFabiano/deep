@@ -32,6 +32,13 @@ inline std::uniform_real_distribution<> m_dis(0.0, 1.0);
 template<StateRepresentation StateRepr>
 class TrainingDataset {
 public:
+
+    inline static const std::string m_to_goal_edge_id = "0"; ///< Edge ID for goal connection in merged graph
+    inline static const std::string m_to_state_edge_id = "1"; ///< Edge ID for state connection in merged graph
+    inline static const std::string m_epsilon_node_id = "-1"; ///< ID of the node that connects the two sub-graphs (goal and state) in the merged graph
+    inline static const std::string m_goal_parent_id = "-2"; ///< ID of the node that is the initial parent of the goal graph
+
+
     /**
      * \brief Get the singleton instance of GraphNN.
      * \return Reference to the singleton instance.
@@ -55,6 +62,31 @@ public:
      * \return The path to the folder.
      */
     const std::string &get_folder() const;
+
+
+    /// \brief Gets the to-goal edge ID.
+    /// \return The to-goal edge ID.
+    static constexpr const std::string &get_to_goal_edge_id();
+
+    /// \brief Gets the to-state edge ID.
+    /// \return The to-state edge ID.
+    static constexpr const std::string &get_to_state_edge_id();
+
+    /// \brief Gets the epsilon node ID.
+    /// \return The epsilon node ID.
+    static constexpr const std::string &get_epsilon_node_id();
+
+    /// \brief Gets the goal parent ID.
+    /// \return The goal parent ID.
+    static constexpr const std::string &get_goal_parent_id();
+
+    /// \brief Gets the shift state IDs.
+    /// \return The shift state IDs.
+    int get_shift_state_ids() const;
+
+    /// \brief Gets the goal dot string.
+    /// \return The dot string.
+    constexpr const std::string &get_goal_string() const;
 
     /**
     * \brief Get unique agent ID from map.
@@ -95,11 +127,13 @@ private:
     // --- Mappings ---
     std::unordered_map<Fluent, size_t> m_fluent_to_id; ///< Mapping from fluent to unique ID
     std::unordered_map<Agent, size_t> m_agent_to_id; ///< Mapping from agent to unique ID
+    int m_shift_state_ids = 0; ///< Used to shift the ids of the state (especially when mapped) so that there is no overlap between the goal and the state (only the agents ID are preserved ank kept the same)
+    std::string m_goal_string; ///< String representation of the goal tree for efficient printing
 
     // --- Node and search statistics ---
     size_t m_current_nodes = 0; ///< Current number of nodes
-    size_t m_threshold_node_generation = 500; ///< Node generation threshold
-    double m_threshold_node_generation_log = std::log(50000 * 3); ///< Log threshold for node generation
+    size_t m_threshold_node_generation = 50000; ///< Node generation threshold
+    double m_threshold_node_generation_log = std::log(m_threshold_node_generation * 3); ///< Log threshold for node generation
     double m_total_possible_nodes_log = 0; ///< Log of total possible nodes
     bool m_goal_recently_found = false; ///< Flag for recent goal finding
     double m_discard_augmentation_factor = 0; ///< Augmentation factor for non-discarded paths
@@ -154,7 +188,14 @@ private:
     /**
      * \brief Generate the goal tree.
      */
-    void generate_goal_tree();
+    void print_goal_tree() const;
+
+    /**
+     * \brief Generate the goal tree subgraph to store in m_goal_string (efficient for printing).
+     * \return String representation of the goal tree subgraph.
+     */
+    void generate_goal_tree_subgraph();
+
 
     /**
      * \brief Print the goal subtree.
@@ -162,10 +203,10 @@ private:
      * \param goal_counter Goal counter.
      * \param next_id Next node ID.
      * \param parent_node Parent node name.
-     * \param ofs Output file stream.
+     * \param os Output stream.
      */
-    void print_goal_subtree(const BeliefFormula &to_print, size_t goal_counter, size_t &next_id,
-                            const std::string &parent_node, std::ofstream &ofs);
+    void generate_goal_subtree(const BeliefFormula &to_print, size_t goal_counter, size_t &next_id,
+                            const std::string &parent_node, std::ostream &os);
 
     /**
      * \brief Explore the search space.
@@ -215,17 +256,19 @@ private:
      * \param state The state.
      * \param base_filename Base filename.
      * \param type Type string.
+     * \param merged Used to indicate if we want a single merged graph that contains both the goal and the state.
      */
-    void print_state_for_dataset_internal(const State<StateRepr> &state, const std::string &base_filename,
-                                          const std::string &type) const;
+    void print_state_for_dataset_internal(const State<StateRepr>& state, const std::string& base_filename,
+                                          const std::string& type, bool merged) const;
 
     /**
      * \brief Format a name for dataset files.
      * \param base_filename Base filename.
      * \param type Type string.
+     * \param merged Used to indicate if we want a single merged graph that contains both the goal and the state.
      * \return Formatted name.
      */
-    std::string format_name(const std::string &base_filename, const std::string &type) const;
+    std::string format_name(const std::string &base_filename, const std::string &type, const bool merged) const;
 };
 
 #include "TrainingDataset.tpp"

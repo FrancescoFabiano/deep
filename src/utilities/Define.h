@@ -25,6 +25,9 @@ struct OutputPaths
     static constexpr auto DATASET_INFERENCE_FOLDER = "out/NN/Inference"; ///< Path to the inference folder.
     static constexpr auto DATASET_NN_DATASET_MAPPED = "map"; ///< The suffix for the NN dataset mapped file.
     static constexpr auto DATASET_NN_DATASET_HASHED = "hash"; ///< The suffix for the NN dataset hashed file.
+    static constexpr auto DATASET_NN_DATASET_MERGED = "merged"; ///< The suffix for the NN dataset hashed file.
+    static constexpr auto DATASET_NN_DATASET_SEPARATED = "separated"; ///< The suffix for the NN dataset hashed file.
+
 };
 
 
