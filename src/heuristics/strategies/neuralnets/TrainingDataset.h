@@ -138,6 +138,7 @@ private:
     int m_shift_state_ids = 0;
     ///< Used to shift the ids of the state (especially when mapped) so that there is no overlap between the goal and the state (only the agents ID are preserved ank kept the same)
     std::string m_goal_string; ///< String representation of the goal tree for efficient printing
+    int m_failed_state = 1000000; ///< Value for the failed exploration
 
     // --- Node and search statistics ---
     size_t m_current_nodes = 0; ///< Current number of nodes

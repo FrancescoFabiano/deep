@@ -227,7 +227,7 @@ void TrainingDataset<StateRepr>::generate_goal_tree_subgraph()
 
     size_t next_id = m_shift_state_ids;
 
-    // This is the root node of the root node of goals connected to the parent when exists (which has -1 as label)
+    // This is the root node of the root node of goals connected to the parent when exists (which has m_failed_state as label)
     for (const auto& goal : goal_list)
     {
         generate_goal_subtree(goal, ++goal_counter, next_id, m_goal_parent_id, string_goals_graph);
@@ -518,12 +518,12 @@ int TrainingDataset<StateRepr>::dfs_worker(State<StateRepr>& state, const size_t
             global_dataset.push_back(format_row(state, depth, 0));
             return 0;
         }
-        return -1;
+        return m_failed_state;
     }
     m_current_nodes++;
 
 
-    int current_score = -1;
+    int current_score = m_failed_state;
 
     if (m_visited_states.count(state))
     {
@@ -537,7 +537,7 @@ int TrainingDataset<StateRepr>::dfs_worker(State<StateRepr>& state, const size_t
         m_goal_recently_found = true;
     }
 
-    int best_successor_score = -1;
+    int best_successor_score = m_failed_state;
     bool has_successor = false;
     const auto max_depth = static_cast<size_t>(ArgumentParser::get_instance().get_dataset_depth());
     // Create a local vector from action_set
@@ -614,7 +614,7 @@ int TrainingDataset<StateRepr>::dfs_worker(State<StateRepr>& state, const size_t
         }
     }
 
-    if (current_score == -1 && has_successor)
+    if (current_score == m_failed_state && has_successor)
     {
         current_score = best_successor_score + 1;
     }
