@@ -63,7 +63,7 @@ template <StateRepresentation StateRepr>
     }
 
     // Run the external Python script for NN inference
-    std::string command = "./lib/RL/run_python_script.sh " + m_checking_file_path + " " + std::to_string(state.get_plan_length()) + " " + m_goal_file_path + " " + m_goal_file_path;
+    std::string command = "./lib/RL/run_python_script.sh " + m_checking_file_path + " " + std::to_string(state.get_plan_length()) + " " + m_agents_number + " " + m_goal_file_path;
     int ret = std::system(command.c_str()); // blocks until script (and Python) finishes
 
     if (ret != 0)
