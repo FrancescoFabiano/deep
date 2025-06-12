@@ -134,7 +134,7 @@ TrainingDataset<StateRepr>::TrainingDataset()
     }
     else
     {
-        m_folder = OutputPaths::DATASET_INFERENCE_FOLDER + domain_name + "/";
+        m_folder = std::string(OutputPaths::DATASET_INFERENCE_FOLDER) + "/" + domain_name + "/";
         try
         {
             std::filesystem::create_directories(m_folder);
