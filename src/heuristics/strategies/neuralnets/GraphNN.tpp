@@ -37,6 +37,7 @@ GraphNN<StateRepr>::GraphNN()
     // Use default StateRepresentation for dataset folder creation
     TrainingDataset<StateRepr>::create_instance();
     m_checking_file_path = TrainingDataset<StateRepr>::get_instance().get_folder() + "to_predict.dot";
+    m_goal_file_path = TrainingDataset<StateRepr>::get_instance().get_goal_file_path();
 }
 
 /**
@@ -62,8 +63,7 @@ template <StateRepresentation StateRepr>
     }
 
     // Run the external Python script for NN inference
-    std::string command = "./lib/RL/run_python_script.sh " + m_checking_file_path + " " + std::to_string(
-        state.get_plan_length());
+    std::string command = "./lib/RL/run_python_script.sh " + m_checking_file_path + " " + std::to_string(state.get_plan_length()) + " " + m_goal_file_path + " " + m_goal_file_path;
     int ret = std::system(command.c_str()); // blocks until script (and Python) finishes
 
     if (ret != 0)

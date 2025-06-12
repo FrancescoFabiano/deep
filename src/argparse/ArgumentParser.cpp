@@ -158,7 +158,7 @@ ArgumentParser::ArgumentParser() : app("deep") {
             ->check(CLI::IsMember({"BFS", "DFS", "HFS"}))
             ->default_val("BFS");
 
-    app.add_option("--heuristic", m_heuristic_opt,
+    app.add_option("--heuristics", m_heuristic_opt,
                    "Specify the heuristic for HFS search: 'SUBGOALS' (default), 'L_PG', 'S_PG', 'C_PG', or 'GNN'. Only used if --search HFS is selected.")
             ->check(CLI::IsMember({"SUBGOALS", "L_PG", "S_PG", "C_PG", "GNN"}))
             ->default_val("SUBGOALS");

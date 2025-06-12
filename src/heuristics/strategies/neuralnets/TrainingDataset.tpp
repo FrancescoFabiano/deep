@@ -109,7 +109,7 @@ TrainingDataset<StateRepr>::TrainingDataset()
                 get_dataset_both())
             {
                 if (ArgumentParser::get_instance().get_dataset_merged() || ArgumentParser::get_instance().
-          get_dataset_merged_both())
+                    get_dataset_merged_both())
                 {
                     std::filesystem::create_directories(
                         m_training_raw_files_folder + std::string(OutputPaths::DATASET_NN_DATASET_HASHED) + "/" +
@@ -191,6 +191,12 @@ bool TrainingDataset<StateRepr>::generate_dataset()
 
     return search_space_exploration();
 }
+
+template <StateRepresentation StateRepr>
+const std::string& TrainingDataset<StateRepr>::get_goal_file_path() const {
+    return m_goal_file_path;
+}
+
 
 template <StateRepresentation StateRepr>
 void TrainingDataset<StateRepr>::print_goal_tree() const

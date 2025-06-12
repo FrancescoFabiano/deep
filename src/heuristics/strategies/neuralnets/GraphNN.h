@@ -56,6 +56,8 @@ private:
     static GraphNN* instance; ///< Singleton instance pointer
 
     std::string m_checking_file_path; ///< Path to the file where the state is printed
+    std::string m_goal_file_path; ///< Path to the file where the goal is stored
+    std::string m_agents_number = std::to_string(Domain::get_instance().get_agent_number()); ///< Number of agents in the domain
 };
 
 #include "GraphNN.tpp"
