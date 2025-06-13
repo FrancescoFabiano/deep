@@ -58,7 +58,7 @@ template <StateRepresentation StateRepr>
             "Failed to open file for NN state checking: " + m_checking_file_path
         );
     }
-    state.print_dataset_format(ofs, ArgumentParser::get_instance().get_dataset_mapped(),
+    state.print_dataset_format(ofs, !ArgumentParser::get_instance().get_dataset_mapped(),
                                ArgumentParser::get_instance().get_dataset_merged());
 
 
