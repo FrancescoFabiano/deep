@@ -70,6 +70,12 @@ def main():
     G_s = load_nx_graph(args.path, False)
     G_g = load_nx_graph(args.goal_file, True) if USE_GOAL else None
 
+    with open("error.log", "w") as f:
+        print(f"Model file {args.model_file}.", file=f)
+        print(f"depth file {args.depth}.", file=f)
+        print(f"goal_file {args.goal_file}.", file=f)
+        print(f"State file {args.path}.", file=f)
+
     # Load model
     model = _make_model(USE_GOAL)
     if not os.path.exists(args.model_file):
