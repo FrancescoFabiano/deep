@@ -209,7 +209,7 @@ ArgumentParser::ArgumentParser() : app("deep")
 
 
     auto* threads_group = app.add_option_group("Multi-threading Options");
-    threads_group->add_option("--threads_per_search", m_threads_per_search,
+    threads_group->add_option("--search_threads", m_threads_per_search,
                               "Set the number of threads to use for each search strategy (default: 1). If set > 1, each search strategy (e.g., BFS/DFS/HFS) will use this many threads.")
                  ->default_val("1");
     threads_group->add_option("--portfolio_threads", m_portfolio_threads,

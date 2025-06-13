@@ -117,8 +117,8 @@ void Configuration::set_field_by_name(const std::string& field, const std::strin
     if (field == "bis") set_bisimulation(value);
     else if (field == "bis_type") set_bisimulation_type(value);
     else if (field == "check_visited") set_check_visited(value);
-    else if (field == "search_strategy") set_search_strategy(value);
-    else if (field == "heuristic_opt") set_heuristic_opt(value);
+    else if (field == "search") set_search_strategy(value);
+    else if (field == "heuristics") set_heuristic_opt(value);
     else if (field == "GNN_model_path") set_GNN_model_path(value);
     else
     {

@@ -249,10 +249,10 @@ void PortfolioSearch::set_default_configurations()
     m_search_configurations.clear();
     // Whatever is not set here will is kept from the user input.
     m_search_configurations.push_back({{"search", "BFS"}});
-    m_search_configurations.push_back({{"search", "HFS"}, {"heuristic", "SUBGOALS"}});
-    m_search_configurations.push_back({{"search", "HFS"}, {"heuristic", "L_PG"}});
-    m_search_configurations.push_back({{"search", "HFS"}, {"heuristic", "S_PG"}});
-    m_search_configurations.push_back({{"search", "HFS"}, {"heuristic", "C_PG"}});
-    m_search_configurations.push_back({{"search", "HFS"}, {"heuristic", "GNN"}});
-    m_search_configurations.push_back({{"search", "DFS"}});
+    m_search_configurations.push_back({{"search", "HFS"}, {"heuristics", "SUBGOALS"}});
+    m_search_configurations.push_back({{"search", "HFS"}, {"heuristics", "L_PG"}});
+    m_search_configurations.push_back({{"search", "HFS"}, {"heuristics", "S_PG"}});
+    m_search_configurations.push_back({{"search", "HFS"}, {"heuristics", "C_PG"}});
+    m_search_configurations.push_back({{"search", "HFS"}, {"heuristics", "GNN"}});
+    m_search_configurations.push_back({{"search", "IDFS"}});
 }
