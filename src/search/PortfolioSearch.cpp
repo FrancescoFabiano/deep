@@ -96,7 +96,7 @@ bool PortfolioSearch::run_portfolio_search() const
         case SearchType::BFS:
             {
                 SpaceSearcher<KripkeState, BreadthFirst<KripkeState>> searcherBFS{
-                    BreadthFirst<KripkeState>(initial_state)
+                    BreadthFirst<KripkeState>(initial_state),found_goal
                 };
                 result = searcherBFS.search(initial_state);
                 actions_id = searcherBFS.get_plan_actions_id();
@@ -108,7 +108,7 @@ bool PortfolioSearch::run_portfolio_search() const
         case SearchType::DFS:
             {
                 SpaceSearcher<KripkeState, DepthFirst<KripkeState>> searcherDFS{
-                    DepthFirst<KripkeState>(initial_state)
+                    DepthFirst<KripkeState>(initial_state),found_goal
                 };
                 result = searcherDFS.search(initial_state);
                 actions_id = searcherDFS.get_plan_actions_id();
@@ -120,7 +120,7 @@ bool PortfolioSearch::run_portfolio_search() const
         case SearchType::IDFS:
             {
                 SpaceSearcher<KripkeState, IterativeDepthFirst<KripkeState>> searcherIDFS{
-                    IterativeDepthFirst<KripkeState>(initial_state)
+                    IterativeDepthFirst<KripkeState>(initial_state),found_goal
                 };
                 result = searcherIDFS.search(initial_state);
                 actions_id = searcherIDFS.get_plan_actions_id();
@@ -131,7 +131,9 @@ bool PortfolioSearch::run_portfolio_search() const
             }
         case SearchType::HFS:
             {
-                SpaceSearcher<KripkeState, BestFirst<KripkeState>> searcherHFS{BestFirst<KripkeState>(initial_state)};
+                SpaceSearcher<KripkeState, BestFirst<KripkeState>> searcherHFS{
+                    BestFirst<KripkeState>(initial_state), found_goal
+                };
                 result = searcherHFS.search(initial_state);
                 actions_id = searcherHFS.get_plan_actions_id();
                 search_type_name = searcherHFS.get_search_type();

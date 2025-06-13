@@ -50,8 +50,9 @@ public:
     /**
      * \brief Constructor with search name and strategy instance.
      * \param strategy The search strategy instance.
+     * \param cancel_flag The boolean flag to cancel the search if another thread finds the goal before me.
      */
-    explicit SpaceSearcher(Strategy strategy);
+    explicit SpaceSearcher(Strategy strategy, std::atomic<bool>& cancel_flag);
 
     /**
      * \brief Default destructor.
@@ -101,6 +102,8 @@ private:
     unsigned int m_expanded_nodes = 0; ///< Counter for expanded nodes.
     std::chrono::duration<double> m_elapsed_seconds{}; ///< Time taken by the search.
     ActionIdsList m_plan_actions_id{}; ///< List of actions in the plan.
+    std::atomic<bool>& m_cancel_flag;  ///< Reference to shared cancel flag
+
 
     /**
      * \brief Executes the search algorithm sequentially using the provided container and operations.
