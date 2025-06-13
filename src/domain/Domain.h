@@ -2,7 +2,7 @@
 #include <string>
 #include "Grounder.h"
 #include "InitialStateInformation.h"
-#include "utilities/define.h"
+#include "utilities/Define.h"
 #include "actions/Action.h"
 
 /**
