@@ -55,6 +55,7 @@ Configuration& Configuration::get_instance()
         instance.set_check_visited(parser.get_check_visited());
         instance.set_search_strategy(parser.get_search_strategy());
         instance.set_heuristic_opt(parser.get_heuristic());
+        instance.set_GNN_model_path(parser.get_GNN_model_path());
         m_initialized = true;
     }
     return instance;
