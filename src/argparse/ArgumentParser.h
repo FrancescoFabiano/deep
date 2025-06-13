@@ -191,6 +191,7 @@ private:
     ///< Flag to indicate if both mapped and hashed node labels should be used in dataset generation.
     std::string m_search_strategy = "BFS"; ///< Search strategy (BFS by default).
     std::string m_heuristic_opt = "SUBGOALS"; ///< Heuristic type (SUBGOALS by default).
+    std::string m_GNN_model_path = "lib/RL/models/GNN_model_default.pt"; ///< Path to the GNN model for heuristic evaluation.
     bool m_exec_plan = false; ///< Flag to indicate if the plan should be executed.
     std::vector<std::string> m_exec_actions; ///< Actions to execute instead of planning.
     bool m_output_results_file = false; ///< Flag to enable results file logging.
@@ -221,6 +222,12 @@ private:
      * \return The heuristic type as a string.
      */
     [[nodiscard]] const std::string& get_heuristic() const noexcept;
+
+    /**
+     * \brief Retrieves the path to the model used by the GNN heuristics.
+     * \return The path to the model used by the GNN heuristics.
+     */
+    [[nodiscard]] const std::string& get_GNN_model_path() const noexcept;
 
     /**
      * \brief Retrieves the search strategy to be used.

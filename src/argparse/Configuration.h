@@ -111,6 +111,18 @@ public:
     void set_heuristic_opt(const std::string& val);
 
     /**
+     * \brief Sets the path to the model used by the GNN heuristics.
+     * \param val The path valeu.
+     */
+    void set_GNN_model_path(const std::string& val);
+
+    /**
+     * \brief Retrieves the path to the model used by the GNN heuristics.
+     * \return The path to the model used by the GNN heuristics.
+     */
+    [[nodiscard]] const std::string& get_GNN_model_path() const noexcept;
+
+    /**
     * \brief Sets the field of the class to value
     * \param field The name of the field to set (based on the parsing from command line)
     * \param value The value to set the field to.
@@ -140,6 +152,8 @@ private:
     SearchType m_search_strategy_enum = SearchType::BFS; ///< Search strategy enum.
     std::string m_heuristic_opt = "SUBGOALS"; ///< Heuristic option string.
     Heuristics m_heuristic_enum = Heuristics::SUBGOALS; ///< Heuristic option enum.
+    std::string m_GNN_model_path = "lib/RL/models/GNN_model_default.pt"; ///< Path to the GNN model for heuristic evaluation.
+
 
     /**
      * \brief Sets the bisimulation type as a boolean.

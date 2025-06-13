@@ -36,7 +36,7 @@ public:
      * \param state The state to evaluate.
      * \return The heuristic score for the state.
      */
-    [[nodiscard]] unsigned short get_score(const State<StateRepr>& state);
+    [[nodiscard]] short get_score(const State<StateRepr>& state);
 
     /** \brief Deleted copy constructor (singleton pattern). */
     GraphNN(const GraphNN&) = delete;
@@ -58,6 +58,7 @@ private:
     std::string m_checking_file_path; ///< Path to the file where the state is printed
     std::string m_goal_file_path; ///< Path to the file where the goal is stored
     std::string m_agents_number = std::to_string(Domain::get_instance().get_agent_number()); ///< Number of agents in the domain
+    std::string m_model_path = Configuration::get_instance().get_GNN_model_path(); ///< Path to the GNN model
 };
 
 #include "GraphNN.tpp"

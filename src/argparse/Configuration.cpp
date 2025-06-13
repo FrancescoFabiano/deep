@@ -46,7 +46,8 @@ void Configuration::create_instance()
 Configuration& Configuration::get_instance()
 {
     thread_local Configuration instance;
-    if (!m_initialized) {
+    if (!m_initialized)
+    {
         // Copy values from ArgumentParser singleton using setters
         const ArgumentParser& parser = ArgumentParser::get_instance();
         instance.set_bisimulation(parser.get_bisimulation());
@@ -83,10 +84,30 @@ void Configuration::set_check_visited(const std::string& val) { m_check_visited 
 void Configuration::set_check_visited(const bool val) { m_check_visited = val; }
 
 const SearchType& Configuration::get_search_strategy() const noexcept { return m_search_strategy_enum; }
-void Configuration::set_search_strategy(const std::string& val) { m_search_strategy = val; set_search_strategy_enum(); }
+
+void Configuration::set_search_strategy(const std::string& val)
+{
+    m_search_strategy = val;
+    set_search_strategy_enum();
+}
 
 const Heuristics& Configuration::get_heuristic_opt() const noexcept { return m_heuristic_enum; }
-void Configuration::set_heuristic_opt(const std::string& val) { m_heuristic_opt = val; set_heuristic_enum(); }
+
+void Configuration::set_heuristic_opt(const std::string& val)
+{
+    m_heuristic_opt = val;
+    set_heuristic_enum();
+}
+
+void Configuration::set_GNN_model_path(const std::string& val)
+{
+    m_GNN_model_path = val;
+}
+
+const std::string& Configuration::get_GNN_model_path() const noexcept
+{
+    return m_GNN_model_path;
+}
 
 
 // In Configuration.cpp
@@ -97,6 +118,7 @@ void Configuration::set_field_by_name(const std::string& field, const std::strin
     else if (field == "check_visited") set_check_visited(value);
     else if (field == "search_strategy") set_search_strategy(value);
     else if (field == "heuristic_opt") set_heuristic_opt(value);
+    else if (field == "GNN_model_path") set_GNN_model_path(value);
     else
     {
         ExitHandler::exit_with_message(
@@ -109,16 +131,22 @@ void Configuration::set_field_by_name(const std::string& field, const std::strin
 }
 
 
-
 void Configuration::set_search_strategy_enum()
 {
-    if (m_search_strategy == "BFS") {
+    if (m_search_strategy == "BFS")
+    {
         m_search_strategy_enum = SearchType::BFS;
-    } else if (m_search_strategy == "DFS") {
+    }
+    else if (m_search_strategy == "DFS")
+    {
         m_search_strategy_enum = SearchType::DFS;
-    } else if (m_search_strategy == "HFS") {
+    }
+    else if (m_search_strategy == "HFS")
+    {
         m_search_strategy_enum = SearchType::HFS;
-    } else {
+    }
+    else
+    {
         ExitHandler::exit_with_message(
             ExitHandler::ExitCode::ArgParseError,
             "Invalid search strategy specified: " + m_search_strategy
@@ -128,17 +156,28 @@ void Configuration::set_search_strategy_enum()
 
 void Configuration::set_heuristic_enum()
 {
-    if (m_heuristic_opt == "SUBGOALS") {
+    if (m_heuristic_opt == "SUBGOALS")
+    {
         m_heuristic_enum = Heuristics::SUBGOALS;
-    } else if (m_heuristic_opt == "L_PG") {
+    }
+    else if (m_heuristic_opt == "L_PG")
+    {
         m_heuristic_enum = Heuristics::L_PG;
-    } else if (m_heuristic_opt == "S_PG") {
+    }
+    else if (m_heuristic_opt == "S_PG")
+    {
         m_heuristic_enum = Heuristics::S_PG;
-    } else if (m_heuristic_opt == "C_PG") {
+    }
+    else if (m_heuristic_opt == "C_PG")
+    {
         m_heuristic_enum = Heuristics::C_PG;
-    } else if (m_heuristic_opt == "GNN") {
+    }
+    else if (m_heuristic_opt == "GNN")
+    {
         m_heuristic_enum = Heuristics::GNN;
-    } else {
+    }
+    else
+    {
         ExitHandler::exit_with_message(
             ExitHandler::ExitCode::ArgParseError,
             "Invalid heuristic specified: " + m_heuristic_opt
@@ -156,5 +195,9 @@ void Configuration::print(std::ostream& os) const
     if (m_search_strategy_enum == SearchType::HFS)
     {
         os << "  heuristic_opt: " << m_heuristic_opt << '\n';
+        if (m_heuristic_enum == Heuristics::GNN)
+        {
+            os << "  GNN_model_path: " << m_GNN_model_path << '\n';
+        }
     }
 }

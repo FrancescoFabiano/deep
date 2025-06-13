@@ -47,58 +47,55 @@ GraphNN<StateRepr>::GraphNN()
  * \return The heuristic score for the state.
  */
 template <StateRepresentation StateRepr>
-[[nodiscard]] unsigned short GraphNN<StateRepr>::get_score(const State<StateRepr>& state)
+[[nodiscard]] short GraphNN<StateRepr>::get_score(const State<StateRepr>& state)
 {
     // Print the state in the required dataset format to the checking file
-    {
-        std::ofstream ofs(m_checking_file_path);
-        if (!ofs)
-        {
-            ExitHandler::exit_with_message(
-                ExitHandler::ExitCode::GNNFileError,
-                "Failed to open file for NN state checking: " + m_checking_file_path
-            );
-        }
-        state.print_dataset_format(ofs, ArgumentParser::get_instance().get_dataset_mapped(), ArgumentParser::get_instance().get_dataset_merged());
-    }
-
-    // Run the external Python script for NN inference
-    std::string command = "./lib/RL/run_python_script.sh " + m_checking_file_path + " " + std::to_string(state.get_plan_length()) + " " + m_agents_number + " " + m_goal_file_path;
-    int ret = std::system(command.c_str()); // blocks until script (and Python) finishes
-
-    if (ret != 0)
-    {
-        ExitHandler::exit_with_message(
-            ExitHandler::ExitCode::GNNScriptError,
-            "Using GNN for heuristics failed with exit code: " + std::to_string(ret)
-        );
-    }
-
-    std::ifstream infile("prediction.tmp");
-    if (!infile)
+    std::ofstream ofs(m_checking_file_path);
+    if (!ofs)
     {
         ExitHandler::exit_with_message(
             ExitHandler::ExitCode::GNNFileError,
-            "Failed to open prediction.tmp"
+            "Failed to open file for NN state checking: " + m_checking_file_path
         );
-        return 1;
     }
+    state.print_dataset_format(ofs, ArgumentParser::get_instance().get_dataset_mapped(),
+                               ArgumentParser::get_instance().get_dataset_merged());
 
-    std::string line;
-    unsigned short valueFromFile = 0;
 
-    while (std::getline(infile, line))
+    // Run the external Python script for NN inference
+    /// todo Replace this with C++ call that opens the model and runs the inference
+    std::string command = "./lib/RL/run_prediction.sh " + m_checking_file_path + " " +
+        std::to_string(state.get_plan_length()) + " " + m_goal_file_path + " " + m_model_path;
+
+    std::array<char, 128> buffer{};
+    std::string result;
+
+    // Open a pipe to the shell
+    std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(command.c_str(), "r"), pclose);
+    if (!pipe)
     {
-        if (line.rfind("VALUE:", 0) == 0)
-        {
-            // line starts with "VALUE:"
-            std::istringstream iss(line.substr(6)); // Skip "VALUE:"
-            iss >> valueFromFile;
-            break;
-        }
+        ExitHandler::exit_with_message(
+            ExitHandler::ExitCode::GNNScriptError,
+            "Failed to run Python script");
     }
 
-    infile.close();
+    // Read the output from the Python script
+    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr)
+    {
+        result += buffer.data();
+    }
 
-    return valueFromFile;
+    try
+    {
+        return static_cast<short>(std::stod(result));
+    }
+    catch (const std::exception& e)
+    {
+        ExitHandler::exit_with_message(
+            ExitHandler::ExitCode::GNNScriptError,
+            "Error converting prediction to double: " + std::string(e.what()));
+    }
+
+    // Just to please the compiler
+    std::exit(static_cast<int>(ExitHandler::ExitCode::ExitForCompiler));
 }
