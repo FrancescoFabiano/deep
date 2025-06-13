@@ -88,6 +88,7 @@ enum class SearchType
 {
     BFS, ///< Breadth first search.
     DFS, ///< Depth first search.
+    IDFS, ///< Iterative depth first search.
     HFS, ///< Heuristic first search.
 };
 

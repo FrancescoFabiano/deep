@@ -194,8 +194,8 @@ ArgumentParser::ArgumentParser() : app("deep")
     // Search group
     auto* search_group = app.add_option_group("Search Options");
     search_group->add_option("--search", m_search_strategy,
-                             "Select the search strategy: 'BFS' (Best First Search, default), 'DFS' (Depth First Search), or 'HFS' (Heuristic First Search).")
-                ->check(CLI::IsMember({"BFS", "DFS", "HFS"}))
+                             "Select the search strategy: 'BFS' (Best First Search, default), 'DFS' (Depth First Search), 'IDFS' (Iterative Depth First Search), or 'HFS' (Heuristic First Search).")
+                ->check(CLI::IsMember({"BFS", "DFS", "IDFS", "HFS"}))
                 ->default_val("BFS");
     search_group->add_flag("--check_visited", m_check_visited,
                        "Enable checking for previously visited states during planning to avoid redundant exploration.");

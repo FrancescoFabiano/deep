@@ -13,6 +13,7 @@
 #include "search_strategies/BestFirst.h"
 #include "search_strategies/BreadthFirst.h"
 #include "search_strategies/DepthFirst.h"
+#include "search_strategies/IterativeDepthFirst.h"
 #include "states/representations/kripke/KripkeState.h"
 #include "states/State.h"
 #include "argparse/Configuration.h"
@@ -114,6 +115,18 @@ bool PortfolioSearch::run_portfolio_search() const
                 search_type_name = searcherDFS.get_search_type();
                 elapsed = searcherDFS.get_elapsed_seconds();
                 expanded = searcherDFS.get_expanded_nodes();
+                break;
+            }
+        case SearchType::IDFS:
+            {
+                SpaceSearcher<KripkeState, IterativeDepthFirst<KripkeState>> searcherIDFS{
+                    IterativeDepthFirst<KripkeState>(initial_state)
+                };
+                result = searcherIDFS.search(initial_state);
+                actions_id = searcherIDFS.get_plan_actions_id();
+                search_type_name = searcherIDFS.get_search_type();
+                elapsed = searcherIDFS.get_elapsed_seconds();
+                expanded = searcherIDFS.get_expanded_nodes();
                 break;
             }
         case SearchType::HFS:

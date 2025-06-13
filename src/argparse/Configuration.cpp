@@ -142,6 +142,10 @@ void Configuration::set_search_strategy_enum()
     {
         m_search_strategy_enum = SearchType::DFS;
     }
+    else if (m_search_strategy == "IDFS")
+    {
+        m_search_strategy_enum = SearchType::IDFS;
+    }
     else if (m_search_strategy == "HFS")
     {
         m_search_strategy_enum = SearchType::HFS;
