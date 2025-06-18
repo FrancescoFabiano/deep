@@ -137,7 +137,8 @@ public:
      * \param use_hash Flag to indicate whether to use hash IDs or adjusted IDs (needed because sometime both is set)
      * \param is_merged Flag to indicate if each dataset entry is merged <goal,state> or not.
      */
-    static void print_dataset_format(const KripkeState& kstate, std::ofstream& ofs, const bool use_hash, const bool is_merged);
+    static void print_dataset_format(const KripkeState& kstate, std::ofstream& ofs, const bool use_hash,
+                                     const bool is_merged);
 
     /**
      * \brief Reads a sequence of actions from a file.
@@ -150,13 +151,19 @@ public:
 
 
     /**
+     * \brief Prints the time for a specific task following the output format.
+     * \param task The task name to print before the duration.
+     * \param duration The duration of the task.
+     */
+    static void print_time(const std::string& task, const std::chrono::duration<double>& duration);
+
+    /**
      * \brief Pretty print a duration in a human-readable format.
      * \details Converts the given duration to a string with appropriate time units (e.g., seconds, milliseconds).
      * \param duration The duration to pretty print.
      * \return A string representing the duration in a human-readable format.
      */
     static std::string pretty_print_duration(const std::chrono::duration<double>& duration);
-
 
 private:
     Grounder m_grounder; ///< Used to de-ground fluents for printing.

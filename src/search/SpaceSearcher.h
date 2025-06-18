@@ -131,7 +131,7 @@ private:
      * \warning not too thoroughly tested, use with caution.
      */
     [[nodiscard]]
-    bool search_parallel(State<StateRepr> &initial, const ActionsSet &actions, bool check_visited,
+    bool search_parallel(const State<StateRepr> &initial, const ActionsSet &actions, bool check_visited,
                          bool bisimulation_reduction, int num_threads);
 
     /// \name Plan Validation

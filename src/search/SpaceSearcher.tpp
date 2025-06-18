@@ -127,7 +127,7 @@ bool SpaceSearcher<StateRepr, Strategy>::search_sequential(State<StateRepr>& ini
     {
         if (m_cancel_flag.load())
         {
-            return false; // Exit early if cancellation requested
+            return false; // Exit early if cancellation requested (it happens when another threads find the solution first)
         }
         State current = m_strategy.peek();
         m_strategy.pop();
@@ -140,7 +140,7 @@ bool SpaceSearcher<StateRepr, Strategy>::search_sequential(State<StateRepr>& ini
                 State successor = current.compute_successor(action);
 
                 /// DEBUG \todo remove this, only for bisimulation testing
-                ///if (ArgumentParser::get_instance().get_debug()) check_bisimulation_equivalence(successor);
+                ///if (ArgumentParser::get_instance().get_verbose()) check_bisimulation_equivalence(successor);
 
                 if (bisimulation_reduction)
                 {
@@ -165,12 +165,12 @@ bool SpaceSearcher<StateRepr, Strategy>::search_sequential(State<StateRepr>& ini
 }
 
 template <StateRepresentation StateRepr, SearchStrategy<StateRepr> Strategy>
-bool SpaceSearcher<StateRepr, Strategy>::search_parallel(State<StateRepr>& initial,
+bool SpaceSearcher<StateRepr, Strategy>::search_parallel(const State<StateRepr>& initial,
                                                          const ActionsSet& actions,
                                                          const bool check_visited, const bool bisimulation_reduction,
                                                          const int num_threads)
 {
-    std::set<State<StateRepr>> visited_states;
+    /*std::set<State<StateRepr>> visited_states;
     /// \warning cannot use unordered_set because I am missing a clear way of hashing the state
     Strategy current_frontier(initial);
     current_frontier.push(initial);
@@ -183,7 +183,7 @@ bool SpaceSearcher<StateRepr, Strategy>::search_parallel(State<StateRepr>& initi
     std::atomic<size_t> total_expanded_nodes{0};
     std::mutex plan_mutex; // <-- Add this mutex
 
-    if (!current_frontier.empty())
+    while (!current_frontier.empty())
     {
         std::vector<std::thread> threads;
         Strategy next_frontier(initial);
@@ -286,7 +286,15 @@ bool SpaceSearcher<StateRepr, Strategy>::search_parallel(State<StateRepr>& initi
     }
 
     m_expanded_nodes += total_expanded_nodes;
-    return false;
+    return false;*/
+    (void)initial; (void)actions; (void)check_visited; (void)bisimulation_reduction; (void)num_threads;
+    ExitHandler::exit_with_message(
+        ExitHandler::ExitCode::SearchParallelNotImplemented,
+        "Parallel search is not implemented yet. Please use sequential search."
+    );
+
+    // Unreachable code, but keeps compiler happy
+    std::exit(static_cast<int>(ExitHandler::ExitCode::ExitForCompiler));
 }
 
 
@@ -390,7 +398,7 @@ void SpaceSearcher<StateRepr, Strategy>::print_dot_for_execute_plan(const bool i
                                                                     const State<StateRepr>& current,
                                                                     const std::string& dot_files_folder)
 {
-    if (!ArgumentParser::get_instance().get_debug())
+    if (!ArgumentParser::get_instance().get_verbose())
         return;
 
     const std::string dot_extension = ".dot";
@@ -454,7 +462,7 @@ void SpaceSearcher<StateRepr, Strategy>::print_dot_for_execute_plan(const bool i
 template <StateRepresentation StateRepr, SearchStrategy<StateRepr> Strategy>
 void SpaceSearcher<StateRepr, Strategy>::check_bisimulation_equivalence(const State<StateRepr>& state) const
 {
-    if (!ArgumentParser::get_instance().get_debug())
+    if (!ArgumentParser::get_instance().get_verbose())
         return;
 
 

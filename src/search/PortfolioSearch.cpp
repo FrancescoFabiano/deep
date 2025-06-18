@@ -48,27 +48,23 @@ bool PortfolioSearch::run_portfolio_search() const
     auto& os = ArgumentParser::get_instance().get_output_stream();
 
     // --- Measure initial state build time ---
-    os << "\nBuilding initial state ...\n";
+    if (ArgumentParser::get_instance().get_verbose())
+    {
+        os << "\nBuilding initial state ...\n";
+    }
     const auto initial_build_start = Clock::now();
     State<KripkeState> initial_state;
     initial_state.build_initial();
-    const auto initial_build_end = Clock::now();
     const auto initial_build_duration = std::chrono::duration_cast<std::chrono::milliseconds>(
-        initial_build_end - initial_build_start);
-    os << "Initial state built in " << initial_build_duration.count() << " ms.\n";
+        Clock::now() - initial_build_start);
+    if (ArgumentParser::get_instance().get_verbose())
+    { os << "Initial state built (in " << initial_build_duration.count() << " ms).\n";}
     // --- End measure ---
 
     std::vector<ActionIdsList> plan_actions_id(configs_to_run);
 
     auto run_search = [&](int idx, const std::map<std::string, std::string>& config_map, const bool is_user_config)
     {
-        // --- DEBUG: Print reached at start of thread ---
-        if (ArgumentParser::get_instance().get_debug())
-        {
-            static std::mutex cout_mutex;
-            std::lock_guard<std::mutex> lock(cout_mutex);
-            std::cout << "[Thread " << idx << "] Entered run_search lambda." << std::endl;
-        }
 
         if (found_goal) return; // Early exit if another thread found the goal
 
@@ -142,7 +138,7 @@ bool PortfolioSearch::run_portfolio_search() const
                 break;
             }
         default:
-            if (ArgumentParser::get_instance().get_debug())
+            if (ArgumentParser::get_instance().get_verbose())
             {
                 static std::mutex cout_mutex;
                 std::lock_guard<std::mutex> lock(cout_mutex);
@@ -188,21 +184,27 @@ bool PortfolioSearch::run_portfolio_search() const
 
     if (found_goal)
     {
+        const auto total_duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+    Clock::now() - initial_build_start);
         int idx = winner;
         os << "\nGoal found :)";
         os << "\n  Problem filename: " << Domain::get_instance().get_name();
-        os << "\n  Action Executed: ";
+        os << "\n  Action executed: ";
         HelperPrint::get_instance().print_list(plan_actions_id[idx]);
         os << "\n  Plan length: " << plan_actions_id[idx].size()
             << "\n  Search used: " << search_types[idx]
-            << "\n  Nodes Expanded: " << expanded_nodes[idx]
-            << "\n  Time elapsed: " << std::chrono::duration_cast<std::chrono::milliseconds>(times[idx]).count() <<
-            " ms";
-        if (std::chrono::duration_cast<std::chrono::milliseconds>(times[idx]).count() > 1000)
+            << "\n  Nodes expanded: " << expanded_nodes[idx];
+        HelperPrint::print_time("Total execution time", total_duration);
+        HelperPrint::print_time("  Initial state construction (including parsing and domain setup)", initial_build_duration);
+        HelperPrint::print_time("  Search time", times[idx]);
+        HelperPrint::print_time("  Thread management overhead", total_duration - initial_build_duration - times[idx]);
+
+
+        if (ArgumentParser::get_instance().get_results_info())
         {
-            os << " (" << HelperPrint::pretty_print_duration(times[idx]) << ")";
+            os << "\n" << config_snapshots[idx];
         }
-        os << std::endl<< std::endl;
+        os << std::endl << std::endl;
         return true;
     }
     else

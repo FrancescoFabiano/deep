@@ -160,26 +160,26 @@ ArgumentParser::ArgumentParser() : app("deep")
        ->required();
 
     // Debug/logging group
-    auto* debug_group = app.add_option_group("Debug/Logging Options");
-    debug_group->add_flag("--debug", m_debug, "Enable verbose output for debugging the solving process.");
-    debug_group->add_flag("--log", m_log_enabled,
+    auto* debug_group = app.add_option_group("Debug/Logging");
+    debug_group->add_flag("-v,--verbose", m_verbose, "Enable verbose solving process.");
+    debug_group->add_flag("-l,--log", m_log_enabled,
                           "Enable logging to a file in the '" + std::string(OutputPaths::LOGS_FOLDER) +
                           "' folder. The log file will be named automatically. If this is not activated, std::cout will be used.");
-    debug_group->add_flag("--results_file", m_output_results_file,
-                          "Log plan execution time and results to a file for scripting and comparisons.");
+    debug_group->add_flag("-r,--results_info", m_output_results_info,
+                          "Prints extra plan information for scripting and comparisons.");
 
     // Bisimulation group
-    auto* bis_group = app.add_option_group("Bisimulation Options");
-    bis_group->add_flag("--bis", m_bisimulation,
+    auto* bis_group = app.add_option_group("Bisimulation");
+    bis_group->add_flag("-b,--bisimulation", m_bisimulation,
                         "Activate e-states size reduction through bisimulation. Use this to reduce the state space by merging bisimilar states.");
-    bis_group->add_option("--bis_type", m_bisimulation_type,
+    bis_group->add_option("--bisimulation_type", m_bisimulation_type,
                           "Specify the algorithm for bisimulation contraction (requires --bis). Options: 'FB' (Fast Bisimulation, default) or 'PT' (Paige and Tarjan).")
              ->check(CLI::IsMember({"FB", "PT"}))
              ->default_val("FB");
 
     // Dataset group
-    auto* dataset_group = app.add_option_group("Dataset Options");
-    dataset_group->add_flag("--dataset", m_dataset_mode, "Enable dataset generation mode for learning or analysis.");
+    auto* dataset_group = app.add_option_group("Dataset");
+    dataset_group->add_flag("-d,--dataset", m_dataset_mode, "Enable dataset generation mode for learning or analysis.");
     dataset_group->add_option("--dataset_depth", m_dataset_depth,
                               "Set the maximum depth for dataset generation (default: 10).")
                  ->default_val("10");
@@ -192,14 +192,14 @@ ArgumentParser::ArgumentParser() : app("deep")
                             "Enable both merged and non-merged dataset generation.");
 
     // Search group
-    auto* search_group = app.add_option_group("Search Options");
-    search_group->add_option("--search", m_search_strategy,
+    auto* search_group = app.add_option_group("Search");
+    search_group->add_option("-s,--search", m_search_strategy,
                              "Select the search strategy: 'BFS' (Best First Search, default), 'DFS' (Depth First Search), 'IDFS' (Iterative Depth First Search), or 'HFS' (Heuristic First Search).")
                 ->check(CLI::IsMember({"BFS", "DFS", "IDFS", "HFS"}))
                 ->default_val("BFS");
-    search_group->add_flag("--check_visited", m_check_visited,
+    search_group->add_flag("-c,--check_visited", m_check_visited,
                        "Enable checking for previously visited states during planning to avoid redundant exploration.");
-    search_group->add_option("--heuristics", m_heuristic_opt,
+    search_group->add_option("-h,--heuristics", m_heuristic_opt,
                              "Specify the heuristic for HFS search: 'SUBGOALS' (default), 'L_PG', 'S_PG', 'C_PG', or 'GNN'. Only used if --search HFS is selected.")
                 ->check(CLI::IsMember({"SUBGOALS", "L_PG", "S_PG", "C_PG", "GNN"}))
                 ->default_val("SUBGOALS");
@@ -208,22 +208,22 @@ ArgumentParser::ArgumentParser() : app("deep")
                 ->default_val("lib/RL/models/GNN_model_default.pt");
 
 
-    auto* threads_group = app.add_option_group("Multi-threading Options");
-    threads_group->add_option("--search_threads", m_threads_per_search,
+    auto* threads_group = app.add_option_group("Multi-threading");
+    /*threads_group->add_option("--search_threads", m_threads_per_search,
                               "Set the number of threads to use for each search strategy (default: 1). If set > 1, each search strategy (e.g., BFS/DFS/HFS) will use this many threads.")
-                 ->default_val("1");
-    threads_group->add_option("--portfolio_threads", m_portfolio_threads,
+                 ->default_val("1");*/
+    threads_group->add_option("-p,--portfolio_threads", m_portfolio_threads,
                               "Set the number of portfolio threads (default: 1). If set > 1, multiple planner configurations will run in parallel.")
                  ->default_val("1");
 
     // Execution group
-    auto* exec_group = app.add_option_group("Execution Options");
-    exec_group->add_flag("--execute_plan", m_exec_plan,
+    auto* exec_group = app.add_option_group("Test Plan Execution");
+    exec_group->add_flag("-e,--execute_plan", m_exec_plan,
                          "Enable execution mode. If set, the planner will verify a plan instead of searching for one. "
                          "Actions to execute can be provided directly with --execute_actions, or will be read from the file specified by --plan_file (default: plan.txt). "
                          "When this option is enabled, all multithreading, search strategy, and heuristic flags are ignored; only plan verification is performed. "
                          "The plan file should contain a list of actions separated by spaces or commas. Minimal parsing is performed, so the file should be well formatted.");
-    exec_group->add_option("--execute_actions", m_exec_actions,
+    exec_group->add_option("-a,--execute_actions", m_exec_actions,
                            "Specify a sequence of actions to execute directly, bypassing planning. "
                            "Example: --execute_actions open_a peek_a. "
                            "If this option is set, the actions provided will be executed in order. "
@@ -246,7 +246,7 @@ ArgumentParser::~ArgumentParser()
 // Getters
 const std::string& ArgumentParser::get_input_file() const noexcept { return m_input_file; }
 
-bool ArgumentParser::get_debug() const noexcept { return m_debug; }
+bool ArgumentParser::get_verbose() const noexcept { return m_verbose; }
 
 bool ArgumentParser::get_check_visited() const noexcept { return m_check_visited; }
 
@@ -278,7 +278,7 @@ const std::vector<std::string>& ArgumentParser::get_execution_actions() noexcept
     return m_exec_actions;
 }
 
-bool ArgumentParser::get_results_file() const noexcept { return m_output_results_file; }
+bool ArgumentParser::get_results_info() const noexcept { return m_output_results_info; }
 bool ArgumentParser::get_log_enabled() const noexcept { return m_log_enabled; }
 
 std::ostream& ArgumentParser::get_output_stream() const { return *m_output_stream; }
@@ -295,7 +295,7 @@ void ArgumentParser::print_usage() const
     std::cout << "    Find a plan for domain.epddl\n\n";
     std::cout << "  " << prog_name << " domain.epddl --heuristic SUBGOALS\n";
     std::cout << "    Plan using heuristic 'SUBGOALS'\n\n";
-    std::cout << "  " << prog_name << " domain.epddl --execute-actions open_a peek_a\n";
+    std::cout << "  " << prog_name << " domain.epddl -e --execute-actions open_a peek_a\n";
     std::cout << "    Execute actions [open_a, peek_a] step by step\n\n";
     std::cout << "  " << prog_name << " domain.epddl --threads_per_search 4\n";
     std::cout << "    Run search with 4 threads per search strategy\n\n";

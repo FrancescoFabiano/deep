@@ -25,10 +25,7 @@
  * \date May 2025
  */
 
-HelperPrint::HelperPrint()
-{
-}
-
+HelperPrint::HelperPrint() = default;
 HelperPrint& HelperPrint::get_instance()
 {
     static HelperPrint instance;
@@ -706,6 +703,17 @@ std::vector<std::string> HelperPrint::read_actions_from_file(const std::string& 
     }
 
     return actions;
+}
+
+void HelperPrint::print_time(const std::string& task, const std::chrono::duration<double>& duration)
+{
+    auto& os = ArgumentParser::get_instance().get_output_stream();
+    os << "\n  " << task << ": " << std::chrono::duration_cast<std::chrono::milliseconds>(duration).count() << " ms";
+
+    if (std::chrono::duration_cast<std::chrono::milliseconds>(duration).count() > 1000)
+    {
+        os << " (" << pretty_print_duration(duration) << ")";
+    }
 }
 
 std::string HelperPrint::pretty_print_duration(const std::chrono::duration<double>& duration)

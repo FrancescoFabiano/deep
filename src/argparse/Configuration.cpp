@@ -192,17 +192,20 @@ void Configuration::set_heuristic_enum()
 
 void Configuration::print(std::ostream& os) const
 {
-    os << "Configuration Parameters:\n";
-    os << "  bisimulation: " << std::boolalpha << m_bisimulation << '\n';
-    os << "  bisimulation_type: " << m_bisimulation_type << '\n';
-    os << "  check_visited: " << std::boolalpha << m_check_visited << '\n';
-    os << "  search_strategy: " << m_search_strategy << '\n';
-    if (m_search_strategy_enum == SearchType::HFS)
+    os << "  Extra Information:\n";
+    os << "    Bisimulation: " << (m_bisimulation ? "active" : "inactive") << '\n';
+    if (m_bisimulation)
     {
-        os << "  heuristic_opt: " << m_heuristic_opt << '\n';
-        if (m_heuristic_enum == Heuristics::GNN)
-        {
-            os << "  GNN_model_path: " << m_GNN_model_path << '\n';
-        }
+        os << "    Bisimulation type: ";
+        if (m_bisimulation_type == "FB")
+            os << "Fast Bisimulation";
+        else
+            os << "Paige and Tarjan";
+        os << '\n';
+    }
+    os << "    Already visited state check: " << (m_check_visited ? "active" : "inactive") << '\n';
+    if (m_search_strategy_enum == SearchType::HFS && m_heuristic_enum == Heuristics::GNN)
+    {
+        os << "    Path to GNN model: " << m_GNN_model_path << '\n';
     }
 }
