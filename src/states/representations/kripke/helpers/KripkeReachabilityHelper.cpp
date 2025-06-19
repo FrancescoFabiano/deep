@@ -140,7 +140,7 @@ void KripkeReachabilityHelper::clean_unreachable_worlds(KripkeState& kstate)
     reached_worlds.insert(pointed_world);
 
     const auto& beliefs = kstate.get_beliefs();
-    if (auto it = beliefs.find(pointed_world); it != beliefs.end())
+    if (const auto it = beliefs.find(pointed_world); it != beliefs.end())
     {
         reached_edges.emplace(pointed_world, it->second);
     }

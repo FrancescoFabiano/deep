@@ -54,7 +54,7 @@ const ActionIdsList& SpaceSearcher<StateRepr, Strategy>::get_plan_actions_id() c
 
 
 template <StateRepresentation StateRepr, SearchStrategy<StateRepr> Strategy>
-bool SpaceSearcher<StateRepr, Strategy>::search(State<StateRepr>& initial)
+bool SpaceSearcher<StateRepr, Strategy>::search(const State<StateRepr>& passed_initial)
 {
     m_expanded_nodes = 0;
 
@@ -72,14 +72,17 @@ bool SpaceSearcher<StateRepr, Strategy>::search(State<StateRepr>& initial)
         );
     }
 
-    if (bisimulation_reduction)
-    {
-        initial.contract_with_bisimulation();
-    }
-
     const auto start_timing = std::chrono::system_clock::now();
 
-    if (initial.is_goal())
+    auto thread_safe_initial = passed_initial; // Make a copy to avoid modifying the original state (avoid side effects for multi-threading)
+
+    if (bisimulation_reduction)
+        {
+            thread_safe_initial.contract_with_bisimulation();
+        }
+
+
+    if (thread_safe_initial.is_goal())
     {
         m_elapsed_seconds = std::chrono::system_clock::now() - start_timing;
         return true;
@@ -90,14 +93,14 @@ bool SpaceSearcher<StateRepr, Strategy>::search(State<StateRepr>& initial)
     if (ArgumentParser::get_instance().get_execute_plan())
     {
         // If a plan is provided, validate it
-        result = validate_plan(initial, check_visited, bisimulation_reduction);
+        result = validate_plan(thread_safe_initial, check_visited, bisimulation_reduction);
     }
     else
     {
         const int num_threads = ArgumentParser::get_instance().get_threads_per_search();
         result = (num_threads <= 1)
-                     ? search_sequential(initial, actions, check_visited, bisimulation_reduction)
-                     : search_parallel(initial, actions, check_visited, bisimulation_reduction, num_threads);
+                     ? search_sequential(thread_safe_initial, actions, check_visited, bisimulation_reduction)
+                     : search_parallel(thread_safe_initial, actions, check_visited, bisimulation_reduction, num_threads);
     }
 
     m_elapsed_seconds = std::chrono::system_clock::now() - start_timing;
@@ -140,7 +143,7 @@ bool SpaceSearcher<StateRepr, Strategy>::search_sequential(State<StateRepr>& ini
                 State successor = current.compute_successor(action);
 
                 /// DEBUG \todo remove this, only for bisimulation testing
-                ///if (ArgumentParser::get_instance().get_verbose()) check_bisimulation_equivalence(successor);
+                /// check_bisimulation_equivalence(successor);
 
                 if (bisimulation_reduction)
                 {
@@ -165,7 +168,7 @@ bool SpaceSearcher<StateRepr, Strategy>::search_sequential(State<StateRepr>& ini
 }
 
 template <StateRepresentation StateRepr, SearchStrategy<StateRepr> Strategy>
-bool SpaceSearcher<StateRepr, Strategy>::search_parallel(const State<StateRepr>& initial,
+bool SpaceSearcher<StateRepr, Strategy>::search_parallel(State<StateRepr>& initial,
                                                          const ActionsSet& actions,
                                                          const bool check_visited, const bool bisimulation_reduction,
                                                          const int num_threads)
@@ -432,6 +435,7 @@ void SpaceSearcher<StateRepr, Strategy>::print_dot_for_execute_plan(const bool i
     }
 
     //DEBUG
+    /*
     State<StateRepr> temp = current;
     temp.contract_with_bisimulation();
     std::string bis_ofstream_name = print_name + "_bis" + std::string(dot_extension);
@@ -439,18 +443,19 @@ void SpaceSearcher<StateRepr, Strategy>::print_dot_for_execute_plan(const bool i
     {
         temp.print_dot_format(bis_ofs);
     }
+    */
 
     //DEBUG
     /// \warning This warning is a false positive. Bisimulation does affect the state. (suppressed)
     // NOLINTNEXTLINE
-    if (temp != current)
+    /*if (temp != current)
     {
         // ReSharper disable once CppDFAUnreachableCode
         auto& os = ArgumentParser::get_instance().get_output_stream();
         os << "\nThe state and its bisimulation differ after the actions:";
         HelperPrint::get_instance().print_list(current.get_executed_actions());
         os << std::endl;
-    }
+    }*/
 
     if (last)
     {
@@ -492,6 +497,8 @@ void SpaceSearcher<StateRepr, Strategy>::check_bisimulation_equivalence(const St
     }
 
     auto to_check2 = domain_instance.get_initial_description().get_ff_forS5();
+    // ReSharper disable once CppDFAUnreachableCode
+    // ReSharper disable once CppDFAUnreachableCode
     if (!to_check2.empty() && (state.entails(to_check2) != temp.entails(to_check2)))
     {
         are_bisimilar = false;

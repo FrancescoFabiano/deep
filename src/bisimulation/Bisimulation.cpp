@@ -1802,12 +1802,12 @@ BisAutomata Bisimulation::kstate_to_automaton(VectorBisWrapper<KripkeWorldPointe
         }
     }
 
-    auto *a = new BisAutomata;
-    a->Nvertex = Nvertex;
-    a->Nbehavs = bhtabSize;
-    a->Vertex = Vertex;
+    BisAutomata a;
+    a.Nvertex = Nvertex;
+    a.Nbehavs = bhtabSize;
+    a.Vertex = Vertex;
 
-    return *a;
+    return a;
 }
 
 void Bisimulation::automaton_to_kstate(const BisAutomata &a, const VectorBisWrapper<KripkeWorldPointer> &world_vec,

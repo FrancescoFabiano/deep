@@ -62,11 +62,11 @@ public:
     /**
      * \brief Executes the search algorithm.
      *
-     * \param initial The initial state to start the search from.
+     * \param passed_initial The initial state to start the search from.
      * \return true if a goal state is found, false otherwise.
      */
     [[nodiscard]]
-    bool search(State<StateRepr> &initial);
+    bool search(const State<StateRepr> &passed_initial);
 
     /**
      * \brief Get the name of the search strategy.
@@ -131,7 +131,7 @@ private:
      * \warning not too thoroughly tested, use with caution.
      */
     [[nodiscard]]
-    bool search_parallel(const State<StateRepr> &initial, const ActionsSet &actions, bool check_visited,
+    bool search_parallel(State<StateRepr> &initial, const ActionsSet &actions, bool check_visited,
                          bool bisimulation_reduction, int num_threads);
 
     /// \name Plan Validation
@@ -156,7 +156,7 @@ private:
      * \param current The current state after executing the action.
      * \param dot_files_folder The folder where DOT files are stored.
      */
-    static void print_dot_for_execute_plan(const bool initial, const bool last, const std::string &action_name,
+    static void print_dot_for_execute_plan(bool initial, bool last, const std::string &action_name,
                                            const State<StateRepr> &current, const std::string &dot_files_folder);
 
     /**

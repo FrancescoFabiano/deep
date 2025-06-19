@@ -199,7 +199,7 @@ ArgumentParser::ArgumentParser() : app("deep")
                 ->default_val("BFS");
     search_group->add_flag("-c,--check_visited", m_check_visited,
                        "Enable checking for previously visited states during planning to avoid redundant exploration.");
-    search_group->add_option("-h,--heuristics", m_heuristic_opt,
+    search_group->add_option("-u,--heuristics", m_heuristic_opt,
                              "Specify the heuristic for HFS search: 'SUBGOALS' (default), 'L_PG', 'S_PG', 'C_PG', or 'GNN'. Only used if --search HFS is selected.")
                 ->check(CLI::IsMember({"SUBGOALS", "L_PG", "S_PG", "C_PG", "GNN"}))
                 ->default_val("SUBGOALS");
