@@ -366,7 +366,7 @@ bool SpaceSearcher<StateRepr, Strategy>::validate_plan(const State<StateRepr>& i
                     if (is_last)
                     {
                         auto& os = ArgumentParser::get_instance().get_output_stream();
-                        os << "\n[WARNING] No plan found after the execution of :\n";
+                        os << "\n[WARNING] No plan found after the execution of:\n";
                         HelperPrint::get_instance().print_list(current.get_executed_actions());
                         os << std::endl;
                     }

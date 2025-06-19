@@ -40,6 +40,12 @@ bool PortfolioSearch::run_portfolio_search() const
     std::mutex result_mutex;
 
     const int configs_to_run = std::min(portfolio_threads, static_cast<int>(m_search_configurations.size()));
+    if (configs_to_run < portfolio_threads)
+    {
+        ArgumentParser::get_instance().get_output_stream() << "[WARNING] Portfolio threads (" << portfolio_threads
+            << ") exceed available configurations (" << m_search_configurations.size() << "). "
+            << "Running only " << configs_to_run << " configurations." << std::endl;
+    }
     times.resize(configs_to_run);
     expanded_nodes.resize(configs_to_run);
     search_types.resize(configs_to_run);
@@ -171,7 +177,7 @@ bool PortfolioSearch::run_portfolio_search() const
     // Launch threads
     for (int i = 0; i < configs_to_run; ++i)
     {
-        bool is_user_config = (i == 0);
+        bool is_user_config = (portfolio_threads == 1);
         const auto& config_map = is_user_config ? std::map<std::string, std::string>() : m_search_configurations[i];
         threads.emplace_back(run_search, i, config_map, is_user_config);
     }

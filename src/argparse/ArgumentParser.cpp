@@ -198,7 +198,7 @@ ArgumentParser::ArgumentParser() : app("deep")
                 ->check(CLI::IsMember({"BFS", "DFS", "IDFS", "HFS"}))
                 ->default_val("BFS");
     search_group->add_flag("-c,--check_visited", m_check_visited,
-                       "Enable checking for previously visited states during planning to avoid redundant exploration.");
+                           "Enable checking for previously visited states during planning to avoid redundant exploration.");
     search_group->add_option("-u,--heuristics", m_heuristic_opt,
                              "Specify the heuristic for HFS search: 'SUBGOALS' (default), 'L_PG', 'S_PG', 'C_PG', or 'GNN'. Only used if --search HFS is selected.")
                 ->check(CLI::IsMember({"SUBGOALS", "L_PG", "S_PG", "C_PG", "GNN"}))
@@ -213,7 +213,9 @@ ArgumentParser::ArgumentParser() : app("deep")
                               "Set the number of threads to use for each search strategy (default: 1). If set > 1, each search strategy (e.g., BFS/DFS/HFS) will use this many threads.")
                  ->default_val("1");*/
     threads_group->add_option("-p,--portfolio_threads", m_portfolio_threads,
-                              "Set the number of portfolio threads (default: 1). If set > 1, multiple planner configurations will run in parallel.")
+                              "Set the number of portfolio threads (default: 1). If set > 1, multiple planner configurations will run in parallel. "
+                              "The configurations will override the specified search and heuristic options but will keep other options such as --bisimulation, --check_visited, etc. "
+                              "Currently, the portfolio supports up to 7 default configurations. Support for loading configurations from a file is planned.")
                  ->default_val("1");
 
     // Execution group
@@ -230,7 +232,8 @@ ArgumentParser::ArgumentParser() : app("deep")
                            "If not set, actions will be loaded from the plan file (see --plan_file).")
               ->expected(-1);
     exec_group->add_option("--plan_file", m_plan_file,
-                           "Specify the file from which to load the plan for execution (default: plan.txt). "
+                           "Specify the file from which to load the plan for execution (default: plan.txt)."
+                           "The syntax of the actions in the file should be space-separated or comma-separated."
                            "Used only if --execute_plan is set and --execute_actions is not provided.")
               ->default_val("plan.txt");
 }
