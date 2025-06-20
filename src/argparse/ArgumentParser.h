@@ -148,6 +148,12 @@ public:
     [[nodiscard]] int get_portfolio_threads() const noexcept;
 
     /**
+     * \brief Retrieves the file path for loading the configuration for the Portfolio search.
+     * \return The configuration file path.
+     */
+    [[nodiscard]] const std::string& get_config_file() const noexcept;
+
+    /**
      * \brief Destructor. Closes the log file stream if open.
      */
     ~ArgumentParser();
@@ -202,7 +208,7 @@ private:
     std::ofstream m_log_ofstream; ///< If logging to file, this holds the ofstream.
     int m_threads_per_search = 1; ///< Number of threads per search strategy (default: 1).
     int m_portfolio_threads = 1; ///< Number of portfolio threads (default: 1).
-    std::string m_config_file = "utils/configs/config.ut"; ///< Plan file path.
+    std::string m_config_file = ""; ///< Config file path.
 
 
     // Accessors private because they can be accessed only by friend class \ref Configuration

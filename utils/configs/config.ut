@@ -1,0 +1,7 @@
+search=BFS,b=True,check_visited=True
+search=HFS,heuristics=SUBGOALS,b=True,check_visited=True
+search=HFS,heuristics=L_PG,b=True,check_visited=True
+search=HFS,heuristics=S_PG,b=True,check_visited=True
+search=HFS,heuristics=C_PG,b=True,check_visited=True
+search=HFS,heuristics=GNN,b=True,check_visited=True
+search=IDFS,b=True,check_visited=True

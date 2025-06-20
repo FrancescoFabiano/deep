@@ -114,18 +114,18 @@ const std::string& Configuration::get_GNN_model_path() const noexcept
 // In Configuration.cpp
 void Configuration::set_field_by_name(const std::string& field, const std::string& value)
 {
-    if (field == "bis") set_bisimulation(value);
-    else if (field == "bis_type") set_bisimulation_type(value);
-    else if (field == "check_visited") set_check_visited(value);
-    else if (field == "search") set_search_strategy(value);
-    else if (field == "heuristics") set_heuristic_opt(value);
-    else if (field == "GNN_model_path") set_GNN_model_path(value);
+    if (field == "bisimulation" || field == "b") set_bisimulation(value);
+    else if (field == "bisimulation_type") set_bisimulation_type(value);
+    else if (field == "check_visited"  || field == "c") set_check_visited(value);
+    else if (field == "search" || field == "s") set_search_strategy(value);
+    else if (field == "heuristics" || field == "u") set_heuristic_opt(value);
+    else if (field == "GNN_model") set_GNN_model_path(value);
     else
     {
         ExitHandler::exit_with_message(
             ExitHandler::ExitCode::PortfolioConfigFieldError,
             "[PortfolioSearch] Error while reading config file; the field: " + field + " is not recognized." +
-            " Please check the Line Arguments for the possible names of the fields. (Search related without the -- prefix)"
+            "Please check the Line Arguments for the possible names of the fields. (Search related without the - or -- prefix)"
         );
     }
     // Optionally handle unknown fields

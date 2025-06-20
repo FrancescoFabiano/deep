@@ -78,4 +78,5 @@ cmake-build-debug/*
 */.venv/*
 */.venv/
 
-
+# Config and Plan files
+*.ut

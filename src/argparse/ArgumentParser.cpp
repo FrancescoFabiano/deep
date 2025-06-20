@@ -72,7 +72,7 @@ void ArgumentParser::parse(int argc, char** argv)
         }
 
         // --- Dataset mode consistency check ---
-        if (!m_dataset_mode && (m_dataset_depth != 10 || m_dataset_mapped || m_dataset_both))
+        if (!m_dataset_mode && (app.count("--dataset_depth") || app.count("--dataset_mapped") || app.count("--dataset_both")))
         {
             ExitHandler::exit_with_message(
                 ExitHandler::ExitCode::ArgParseError,
@@ -82,11 +82,11 @@ void ArgumentParser::parse(int argc, char** argv)
         }
 
         // --- Bisimulation consistency check ---
-        if (!m_bisimulation && m_bisimulation_type != "FB")
+        if (!m_bisimulation && app.count("--bisimulation_type"))
         {
             ExitHandler::exit_with_message(
                 ExitHandler::ExitCode::ArgParseError,
-                "Bisimulation type (--bis_type) was set but --bis is not enabled. Please use --bis to activate bisimulation."
+                "Bisimulation type (--bisimulation_type) was set but --bisimulation is not enabled. Please use --bis to activate bisimulation."
             );
         }
 
@@ -131,6 +131,7 @@ void ArgumentParser::parse(int argc, char** argv)
                 << " (" << m_threads_per_search << " per search x "
                 << m_portfolio_threads << " portfolio threads)." << std::endl;
         }
+
     }
     catch (const CLI::CallForHelp&)
     {
@@ -206,23 +207,24 @@ ArgumentParser::ArgumentParser() : app("deep")
     search_group->add_option("--GNN_model", m_GNN_model_path,
                              "Specify the path of the model used by the heuristics 'GNN'. The default model is the one located in 'lib/RL/models/GNN_model_default.pt'. Only used if --search HFS with GNN heuristics is selected.")
                 ->default_val("lib/RL/models/GNN_model_default.pt");
-
-
-    auto* threads_group = app.add_option_group("Portfolio Related");
-    /*threads_group->add_option("--search_threads", m_threads_per_search,
+    /*search_group->add_option("--search_threads", m_threads_per_search,
                               "Set the number of threads to use for each search strategy (default: 1). If set > 1, each search strategy (e.g., BFS/DFS/HFS) will use this many threads.")
                  ->default_val("1");*/
-    threads_group->add_option("-p,--portfolio_threads", m_portfolio_threads,
-                              "Set the number of portfolio threads (default: 1). If set > 1, multiple planner configurations will run in parallel. "
-                              "The configurations will override the specified search and heuristic options but will keep other options such as --bisimulation, --check_visited, etc. "
-                              "Currently, the portfolio supports up to 7 default configurations. Support for loading configurations from a file is planned.")
-                 ->default_val("1");
 
-    threads_group->add_option("-p,--portfolio_threads", m_portfolio_threads,
-                              "Set the number of portfolio threads (default: 1). If set > 1, multiple planner configurations will run in parallel. "
-                              "The configurations will override the specified search and heuristic options but will keep other options such as --bisimulation, --check_visited, etc. "
-                              "Currently, the portfolio supports up to 7 default configurations. Support for loading configurations from a file is planned.")
-                 ->default_val("1");
+    // Portfolio group
+    auto* portfolio_group = app.add_option_group("Portfolio Related");
+    portfolio_group->add_option("-p,--portfolio_threads", m_portfolio_threads,
+                                "Set the number of portfolio threads (default: 1). If set > 1, multiple planner configurations will run in parallel. "
+                                "The configurations will override the specified search and heuristic options but will keep other options such as --bisimulation, --check_visited, etc. "
+                                "Currently, the portfolio supports up to 7 default configurations.")
+                   ->default_val("1");
+
+    portfolio_group->add_option("--config_file", m_config_file,
+                              "Enable reading portfolio configuration from a file. If set, the planner will read the configuration from the specified file. "
+                              "An example can be found in `utils/configs/config.ut`. "
+                              "Please check the command line arguments for the possible field names (search-related options without the - or -- prefix). "
+                              "Whatever is set in the file will be used; otherwise, the given values will be used as defaults. The number of configurations to run in parallel is set by --portfolio_threads. "
+                              "Minimal parsing is performed, so the file should be well formatted.")->default_val("");
 
 
     // Execution group
@@ -295,6 +297,8 @@ std::ostream& ArgumentParser::get_output_stream() const { return *m_output_strea
 
 int ArgumentParser::get_threads_per_search() const noexcept { return m_threads_per_search; }
 int ArgumentParser::get_portfolio_threads() const noexcept { return m_portfolio_threads; }
+const std::string& ArgumentParser::get_config_file() const noexcept { return m_config_file; }
+
 
 void ArgumentParser::print_usage() const
 {

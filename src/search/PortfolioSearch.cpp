@@ -23,7 +23,14 @@
 template <>
 TrainingDataset<KripkeState>* TrainingDataset<KripkeState>::instance = nullptr;
 
-PortfolioSearch::PortfolioSearch() { set_default_configurations(); }
+PortfolioSearch::PortfolioSearch()
+{
+    if (const auto config_file = ArgumentParser::get_instance().get_config_file(); config_file.empty()) { set_default_configurations(); }
+    else
+    {
+        parse_configurations_from_file(config_file);
+    }
+}
 
 
 bool PortfolioSearch::run_portfolio_search() const
@@ -64,14 +71,15 @@ bool PortfolioSearch::run_portfolio_search() const
     const auto initial_build_duration = std::chrono::duration_cast<std::chrono::milliseconds>(
         Clock::now() - initial_build_start);
     if (ArgumentParser::get_instance().get_verbose())
-    { os << "Initial state built (in " << initial_build_duration.count() << " ms).\n";}
+    {
+        os << "Initial state built (in " << initial_build_duration.count() << " ms).\n";
+    }
     // --- End measure ---
 
     std::vector<ActionIdsList> plan_actions_id(configs_to_run);
 
     auto run_search = [&](int idx, const std::map<std::string, std::string>& config_map, const bool is_user_config)
     {
-
         if (found_goal) return; // Early exit if another thread found the goal
 
         // Each thread gets its own Configuration instance
@@ -98,7 +106,7 @@ bool PortfolioSearch::run_portfolio_search() const
         case SearchType::BFS:
             {
                 SpaceSearcher<KripkeState, BreadthFirst<KripkeState>> searcherBFS{
-                    BreadthFirst<KripkeState>(initial_state),found_goal
+                    BreadthFirst<KripkeState>(initial_state), found_goal
                 };
                 result = searcherBFS.search(initial_state);
                 actions_id = searcherBFS.get_plan_actions_id();
@@ -110,7 +118,7 @@ bool PortfolioSearch::run_portfolio_search() const
         case SearchType::DFS:
             {
                 SpaceSearcher<KripkeState, DepthFirst<KripkeState>> searcherDFS{
-                    DepthFirst<KripkeState>(initial_state),found_goal
+                    DepthFirst<KripkeState>(initial_state), found_goal
                 };
                 result = searcherDFS.search(initial_state);
                 actions_id = searcherDFS.get_plan_actions_id();
@@ -122,7 +130,7 @@ bool PortfolioSearch::run_portfolio_search() const
         case SearchType::IDFS:
             {
                 SpaceSearcher<KripkeState, IterativeDepthFirst<KripkeState>> searcherIDFS{
-                    IterativeDepthFirst<KripkeState>(initial_state),found_goal
+                    IterativeDepthFirst<KripkeState>(initial_state), found_goal
                 };
                 result = searcherIDFS.search(initial_state);
                 actions_id = searcherIDFS.get_plan_actions_id();
@@ -191,7 +199,7 @@ bool PortfolioSearch::run_portfolio_search() const
     if (found_goal)
     {
         const auto total_duration = std::chrono::duration_cast<std::chrono::milliseconds>(
-    Clock::now() - initial_build_start);
+            Clock::now() - initial_build_start);
         int idx = winner;
         os << "\nGoal found :)";
         os << "\n  Problem filename: " << Domain::get_instance().get_name();
@@ -201,7 +209,8 @@ bool PortfolioSearch::run_portfolio_search() const
             << "\n  Search used: " << search_types[idx]
             << "\n  Nodes expanded: " << expanded_nodes[idx];
         HelperPrint::print_time("Total execution time", total_duration);
-        HelperPrint::print_time("  Initial state construction (including parsing and domain setup)", initial_build_duration);
+        HelperPrint::print_time("  Initial state construction (including parsing and domain setup)",
+                                initial_build_duration);
         HelperPrint::print_time("  Search time", times[idx]);
         HelperPrint::print_time("  Thread management overhead", total_duration - initial_build_duration - times[idx]);
 
@@ -215,7 +224,7 @@ bool PortfolioSearch::run_portfolio_search() const
     }
     else
     {
-        os << "\nNo goal found :(" << std::endl<< std::endl;
+        os << "\nNo goal found :(" << std::endl << std::endl;
         return false;
     }
 }
