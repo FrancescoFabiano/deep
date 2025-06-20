@@ -7,7 +7,7 @@
  * - All the defined constants are preceded by "Bis";
  * - Some of the "extern" elements are transformed into class fields.
  *
- * For detailed information on this code see resources/original_code_bisimulation.zip and the papers:
+ * For detailed information on this code see utils/resources/original_code_bisimulation.zip and the papers:
  * [An Efficient Algorithm for Computing Bisimulation Equivalence (Dovier, Piazza, Policriti), Three Partition Refinement Algorithms (Paige-Tarjan)]
  *
  * \copyright GNU Public License.

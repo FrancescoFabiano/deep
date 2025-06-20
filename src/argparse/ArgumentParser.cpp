@@ -208,7 +208,7 @@ ArgumentParser::ArgumentParser() : app("deep")
                 ->default_val("lib/RL/models/GNN_model_default.pt");
 
 
-    auto* threads_group = app.add_option_group("Multi-threading");
+    auto* threads_group = app.add_option_group("Portfolio Related");
     /*threads_group->add_option("--search_threads", m_threads_per_search,
                               "Set the number of threads to use for each search strategy (default: 1). If set > 1, each search strategy (e.g., BFS/DFS/HFS) will use this many threads.")
                  ->default_val("1");*/
@@ -218,11 +218,18 @@ ArgumentParser::ArgumentParser() : app("deep")
                               "Currently, the portfolio supports up to 7 default configurations. Support for loading configurations from a file is planned.")
                  ->default_val("1");
 
+    threads_group->add_option("-p,--portfolio_threads", m_portfolio_threads,
+                              "Set the number of portfolio threads (default: 1). If set > 1, multiple planner configurations will run in parallel. "
+                              "The configurations will override the specified search and heuristic options but will keep other options such as --bisimulation, --check_visited, etc. "
+                              "Currently, the portfolio supports up to 7 default configurations. Support for loading configurations from a file is planned.")
+                 ->default_val("1");
+
+
     // Execution group
     auto* exec_group = app.add_option_group("Test Plan Execution");
     exec_group->add_flag("-e,--execute_plan", m_exec_plan,
                          "Enable execution mode. If set, the planner will verify a plan instead of searching for one. "
-                         "Actions to execute can be provided directly with --execute_actions, or will be read from the file specified by --plan_file (default: plan.txt). "
+                         "Actions to execute can be provided directly with --execute_actions, or will be read from the file specified by --plan_file (default: utils/plans/plan.ut). "
                          "When this option is enabled, all multithreading, search strategy, and heuristic flags are ignored; only plan verification is performed. "
                          "The plan file should contain a list of actions separated by spaces or commas. Minimal parsing is performed, so the file should be well formatted.");
     exec_group->add_option("-a,--execute_actions", m_exec_actions,
@@ -232,10 +239,10 @@ ArgumentParser::ArgumentParser() : app("deep")
                            "If not set, actions will be loaded from the plan file (see --plan_file).")
               ->expected(-1);
     exec_group->add_option("--plan_file", m_plan_file,
-                           "Specify the file from which to load the plan for execution (default: plan.txt)."
+                           "Specify the file from which to load the plan for execution (default: utils/plans/plan.ut)."
                            "The syntax of the actions in the file should be space-separated or comma-separated."
                            "Used only if --execute_plan is set and --execute_actions is not provided.")
-              ->default_val("plan.txt");
+              ->default_val("utils/plans/plan.ut");
 }
 
 ArgumentParser::~ArgumentParser()

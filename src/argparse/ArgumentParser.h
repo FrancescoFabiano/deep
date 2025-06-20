@@ -195,13 +195,15 @@ private:
     bool m_exec_plan = false; ///< Flag to indicate if the plan should be executed.
     std::vector<std::string> m_exec_actions; ///< Actions to execute instead of planning.
     bool m_output_results_info = false; ///< Flag to enable extra results info logging.
-    std::string m_plan_file = "plan.txt"; ///< Plan file path.
+    std::string m_plan_file = "utils/plans/plan.ut"; ///< Plan file path.
     bool m_log_enabled = false; ///< True if --log is enabled.
     std::string m_log_file_path; ///< The log file path if logging is enabled.
     std::ostream* m_output_stream = &std::cout; ///< Output stream for logging and results (default: std::cout).
     std::ofstream m_log_ofstream; ///< If logging to file, this holds the ofstream.
     int m_threads_per_search = 1; ///< Number of threads per search strategy (default: 1).
     int m_portfolio_threads = 1; ///< Number of portfolio threads (default: 1).
+    std::string m_config_file = "utils/configs/config.ut"; ///< Plan file path.
+
 
     // Accessors private because they can be accessed only by friend class \ref Configuration
 
