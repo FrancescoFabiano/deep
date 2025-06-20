@@ -81,3 +81,5 @@ cmake-build-debug/*
 # Config and Plan files
 *.ut
 **/*.ut
+/utils/plans/
+/utils/configs/

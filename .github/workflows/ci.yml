@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake clang-format
+
+      - name: Compile C++ project
+        run: |
+          mkdir -p build
+          cd build
+          cmake ..
+          make
+
+      - name: Check and fix C++ formatting
+        run: |
+          find . -name '*.cpp' -o -name '*.hpp' -o -name '*.h' -o -name '*.tpp' | xargs clang-format -i
+
+      - name: Commit formatting changes (if any)
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "ci: auto-format C++ files"
+
+      - name: Run execution and planning check script
+        run: |
+          chmod +x /utils/push_check/scripts/overall_test.sh
+          ./utils/push_check/scripts/overall_test.sh
