@@ -1,10 +1,12 @@
 /**
  * \class PortfolioSearch
- * \brief Class that implements the portfolio-method search (multiple configurations).
+ * \brief Class that implements the portfolio-method search (multiple
+ * configurations).
  *
- * \details This class manages and executes multiple search configurations in parallel or sequentially.
- *          Each configuration can specify different search strategies and heuristics.
- *          The search stops as soon as a plan is found by any configuration.
+ * \details This class manages and executes multiple search configurations in
+ * parallel or sequentially. Each configuration can specify different search
+ * strategies and heuristics. The search stops as soon as a plan is found by any
+ * configuration.
  *
  * \copyright GNU Public License.
  * \author Francesco Fabiano.
@@ -13,59 +15,59 @@
 #pragma once
 
 #include <map>
+#include <ostream>
 #include <string>
 #include <vector>
-#include <ostream>
 
 /**
  * \brief PortfolioSearch manages and executes multiple search configurations.
  */
-class PortfolioSearch
-{
+class PortfolioSearch {
 public:
-    /// \name Constructors & Destructor
-    ///@{
-    PortfolioSearch();
-    ///@}
+  /// \name Constructors & Destructor
+  ///@{
+  PortfolioSearch();
+  ///@}
 
-    /// \name Main Methods
-    ///@{
-    /**
-     * \brief Launches the portfolio-method search (multiple configurations).
-     *
-     * \return true if a plan was found, false otherwise.
-     *
-     */
-    [[nodiscard]]
-    bool run_portfolio_search() const;
+  /// \name Main Methods
+  ///@{
+  /**
+   * \brief Launches the portfolio-method search (multiple configurations).
+   *
+   * \return true if a plan was found, false otherwise.
+   *
+   */
+  [[nodiscard]]
+  bool run_portfolio_search() const;
 
-    /**
-     * \brief Parses configurations from a file.
-     *
-     * The file should contain configurations in the format:
-     * key1=value1,key2=value2,...
-     * Each line represents a different configuration.
-     * \warning This does not check for parsing errors, so ensure the file is well-formed.
-     *
-     * \param file_path Path to the configuration file.
-     */
-    void parse_configurations_from_file(const std::string& file_path);
+  /**
+   * \brief Parses configurations from a file.
+   *
+   * The file should contain configurations in the format:
+   * key1=value1,key2=value2,...
+   * Each line represents a different configuration.
+   * \warning This does not check for parsing errors, so ensure the file is
+   * well-formed.
+   *
+   * \param file_path Path to the configuration file.
+   */
+  void parse_configurations_from_file(const std::string &file_path);
 
-    /**
-     * \brief Sets a default set of search configurations.
-     *
-     * This will overwrite any previously set configurations.
-     */
-    void set_default_configurations();
-    ///@}
+  /**
+   * \brief Sets a default set of search configurations.
+   *
+   * This will overwrite any previously set configurations.
+   */
+  void set_default_configurations();
+  ///@}
 
 private:
-    /// \name Data Members
-    ///@{
-    /**
-     * \brief List of search configurations to try.
-     * Each configuration is a map from parameter name to value.
-     */
-    std::vector<std::map<std::string, std::string>> m_search_configurations{};
-    ///@}
+  /// \name Data Members
+  ///@{
+  /**
+   * \brief List of search configurations to try.
+   * Each configuration is a map from parameter name to value.
+   */
+  std::vector<std::map<std::string, std::string>> m_search_configurations{};
+  ///@}
 };
