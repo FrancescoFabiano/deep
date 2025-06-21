@@ -1,54 +1,37 @@
 #!/bin/bash
 
+# Function to run a command and check result
+run_deep() {
+  local description="$1"
+  shift
+  echo "Running: deep on $FILENAME with actions $actions ($description)"
+  ./cmake-build-debug/bin/deep "$FILENAME" "$@"
+  local ret=$?
+  if [ $ret -ne 0 ]; then
+    echo "Error: deep execution failed during '$FILENAME' with actions '$actions' ('$description') (exit code $ret)"
+    exit $ret
+  fi
+  sleep 1
+}
+
+# Input validation
 if [ $# -ne 1 ]; then
   echo "Usage: $0 <filename>"
   exit 1
 fi
 
-actions=$(grep -oP '%%% Executed actions:\s*\K.*?(?=\s*%%%$)' "$1")
+FILENAME="$1"
+
+# Extract actions
+actions=$(grep -oP '%%% Executed actions:\s*\K.*?(?=\s*%%%$)' "$FILENAME")
 if [ -z "$actions" ]; then
   echo "No executable actions found."
   exit 1
 fi
 
-ret=0
-
-echo "Running: deep on $1 with actions $actions"
-./cmake-build-debug/bin/deep "$1" -e -a $actions
-ret=$?
-if [ $ret -ne 0 ]; then
-  echo "Error: deep execution failed (exit code $ret)"
-  exit $ret
-fi
-
-echo "Running: deep on $1 with actions $actions (visited states check)"
-./cmake-build-debug/bin/deep "$1" -c -e -a $actions
-ret=$?
-if [ $ret -ne 0 ]; then
-  echo "Error: deep execution failed (exit code $ret)"
-  exit $ret
-fi
-
-echo "Running: deep on $1 with actions $actions (bisimulation (FB) check)"
-./cmake-build-debug/bin/deep "$1" -b -e -a $actions
-ret=$?
-if [ $ret -ne 0 ]; then
-  echo "Error: deep execution failed (exit code $ret)"
-  exit $ret
-fi
-
-echo "Running: deep on $1 with actions $actions (bisimulation (PT) check)"
-./cmake-build-debug/bin/deep "$1" -b --bisimulation_type PT -e -a $actions
-ret=$?
-if [ $ret -ne 0 ]; then
-  echo "Error: deep execution failed (exit code $ret)"
-  exit $ret
-fi
-
-echo "Running: deep on $1 with actions $actions (bisimulation and visited states check)"
-./cmake-build-debug/bin/deep "$1" -b -c -e -a $actions
-ret=$?
-if [ $ret -ne 0 ]; then
-  echo "Error: deep execution failed (exit code $ret)"
-  exit $ret
-fi
+# Run tests
+run_deep "basic execution" -e -a $actions
+run_deep "visited states check" -c -e -a $actions
+run_deep "bisimulation (FB) check" -b -e -a $actions
+run_deep "bisimulation (PT) check" -b --bisimulation_type PT -e -a $actions
+run_deep "bisimulation and visited states check" -b -c -e -a $actions

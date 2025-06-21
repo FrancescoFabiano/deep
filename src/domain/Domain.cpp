@@ -11,6 +11,7 @@
 
 #include "ArgumentParser.h"
 #include "Configuration.h"
+#include "ExitHandler.h"
 #include "HelperPrint.h"
 #include "utilities/FormulaHelper.h"
 #include "parse/Reader.h"

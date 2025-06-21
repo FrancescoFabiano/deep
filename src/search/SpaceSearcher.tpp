@@ -22,50 +22,43 @@
 #include "Configuration.h"
 #include "HelperPrint.h"
 
-template <StateRepresentation StateRepr, SearchStrategy<StateRepr> Strategy>
-SpaceSearcher<StateRepr, Strategy>::SpaceSearcher(Strategy strategy, std::atomic<bool>& cancel_flag)
-    : m_strategy(std::move(strategy)), m_cancel_flag(cancel_flag)
-{
+template<StateRepresentation StateRepr, SearchStrategy<StateRepr> Strategy>
+SpaceSearcher<StateRepr, Strategy>::SpaceSearcher(Strategy strategy, std::atomic<bool> &cancel_flag)
+    : m_strategy(std::move(strategy)), m_cancel_flag(cancel_flag) {
 }
 
-template <StateRepresentation StateRepr, SearchStrategy<StateRepr> Strategy>
-std::string SpaceSearcher<StateRepr, Strategy>::get_search_type() const noexcept
-{
+template<StateRepresentation StateRepr, SearchStrategy<StateRepr> Strategy>
+std::string SpaceSearcher<StateRepr, Strategy>::get_search_type() const noexcept {
     return m_strategy.get_name();
 }
 
-template <StateRepresentation StateRepr, SearchStrategy<StateRepr> Strategy>
-unsigned int SpaceSearcher<StateRepr, Strategy>::get_expanded_nodes() const noexcept
-{
+template<StateRepresentation StateRepr, SearchStrategy<StateRepr> Strategy>
+unsigned int SpaceSearcher<StateRepr, Strategy>::get_expanded_nodes() const noexcept {
     return m_expanded_nodes;
 }
 
-template <StateRepresentation StateRepr, SearchStrategy<StateRepr> Strategy>
-std::chrono::duration<double> SpaceSearcher<StateRepr, Strategy>::get_elapsed_seconds() const noexcept
-{
+template<StateRepresentation StateRepr, SearchStrategy<StateRepr> Strategy>
+std::chrono::duration<double> SpaceSearcher<StateRepr, Strategy>::get_elapsed_seconds() const noexcept {
     return m_elapsed_seconds;
 }
 
-template <StateRepresentation StateRepr, SearchStrategy<StateRepr> Strategy>
-const ActionIdsList& SpaceSearcher<StateRepr, Strategy>::get_plan_actions_id() const noexcept
-{
+template<StateRepresentation StateRepr, SearchStrategy<StateRepr> Strategy>
+const ActionIdsList &SpaceSearcher<StateRepr, Strategy>::get_plan_actions_id() const noexcept {
     return m_plan_actions_id;
 }
 
 
-template <StateRepresentation StateRepr, SearchStrategy<StateRepr> Strategy>
-bool SpaceSearcher<StateRepr, Strategy>::search(const State<StateRepr>& passed_initial)
-{
+template<StateRepresentation StateRepr, SearchStrategy<StateRepr> Strategy>
+bool SpaceSearcher<StateRepr, Strategy>::search(const State<StateRepr> &passed_initial) {
     m_expanded_nodes = 0;
 
     const bool check_visited = Configuration::get_instance().get_check_visited();
     const bool bisimulation_reduction = Configuration::get_instance().get_bisimulation();
 
     // Defensive: Check if Domain singleton is available and actions are not empty
-    const auto& domain_instance = Domain::get_instance();
-    const auto& actions = domain_instance.get_actions();
-    if (actions.empty())
-    {
+    const auto &domain_instance = Domain::get_instance();
+    const auto &actions = domain_instance.get_actions();
+    if (actions.empty()) {
         ExitHandler::exit_with_message(
             ExitHandler::ExitCode::SearchNoActions,
             "No actions available in the domain."
@@ -74,33 +67,30 @@ bool SpaceSearcher<StateRepr, Strategy>::search(const State<StateRepr>& passed_i
 
     const auto start_timing = std::chrono::system_clock::now();
 
-    auto thread_safe_initial = passed_initial; // Make a copy to avoid modifying the original state (avoid side effects for multi-threading)
+    auto thread_safe_initial = passed_initial;
+    // Make a copy to avoid modifying the original state (avoid side effects for multi-threading)
 
-    if (bisimulation_reduction)
-        {
-            thread_safe_initial.contract_with_bisimulation();
-        }
+    if (bisimulation_reduction) {
+        thread_safe_initial.contract_with_bisimulation();
+    }
 
 
-    if (thread_safe_initial.is_goal())
-    {
+    if (thread_safe_initial.is_goal()) {
         m_elapsed_seconds = std::chrono::system_clock::now() - start_timing;
         return true;
     }
 
     bool result;
     // Dispatch
-    if (ArgumentParser::get_instance().get_execute_plan())
-    {
+    if (ArgumentParser::get_instance().get_execute_plan()) {
         // If a plan is provided, validate it
         result = validate_plan(thread_safe_initial, check_visited, bisimulation_reduction);
-    }
-    else
-    {
+    } else {
         const int num_threads = ArgumentParser::get_instance().get_threads_per_search();
         result = (num_threads <= 1)
                      ? search_sequential(thread_safe_initial, actions, check_visited, bisimulation_reduction)
-                     : search_parallel(thread_safe_initial, actions, check_visited, bisimulation_reduction, num_threads);
+                     : search_parallel(thread_safe_initial, actions, check_visited, bisimulation_reduction,
+                                       num_threads);
     }
 
     m_elapsed_seconds = std::chrono::system_clock::now() - start_timing;
@@ -108,57 +98,49 @@ bool SpaceSearcher<StateRepr, Strategy>::search(const State<StateRepr>& passed_i
     return result;
 }
 
-template <StateRepresentation StateRepr, SearchStrategy<StateRepr> Strategy>
-bool SpaceSearcher<StateRepr, Strategy>::search_sequential(State<StateRepr>& initial,
-                                                           const ActionsSet& actions,
+template<StateRepresentation StateRepr, SearchStrategy<StateRepr> Strategy>
+bool SpaceSearcher<StateRepr, Strategy>::search_sequential(State<StateRepr> &initial,
+                                                           const ActionsSet &actions,
                                                            const bool check_visited,
-                                                           const bool bisimulation_reduction)
-{
+                                                           const bool bisimulation_reduction) {
     m_strategy.reset();
 
-    std::set<State<StateRepr>> visited_states;
+    std::set<State<StateRepr> > visited_states;
     /// \warning cannot use unordered_set because I am missing a clear way of hashing the state
     m_expanded_nodes = 0;
 
     m_strategy.push(initial);
-    if (check_visited)
-    {
+    if (check_visited) {
         visited_states.insert(initial);
     }
 
-    while (!m_strategy.empty())
-    {
-        if (m_cancel_flag.load())
-        {
-            return false; // Exit early if cancellation requested (it happens when another threads find the solution first)
+    while (!m_strategy.empty()) {
+        if (m_cancel_flag.load()) {
+            return false;
+            // Exit early if cancellation requested (it happens when another threads find the solution first)
         }
         State current = m_strategy.peek();
         m_strategy.pop();
         ++m_expanded_nodes;
 
-        for (const auto& action : actions)
-        {
-            if (current.is_executable(action))
-            {
+        for (const auto &action: actions) {
+            if (current.is_executable(action)) {
                 State successor = current.compute_successor(action);
 
                 /// DEBUG \todo remove this, only for bisimulation testing
                 /// check_bisimulation_equivalence(successor);
 
-                if (bisimulation_reduction)
-                {
+                if (bisimulation_reduction) {
                     successor.contract_with_bisimulation();
                 }
 
 
-                if (successor.is_goal())
-                {
+                if (successor.is_goal()) {
                     m_plan_actions_id = successor.get_executed_actions();
                     return true;
                 }
 
-                if (!check_visited || visited_states.insert(successor).second)
-                {
+                if (!check_visited || visited_states.insert(successor).second) {
                     m_strategy.push(successor);
                 }
             }
@@ -167,12 +149,11 @@ bool SpaceSearcher<StateRepr, Strategy>::search_sequential(State<StateRepr>& ini
     return false;
 }
 
-template <StateRepresentation StateRepr, SearchStrategy<StateRepr> Strategy>
-bool SpaceSearcher<StateRepr, Strategy>::search_parallel(State<StateRepr>& initial,
-                                                         const ActionsSet& actions,
+template<StateRepresentation StateRepr, SearchStrategy<StateRepr> Strategy>
+bool SpaceSearcher<StateRepr, Strategy>::search_parallel(State<StateRepr> &initial,
+                                                         const ActionsSet &actions,
                                                          const bool check_visited, const bool bisimulation_reduction,
-                                                         const int num_threads)
-{
+                                                         const int num_threads) {
     /*std::set<State<StateRepr>> visited_states;
     /// \warning cannot use unordered_set because I am missing a clear way of hashing the state
     Strategy current_frontier(initial);
@@ -290,7 +271,11 @@ bool SpaceSearcher<StateRepr, Strategy>::search_parallel(State<StateRepr>& initi
 
     m_expanded_nodes += total_expanded_nodes;
     return false;*/
-    (void)initial; (void)actions; (void)check_visited; (void)bisimulation_reduction; (void)num_threads;
+    (void) initial;
+    (void) actions;
+    (void) check_visited;
+    (void) bisimulation_reduction;
+    (void) num_threads;
     ExitHandler::exit_with_message(
         ExitHandler::ExitCode::SearchParallelNotImplemented,
         "Parallel search is not implemented yet. Please use sequential search."
@@ -301,78 +286,68 @@ bool SpaceSearcher<StateRepr, Strategy>::search_parallel(State<StateRepr>& initi
 }
 
 
-template <StateRepresentation StateRepr, SearchStrategy<StateRepr> Strategy>
-bool SpaceSearcher<StateRepr, Strategy>::validate_plan(const State<StateRepr>& initial, const bool check_visited,
-                                                       const bool bisimulation_reduction)
-{
-    std::set<State<StateRepr>> visited_states;
+template<StateRepresentation StateRepr, SearchStrategy<StateRepr> Strategy>
+bool SpaceSearcher<StateRepr, Strategy>::validate_plan(const State<StateRepr> &initial, const bool check_visited,
+                                                       const bool bisimulation_reduction) {
+    std::set<State<StateRepr> > visited_states;
     /// \warning cannot use unordered_set because I am missing a clear way of hashing the state
-    if (check_visited)
-    {
+    if (check_visited) {
         visited_states.insert(initial);
     }
 
     const std::string dot_files_folder = std::string(OutputPaths::EXEC_PLAN_FOLDER) + "/" + Domain::get_instance().
-        get_name()
-        + "/";
+                                         get_name()
+                                         + "/";
     std::filesystem::create_directories(dot_files_folder);
 
 
     State<StateRepr> current = initial;
+    if (bisimulation_reduction) {
+        current.contract_with_bisimulation();
+    }
     print_dot_for_execute_plan(true, false, "initial", current, dot_files_folder);
 
-    const auto& plan = ArgumentParser::get_instance().get_execution_actions();
+    const auto &plan = ArgumentParser::get_instance().get_execution_actions();
 
-    for (auto it = plan.begin(); it != plan.end(); ++it)
-    {
-        const auto& action_name = *it;
+    for (auto it = plan.begin(); it != plan.end(); ++it) {
+        const auto &action_name = *it;
         bool is_last = (std::next(it) == plan.end());
 
         bool found_action = false;
-        for (const auto& action : Domain::get_instance().get_actions())
-        {
-            if (action.get_name() == action_name)
-            {
+        for (const auto &action: Domain::get_instance().get_actions()) {
+            if (action.get_name() == action_name) {
                 found_action = true;
-                if (current.is_executable(action))
-                {
+                if (current.is_executable(action)) {
                     ++m_expanded_nodes;
                     current = current.compute_successor(action);
-                    if (bisimulation_reduction)
-                    {
+                    if (bisimulation_reduction) {
                         current.contract_with_bisimulation();
                     }
                     print_dot_for_execute_plan(false, is_last, action_name, current,
                                                dot_files_folder);
-                    if (current.is_goal())
-                    {
+                    if (current.is_goal()) {
                         m_plan_actions_id = current.get_executed_actions();
-                        if (!is_last)
-                        {
-                            auto& os = ArgumentParser::get_instance().get_output_stream();
+                        if (!is_last) {
+                            auto &os = ArgumentParser::get_instance().get_output_stream();
                             os << "\n[WARNING] Plan found before the entire plan was used.";
                             os << std::endl;
                         }
                         return true;
                     }
-                    if (check_visited && !visited_states.insert(current).second)
-                    {
-                        auto& os = ArgumentParser::get_instance().get_output_stream();
+                    if (check_visited && !visited_states.insert(current).second) {
+                        auto &os = ArgumentParser::get_instance().get_output_stream();
                         os <<
-                            "\n[WARNING] While executing the plan, found an already visited state after the execution of the actions:\n";
+                                "\n[WARNING] While executing the plan, found an already visited state after the execution of the actions:\n";
                         HelperPrint::get_instance().print_list(current.get_executed_actions());
                         os << "\nThis means that the plan is not optimal." << std::endl;
                     }
-                    if (is_last)
-                    {
-                        auto& os = ArgumentParser::get_instance().get_output_stream();
+                    if (is_last) {
+                        auto &os = ArgumentParser::get_instance().get_output_stream();
                         os << "\n[WARNING] No plan found after the execution of:\n";
                         HelperPrint::get_instance().print_list(current.get_executed_actions());
                         os << std::endl;
                     }
-                }
-                else
-                {
+                } else {
                     ExitHandler::exit_with_message(
                         ExitHandler::ExitCode::StateActionNotExecutableError,
                         std::string("The action \"") + action.get_name() +
@@ -383,8 +358,7 @@ bool SpaceSearcher<StateRepr, Strategy>::validate_plan(const State<StateRepr>& i
                 break;
             }
         }
-        if (!found_action)
-        {
+        if (!found_action) {
             ExitHandler::exit_with_message(
                 ExitHandler::ExitCode::ActionTypeConflict,
                 std::string("Action \"") + action_name + "\" not found in domain actions while validating the plan."
@@ -395,12 +369,11 @@ bool SpaceSearcher<StateRepr, Strategy>::validate_plan(const State<StateRepr>& i
     return current.is_goal();
 }
 
-template <StateRepresentation StateRepr, SearchStrategy<StateRepr> Strategy>
+template<StateRepresentation StateRepr, SearchStrategy<StateRepr> Strategy>
 void SpaceSearcher<StateRepr, Strategy>::print_dot_for_execute_plan(const bool initial, const bool last,
-                                                                    const std::string& action_name,
-                                                                    const State<StateRepr>& current,
-                                                                    const std::string& dot_files_folder)
-{
+                                                                    const std::string &action_name,
+                                                                    const State<StateRepr> &current,
+                                                                    const std::string &dot_files_folder) {
     if (!ArgumentParser::get_instance().get_verbose())
         return;
 
@@ -408,8 +381,7 @@ void SpaceSearcher<StateRepr, Strategy>::print_dot_for_execute_plan(const bool i
     std::size_t dot_count = std::count_if(
         std::filesystem::directory_iterator(dot_files_folder),
         std::filesystem::directory_iterator{},
-        [dot_extension](const auto& entry)
-        {
+        [dot_extension](const auto &entry) {
             return entry.path().extension() == dot_extension;
         }
     );
@@ -419,18 +391,18 @@ void SpaceSearcher<StateRepr, Strategy>::print_dot_for_execute_plan(const bool i
     std::ostringstream oss;
     oss << std::setw(5) << std::setfill('0') << static_cast<int>(dot_count);
     print_name += oss.str() + "-";
-    if (!initial)
-    {
+    if (!initial) {
         print_name += action_name;
-    }
-    else
-    {
+    } else {
         print_name += "initial";
     }
 
-    std::string ofstream_name = print_name + std::string(dot_extension);
-    if (std::ofstream ofs(ofstream_name); ofs.is_open())
-    {
+    const std::string adj_dot_extension = Configuration::get_instance().get_bisimulation()
+                                              ? ("-bis" + dot_extension)
+                                              : dot_extension;
+
+    std::string ofstream_name = print_name + std::string(adj_dot_extension);
+    if (std::ofstream ofs(ofstream_name); ofs.is_open()) {
         current.print_dot_format(ofs);
     }
 
@@ -457,16 +429,14 @@ void SpaceSearcher<StateRepr, Strategy>::print_dot_for_execute_plan(const bool i
         os << std::endl;
     }*/
 
-    if (last)
-    {
+    if (last) {
         std::string script_cmd = "./scripts/dot_to_png.sh " + dot_files_folder;
         std::system(script_cmd.c_str());
     }
 }
 
-template <StateRepresentation StateRepr, SearchStrategy<StateRepr> Strategy>
-void SpaceSearcher<StateRepr, Strategy>::check_bisimulation_equivalence(const State<StateRepr>& state) const
-{
+template<StateRepresentation StateRepr, SearchStrategy<StateRepr> Strategy>
+void SpaceSearcher<StateRepr, Strategy>::check_bisimulation_equivalence(const State<StateRepr> &state) const {
     if (!ArgumentParser::get_instance().get_verbose())
         return;
 
@@ -474,11 +444,10 @@ void SpaceSearcher<StateRepr, Strategy>::check_bisimulation_equivalence(const St
     bool are_bisimilar = true;
     State<StateRepr> temp = state;
     temp.contract_with_bisimulation();
-    auto& os = ArgumentParser::get_instance().get_output_stream();
+    auto &os = ArgumentParser::get_instance().get_output_stream();
 
     // ReSharper disable once CppDFAConstantConditions
-    if (temp == state)
-    {
+    if (temp == state) {
         // If the state is already bisimilar, no need to check further
         return;
     }
@@ -488,10 +457,9 @@ void SpaceSearcher<StateRepr, Strategy>::check_bisimulation_equivalence(const St
 
     std::string fail_case;
 
-    auto& domain_instance = Domain::get_instance();
+    auto &domain_instance = Domain::get_instance();
     auto to_check1 = domain_instance.get_initial_description().get_initial_conditions();
-    if (state.entails(to_check1) != temp.entails(to_check1))
-    {
+    if (state.entails(to_check1) != temp.entails(to_check1)) {
         are_bisimilar = false;
         fail_case = "initial_conditions";
     }
@@ -499,55 +467,44 @@ void SpaceSearcher<StateRepr, Strategy>::check_bisimulation_equivalence(const St
     auto to_check2 = domain_instance.get_initial_description().get_ff_forS5();
     // ReSharper disable once CppDFAUnreachableCode
     // ReSharper disable once CppDFAUnreachableCode
-    if (!to_check2.empty() && (state.entails(to_check2) != temp.entails(to_check2)))
-    {
+    if (!to_check2.empty() && (state.entails(to_check2) != temp.entails(to_check2))) {
         are_bisimilar = false;
         fail_case = "ff_forS5";
     }
 
     auto to_check3 = domain_instance.get_goal_description();
-    if (state.entails(to_check3) != temp.entails(to_check3))
-    {
+    if (state.entails(to_check3) != temp.entails(to_check3)) {
         are_bisimilar = false;
         fail_case = "goal_description";
     }
 
-    for (const auto& tmp_action : domain_instance.get_actions())
-    {
-        for (auto condition : tmp_action.get_effects() | std::views::values)
-        {
-            if (state.entails(condition) != temp.entails(condition))
-            {
+    for (const auto &tmp_action: domain_instance.get_actions()) {
+        for (auto condition: tmp_action.get_effects() | std::views::values) {
+            if (state.entails(condition) != temp.entails(condition)) {
                 are_bisimilar = false;
                 fail_case = "action_effects of action " + tmp_action.get_name();
             }
         }
         auto to_check5 = tmp_action.get_executability();
-        if (state.entails(to_check5) != temp.entails(to_check5))
-        {
+        if (state.entails(to_check5) != temp.entails(to_check5)) {
             are_bisimilar = false;
             fail_case = "action_executability of action  " + tmp_action.get_name();
         }
-        for (auto condition : tmp_action.get_fully_observants() | std::views::values)
-        {
-            if (state.entails(condition) != temp.entails(condition))
-            {
+        for (auto condition: tmp_action.get_fully_observants() | std::views::values) {
+            if (state.entails(condition) != temp.entails(condition)) {
                 are_bisimilar = false;
                 fail_case = "Full Observability of action " + tmp_action.get_name();
             }
         }
-        for (auto condition : tmp_action.get_partially_observants() | std::views::values)
-        {
-            if (state.entails(condition) != temp.entails(condition))
-            {
+        for (auto condition: tmp_action.get_partially_observants() | std::views::values) {
+            if (state.entails(condition) != temp.entails(condition)) {
                 are_bisimilar = false;
                 fail_case = "Full Observability of action " + tmp_action.get_name();
             }
         }
     }
 
-    if (!are_bisimilar)
-    {
+    if (!are_bisimilar) {
         ExitHandler::exit_with_message(
             ExitHandler::ExitCode::SearchBisimulationError,
             "Bisimulation reduction failed: there is some discrepancy in " + fail_case +

@@ -1,8 +1,8 @@
-%%% Executed actions: left_a a_check_b1_1 right_b b_check_b2_3 %%%
+%%% Executed actions: left_a a_check_b1_1 tell_a_b1_1 %%%
 
-fluent at_a_1, at_a_2, at_a_3, at_a_4, at_b_1, at_b_2, at_b_3, at_b_4, at_b1_1, at_b1_3, at_b1_4, at_b2_1, at_b2_3, at_b2_4, at_b3_1, at_b3_3, at_b3_4, at_b4_1, at_b4_1, at_b4_3, at_b4_4;
+fluent at_a_1, at_a_2, at_a_3, at_a_4, at_b_1, at_b_2, at_b_3, at_b_4, at_b1_1, at_b1_3, at_b1_4, at_b2_1, at_b2_3, at_b2_4, at_b3_1, at_b3_3, at_b3_4;
 
-action right_a, left_a, right_b, left_b, a_check_b1_1, a_check_b2_1, a_check_b3_1, a_check_b4_1, a_check_b1_3, a_check_b2_3, a_check_b3_3, a_check_b4_3, a_check_b1_4, a_check_b2_4, a_check_b3_4, a_check_b4_4, b_check_b1_1, b_check_b2_1, b_check_b3_1, b_check_b4_1, b_check_b1_3, b_check_b2_3, b_check_b3_3, b_check_b4_3, b_check_b1_4, b_check_b2_4, b_check_b3_4, b_check_b4_4, tell_a_b1_1, tell_a_b2_1, tell_a_b3_1, tell_a_b4_1, tell_b_b1_1, tell_b_b2_1, tell_b_b3_1, tell_b_b4_1, tell_a_b1_3, tell_a_b2_3, tell_a_b3_3, tell_a_b4_3, tell_b_b1_3, tell_b_b2_3, tell_b_b3_3, tell_b_b4_3, tell_a_b1_4, tell_a_b2_4, tell_a_b3_4, tell_a_b4_4, tell_b_b1_4, tell_b_b2_4, tell_b_b3_4, tell_b_b4_4; %% a_check_1, a_check_3, a_check_4, b_check_1, b_check_3, b_check_4
+action right_a, left_a, right_b, left_b, a_check_b1_1, a_check_b2_1, a_check_b3_1, a_check_b1_3, a_check_b2_3, a_check_b3_3, a_check_b1_4, a_check_b2_4, a_check_b3_4, b_check_b1_1, b_check_b2_1, b_check_b3_1, b_check_b1_3, b_check_b2_3, b_check_b3_3, b_check_b1_4, b_check_b2_4, b_check_b3_4, tell_a_b1_1, tell_a_b2_1, tell_a_b3_1, tell_b_b1_1, tell_b_b2_1, tell_b_b3_1, tell_a_b1_3, tell_a_b2_3, tell_a_b3_3, tell_b_b1_3, tell_b_b2_3, tell_b_b3_3, tell_a_b1_4, tell_a_b2_4, tell_a_b3_4, tell_b_b1_4, tell_b_b2_4, tell_b_b3_4; %% a_check_1, a_check_3, a_check_4, b_check_1, b_check_3, b_check_4
 
 agent a,b;
 
@@ -47,6 +47,7 @@ b observes right_b;
 a observes right_b;
 
 
+
 executable a_check_b1_1 if B(a, at_a_1);
 a_check_b1_1 determines at_b1_1;
 a observes a_check_b1_1;
@@ -58,10 +59,6 @@ a observes a_check_b2_1;
 executable a_check_b3_1 if B(a, at_a_1);
 a_check_b3_1 determines at_b3_1;
 a observes a_check_b3_1;
-
-executable a_check_b4_1 if B(a, at_a_1);
-a_check_b4_1 determines at_b4_1;
-a observes a_check_b4_1;
 
 executable a_check_b1_3 if B(a, at_a_3);
 a_check_b1_3 determines at_b1_3;
@@ -75,10 +72,6 @@ executable a_check_b3_3 if B(a, at_a_3);
 a_check_b3_3 determines at_b3_3;
 a observes a_check_b3_3;
 
-executable a_check_b4_3 if B(a, at_a_3);
-a_check_b4_3 determines at_b4_3;
-a observes a_check_b4_3;
-
 executable a_check_b1_4 if B(a, at_a_4);
 a_check_b1_4 determines at_b1_4;
 a observes a_check_b1_4;
@@ -90,10 +83,6 @@ a observes a_check_b2_4;
 executable a_check_b3_4 if B(a, at_a_4);
 a_check_b3_4 determines at_b3_4;
 a observes a_check_b3_4;
-
-executable a_check_b4_4 if B(a, at_a_4);
-a_check_b4_4 determines at_b4_4;
-a observes a_check_b4_4;
 
 
 executable b_check_b1_1 if B(b, at_b_1);
@@ -108,10 +97,6 @@ executable b_check_b3_1 if B(b, at_b_1);
 b_check_b3_1 determines at_b3_1;
 b observes b_check_b3_1;
 
-executable b_check_b4_1 if B(b, at_b_1);
-b_check_b4_1 determines at_b4_1;
-b observes b_check_b4_1;
-
 executable b_check_b1_3 if B(b, at_b_3);
 b_check_b1_3 determines at_b1_3;
 b observes b_check_b1_3;
@@ -123,10 +108,6 @@ b observes b_check_b2_3;
 executable b_check_b3_3 if B(b, at_b_3);
 b_check_b3_3 determines at_b3_3;
 b observes b_check_b3_3;
-
-executable b_check_b4_3 if B(b, at_b_3);
-b_check_b4_3 determines at_b4_3;
-b observes b_check_b4_3;
 
 executable b_check_b1_4 if B(b, at_b_4);
 b_check_b1_4 determines at_b1_4;
@@ -140,52 +121,42 @@ executable b_check_b3_4 if B(b, at_b_4);
 b_check_b3_4 determines at_b3_4;
 b observes b_check_b3_4;
 
-executable b_check_b4_4 if B(b, at_b_4);
-b_check_b4_4 determines at_b4_4;
-b observes b_check_b4_4;
-
 
 
 %executable a_check_1 if B(a, at_a_1);
 %a_check_1 determines at_b1_1;
 %a_check_1 determines at_b2_1;
 %a_check_1 determines at_b3_1;
-%a_check_1 determines at_b4_1;
 %a observes a_check_1;
 
 %executable a_check_3 if B(a, at_a_3);
 %a_check_3 determines at_b1_3;
 %a_check_3 determines at_b2_3;
 %a_check_3 determines at_b3_3;
-%a_check_3 determines at_b4_3;
 %a observes a_check_3;
 
 %executable a_check_4 if B(a, at_a_4);
 %a_check_4 determines at_b1_4;
 %a_check_4 determines at_b2_4;
 %a_check_4 determines at_b3_4;
-%a_check_4 determines at_b4_4;
 %a observes a_check_4;
 
 %executable b_check_1 if B(b, at_b_1);
 %b_check_1 determines at_b1_1;
 %b_check_1 determines at_b2_1;
 %b_check_1 determines at_b3_1;
-%b_check_1 determines at_b4_1;
 %b observes b_check_1;
 
 %executable b_check_3 if B(b, at_b_3);
 %b_check_3 determines at_b1_3;
 %b_check_3 determines at_b2_3;
 %b_check_3 determines at_b3_3;
-%b_check_3 determines at_b4_3;
 %b observes b_check_3;
 
 %executable b_check_4 if B(b, at_b_4);
 %b_check_4 determines at_b1_4;
 %b_check_4 determines at_b2_4;
 %b_check_4 determines at_b3_4;
-%b_check_4 determines at_b4_4;
 %b observes b_check_4;
 
 
@@ -285,41 +256,9 @@ a observes tell_b_b3_4;
 b observes tell_b_b3_4;
 
 
-
-executable tell_a_b4_1 if B(a, at_b4_1);
-tell_a_b4_1 announces at_b4_1;
-a observes tell_a_b4_1;
-b observes tell_a_b4_1;
-
-executable tell_a_b4_3 if B(a, at_b4_3);
-tell_a_b4_3 announces at_b4_3;
-a observes tell_a_b4_3;
-b observes tell_a_b4_3;
-
-executable tell_a_b4_4 if B(a, at_b4_4);
-tell_a_b4_4 announces at_b4_4;
-a observes tell_a_b4_4;
-b observes tell_a_b4_4;
-
-executable tell_b_b4_1 if B(b, at_b4_1);
-tell_b_b4_1 announces at_b4_1;
-a observes tell_b_b4_1;
-b observes tell_b_b4_1;
-
-executable tell_b_b4_3 if B(b, at_b4_3);
-tell_b_b4_3 announces at_b4_3;
-a observes tell_b_b4_3;
-b observes tell_b_b4_3;
-
-executable tell_b_b4_4 if B(b, at_b4_4);
-tell_b_b4_4 announces at_b4_4;
-a observes tell_b_b4_4;
-b observes tell_b_b4_4;
-
-
-initially at_a_2, at_b_2, -at_a_1, -at_a_3, -at_a_4, -at_b_1, -at_b_3, -at_b_4, at_b1_1, -at_b1_3, -at_b1_4, -at_b2_1, at_b2_3, -at_b2_4, -at_b3_1, at_b3_3, -at_b3_4, -at_b4_1, at_b4_3, -at_b4_4;
-initially C([a,b], at_a_2);
+initially at_a_2, at_b_2, -at_a_1, -at_a_3, -at_a_4, -at_b_1, -at_b_3, -at_b_4, at_b1_1, -at_b1_3, -at_b1_4, -at_b2_1, at_b2_3, -at_b2_4, -at_b3_1, at_b3_3, -at_b3_4;
 initially C([a,b], at_b_2);
+initially C([a,b], at_a_2);
 initially C([a,b], -at_a_1);
 initially C([a,b], -at_b_1);
 initially C([a,b], -at_a_3);
@@ -327,6 +266,9 @@ initially C([a,b], -at_b_3);
 initially C([a,b], -at_a_4);
 initially C([a,b], -at_b_4);
 
-% 4 actions
-goal B(b,at_b2_3);
-goal B(a,at_b1_1);
+initially C([a,b], (at_b1_1,-at_b1_3,-at_b1_4) | (-at_b1_1,at_b1_3,-at_b1_4) | (-at_b1_1,-at_b1_3,at_b1_4));
+initially C([a,b], (at_b2_1,-at_b2_3,-at_b2_4) | (-at_b2_1,at_b2_3,-at_b2_4) | (-at_b2_1,-at_b2_3,at_b2_4));
+initially C([a,b], (at_b3_1,-at_b3_3,-at_b3_4) | (-at_b3_1,at_b3_3,-at_b3_4) | (-at_b3_1,-at_b3_3,at_b3_4));
+
+% 3 actions
+goal C([a,b], at_b1_1);

@@ -1,4 +1,4 @@
-%%% Executed actions: left_b b_check_b1_1 right_a a_check_b2_3 tell_a_b2_3 %%%
+%%% Executed actions: right_a, a_check_b1_3, a_check_b2_3, tell_a_b1_1, tell_a_b2_3 %%%
 
 fluent at_a_1, at_a_2, at_a_3, at_b_1, at_b_2, at_b_3, at_c_1, at_c_2, at_c_3, at_b1_1, at_b1_3, at_b2_1, at_b2_3, at_b3_1, at_b3_3;
 

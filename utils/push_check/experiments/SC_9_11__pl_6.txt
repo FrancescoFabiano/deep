@@ -1,4 +1,4 @@
-%%% Executed actions: left sense left lef left shout_7 %%%
+%%% Executed actions: left sense left left left shout_7 %%%
 
 fluent q, at_1, at_2, at_3, at_4, at_5, at_6, at_7, at_8, at_9, at_10, at_11;
 

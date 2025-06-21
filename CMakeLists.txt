@@ -31,7 +31,6 @@ include_directories(
 
 # Header files with template implementations that must be included in the build
 set(TEMPLATIC_HEADERS
-        src/bisimulation/VectorBisWrapper.h
         src/heuristics/HeuristicsManager.h
         src/heuristics/strategies/neuralnets/GraphNN.h
         src/heuristics/strategies/neuralnets/TrainingDataset.h

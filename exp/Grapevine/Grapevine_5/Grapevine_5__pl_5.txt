@@ -17,17 +17,6 @@ right_d causes at_d_2, -at_d_1;
 executable right_e if at_e_1;
 right_e causes at_e_2, -at_e_1;
 
-executable right_a if at_a_1;
-right_a causes at_a_2, -at_a_1;
-executable right_b if at_b_1;
-right_b causes at_b_2, -at_b_1;
-executable right_c if at_c_1;
-right_c causes at_c_2, -at_c_1;
-executable right_d if at_d_1;
-right_d causes at_d_2, -at_d_1;
-executable right_e if at_e_1;
-right_e causes at_e_2, -at_e_1;
-
 executable left_a if at_a_2;
 left_a causes -at_a_2, at_a_1;
 executable left_b if at_b_2;

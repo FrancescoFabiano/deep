@@ -7,6 +7,7 @@
  */
 #include "BeliefFormulaParsed.h"
 
+#include "ExitHandler.h"
 #include "HelperPrint.h"
 
 void BeliefFormulaParsed::set_string_fluent_formula(const StringSetsSet& to_set)
