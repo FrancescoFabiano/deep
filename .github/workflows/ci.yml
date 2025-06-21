@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [ main ]
 
+permissions:
+  contents: write  # Needed to allow commits back to the repository
+
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
@@ -13,6 +16,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}  # Needed for write access
 
       - name: Install dependencies
         run: |
@@ -32,8 +37,10 @@ jobs:
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "ci: auto-format C++ files"
+          commit_user_name: GitHub Actions
+          commit_user_email: actions@github.com
 
       - name: Run execution and planning check script
         run: |
-          chmod +x /utils/push_check/scripts/overall_test.sh
+          chmod +x ./utils/push_check/scripts/overall_test.sh
           ./utils/push_check/scripts/overall_test.sh
