@@ -17,16 +17,21 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}  # Needed for write access
+          token: ${{ secrets.GITHUB_TOKEN }}
+          submodules: recursive
 
       - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential cmake clang-format bison flex
 
+      - name: Set running permissions for scripts
+        run: |
+          chmod +x ./build.sh
+          chmod +x ./utils/push_check/scripts/*.sh
+
       - name: Compile C++ project
         run: |
-          chmod +x build.sh
           ./build.sh
 
       - name: Check and fix C++ formatting
@@ -42,5 +47,4 @@ jobs:
 
       - name: Run execution and planning check script
         run: |
-          chmod +x ./utils/push_check/scripts/overall_test.sh
           ./utils/push_check/scripts/overall_test.sh
