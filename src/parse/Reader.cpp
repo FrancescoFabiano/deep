@@ -25,7 +25,7 @@ void Reader::read()
 {
 
     const int ret = yyparse();
-    if (ArgumentParser::get_instance().get_debug()) {
+    if (ArgumentParser::get_instance().get_verbose()) {
         auto& os = ArgumentParser::get_instance().get_output_stream();
         os << "Parsing result: " << ret << std::endl;
     }

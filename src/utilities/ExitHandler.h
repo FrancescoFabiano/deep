@@ -99,6 +99,7 @@ public:
         PortfolioConfigFileError = 860, ///< Could not open portfolio configuration file.
         PortfolioConfigError = 861, ///< Internal error in portfolio search.
         PortfolioConfigFieldError = 862, ///< Error in reading a field in portfolio configuration file.
+        SearchParallelNotImplemented = 863, ///< Parallel search is not implemented yet.
 
         // --- NN Related (880-889) ---
         NNTrainingFileError = 880, ///< Error opening NN training files.

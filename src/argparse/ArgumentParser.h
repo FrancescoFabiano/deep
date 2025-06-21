@@ -44,10 +44,10 @@ public:
 
 
     /**
-       * \brief Checks if debug mode is enabled.
-       * \return true if debug mode is enabled, false otherwise.
+       * \brief Checks if verbose mode is enabled.
+       * \return true if verbose mode is enabled, false otherwise.
        */
-    [[nodiscard]] bool get_debug() const noexcept;
+    [[nodiscard]] bool get_verbose() const noexcept;
 
     /**
      * \brief Checks if dataset generation mode is enabled.
@@ -86,10 +86,10 @@ public:
     [[nodiscard]] const std::vector<std::string>& get_execution_actions() noexcept;
 
     /**
-     * \brief Checks if the results should be logged to a file.
-     * \return true if results file logging is enabled, false otherwise.
+     * \brief Checks if the results should be printed with extra information.
+     * \return true if results file should be printed with extra information, false otherwise.
      */
-    [[nodiscard]] bool get_results_file() const noexcept;
+    [[nodiscard]] bool get_results_info() const noexcept;
 
     /**
      * \brief Checks if logging to a file is enabled.
@@ -148,6 +148,12 @@ public:
     [[nodiscard]] int get_portfolio_threads() const noexcept;
 
     /**
+     * \brief Retrieves the file path for loading the configuration for the Portfolio search.
+     * \return The configuration file path.
+     */
+    [[nodiscard]] const std::string& get_config_file() const noexcept;
+
+    /**
      * \brief Destructor. Closes the log file stream if open.
      */
     ~ArgumentParser();
@@ -177,7 +183,7 @@ private:
 
     // Option storage
     std::string m_input_file; ///< Input domain file path.
-    bool m_debug = false; ///< Debug mode flag.
+    bool m_verbose = false; ///< Verbose mode flag.
     bool m_bisimulation = false; ///< Bisimulation type (NONE by default).
     std::string m_bisimulation_type = "FB"; ///< Bisimulation type (PT by default).
     bool m_check_visited = false; ///< Flag to check for visited states.
@@ -194,14 +200,16 @@ private:
     std::string m_GNN_model_path = "lib/RL/models/GNN_model_default.pt"; ///< Path to the GNN model for heuristic evaluation.
     bool m_exec_plan = false; ///< Flag to indicate if the plan should be executed.
     std::vector<std::string> m_exec_actions; ///< Actions to execute instead of planning.
-    bool m_output_results_file = false; ///< Flag to enable results file logging.
-    std::string m_plan_file = "plan.txt"; ///< Plan file path.
+    bool m_output_results_info = false; ///< Flag to enable extra results info logging.
+    std::string m_plan_file = "utils/plans/plan.ut"; ///< Plan file path.
     bool m_log_enabled = false; ///< True if --log is enabled.
     std::string m_log_file_path; ///< The log file path if logging is enabled.
     std::ostream* m_output_stream = &std::cout; ///< Output stream for logging and results (default: std::cout).
     std::ofstream m_log_ofstream; ///< If logging to file, this holds the ofstream.
     int m_threads_per_search = 1; ///< Number of threads per search strategy (default: 1).
     int m_portfolio_threads = 1; ///< Number of portfolio threads (default: 1).
+    std::string m_config_file = ""; ///< Config file path.
+
 
     // Accessors private because they can be accessed only by friend class \ref Configuration
 
