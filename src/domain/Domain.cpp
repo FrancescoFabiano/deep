@@ -108,7 +108,7 @@ void Domain::build_agents(Grounder &grounder) {
       static_cast<int>(domain_reader->m_agents.size()));
 
   /////@TODO This will be replaced by epddl parser. Reader needs to be changed
-  ///and make sure to have getter and setter
+  /// and make sure to have getter and setter
   for (const auto &agent_name : domain_reader->m_agents) {
     Agent agent(agents_length, i);
     domain_agent_map.insert({agent_name, agent});
@@ -136,7 +136,7 @@ void Domain::build_fluents(Grounder &grounder) {
   // +1 for the negation bit
 
   /////@TODO This will be replaced by epddl parser. Reader needs to be changed
-  ///and make sure to have getter and setter
+  /// and make sure to have getter and setter
   for (const auto &fluent_name : domain_reader->m_fluents) {
     Fluent fluent_real(bit_size, i);
     fluent_real.set(fluent_real.size() - 1, true);
@@ -173,7 +173,7 @@ void Domain::build_actions(Grounder &grounder) {
   int bit_size = FormulaHelper::length_to_power_two(number_of_actions);
 
   /////@TODO This will be replaced by epddl parser. Reader needs to be changed
-  ///and make sure to have getter and setter
+  /// and make sure to have getter and setter
   for (const auto &action_name : domain_reader->m_actions) {
     ActionId action_bitset(bit_size, i);
     Action tmp_action(action_name, action_bitset);
@@ -207,7 +207,7 @@ void Domain::build_propositions() {
   }
 
   /////@TODO This will be replaced by epddl parser. Reader needs to be changed
-  ///and make sure to have getter and setter
+  /// and make sure to have getter and setter
   for (auto &prop : domain_reader->m_propositions) {
     auto action_to_modify =
         HelperPrint::get_instance().get_grounder().ground_action(
@@ -234,7 +234,7 @@ void Domain::build_initially() {
   }
 
   /////@TODO This will be replaced by epddl parser. Reader needs to be changed
-  ///and make sure to have getter and setter
+  /// and make sure to have getter and setter
   for (auto &formula_parsed : domain_reader->m_bf_initially) {
     const auto formula = BeliefFormula(formula_parsed);
 
@@ -278,7 +278,7 @@ void Domain::build_goal() {
   }
 
   /////@TODO This will be replaced by epddl parser. Reader needs to be changed
-  ///and make sure to have getter and setter
+  /// and make sure to have getter and setter
   for (auto &formula_parsed : domain_reader->m_bf_goal) {
     const auto formula = BeliefFormula(formula_parsed);
     m_goal_description.push_back(formula);
