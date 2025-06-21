@@ -1859,19 +1859,28 @@ void Bisimulation::calc_min_bisimilar(KripkeState &kstate) {
         return;
     }*/
 
-    const bool use_FB = Configuration::get_instance().get_bisimulation_type_bool();
-    const bool success = use_FB
-                             ? MinimizeAutomaFB(automaton)
-                             : MinimizeAutomaPT(automaton);
+    try{
+        const bool use_FB = Configuration::get_instance().get_bisimulation_type_bool();
+        const bool success = use_FB
+                                 ? MinimizeAutomaFB(automaton)
+                                 : MinimizeAutomaPT(automaton);
 
-    if (success) {
-        automaton_to_kstate(automaton, pworld_vec, label_to_agent, kstate);
-    } else {
-        ExitHandler::exit_with_message(
-            ExitHandler::ExitCode::BisimulationFailed,
-            use_FB
-                ? "Bisimulation with FB failed.\n"
-                : "Bisimulation with PT failed.\n"
-        );
+        if (success) {
+            automaton_to_kstate(automaton, pworld_vec, label_to_agent, kstate);
+        } else {
+            ExitHandler::exit_with_message(
+                ExitHandler::ExitCode::BisimulationFailed,
+                use_FB
+                    ? "Bisimulation with FB failed.\n"
+                    : "Bisimulation with PT failed.\n"
+            );
+        }
+    } catch ([[maybe_unused]] const std::exception& ex) {
+        Configuration::get_instance().add_bisimulation_failure();
+        /*
+        if (ArgumentParser::get_instance().get_verbose()) {
+            ArgumentParser::get_instance().get_output_stream() << "[Warning] Exception during Bisimulation. We will keep the original state.\nError Message: " << ex.what() << std::endl;
+        }
+        */
     }
 }

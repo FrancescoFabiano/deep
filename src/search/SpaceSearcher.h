@@ -111,12 +111,10 @@ private:
      * \param initial The initial state to start the search from.
      * \param actions The list of actions to use.
      * \param check_visited Whether to check for visited states.
-     * \param bisimulation_reduction Whether to apply bisimulation reduction.
      * \return true if a goal state is found, false otherwise.
      */
     [[nodiscard]]
-    bool search_sequential(State<StateRepr> &initial, const ActionsSet &actions, bool check_visited,
-                           bool bisimulation_reduction);
+    bool search_sequential(State<StateRepr> &initial, const ActionsSet &actions, bool check_visited);
 
     /**
      * \brief Executes the search algorithm in parallel (queue-based BFS only).
@@ -124,15 +122,13 @@ private:
      * \param initial The initial state to start the search from.
      * \param actions The list of actions to use.
      * \param check_visited Whether to check for visited states.
-     * \param bisimulation_reduction Whether to apply bisimulation reduction.
      * \param num_threads The number of threads to use.
      * \return true if a goal state is found, false otherwise.
      *
      * \warning not too thoroughly tested, use with caution.
      */
     [[nodiscard]]
-    bool search_parallel(State<StateRepr> &initial, const ActionsSet &actions, bool check_visited,
-                         bool bisimulation_reduction, int num_threads);
+    bool search_parallel(State<StateRepr> &initial, const ActionsSet &actions, bool check_visited, int num_threads);
 
     /// \name Plan Validation
     ///@{
@@ -140,12 +136,10 @@ private:
      * \brief Validates a plan.
      * \param initial The initial state to start the search from.
      * \param check_visited Whether to check for visited states.
-     * \param bisimulation_reduction Whether to apply bisimulation reduction.
      * \return true if the plan is valid, false otherwise.
      */
     [[nodiscard]]
-    bool validate_plan(const State<StateRepr> &initial, bool check_visited,
-                       bool bisimulation_reduction);
+    bool validate_plan(const State<StateRepr> &initial, bool check_visited);
 
     /**
      * \brief Prints a DOT representation for an action in the execution plan.

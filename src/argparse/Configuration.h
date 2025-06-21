@@ -130,6 +130,11 @@ public:
     void set_field_by_name(const std::string& field, const std::string& value);
     void set_search_strategy_enum();
 
+    /**
+     * \brief Functions that checks how many times bisimulation has failed during this execution and if we are the threshold we deactivate bisimulation altogether.
+     */
+    void add_bisimulation_failure();
+
     void set_heuristic_enum();
     /**
      * \brief Prints all configuration values to the given output stream.
@@ -146,6 +151,7 @@ private:
     // Configuration fields
     bool m_bisimulation = false; ///< Bisimulation enabled flag.
     std::string m_bisimulation_type = "FB"; ///< Bisimulation type string.
+    int bisimulation_failures = 0; ///< Counter to keep track of hwo many times Bisimulation failed so we can deactivate it.
     bool m_bisimulation_type_bool = true; ///< Bisimulation type as boolean.
     bool m_check_visited = false; ///< Visited state checking flag.
     std::string m_search_strategy = "BFS"; ///< Search strategy string.

@@ -159,6 +159,16 @@ void Configuration::set_search_strategy_enum()
     }
 }
 
+void Configuration::add_bisimulation_failure() {
+    int bisimulation_fails_threshold = 10;
+     if (bisimulation_failures++ > bisimulation_fails_threshold) {
+         m_bisimulation = false;
+         ArgumentParser::get_instance().get_output_stream() << "\n[WARNING] Bisimulation (" << m_bisimulation_type << ") has failed more than " << std::to_string(bisimulation_fails_threshold)
+         << " times so it will now be deactivated.\n";
+     }
+
+}
+
 void Configuration::set_heuristic_enum()
 {
     if (m_heuristic_opt == "SUBGOALS")

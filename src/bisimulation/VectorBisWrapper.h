@@ -39,6 +39,10 @@ public:
     {
         if (const size_t sz = data.size(); index >= sz)
         {
+            if (index > sz + 10000) // Arbitrary large threshold for "way out of bounds"
+            {
+                throw std::out_of_range("Index " + std::to_string(index) + " is way out of bounds in VectorBisWrapper");
+            }
             data.resize(std::max(index + 100, sz + 100));
         }
         return data[index];

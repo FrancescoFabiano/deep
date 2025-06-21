@@ -53,7 +53,6 @@ bool SpaceSearcher<StateRepr, Strategy>::search(const State<StateRepr> &passed_i
     m_expanded_nodes = 0;
 
     const bool check_visited = Configuration::get_instance().get_check_visited();
-    const bool bisimulation_reduction = Configuration::get_instance().get_bisimulation();
 
     // Defensive: Check if Domain singleton is available and actions are not empty
     const auto &domain_instance = Domain::get_instance();
@@ -70,7 +69,7 @@ bool SpaceSearcher<StateRepr, Strategy>::search(const State<StateRepr> &passed_i
     auto thread_safe_initial = passed_initial;
     // Make a copy to avoid modifying the original state (avoid side effects for multi-threading)
 
-    if (bisimulation_reduction) {
+    if (Configuration::get_instance().get_bisimulation()) {
         thread_safe_initial.contract_with_bisimulation();
     }
 
@@ -84,12 +83,12 @@ bool SpaceSearcher<StateRepr, Strategy>::search(const State<StateRepr> &passed_i
     // Dispatch
     if (ArgumentParser::get_instance().get_execute_plan()) {
         // If a plan is provided, validate it
-        result = validate_plan(thread_safe_initial, check_visited, bisimulation_reduction);
+        result = validate_plan(thread_safe_initial, check_visited);
     } else {
         const int num_threads = ArgumentParser::get_instance().get_threads_per_search();
         result = (num_threads <= 1)
-                     ? search_sequential(thread_safe_initial, actions, check_visited, bisimulation_reduction)
-                     : search_parallel(thread_safe_initial, actions, check_visited, bisimulation_reduction,
+                     ? search_sequential(thread_safe_initial, actions, check_visited)
+                     : search_parallel(thread_safe_initial, actions, check_visited,
                                        num_threads);
     }
 
@@ -101,8 +100,7 @@ bool SpaceSearcher<StateRepr, Strategy>::search(const State<StateRepr> &passed_i
 template<StateRepresentation StateRepr, SearchStrategy<StateRepr> Strategy>
 bool SpaceSearcher<StateRepr, Strategy>::search_sequential(State<StateRepr> &initial,
                                                            const ActionsSet &actions,
-                                                           const bool check_visited,
-                                                           const bool bisimulation_reduction) {
+                                                           const bool check_visited) {
     m_strategy.reset();
 
     std::set<State<StateRepr> > visited_states;
@@ -130,7 +128,7 @@ bool SpaceSearcher<StateRepr, Strategy>::search_sequential(State<StateRepr> &ini
                 /// DEBUG \todo remove this, only for bisimulation testing
                 /// check_bisimulation_equivalence(successor);
 
-                if (bisimulation_reduction) {
+                if (Configuration::get_instance().get_bisimulation()) {
                     successor.contract_with_bisimulation();
                 }
 
@@ -152,7 +150,7 @@ bool SpaceSearcher<StateRepr, Strategy>::search_sequential(State<StateRepr> &ini
 template<StateRepresentation StateRepr, SearchStrategy<StateRepr> Strategy>
 bool SpaceSearcher<StateRepr, Strategy>::search_parallel(State<StateRepr> &initial,
                                                          const ActionsSet &actions,
-                                                         const bool check_visited, const bool bisimulation_reduction,
+                                                         const bool check_visited,
                                                          const int num_threads) {
     /*std::set<State<StateRepr>> visited_states;
     /// \warning cannot use unordered_set because I am missing a clear way of hashing the state
@@ -274,7 +272,6 @@ bool SpaceSearcher<StateRepr, Strategy>::search_parallel(State<StateRepr> &initi
     (void) initial;
     (void) actions;
     (void) check_visited;
-    (void) bisimulation_reduction;
     (void) num_threads;
     ExitHandler::exit_with_message(
         ExitHandler::ExitCode::SearchParallelNotImplemented,
@@ -287,8 +284,7 @@ bool SpaceSearcher<StateRepr, Strategy>::search_parallel(State<StateRepr> &initi
 
 
 template<StateRepresentation StateRepr, SearchStrategy<StateRepr> Strategy>
-bool SpaceSearcher<StateRepr, Strategy>::validate_plan(const State<StateRepr> &initial, const bool check_visited,
-                                                       const bool bisimulation_reduction) {
+bool SpaceSearcher<StateRepr, Strategy>::validate_plan(const State<StateRepr> &initial, const bool check_visited) {
     std::set<State<StateRepr> > visited_states;
     /// \warning cannot use unordered_set because I am missing a clear way of hashing the state
     if (check_visited) {
@@ -302,7 +298,7 @@ bool SpaceSearcher<StateRepr, Strategy>::validate_plan(const State<StateRepr> &i
 
 
     State<StateRepr> current = initial;
-    if (bisimulation_reduction) {
+    if (Configuration::get_instance().get_bisimulation()) {
         current.contract_with_bisimulation();
     }
     print_dot_for_execute_plan(true, false, "initial", current, dot_files_folder);
@@ -320,7 +316,7 @@ bool SpaceSearcher<StateRepr, Strategy>::validate_plan(const State<StateRepr> &i
                 if (current.is_executable(action)) {
                     ++m_expanded_nodes;
                     current = current.compute_successor(action);
-                    if (bisimulation_reduction) {
+                    if (Configuration::get_instance().get_bisimulation()) {
                         current.contract_with_bisimulation();
                     }
                     print_dot_for_execute_plan(false, is_last, action_name, current,
