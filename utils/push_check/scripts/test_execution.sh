@@ -5,7 +5,7 @@ run_deep() {
   local description="$1"
   shift
   echo "Running: deep on $FILENAME with actions $actions ($description)"
-  ./cmake-build-debug/bin/deep "$FILENAME" "$@"
+  ./cmake-build/bin/deep "$FILENAME" "$@"
   local ret=$?
   if [ $ret -ne 0 ]; then
     echo "Error: deep execution failed during '$FILENAME' with actions '$actions' ('$description') (exit code $ret)"

@@ -33,7 +33,7 @@ run_with_timeout() {
 FILENAME="$1"
 
 run_with_timeout "deep on $FILENAME with portfolio (5 threads)" \
-  ./cmake-build-debug/bin/deep "$FILENAME" -p 5
+  ./cmake-build/bin/deep "$FILENAME" -p 5
 
 run_with_timeout "deep on $FILENAME with portfolio (5 threads) bisimulation and visited state check" \
-  ./cmake-build-debug/bin/deep "$FILENAME" -b -c -p 5
+  ./cmake-build/bin/deep "$FILENAME" -b -c -p 5
