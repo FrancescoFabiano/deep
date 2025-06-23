@@ -132,20 +132,24 @@ TrainingDataset<StateRepr>::TrainingDataset() {
 
   m_goal_file_path = m_folder + "goal_tree.dot";
 
-  m_shift_state_ids = 3; // This is used to shifts the goals id
-  m_shift_state_ids += Domain::get_instance().get_goal_description().size() + 1;
+  m_shift_state_ids = m_to_state_edge_id_int + 1; // This is used to shifts the goals id
+  m_shift_state_ids += Domain::get_instance().get_goal_description().size() + 1 + 1;
   // We will also generate the goal edges and shift for them as well. Done in
   // goal generation
   populate_agent_ids(m_shift_state_ids);
-  m_shift_state_ids += static_cast<int>(m_agent_to_id.size() + 1);
+  m_shift_state_ids += static_cast<int>(m_agent_to_id.size()) + 1;
   populate_fluent_ids(m_shift_state_ids);
   m_shift_state_ids += static_cast<int>(m_fluent_to_id.size()) + 1;
 
   // This stores the goal tree in a string for efficient printing
   generate_goal_tree_subgraph();
 
-  print_goal_tree(); // Only needed if we do not use the goal and state merged
-                     // together
+  if (ArgumentParser::get_instance().get_dataset_merged() ||
+            ArgumentParser::get_instance().get_dataset_merged_both())
+  {
+    print_goal_tree(); // Only needed if we do not use the goal and state merged
+    // together
+  }
 }
 
 template <StateRepresentation StateRepr>
@@ -196,7 +200,7 @@ template <StateRepresentation StateRepr>
 void TrainingDataset<StateRepr>::generate_goal_tree_subgraph() {
   std::stringstream string_goals_graph;
   const auto goal_list = Domain::get_instance().get_goal_description();
-  size_t goal_counter = 2;
+  size_t goal_counter = m_to_state_edge_id_int + 1;
 
   size_t next_id = m_shift_state_ids;
 
@@ -207,7 +211,7 @@ void TrainingDataset<StateRepr>::generate_goal_tree_subgraph() {
                           string_goals_graph);
   }
 
-  m_shift_state_ids += static_cast<int>(next_id) + 1;
+  m_shift_state_ids +=  + 1;
   // The final value of shits so that state, when mapped starts from the latest
   // node generated for the goals + 1
 

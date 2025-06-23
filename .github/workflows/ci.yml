@@ -26,12 +26,12 @@ jobs:
 
       - name: Set running permissions for scripts
         run: |
-          chmod +x ./build.sh
+          chmod +x ./scripts/build/build.sh
           chmod +x ./utils/push_check/scripts/*.sh
 
-      - name: Compile C++ project
+      - name: Compile C++ project (no libtorch to save time)
         run: |
-          ./build.sh
+          ./scripts/build/build.sh
 
       - name: Check and fix C++ formatting
         run: |

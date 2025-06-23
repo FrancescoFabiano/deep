@@ -555,8 +555,8 @@ void HelperPrint::print_dataset_format(const KripkeState &kstate,
       ofs << (use_hash ? std::to_string(hash) : id) << ";" << std::endl;
   }*/
 
-  ofs << (use_hash ? std::to_string(pointed_hash) : world_map[pointed_hash])
-      << " [shape=doublecircle];" << std::endl;
+  //ofs << (use_hash ? std::to_string(pointed_hash) : world_map[pointed_hash])
+  //    << " [shape=doublecircle];" << std::endl;
 
   // Edges
   std::map<std::pair<KripkeWorldId, KripkeWorldId>, std::set<Agent>> edge_map;

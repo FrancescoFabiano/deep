@@ -11,9 +11,12 @@
 #pragma once
 
 #include "epg/PlanningGraph.h"
-#include "neuralnets/GraphNN.h"
+
 #include "strategies/SatisfiedGoals.h"
 #include "utilities/Define.h"
+
+
+
 
 /**
  * \brief Manages the computation and assignment of heuristic values to states.

@@ -1911,12 +1911,9 @@ void Bisimulation::calc_min_bisimilar(KripkeState &kstate) {
     }
   } catch ([[maybe_unused]] const std::exception &ex) {
     Configuration::get_instance().add_bisimulation_failure();
-    /*
-    if (ArgumentParser::get_instance().get_verbose()) {
-        ArgumentParser::get_instance().get_output_stream() << "[Warning]
-    Exception during Bisimulation. We will keep the original state.\nError
-    Message: " << ex.what() << std::endl;
-    }
-    */
+    #ifdef DEBUG
+        ArgumentParser::get_instance().get_output_stream() << "[Warning] Exception during Bisimulation."
+                                                              "We will keep the original state.\nError Message: " << ex.what() << std::endl;
+    #endif
   }
 }

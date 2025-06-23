@@ -2,13 +2,6 @@
 
 ## TODOs
 
-- [ ] Create set of test to run on push to validate the push itself (use timeouts)
-    - [ ] Randomly solve n problems from different domains and check if the solution is the same as the expected one
-    - [ ] Do the same thing but activate bisimulation and also create a check that for each state generated after
-      bisimulation a set of randomly generated belief formulae holds and also prints out the compression ratio (
-      especially at the beginning to empirically evaluate bisimulation which has been adapted from hold code)
-    - [ ] Do the same but now with heuristics and other planner configurations
-    - [ ] Adapt hold scripts and make them more concise and directly generate the latex
 - [ ] Fix the ReadME
 - [ ] Check the doxygen and structure for consistency
 - [ ] Create a docker version maybe

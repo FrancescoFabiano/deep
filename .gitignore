@@ -69,8 +69,13 @@ exp/ICAPS20/.DS_Store
 
 # CMake
 cmake-build-*/
-cmake-build-debug/
-cmake-build-debug/*
+cmake-build*/
+cmake-*/
+
+# Torch binary files
+lib/libtorch/
+lib/libtorch.zip
+
 
 # Python
 /.venv/*

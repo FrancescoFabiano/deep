@@ -1,6 +1,26 @@
 #pragma once
 #include "State.h"
 #include <string>
+#include "neuralnets/GraphNN.h"
+#include <torch/torch.h>
+#include "KripkeState.h"
+#include <unordered_map>
+
+
+/**
+ * \struct GraphTensor
+ * \brief Structure representing a graph in tensor format for GNN input.
+ *
+ * Contains edge indices, edge attributes, and node IDs.
+ */
+struct GraphTensor {
+    torch::Tensor edge_index;   // [2, num_edges]
+    torch::Tensor edge_attr;    // [num_edges, 1]
+    std::vector<size_t> node_ids; // Optional: useful for mapping back
+};
+
+
+
 
 /**
  * \class GraphNN
@@ -62,6 +82,18 @@ private:
   std::string m_model_path =
       Configuration::get_instance()
           .get_GNN_model_path(); ///< Path to the GNN model
+
+    /**
+         * \brief Converts a KripkeState to a minimal GraphTensor representation.
+         *
+         * This function transforms the given KripkeState into a GraphTensor,
+         * extracting only the essential information required for GNN input.
+         *
+         * \param kstate The KripkeState to convert.
+         * \return A GraphTensor containing the minimal tensor representation of the graph.
+         */
+    GraphTensor kripke_to_tensor_minimal(const KripkeState& kstate);
+
 };
 
 #include "GraphNN.tpp"
