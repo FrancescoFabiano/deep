@@ -132,8 +132,10 @@ TrainingDataset<StateRepr>::TrainingDataset() {
 
   m_goal_file_path = m_folder + "goal_tree.dot";
 
-  m_shift_state_ids = m_to_state_edge_id_int + 1; // This is used to shifts the goals id
-  m_shift_state_ids += Domain::get_instance().get_goal_description().size() + 1 + 1;
+  m_shift_state_ids =
+      m_to_state_edge_id_int + 1; // This is used to shifts the goals id
+  m_shift_state_ids +=
+      Domain::get_instance().get_goal_description().size() + 1 + 1;
   // We will also generate the goal edges and shift for them as well. Done in
   // goal generation
   populate_agent_ids(m_shift_state_ids);
@@ -145,8 +147,7 @@ TrainingDataset<StateRepr>::TrainingDataset() {
   generate_goal_tree_subgraph();
 
   if (ArgumentParser::get_instance().get_dataset_merged() ||
-            ArgumentParser::get_instance().get_dataset_merged_both())
-  {
+      ArgumentParser::get_instance().get_dataset_merged_both()) {
     print_goal_tree(); // Only needed if we do not use the goal and state merged
     // together
   }
@@ -211,7 +212,7 @@ void TrainingDataset<StateRepr>::generate_goal_tree_subgraph() {
                           string_goals_graph);
   }
 
-  m_shift_state_ids +=  + 1;
+  m_shift_state_ids += +1;
   // The final value of shits so that state, when mapped starts from the latest
   // node generated for the goals + 1
 

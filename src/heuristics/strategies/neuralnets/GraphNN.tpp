@@ -3,7 +3,6 @@
 #include "TrainingDataset.h"
 #include <fstream>
 
-
 // --- Singleton instance initialization ---
 template <StateRepresentation StateRepr>
 GraphNN<StateRepr> *GraphNN<StateRepr>::instance = nullptr;
@@ -91,64 +90,72 @@ GraphNN<StateRepr>::get_score(const State<StateRepr> &state) {
   std::exit(static_cast<int>(ExitHandler::ExitCode::ExitForCompiler));
 }
 
-
 template <StateRepresentation StateRepr>
-GraphTensor GraphNN<StateRepr>::kripke_to_tensor_minimal(const KripkeState& kstate) {
+GraphTensor
+GraphNN<StateRepr>::kripke_to_tensor_minimal(const KripkeState &kstate) {
 
-    /*
-    * \todo 1. Add merged and hash distinction, once decision is taken, keep only one in release (which will be most likely hashed and merged)
-    * \todo 2. Make sure no negative indexes exist. Start form zero and move forward. Maybe start from 10 with the meaningful ones
-    */
+  /*
+   * \todo 1. Add merged and hash distinction, once decision is taken, keep only
+   * one in release (which will be most likely hashed and merged) \todo 2. Make
+   * sure no negative indexes exist. Start form zero and move forward. Maybe
+   * start from 10 with the meaningful ones
+   */
 
-    const auto& training_dataset = TrainingDataset<KripkeState>::get_instance();
+  const auto &training_dataset = TrainingDataset<KripkeState>::get_instance();
 
-    std::unordered_map<KripkeWorldId, int64_t> node_index_map;
-    std::vector<size_t> node_ids;
-    int64_t next_index = 0;
+  std::unordered_map<KripkeWorldId, int64_t> node_index_map;
+  std::vector<size_t> node_ids;
+  int64_t next_index = 0;
 
-    // Collect nodes
-    for (const auto& world : kstate.get_worlds()) {
-        const auto hash = world.get_id();
-        if (!node_index_map.contains(hash)) {
-            node_index_map[hash] = next_index++;
-            node_ids.push_back(hash);
-        }
+  // Collect nodes
+  for (const auto &world : kstate.get_worlds()) {
+    const auto hash = world.get_id();
+    if (!node_index_map.contains(hash)) {
+      node_index_map[hash] = next_index++;
+      node_ids.push_back(hash);
     }
+  }
 
-    // Collect edges
-    std::vector<int64_t> edge_src;
-    std::vector<int64_t> edge_dst;
-    std::vector<int64_t> edge_labels;
+  // Collect edges
+  std::vector<int64_t> edge_src;
+  std::vector<int64_t> edge_dst;
+  std::vector<int64_t> edge_labels;
 
-    for (const auto& [from_pw, from_map] : kstate.get_beliefs()) {
-        size_t from_hash = from_pw.get_id();
-        int64_t from_idx = node_index_map.at(from_hash);
+  for (const auto &[from_pw, from_map] : kstate.get_beliefs()) {
+    size_t from_hash = from_pw.get_id();
+    int64_t from_idx = node_index_map.at(from_hash);
 
-        for (const auto& [agent, to_set] : from_map) {
-            int64_t label = static_cast<int64_t>(training_dataset.get_unique_a_id_from_map(agent));
+    for (const auto &[agent, to_set] : from_map) {
+      int64_t label = static_cast<int64_t>(
+          training_dataset.get_unique_a_id_from_map(agent));
 
-            for (const auto& to_pw : to_set) {
-                size_t to_hash = to_pw.get_id();
-                int64_t to_idx = node_index_map.at(to_hash);
+      for (const auto &to_pw : to_set) {
+        size_t to_hash = to_pw.get_id();
+        int64_t to_idx = node_index_map.at(to_hash);
 
-                edge_src.push_back(from_idx);
-                edge_dst.push_back(to_idx);
-                edge_labels.push_back(label);
-            }
-        }
+        edge_src.push_back(from_idx);
+        edge_dst.push_back(to_idx);
+        edge_labels.push_back(label);
+      }
     }
+  }
 
-    // Build tensors
-    torch::Tensor edge_index = torch::stack({
-      torch::from_blob(edge_src.data(), {static_cast<int64_t>(edge_src.size())}, torch::kInt64),
-      torch::from_blob(edge_dst.data(), {static_cast<int64_t>(edge_dst.size())}, torch::kInt64)
-    }).clone();  // clone for safety
+  // Build tensors
+  torch::Tensor edge_index =
+      torch::stack({torch::from_blob(edge_src.data(),
+                                     {static_cast<int64_t>(edge_src.size())},
+                                     torch::kInt64),
+                    torch::from_blob(edge_dst.data(),
+                                     {static_cast<int64_t>(edge_dst.size())},
+                                     torch::kInt64)})
+          .clone(); // clone for safety
 
-    torch::Tensor edge_attr = torch::from_blob(edge_labels.data(), {static_cast<int64_t>(edge_labels.size()), 1}, torch::kInt64).clone();
+  torch::Tensor edge_attr =
+      torch::from_blob(edge_labels.data(),
+                       {static_cast<int64_t>(edge_labels.size()), 1},
+                       torch::kInt64)
+          .clone();
 
-    return GraphTensor{
-        .edge_index = edge_index,
-        .edge_attr = edge_attr,
-        .node_ids = node_ids
-      };
+  return GraphTensor{
+      .edge_index = edge_index, .edge_attr = edge_attr, .node_ids = node_ids};
 }

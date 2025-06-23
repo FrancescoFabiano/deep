@@ -15,9 +15,6 @@
 #include "strategies/SatisfiedGoals.h"
 #include "utilities/Define.h"
 
-
-
-
 /**
  * \brief Manages the computation and assignment of heuristic values to states.
  */
