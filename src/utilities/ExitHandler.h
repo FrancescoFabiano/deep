@@ -136,6 +136,7 @@ public:
     GNNInstanceError = 890, ///< Error in creating GNN training files.
     GNNFileError = 891,     ///< Error in accessing a file.
     GNNScriptError = 892,   ///< Error in running the GNN script file.
+    GNNMappedNotSupportedError = 893, ///< Error indicating that we do not support the mapped version with the inference in C++ (it is useless, hashing should be better)
 
     // --- State/Action Related (900-919) ---
     StateActionNotExecutableError =

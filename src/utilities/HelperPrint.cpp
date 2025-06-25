@@ -538,15 +538,15 @@ void HelperPrint::print_dataset_format(const KripkeState &kstate,
   // In here we print the initial node, the connection to it and the whole goal
   // subgraph
   if (is_merged) {
-    ofs << TrainingDataset<KripkeState>::get_epsilon_node_id() << " -> "
-        << TrainingDataset<KripkeState>::get_goal_parent_id() << " [label=\""
-        << TrainingDataset<KripkeState>::get_to_goal_edge_id() << "\"];"
+    ofs << TrainingDataset<KripkeState>::get_epsilon_node_id_string() << " -> "
+        << TrainingDataset<KripkeState>::get_goal_parent_id_string() << " [label=\""
+        << TrainingDataset<KripkeState>::get_to_goal_edge_id_string() << "\"];"
         << std::endl;
     ofs << training_dataset->get_goal_string();
 
-    ofs << TrainingDataset<KripkeState>::get_epsilon_node_id() << " -> "
+    ofs << TrainingDataset<KripkeState>::get_epsilon_node_id_string() << " -> "
         << (use_hash ? std::to_string(pointed_hash) : world_map[pointed_hash])
-        << " [label=\"" << TrainingDataset<KripkeState>::get_to_state_edge_id()
+        << " [label=\"" << TrainingDataset<KripkeState>::get_to_state_edge_id_string()
         << "\"];" << std::endl;
   }
 
@@ -559,14 +559,22 @@ void HelperPrint::print_dataset_format(const KripkeState &kstate,
   //     << " [shape=doublecircle];" << std::endl;
 
   // Edges
-  std::map<std::pair<KripkeWorldId, KripkeWorldId>, std::set<Agent>> edge_map;
+  //std::map<std::pair<KripkeWorldId, KripkeWorldId>, std::set<Agent>> edge_map;
   for (const auto &[from_pw, from_map] : kstate.get_beliefs()) {
+    auto from_hash = from_pw.get_id();
     for (const auto &[ag, to_set] : from_map) {
       for (const auto &to_pw : to_set) {
-        auto from_hash = from_pw.get_id();
         auto to_hash = to_pw.get_id();
+        //edge_map[{from_hash, to_hash}].insert(ag);
 
-        edge_map[{from_hash, to_hash}].insert(ag);
+        auto from_label =
+        use_hash ? std::to_string(from_hash) : world_map[from_hash];
+        auto to_label =
+    use_hash ? std::to_string(to_hash) : world_map[to_hash];
+        ofs << from_label << " -> " << to_label << " [label=\""
+          << training_dataset->get_unique_a_id_from_map(ag) << "\"];"
+          << std::endl;
+
       }
     }
   }
@@ -587,7 +595,7 @@ void HelperPrint::print_dataset_format(const KripkeState &kstate,
       } */
 
   // One edge per agent
-  for (const auto &[edge, agents] : edge_map) {
+  /*for (const auto &[edge, agents] : edge_map) {
     auto from_label =
         use_hash ? std::to_string(edge.first) : world_map[edge.first];
     auto to_label =
@@ -600,7 +608,7 @@ void HelperPrint::print_dataset_format(const KripkeState &kstate,
           << training_dataset->get_unique_a_id_from_map(ag) << "\"];"
           << std::endl;
     }
-  }
+  }*/
 
   ofs << "}" << std::endl;
 }

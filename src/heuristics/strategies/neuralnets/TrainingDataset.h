@@ -56,21 +56,38 @@ public:
    */
   const std::string &get_folder() const;
 
-  /// \brief Gets the to-goal edge ID.
+  /// \brief Gets the to-goal edge ID as string.
   /// \return The to-goal edge ID.
-  static constexpr const std::string &get_to_goal_edge_id();
+  static constexpr const std::string &get_to_goal_edge_id_string();
 
-  /// \brief Gets the to-state edge ID.
+  /// \brief Gets the to-state edge ID as string.
   /// \return The to-state edge ID.
-  static constexpr const std::string &get_to_state_edge_id();
+  static constexpr const std::string &get_to_state_edge_id_string();
 
-  /// \brief Gets the epsilon node ID.
+  /// \brief Gets the epsilon node ID as string.
   /// \return The epsilon node ID.
-  static constexpr const std::string &get_epsilon_node_id();
+  static constexpr const std::string &get_epsilon_node_id_string();
 
-  /// \brief Gets the goal parent ID.
+  /// \brief Gets the goal parent ID as string.
   /// \return The goal parent ID.
-  static constexpr const std::string &get_goal_parent_id();
+  static constexpr const std::string &get_goal_parent_id_string();
+
+
+    /// \brief Gets the to-goal edge ID as int.
+    /// \return The to-goal edge ID.
+    static constexpr int get_to_goal_edge_id_int();
+
+    /// \brief Gets the to-state edge ID as int.
+    /// \return The to-state edge ID.
+    static constexpr int get_to_state_edge_id_int();
+
+    /// \brief Gets the epsilon node ID as int.
+    /// \return The epsilon node ID.
+    static constexpr int get_epsilon_node_id_int();
+
+    /// \brief Gets the goal parent ID as int.
+    /// \return The goal parent ID.
+    static constexpr int get_goal_parent_id_int();
 
   /// \brief Gets the shift state IDs.
   /// \return The shift state IDs.

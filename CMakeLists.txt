@@ -4,6 +4,14 @@ project(deep VERSION 1.0 LANGUAGES CXX)
 # === Options ===
 option(ENABLE_NEURALNETS "Enable neural networks (requires libtorch)" OFF)
 
+# === Use ccache if available ===
+find_program(CCACHE_PROGRAM ccache)
+if(CCACHE_PROGRAM)
+    message(STATUS "Using ccache: ${CCACHE_PROGRAM}")
+    set(CMAKE_C_COMPILER_LAUNCHER ${CCACHE_PROGRAM})
+    set(CMAKE_CXX_COMPILER_LAUNCHER ${CCACHE_PROGRAM})
+endif()
+
 # === Build directories ===
 set(BUILD_DIR ${CMAKE_BINARY_DIR}/build)
 set(BIN_DIR ${CMAKE_BINARY_DIR}/bin)
@@ -33,7 +41,7 @@ include_directories(
         lib/bisimulation
 )
 
-# === Templated headers (always included for IDE visibility) ===
+# === Templatic headers ===
 set(TEMPLATIC_HEADERS
         src/heuristics/HeuristicsManager.h
         src/heuristics/strategies/SatisfiedGoals.h
@@ -48,7 +56,6 @@ set(TEMPLATIC_HEADERS
         src/utilities/SetHelper.h
 )
 
-# === Optional neural net headers ===
 if(ENABLE_NEURALNETS)
     list(APPEND TEMPLATIC_HEADERS
             src/heuristics/strategies/neuralnets/GraphNN.h
@@ -81,7 +88,7 @@ add_subdirectory(lib/CLI11)
 if(ENABLE_NEURALNETS)
     message(STATUS "Neural networks are ENABLED")
 
-    set(TORCH_DIR "${CMAKE_SOURCE_DIR}/lib/libtorch")
+    set(TORCH_DIR "${CMAKE_SOURCE_DIR}/lib/libtorch" CACHE PATH "Torch install path")
     list(APPEND CMAKE_PREFIX_PATH ${TORCH_DIR})
 
     find_package(Torch REQUIRED PATHS ${TORCH_DIR} NO_DEFAULT_PATH)
@@ -91,9 +98,7 @@ if(ENABLE_NEURALNETS)
 
     include_directories(${TORCH_INCLUDE_DIRS})
 
-    # === CUDA Detection ===
     find_package(CUDAToolkit QUIET)
-
     if(CUDAToolkit_FOUND)
         message(STATUS "Found CUDA Toolkit: ${CUDAToolkit_VERSION}")
     else()
@@ -105,9 +110,19 @@ if(ENABLE_NEURALNETS)
     endif()
 endif()
 
-
 # === Executable ===
 add_executable(deep ${SOURCES})
+
+# === Precompiled Header ===
+target_precompile_headers(deep PRIVATE src/utilities/pch.h)
+
+# === Torch-specific compiler definitions ===
+if(ENABLE_NEURALNETS)
+    # This ABI flag must match the version of libtorch you're using (1 for cxx11-abi builds)
+    target_compile_definitions(deep PRIVATE _GLIBCXX_USE_CXX11_ABI=1)
+    target_link_libraries(deep PRIVATE "${TORCH_LIBRARIES}")
+    target_compile_definitions(deep PRIVATE USE_NEURALNETS)
+endif()
 
 # === Compiler flags ===
 target_compile_options(deep PRIVATE -Wall -Wextra -Wpedantic -ansi -Wfatal-errors -pthread -std=c++20)
@@ -123,11 +138,6 @@ endif()
 
 # === Link libraries ===
 target_link_libraries(deep PRIVATE pthread rt CLI11::CLI11)
-
-if(ENABLE_NEURALNETS)
-    target_link_libraries(deep PRIVATE "${TORCH_LIBRARIES}")
-    target_compile_definitions(deep PRIVATE USE_NEURALNETS)
-endif()
 
 # === Output directories ===
 set_target_properties(deep PROPERTIES

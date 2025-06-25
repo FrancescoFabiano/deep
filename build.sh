@@ -4,19 +4,21 @@ set -e
 
 # Help message
 show_usage() {
-    echo "Usage: ./build.sh [nn] [debug] [use_gpu] [force_gpu]"
+    echo "Usage: ./build.sh [nn] [debug] [use_gpu] [force_gpu] [no_torch_test]"
     echo "  Options:"
-    echo "    nn          Enable neural networks (downloads libtorch if not present)"
-    echo "    debug       Build with Debug flags (default is Release)"
-    echo "    use_gpu     Use GPU-accelerated libtorch (requires NVIDIA GPU and CUDA installed)"
-    echo "    force_gpu   Force install of GPU libtorch without checking for CUDA or GPU"
+    echo "    nn              Enable neural networks (downloads libtorch if not present)"
+    echo "    debug           Build with Debug flags (default is Release)"
+    echo "    use_gpu         Use GPU-accelerated libtorch (requires NVIDIA GPU and CUDA installed)"
+    echo "    force_gpu       Force install of GPU libtorch without checking for CUDA or GPU"
+    echo "    no_torch_test   Skip running the torch test after build"
     echo ""
     echo "  Examples:"
-    echo "    ./build.sh                      # Release without NN"
-    echo "    ./build.sh nn                   # Release with NN using CPU libtorch"
-    echo "    ./build.sh debug nn             # Debug with NN using CPU libtorch"
-    echo "    ./build.sh nn use_gpu           # Release with NN using GPU libtorch (if available)"
-    echo "    ./build.sh nn force_gpu         # Force GPU libtorch download (e.g. for cross-compilation)"
+    echo "    ./build.sh                          # Release without NN"
+    echo "    ./build.sh nn                       # Release with NN using CPU libtorch"
+    echo "    ./build.sh debug nn                 # Debug with NN using CPU libtorch"
+    echo "    ./build.sh nn use_gpu               # Release with NN using GPU libtorch (if available)"
+    echo "    ./build.sh nn force_gpu             # Force GPU libtorch download (e.g. for cross-compilation)"
+    echo "    ./build.sh nn no_torch_test         # Build with NN but skip torch test"
 }
 
 # Default options
@@ -24,6 +26,7 @@ BUILD_TYPE="Release"
 ENABLE_NN="OFF"
 USE_GPU="OFF"
 FORCE_GPU="OFF"
+TORCH_TEST="ON"
 
 # Parse args
 for arg in "$@"; do
@@ -39,6 +42,9 @@ for arg in "$@"; do
             ;;
         force_gpu)
             FORCE_GPU="ON"
+            ;;
+        no_torch_test)
+            TORCH_TEST="OFF"
             ;;
         -h|--help)
             show_usage
@@ -140,3 +146,12 @@ echo "Building..."
 make -j$(nproc)
 
 echo "Build complete: $BUILD_DIR"
+
+cd ..
+
+#Testing some parts
+if [[ "$ENABLE_NN" == "ON" && "$TORCH_TEST" == "ON" ]]; then
+    echo ""
+    echo "Running torch test (utils/torch_test)..."
+    ./utils/torch_test/run_test.sh
+fi
