@@ -140,6 +140,8 @@ public:
         893, ///< Error indicating that we do not support the mapped version
              ///< with the inference in C++ (it is useless, hashing should be
              ///< better)
+      GNNTensorTranslationError = 894, ///< Error indicating that the translation from state to Tensor did not work
+
 
     // --- State/Action Related (900-919) ---
     StateActionNotExecutableError =
