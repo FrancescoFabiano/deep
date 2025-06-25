@@ -538,16 +538,19 @@ void HelperPrint::print_dataset_format(const KripkeState &kstate,
   // In here we print the initial node, the connection to it and the whole goal
   // subgraph
   if (is_merged) {
-    ofs << "  " << TrainingDataset<KripkeState>::get_epsilon_node_id_string() << " -> "
-        << TrainingDataset<KripkeState>::get_goal_parent_id_string() << " [label=\""
+    ofs << "  " << TrainingDataset<KripkeState>::get_epsilon_node_id_string()
+        << " -> " << TrainingDataset<KripkeState>::get_goal_parent_id_string()
+        << " [label=\""
         << TrainingDataset<KripkeState>::get_to_goal_edge_id_string() << "\"];"
         << std::endl;
     ofs << training_dataset->get_goal_string();
 
-    ofs << "  " << TrainingDataset<KripkeState>::get_epsilon_node_id_string() << " -> "
+    ofs << "  " << TrainingDataset<KripkeState>::get_epsilon_node_id_string()
+        << " -> "
         << (use_hash ? std::to_string(pointed_hash) : world_map[pointed_hash])
-        << " [label=\"" << TrainingDataset<KripkeState>::get_to_state_edge_id_string()
-        << "\"];" << std::endl;
+        << " [label=\""
+        << TrainingDataset<KripkeState>::get_to_state_edge_id_string() << "\"];"
+        << std::endl;
   }
 
   // Print nodes Removed to minimize the size of the dataset
@@ -569,13 +572,11 @@ void HelperPrint::print_dataset_format(const KripkeState &kstate,
         // edge_map[{from_hash, to_hash}].insert(ag);
 
         auto from_label =
-        use_hash ? std::to_string(from_hash) : world_map[from_hash];
-        auto to_label =
-    use_hash ? std::to_string(to_hash) : world_map[to_hash];
+            use_hash ? std::to_string(from_hash) : world_map[from_hash];
+        auto to_label = use_hash ? std::to_string(to_hash) : world_map[to_hash];
         ofs << "  " << from_label << " -> " << to_label << " [label=\""
-          << training_dataset->get_unique_a_id_from_map(ag) << "\"];"
-          << std::endl;
-
+            << training_dataset->get_unique_a_id_from_map(ag) << "\"];"
+            << std::endl;
       }
     }
   }

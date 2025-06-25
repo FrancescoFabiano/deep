@@ -13,10 +13,14 @@
  * Contains edge indices, edge attributes, and node IDs.
  */
 struct GraphTensor {
-    //std::vector<size_t> node_ids; // Optional: useful for mapping back
-    torch::Tensor edge_ids;       // [2, num_edges] -- This uses symbolic IDs and not the real ones
-    torch::Tensor edge_attrs;        // [num_edges, 1] -- This uses symbolic IDs and not the real ones (ordering follows edge_index)
-    torch::Tensor real_node_ids;         // [num_nodes, 1] -- This is used to store the correspondence of symbolic id to mapped/hashed id
+  // std::vector<size_t> node_ids; // Optional: useful for mapping back
+  torch::Tensor edge_ids;   // [2, num_edges] -- This uses symbolic IDs and not
+                            // the real ones
+  torch::Tensor edge_attrs; // [num_edges, 1] -- This uses symbolic IDs and not
+                            // the real ones (ordering follows edge_index)
+  torch::Tensor
+      real_node_ids; // [num_nodes, 1] -- This is used to store the
+                     // correspondence of symbolic id to mapped/hashed id
 };
 
 /**
@@ -97,10 +101,16 @@ private:
                             ///< incremented if a new ID is assigned)
   std::unordered_map<size_t, size_t>
       m_node_to_symbolic; ///<  Map from real node IDs to symbolic IDs.
-  std::vector<size_t> m_real_node_ids; ///< Vector storing real node IDs in symbolic order. (Assume that the position is meaningful)
-  std::vector<int64_t> m_edge_src; ///< Source node IDs for each edge. (Assume that the position is meaningful)
-  std::vector<int64_t> m_edge_dst; ///< Destination node IDs for each edge. (Assume that the position is meaningful)
-  std::vector<int64_t> m_edge_labels; ///< Labels or attributes for each edge. (Assume that the position is meaningful)
+  std::vector<size_t>
+      m_real_node_ids; ///< Vector storing real node IDs in symbolic order.
+                       ///< (Assume that the position is meaningful)
+  std::vector<int64_t> m_edge_src; ///< Source node IDs for each edge. (Assume
+                                   ///< that the position is meaningful)
+  std::vector<int64_t> m_edge_dst; ///< Destination node IDs for each edge.
+                                   ///< (Assume that the position is meaningful)
+  std::vector<int64_t>
+      m_edge_labels; ///< Labels or attributes for each edge. (Assume that the
+                     ///< position is meaningful)
 
   size_t m_edges_initial_size =
       0; ///< Initial size for the edges vector (to remove the new inserted
@@ -112,8 +122,10 @@ private:
       0; ///< Initial symbolic ID (to remove the new inserted nodes while
          ///< processing the heuristics)
 
-    const torch::TensorOptions m_options = torch::TensorOptions().dtype(torch::kInt64); ///< Tensor options for edge and attribute tensors (int64)
-    const torch::TensorOptions m_options_node_ids = torch::TensorOptions().dtype(torch::kUInt64); ///< Tensor options for node ID tensors (uint64)
+  const torch::TensorOptions m_options = torch::TensorOptions().dtype(
+      torch::kInt64); ///< Tensor options for edge and attribute tensors (int64)
+  const torch::TensorOptions m_options_node_ids = torch::TensorOptions().dtype(
+      torch::kUInt64); ///< Tensor options for node ID tensors (uint64)
 
   /**
    * \brief Converts a KripkeState to a minimal GraphTensor representation.
@@ -127,18 +139,20 @@ private:
    */
   GraphTensor state_to_tensor_minimal(const KripkeState &kstate);
 
-
-    /**
-     * \brief Checks the consistency between a GraphTensor and the original state by comparing their DOT representations.
-     *
-     * This function generates a DOT file from the given GraphTensor and another DOT file from the original state,
-     * then compares the two files to verify that the tensor representation matches the original graph structure.
-     *
-     * \param state_tensor The tensor representation of the graph.
-     * \param state The original state to compare against.
-     * \return True if the DOT files are equivalent, false otherwise.
-     */
-    bool check_tensor_against_dot(const GraphTensor& state_tensor, const State<StateRepr>& state) const;
+  /**
+   * \brief Checks the consistency between a GraphTensor and the original state
+   * by comparing their DOT representations.
+   *
+   * This function generates a DOT file from the given GraphTensor and another
+   * DOT file from the original state, then compares the two files to verify
+   * that the tensor representation matches the original graph structure.
+   *
+   * \param state_tensor The tensor representation of the graph.
+   * \param state The original state to compare against.
+   * \return True if the DOT files are equivalent, false otherwise.
+   */
+  bool check_tensor_against_dot(const GraphTensor &state_tensor,
+                                const State<StateRepr> &state) const;
   /**
    * \brief Converts the goal graph into the info that will then be added to a
    * Tensor. If the tensor are generated with the goal (merged) this info will
