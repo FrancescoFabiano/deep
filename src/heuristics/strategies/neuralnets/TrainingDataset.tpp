@@ -29,7 +29,7 @@ const std::string &TrainingDataset<StateRepr>::get_folder() const {
 
 template <StateRepresentation StateRepr>
 constexpr const std::string &
-TrainingDataset<StateRepr>::get_to_goal_edge_id_string()  {
+TrainingDataset<StateRepr>::get_to_goal_edge_id_string() {
   return m_to_goal_edge_id;
 }
 
@@ -40,41 +40,36 @@ TrainingDataset<StateRepr>::get_to_state_edge_id_string() {
 }
 
 template <StateRepresentation StateRepr>
-constexpr const std::string &TrainingDataset<StateRepr>::get_epsilon_node_id_string() {
+constexpr const std::string &
+TrainingDataset<StateRepr>::get_epsilon_node_id_string() {
   return m_epsilon_node_id;
 }
 
 template <StateRepresentation StateRepr>
-constexpr const std::string &TrainingDataset<StateRepr>::get_goal_parent_id_string() {
+constexpr const std::string &
+TrainingDataset<StateRepr>::get_goal_parent_id_string() {
   return m_goal_parent_id;
 }
 
 template <StateRepresentation StateRepr>
-constexpr int TrainingDataset<StateRepr>::get_to_goal_edge_id_int()
-{
+constexpr int TrainingDataset<StateRepr>::get_to_goal_edge_id_int() {
   return m_to_goal_edge_id_int;
 }
 
 template <StateRepresentation StateRepr>
-constexpr int TrainingDataset<StateRepr>::get_to_state_edge_id_int()
-{
+constexpr int TrainingDataset<StateRepr>::get_to_state_edge_id_int() {
   return m_to_state_edge_id_int;
 }
 
-
 template <StateRepresentation StateRepr>
-constexpr int TrainingDataset<StateRepr>::get_epsilon_node_id_int()
-{
+constexpr int TrainingDataset<StateRepr>::get_epsilon_node_id_int() {
   return m_epsilon_node_id_int;
 }
 
-
 template <StateRepresentation StateRepr>
-constexpr int TrainingDataset<StateRepr>::get_goal_parent_id_int()
-{
+constexpr int TrainingDataset<StateRepr>::get_goal_parent_id_int() {
   return m_goal_parent_id_int;
 }
-
 
 template <StateRepresentation StateRepr>
 constexpr const std::string &
