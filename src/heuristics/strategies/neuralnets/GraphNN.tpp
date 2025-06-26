@@ -51,7 +51,8 @@ GraphNN<StateRepr>::get_score(const State<StateRepr> &state) {
     if (!check_tensor_against_dot(state_tensor, state)) {
       ExitHandler::exit_with_message(
           ExitHandler::ExitCode::GNNTensorTranslationError,
-          "[ERROR] Error while comparing the state/goal in " + m_checking_file_path + "/" + m_goal_file_path +
+          "[ERROR] Error while comparing the state/goal in " +
+              m_checking_file_path + "/" + m_goal_file_path +
               ". Its tensor representation generated a different dot file.");
     } else {
       ArgumentParser::get_instance().get_output_stream()
@@ -213,11 +214,8 @@ GraphNN<StateRepr>::state_to_tensor_minimal(const KripkeState &kstate) {
     }
   }
 
-
-
   GraphTensor ret;
   fill_graph_tensor(ret);
-
 
   // Erase only the newly inserted elements
   m_edge_src.erase(m_edge_src.begin() + m_edges_initial_size, m_edge_src.end());
@@ -232,14 +230,13 @@ GraphNN<StateRepr>::state_to_tensor_minimal(const KripkeState &kstate) {
   return ret;
 }
 
-
 template <StateRepresentation StateRepr>
 void GraphNN<StateRepr>::fill_graph_tensor(GraphTensor &tensor) {
   const torch::Tensor edge_ids = torch::stack(
-       {torch::from_blob(m_edge_src.data(),
-                         {static_cast<int64_t>(m_edge_src.size())}, m_options),
-        torch::from_blob(m_edge_dst.data(),
-                         {static_cast<int64_t>(m_edge_dst.size())}, m_options)});
+      {torch::from_blob(m_edge_src.data(),
+                        {static_cast<int64_t>(m_edge_src.size())}, m_options),
+       torch::from_blob(m_edge_dst.data(),
+                        {static_cast<int64_t>(m_edge_dst.size())}, m_options)});
 
   const torch::Tensor edge_attrs = torch::from_blob(
       m_edge_labels.data(), {static_cast<int64_t>(m_edge_labels.size()), 1},
@@ -270,19 +267,19 @@ bool GraphNN<StateRepr>::check_tensor_against_dot(
   ofs_orig.close();
 
   // Prepare modified path string
-  bool ret = write_and_compare_tensor_to_dot(m_checking_file_path,state_tensor);
-  if (!ArgumentParser::get_instance().get_dataset_mapped() && ret)
-  {
-    ret = ret && write_and_compare_tensor_to_dot(m_goal_file_path, m_goal_graph_tensor);
+  bool ret =
+      write_and_compare_tensor_to_dot(m_checking_file_path, state_tensor);
+  if (!ArgumentParser::get_instance().get_dataset_mapped() && ret) {
+    ret = ret && write_and_compare_tensor_to_dot(m_goal_file_path,
+                                                 m_goal_graph_tensor);
   }
 
   return ret;
-
 }
 
-
 template <StateRepresentation StateRepr>
-bool GraphNN<StateRepr>::write_and_compare_tensor_to_dot(const std::string& origin_filename, const GraphTensor& state_tensor) {
+bool GraphNN<StateRepr>::write_and_compare_tensor_to_dot(
+    const std::string &origin_filename, const GraphTensor &state_tensor) {
   // Prepare modified path string
   std::string modified_path = origin_filename; // copy original
 
@@ -338,7 +335,8 @@ bool GraphNN<StateRepr>::write_and_compare_tensor_to_dot(const std::string& orig
   std::ifstream file2(modified_path);
 
   if (!file1 || !file2) {
-    os << "[ERROR] Problem in opening files for comparison (the files are: " << origin_filename << " and " << modified_path << ")." << std::endl;
+    os << "[ERROR] Problem in opening files for comparison (the files are: "
+       << origin_filename << " and " << modified_path << ")." << std::endl;
     return false;
   }
 
@@ -370,7 +368,7 @@ bool GraphNN<StateRepr>::write_and_compare_tensor_to_dot(const std::string& orig
       while (col < line1.size() && col < line2.size() &&
              line1[col] == line2[col]) {
         ++col;
-             }
+      }
       os << "First difference at column " << col + 1 << std::endl;
 
       return false;
@@ -382,4 +380,3 @@ bool GraphNN<StateRepr>::write_and_compare_tensor_to_dot(const std::string& orig
   // Jut To please the compiler
   exit(static_cast<int>(ExitHandler::ExitCode::ExitForCompiler));
 }
-
