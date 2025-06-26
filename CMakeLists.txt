@@ -116,6 +116,10 @@ add_executable(deep ${SOURCES})
 # === Precompiled Header ===
 target_precompile_headers(deep PRIVATE src/utilities/pch.h)
 
+# === Boost management Header ===
+find_package(Boost REQUIRED)
+target_include_directories(deep PRIVATE ${Boost_INCLUDE_DIRS})
+
 # === Torch-specific compiler definitions ===
 if(ENABLE_NEURALNETS)
     # This ABI flag must match the version of libtorch you're using (1 for cxx11-abi builds)

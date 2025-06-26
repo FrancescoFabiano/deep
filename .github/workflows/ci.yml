@@ -20,22 +20,18 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           submodules: recursive
 
-      - name: Install dependencies
-        run: |
-          sudo apt-get install -y build-essential cmake clang-format bison flex libboost-all-dev
-
       - name: Set running permissions for scripts
         run: |
           chmod +x ./build.sh
           chmod +x ./utils/push_check/scripts/*.sh
 
-      - name: Compile C++ project (no libtorch to save time)
+      - name: Install dependencies and compile (no libtorch to save time)
         run: |
-          ./build.sh
+          sudo ./build.sh install_all
 
       - name: Check and fix C++ formatting
         run: |
-          find . -name '*.cpp' -o -name '*.hpp' -o -name '*.h' -o -name '*.tpp' | xargs clang-format -i
+          find src -name '*.cpp' -o -name '*.hpp' -o -name '*.h' -o -name '*.tpp' | xargs clang-format -i
 
       - name: Commit formatting changes (if any)
         uses: stefanzweifel/git-auto-commit-action@v5
