@@ -51,11 +51,11 @@ GraphNN<StateRepr>::get_score(const State<StateRepr> &state) {
     if (!check_tensor_against_dot(state_tensor, state)) {
       ExitHandler::exit_with_message(
           ExitHandler::ExitCode::GNNTensorTranslationError,
-          "[ERROR] Error while comparing the state in " + m_checking_file_path +
+          "[ERROR] Error while comparing the state/goal in " + m_checking_file_path + "/" + m_goal_file_path +
               ". Its tensor representation generated a different dot file.");
     } else {
       ArgumentParser::get_instance().get_output_stream()
-          << "[DEBUG] State represented as dot and as tensor match:)"
+          << "[DEBUG] State and goal represented as dot and as tensor match:)"
           << std::endl;
     }
   }
@@ -159,23 +159,7 @@ void GraphNN<StateRepr>::populate_with_goal() {
 
   if (!ArgumentParser::get_instance().get_dataset_merged()) {
 
-    const torch::Tensor edge_ids = torch::stack(
-        {torch::from_blob(m_edge_src.data(),
-                          {static_cast<int64_t>(m_edge_src.size())}, m_options),
-         torch::from_blob(m_edge_dst.data(),
-                          {static_cast<int64_t>(m_edge_dst.size())},
-                          m_options)});
-
-    const torch::Tensor edge_attrs = torch::from_blob(
-        m_edge_labels.data(), {static_cast<int64_t>(m_edge_labels.size()), 1},
-        m_options);
-    const torch::Tensor real_node_ids = torch::from_blob(
-        m_real_node_ids.data(),
-        {static_cast<int64_t>(m_real_node_ids.size()), 1}, m_options_node_ids);
-
-    m_goal_graph_tensor.edge_ids = edge_ids.clone();
-    m_goal_graph_tensor.edge_attrs = edge_attrs.clone();
-    m_goal_graph_tensor.real_node_ids = real_node_ids.clone();
+    fill_graph_tensor(m_goal_graph_tensor);
 
     m_edge_dst.clear();
     m_edge_src.clear();
@@ -229,24 +213,11 @@ GraphNN<StateRepr>::state_to_tensor_minimal(const KripkeState &kstate) {
     }
   }
 
-  const torch::Tensor edge_ids = torch::stack(
-      {torch::from_blob(m_edge_src.data(),
-                        {static_cast<int64_t>(m_edge_src.size())}, m_options),
-       torch::from_blob(m_edge_dst.data(),
-                        {static_cast<int64_t>(m_edge_dst.size())}, m_options)});
 
-  const torch::Tensor edge_attrs = torch::from_blob(
-      m_edge_labels.data(), {static_cast<int64_t>(m_edge_labels.size()), 1},
-      m_options);
-  const torch::Tensor real_node_ids = torch::from_blob(
-      m_real_node_ids.data(), {static_cast<int64_t>(m_real_node_ids.size()), 1},
-      m_options_node_ids);
 
   GraphTensor ret;
+  fill_graph_tensor(ret);
 
-  ret.edge_ids = edge_ids.clone();
-  ret.edge_attrs = edge_attrs.clone();
-  ret.real_node_ids = real_node_ids.clone();
 
   // Erase only the newly inserted elements
   m_edge_src.erase(m_edge_src.begin() + m_edges_initial_size, m_edge_src.end());
@@ -261,10 +232,30 @@ GraphNN<StateRepr>::state_to_tensor_minimal(const KripkeState &kstate) {
   return ret;
 }
 
+
+template <StateRepresentation StateRepr>
+void GraphNN<StateRepr>::fill_graph_tensor(GraphTensor &tensor) {
+  const torch::Tensor edge_ids = torch::stack(
+       {torch::from_blob(m_edge_src.data(),
+                         {static_cast<int64_t>(m_edge_src.size())}, m_options),
+        torch::from_blob(m_edge_dst.data(),
+                         {static_cast<int64_t>(m_edge_dst.size())}, m_options)});
+
+  const torch::Tensor edge_attrs = torch::from_blob(
+      m_edge_labels.data(), {static_cast<int64_t>(m_edge_labels.size()), 1},
+      m_options);
+  const torch::Tensor real_node_ids = torch::from_blob(
+      m_real_node_ids.data(), {static_cast<int64_t>(m_real_node_ids.size()), 1},
+      m_options_node_ids);
+
+  tensor.edge_ids = edge_ids.clone();
+  tensor.edge_attrs = edge_attrs.clone();
+  tensor.real_node_ids = real_node_ids.clone();
+}
+
 template <StateRepresentation StateRepr>
 bool GraphNN<StateRepr>::check_tensor_against_dot(
     const GraphTensor &state_tensor, const State<StateRepr> &state) const {
-  auto &os = ArgumentParser::get_instance().get_output_stream();
 
   // Write the state's dataset format to m_checking_file_path
   std::ofstream ofs_orig(m_checking_file_path);
@@ -279,7 +270,21 @@ bool GraphNN<StateRepr>::check_tensor_against_dot(
   ofs_orig.close();
 
   // Prepare modified path string
-  std::string modified_path = m_checking_file_path; // copy original
+  bool ret = write_and_compare_tensor_to_dot(m_checking_file_path,state_tensor);
+  if (!ArgumentParser::get_instance().get_dataset_mapped() && ret)
+  {
+    ret = ret && write_and_compare_tensor_to_dot(m_goal_file_path, m_goal_graph_tensor);
+  }
+
+  return ret;
+
+}
+
+
+template <StateRepresentation StateRepr>
+bool GraphNN<StateRepr>::write_and_compare_tensor_to_dot(const std::string& origin_filename, const GraphTensor& state_tensor) {
+  // Prepare modified path string
+  std::string modified_path = origin_filename; // copy original
 
   if (size_t pos = modified_path.rfind(".dot"); pos != std::string::npos) {
     modified_path.insert(pos, "_compare");
@@ -287,12 +292,11 @@ bool GraphNN<StateRepr>::check_tensor_against_dot(
     modified_path += "_compare.dot";
   }
 
-  // Write the DOT representation from the tensor to modified_path
   std::ofstream ofs(modified_path);
   if (!ofs) {
     ExitHandler::exit_with_message(
         ExitHandler::ExitCode::GNNFileError,
-        "Failed to open file for NN state comparison: " + modified_path);
+        "Failed to open file for NN state/goal comparison: " + modified_path);
   }
 
   ofs << "digraph G {\n";
@@ -327,12 +331,14 @@ bool GraphNN<StateRepr>::check_tensor_against_dot(
   ofs << "}\n";
   ofs.close();
 
+  auto &os = ArgumentParser::get_instance().get_output_stream();
+
   // Now compare the two files line-by-line
-  std::ifstream file1(m_checking_file_path);
+  std::ifstream file1(origin_filename);
   std::ifstream file2(modified_path);
 
   if (!file1 || !file2) {
-    os << "Error opening files for comparison." << std::endl;
+    os << "[ERROR] Problem in opening files for comparison (the files are: " << origin_filename << " and " << modified_path << ")." << std::endl;
     return false;
   }
 
@@ -349,22 +355,22 @@ bool GraphNN<StateRepr>::check_tensor_against_dot(
     }
 
     if (file1_eof != file2_eof) {
-      os << "Files differ in length at line " << line_number << "."
+      os << "[ERROR] Files differ in length at line " << line_number << "."
          << std::endl;
       return false;
     }
 
     if (line1 != line2) {
-      os << "Difference found at line " << line_number << ":\n";
-      os << "File1: " << line1 << "\n";
-      os << "File2: " << line2 << "\n";
+      os << "[ERROR] Difference found at line " << line_number << ":\n";
+      os << "File1 (" << origin_filename << "): " << line1 << "\n";
+      os << "File2 (" << modified_path << "): " << line2 << "\n";
 
       // Optional: show column of first mismatch
       size_t col = 0;
       while (col < line1.size() && col < line2.size() &&
              line1[col] == line2[col]) {
         ++col;
-      }
+             }
       os << "First difference at column " << col + 1 << std::endl;
 
       return false;
@@ -376,3 +382,4 @@ bool GraphNN<StateRepr>::check_tensor_against_dot(
   // Jut To please the compiler
   exit(static_cast<int>(ExitHandler::ExitCode::ExitForCompiler));
 }
+

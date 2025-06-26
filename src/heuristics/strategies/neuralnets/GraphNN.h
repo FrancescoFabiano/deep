@@ -8,19 +8,19 @@
 
 /**
  * \struct GraphTensor
- * \brief Structure representing a graph in tensor format for GNN input.
+ * \brief Represents a graph in tensor format for input to a Graph Neural Network (GNN).
  *
- * Contains edge indices, edge attributes, and node IDs.
+ * This structure encapsulates the graph as a set of tensors:
+ * - \ref edge_ids: A 2 x num_edges tensor of symbolic node IDs representing the source and destination of each edge.
+ * - \ref edge_attrs: A num_edges x 1 tensor of edge attributes or labels, aligned with \ref edge_ids.
+ * - \ref real_node_ids: A num_nodes x 1 tensor mapping symbolic node IDs to their corresponding real or hashed node IDs.
+ *
+ * All tensors are designed for compatibility with PyTorch and GNN frameworks.
  */
 struct GraphTensor {
-  // std::vector<size_t> node_ids; // Optional: useful for mapping back
-  torch::Tensor edge_ids;   // [2, num_edges] -- This uses symbolic IDs and not
-                            // the real ones
-  torch::Tensor edge_attrs; // [num_edges, 1] -- This uses symbolic IDs and not
-                            // the real ones (ordering follows edge_index)
-  torch::Tensor
-      real_node_ids; // [num_nodes, 1] -- This is used to store the
-                     // correspondence of symbolic id to mapped/hashed id
+    torch::Tensor edge_ids;   ///< [2, num_edges] Symbolic source and destination node IDs for each edge (torch::kInt64).
+    torch::Tensor edge_attrs; ///< [num_edges, 1] Edge attributes or labels, aligned with edge_ids (torch::kInt64).
+    torch::Tensor real_node_ids; ///< [num_nodes, 1] Mapping from symbolic node IDs to real/hashed node IDs (torch::kUInt64 for hashed cases).
 };
 
 /**
@@ -125,7 +125,7 @@ private:
   const torch::TensorOptions m_options = torch::TensorOptions().dtype(
       torch::kInt64); ///< Tensor options for edge and attribute tensors (int64)
   const torch::TensorOptions m_options_node_ids = torch::TensorOptions().dtype(
-      torch::kUInt64); ///< Tensor options for node ID tensors (uint64)
+      torch::kUInt64); ///< Tensor options for node ID tensors (kUInt64)
 
   /**
    * \brief Converts a KripkeState to a minimal GraphTensor representation.
@@ -137,7 +137,7 @@ private:
    * \return A GraphTensor containing the minimal tensor representation of the
    * graph.
    */
-  GraphTensor state_to_tensor_minimal(const KripkeState &kstate);
+  [[nodiscard]] GraphTensor state_to_tensor_minimal(const KripkeState &kstate);
 
   /**
    * \brief Checks the consistency between a GraphTensor and the original state
@@ -151,15 +151,39 @@ private:
    * \param state The original state to compare against.
    * \return True if the DOT files are equivalent, false otherwise.
    */
-  bool check_tensor_against_dot(const GraphTensor &state_tensor,
+  [[nodiscard]] bool check_tensor_against_dot(const GraphTensor &state_tensor,
                                 const State<StateRepr> &state) const;
+
+    /**
+   * \brief Writes a GraphTensor to a DOT file for comparison.
+   *
+   * This function generates a DOT file representing the graph structure encoded
+   * in the given GraphTensor. The DOT file is then compared with original state graph for consistency check.
+   *
+   *
+   * \param origin_filename The path to the original states that DOT file.
+   * \param state_tensor The GraphTensor containing the graph data to be written.
+   */
+  [[nodiscard]] static bool write_and_compare_tensor_to_dot(const std::string& origin_filename, const GraphTensor& state_tensor);
+
   /**
+     * \brief Populates the given GraphTensor with the current graph data.
+     *
+     * This function fills the provided GraphTensor reference with the current
+     * edge IDs, edge attributes, and real node IDs, converting the internal
+     * graph representation into tensor format suitable for GNN input.
+     *
+     * \param tensor Reference to the GraphTensor to be populated.
+     */
+    void fill_graph_tensor(GraphTensor& tensor);
+
+    /**
    * \brief Converts the goal graph into the info that will then be added to a
    * Tensor. If the tensor are generated with the goal (merged) this info will
    * be directly embedded in the states. Otherwise, it will populate
    * m_goal_graph_tensor to be passed as argument.
    */
-  void populate_with_goal();
+   void populate_with_goal();
 
   /**
    * \brief Returns the symbolic ID for a node, assigning a new one if it does
@@ -173,7 +197,7 @@ private:
    * \param node The real node ID to assign or retrieve a symbolic ID for.
    * \return The symbolic ID corresponding to the node.
    */
-  size_t get_symbolic_id(size_t node);
+  [[nodiscard]] size_t get_symbolic_id(size_t node);
 
   /**
    * \brief Adds an edge to the graph representation while also adding the
