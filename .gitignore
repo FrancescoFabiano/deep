@@ -75,7 +75,8 @@ cmake-*/
 # Torch binary files
 lib/libtorch/
 lib/libtorch.zip
-
+/lib/onnxruntime/
+/lib/onnxruntime/*
 
 # Python
 /.venv/*
@@ -88,3 +89,4 @@ lib/libtorch.zip
 **/*.ut
 /utils/plans/
 /utils/configs/
+

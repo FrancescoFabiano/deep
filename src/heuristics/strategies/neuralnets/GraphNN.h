@@ -3,7 +3,7 @@
 #include "State.h"
 #include "neuralnets/GraphNN.h"
 #include <string>
-#include <torch/torch.h>
+#include <onnxruntime_cxx_api.h>
 #include <unordered_map>
 
 /**

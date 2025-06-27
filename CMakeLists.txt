@@ -2,7 +2,8 @@ cmake_minimum_required(VERSION 3.14)
 project(deep VERSION 1.0 LANGUAGES CXX)
 
 # === Options ===
-option(ENABLE_NEURALNETS "Enable neural networks (requires libtorch)" OFF)
+option(ENABLE_NEURALNETS "Enable neural networks (uses ONNX Runtime)" ON)
+option(ENABLE_CUDA "Enable CUDA support for ONNX Runtime" OFF)
 
 # === Use ccache if available ===
 find_program(CCACHE_PROGRAM ccache)
@@ -81,52 +82,44 @@ ADD_FLEX_BISON_DEPENDENCY(Lexer Parser)
 
 list(APPEND SOURCES ${FLEX_Lexer_OUTPUTS} ${BISON_Parser_OUTPUTS})
 
-# === External libraries ===
-add_subdirectory(lib/CLI11)
-
-# === Neural Net (Torch) Setup ===
-if(ENABLE_NEURALNETS)
-    message(STATUS "Neural networks are ENABLED")
-
-    set(TORCH_DIR "${CMAKE_SOURCE_DIR}/lib/libtorch" CACHE PATH "Torch install path")
-    list(APPEND CMAKE_PREFIX_PATH ${TORCH_DIR})
-
-    find_package(Torch REQUIRED PATHS ${TORCH_DIR} NO_DEFAULT_PATH)
-    if(NOT Torch_FOUND)
-        message(FATAL_ERROR "Torch not found in ${TORCH_DIR}. Make sure it's downloaded.")
-    endif()
-
-    include_directories(${TORCH_INCLUDE_DIRS})
-
-    find_package(CUDAToolkit QUIET)
-    if(CUDAToolkit_FOUND)
-        message(STATUS "Found CUDA Toolkit: ${CUDAToolkit_VERSION}")
-    else()
-        if(Torch_LIBRARIES MATCHES "cuda")
-            message(FATAL_ERROR "CUDA not found, but GPU-enabled libtorch is being used. Please install CUDA toolkit.")
-        else()
-            message(STATUS "Using CPU-only libtorch.")
-        endif()
-    endif()
-endif()
 
 # === Executable ===
 add_executable(deep ${SOURCES})
 
+# === External libraries ===
+add_subdirectory(lib/CLI11)
+
 # === Precompiled Header ===
 target_precompile_headers(deep PRIVATE src/utilities/pch.h)
+
+# === Neural Net (ONNX) Runtime Setup ===
+if(ENABLE_NEURALNETS)
+    message(STATUS "Neural networks are ENABLED")
+
+    set(ONNXRUNTIME_DIR "${CMAKE_SOURCE_DIR}/lib/onnxruntime" CACHE PATH "Path to ONNX Runtime")
+    include_directories(${ONNXRUNTIME_DIR}/include)
+    link_directories(${ONNXRUNTIME_DIR}/lib)
+
+    target_compile_definitions(deep PRIVATE USE_NEURALNETS)
+    target_link_libraries(deep PRIVATE onnxruntime)
+
+    if(ENABLE_CUDA)
+        find_package(CUDAToolkit QUIET)
+        if(CUDAToolkit_FOUND)
+            message(STATUS "CUDA support ENABLED and CUDA Toolkit FOUND")
+            target_compile_definitions(deep PRIVATE USE_CUDA)
+            target_link_libraries(deep PRIVATE CUDA::cudart CUDA::cuda_driver)
+        else()
+            message(WARNING "ENABLE_CUDA is ON but CUDA Toolkit not found — falling back to CPU mode")
+        endif()
+    else()
+        message(STATUS "CUDA support is DISABLED")
+    endif()
+endif()
 
 # === Boost management Header ===
 find_package(Boost REQUIRED)
 target_include_directories(deep PRIVATE ${Boost_INCLUDE_DIRS})
-
-# === Torch-specific compiler definitions ===
-if(ENABLE_NEURALNETS)
-    # This ABI flag must match the version of libtorch you're using (1 for cxx11-abi builds)
-    target_compile_definitions(deep PRIVATE _GLIBCXX_USE_CXX11_ABI=1)
-    target_link_libraries(deep PRIVATE "${TORCH_LIBRARIES}")
-    target_compile_definitions(deep PRIVATE USE_NEURALNETS)
-endif()
 
 # === Compiler flags ===
 target_compile_options(deep PRIVATE -Wall -Wextra -Wpedantic -ansi -Wfatal-errors -pthread -std=c++20)

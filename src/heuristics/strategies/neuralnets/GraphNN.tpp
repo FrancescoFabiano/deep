@@ -38,7 +38,33 @@ template <StateRepresentation StateRepr> GraphNN<StateRepr>::GraphNN() {
       TrainingDataset<StateRepr>::get_instance().get_goal_file_path();
 
   populate_with_goal();
+  load_model();
 }
+
+
+template <StateRepresentation StateRepr>
+void
+GraphNN<StateRepr>::load_model(const std::string& model_path) {
+  if (model_loaded_) return; // Already loaded
+
+  // Initialize ONNX Runtime environment and session
+  env_ = std::make_unique<Ort::Env>(ORT_LOGGING_LEVEL_WARNING, "RuntimeEnv");
+  session_options_ = std::make_unique<Ort::SessionOptions>();
+  session_options_->SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
+
+  session_ = std::make_unique<Ort::Session>(*env_, model_path.c_str(), *session_options_);
+  allocator_ = std::make_unique<Ort::AllocatorWithDefaultOptions>();
+  memory_info_ = std::make_unique<Ort::MemoryInfo>(
+      Ort::MemoryInfo::CreateCpu(OrtDeviceAllocator, OrtMemTypeCPU)
+  );
+
+  input_names_.push_back(session_->GetInputName(0, *allocator_));
+  output_names_.push_back(session_->GetOutputName(0, *allocator_));
+
+  model_loaded_ = true;
+  std::cout << "ONNX model loaded successfully from: " << model_path << std::endl;
+}
+
 
 template <StateRepresentation StateRepr>
 [[nodiscard]] short
@@ -60,6 +86,13 @@ GraphNN<StateRepr>::get_score(const State<StateRepr> &state) {
     }
   }
 #endif
+
+  /// load onnx
+
+
+
+  /// give state_tensor as input (and goal if is not merged)
+  /// get result from onn + input
 
   return 1;
 }
@@ -247,6 +280,16 @@ void GraphNN<StateRepr>::fill_graph_tensor(GraphTensor &tensor) {
   tensor.edge_attrs = edge_attrs.clone();
   tensor.real_node_ids = real_node_ids.clone();
 }
+
+struct GraphTensor {
+  torch::Tensor edge_ids;   ///< [2, num_edges] Symbolic source and destination
+  ///< node IDs for each edge (torch::kInt64).
+  torch::Tensor edge_attrs; ///< [num_edges, 1] Edge attributes or labels,
+  ///< aligned with edge_ids (torch::kInt64).
+  torch::Tensor real_node_ids; ///< [num_nodes, 1] Mapping from symbolic node
+  ///< IDs to real/hashed node IDs (torch::kUInt64
+  ///< for hashed cases).
+};
 
 template <StateRepresentation StateRepr>
 bool GraphNN<StateRepr>::check_tensor_against_dot(
