@@ -25,7 +25,7 @@ int main() {
 
     // Get input node names and shapes
     for (size_t i = 0; i < num_input_nodes; i++) {
-      char* input_name = session.GetInputName(i, allocator);
+      char* input_name = session.GetInputNames(i, allocator);
       Ort::TypeInfo type_info = session.GetInputTypeInfo(i);
       auto tensor_info = type_info.GetTensorTypeAndShapeInfo();
 

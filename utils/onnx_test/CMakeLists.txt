@@ -5,12 +5,12 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Path to ONNX Runtime installation - adjust this to your system
-set(ONNXRUNTIME_DIR "/lib/onnxruntime")
+set(ONNXRUNTIME_DIR "../../lib/onnxruntime")
 
 include_directories(${ONNXRUNTIME_DIR}/include)
 link_directories(${ONNXRUNTIME_DIR}/lib)
 
-add_executable(onnx_test main.cpp)
+add_executable(onnx_test test_onnx.cpp)
 
 target_link_libraries(onnx_test PRIVATE onnxruntime)
 
