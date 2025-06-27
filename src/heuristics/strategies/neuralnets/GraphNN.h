@@ -2,8 +2,8 @@
 #include "KripkeState.h"
 #include "State.h"
 #include "neuralnets/GraphNN.h"
-#include <string>
 #include <onnxruntime_cxx_api.h>
+#include <string>
 #include <unordered_map>
 
 /**

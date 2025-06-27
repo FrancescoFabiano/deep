@@ -15,5 +15,5 @@
 #include <vector>
 
 #ifdef USE_NEURALNETS
-  #include <onnxruntime_cxx_api.h>
+#include <onnxruntime_cxx_api.h>
 #endif
