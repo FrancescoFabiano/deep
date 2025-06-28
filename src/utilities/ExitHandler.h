@@ -142,6 +142,7 @@ public:
              ///< better)
     GNNTensorTranslationError = 894, ///< Error indicating that the translation
                                      ///< from state to Tensor did not work
+      GNNModelLoadError = 895, ///< Error loading the GNN model.
 
     // --- State/Action Related (900-919) ---
     StateActionNotExecutableError =
@@ -170,10 +171,12 @@ public:
    * \param message The message to display before exiting.
    */
   static void exit_with_message(ExitCode code, const std::string_view message) {
-    std::cerr << "\n" << message << std::endl;
+    std::cerr << "\n[ERROR] " << message << std::endl;
+#ifdef DEBUG
     std::cerr << "\nProcess finished with exit code: " << static_cast<int>(code)
               << " (Mostly useful for development)\n"
               << std::endl;
     std::exit(static_cast<int>(code));
+#endif
   }
 };

@@ -55,7 +55,8 @@ out/*
 callgrind.out*
 
 # Log files
-log/
+logs/
+/logs/
 *.log
 
 # Results
@@ -89,4 +90,3 @@ lib/libtorch.zip
 **/*.ut
 /utils/plans/
 /utils/configs/
-

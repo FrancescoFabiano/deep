@@ -8,28 +8,25 @@
 
 /**
  * \struct GraphTensor
- * \brief Represents a graph in tensor format for input to a Graph Neural
- * Network (GNN).
+ * \brief Represents a graph in tensor format for input to a Graph Neural Network (GNN) using ONNX.
  *
- * This structure encapsulates the graph as a set of tensors:
- * - \ref edge_ids: A 2 x num_edges tensor of symbolic node IDs representing the
- * source and destination of each edge.
- * - \ref edge_attrs: A num_edges x 1 tensor of edge attributes or labels,
- * aligned with \ref edge_ids.
- * - \ref real_node_ids: A num_nodes x 1 tensor mapping symbolic node IDs to
- * their corresponding real or hashed node IDs.
+ * This structure encapsulates the graph as a set of arrays:
+ * - edge_src: 1D array of symbolic source node IDs for each edge.
+ * - edge_dst: 1D array of symbolic destination node IDs for each edge.
+ * - edge_attrs: 1D array of edge attributes or labels, aligned with edges.
+ * - real_node_ids: 1D array mapping symbolic node IDs to their corresponding real or hashed node IDs.
  *
- * All tensors are designed for compatibility with PyTorch and GNN frameworks.
+ * All arrays are designed for compatibility with ONNX Runtime and GNN models exported to ONNX format.
  */
-struct GraphTensor {
-  torch::Tensor edge_ids;   ///< [2, num_edges] Symbolic source and destination
-                            ///< node IDs for each edge (torch::kInt64).
-  torch::Tensor edge_attrs; ///< [num_edges, 1] Edge attributes or labels,
-                            ///< aligned with edge_ids (torch::kInt64).
-  torch::Tensor real_node_ids; ///< [num_nodes, 1] Mapping from symbolic node
-                               ///< IDs to real/hashed node IDs (torch::kUInt64
-                               ///< for hashed cases).
-};
+    struct GraphTensor {
+        std::vector<int64_t> edge_src;///< [2, num_edges] -- First dimension. Symbolic source node ID for each edge.
+        std::vector<int64_t> edge_dst;///< [2, num_edges] -- Second dimension. Symbolic destination node ID for each edge.
+        std::vector<int64_t> edge_attrs; ///< [num_edges, 1] Edge attributes or labels,
+        ///< aligned with edge_ids.
+        std::vector<uint64_t> real_node_ids; ///< [num_nodes, 1] Mapping from symbolic node
+        ///< IDs to real/hashed node IDs.
+    };
+
 
 /**
  * \class GraphNN
@@ -130,10 +127,19 @@ private:
       0; ///< Initial symbolic ID (to remove the new inserted nodes while
          ///< processing the heuristics)
 
-  const torch::TensorOptions m_options = torch::TensorOptions().dtype(
-      torch::kInt64); ///< Tensor options for edge and attribute tensors (int64)
-  const torch::TensorOptions m_options_node_ids = torch::TensorOptions().dtype(
-      torch::kUInt64); ///< Tensor options for node ID tensors (kUInt64)
+    ///// --- ONNX Runtime inference components ---
+    Ort::Env m_env{ORT_LOGGING_LEVEL_WARNING, "GraphNNEnv"}; ///< ONNX Runtime environment for GNN inference.
+    Ort::SessionOptions m_session_options; ///< ONNX Runtime session options.
+    std::unique_ptr<Ort::Session> m_session; ///< Pointer to the ONNX Runtime session.
+    std::unique_ptr<Ort::AllocatorWithDefaultOptions> m_allocator; ///< Allocator for ONNX Runtime memory management.
+    std::unique_ptr<Ort::MemoryInfo> m_memory_info; ///< Memory info for ONNX Runtime tensors.
+
+    std::vector<const char *> m_input_names; ///< Names of the input nodes for the ONNX model.
+    std::vector<const char *> m_output_names; ///< Names of the output nodes for the ONNX model.
+
+    bool m_model_loaded = false; ///< Indicates whether the ONNX model has been loaded.
+
+
 
   /**
    * \brief Converts a KripkeState to a minimal GraphTensor representation.
@@ -197,6 +203,29 @@ private:
    * m_goal_graph_tensor to be passed as argument.
    */
   void populate_with_goal();
+
+    /**
+     * \brief Initializes the ONNX Runtime model for GNN inference.
+     *
+     * Sets up the ONNX Runtime environment, session options, loads the GNN model,
+     * and prepares input/output names and memory information required for inference.
+     * This function should be called before performing any inference with the model.
+     */
+    void initialize_onnx_model();
+
+
+    /**
+     * \brief Runs ONNX Runtime inference on the provided GraphTensor.
+     *
+     * This method takes a GraphTensor representing the input graph, prepares the
+     * necessary ONNX Runtime tensors, and performs inference using the loaded GNN
+     * model. It returns the resulting score or output from the neural network.
+     *
+     * \param tensor The GraphTensor containing the graph data for inference.
+     * \return The output score from the GNN model as a float.
+     */
+    float run_inference(const GraphTensor &tensor);
+
 
   /**
    * \brief Returns the symbolic ID for a node, assigning a new one if it does

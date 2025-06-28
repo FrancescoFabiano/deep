@@ -36,7 +36,7 @@ int main() {
       std::vector<int64_t> input_node_dims = tensor_info.GetShape();
 
       //std::cout << "Input " << i << " : name=" << input_name << " type=" << type << " dims=";
-      for (auto dim : input_node_dims) //std::cout << dim << " ";
+      // for (auto dim : input_node_dims) //std::cout << dim << " ";
       //std::cout << std::endl;
     }
 
@@ -71,14 +71,14 @@ int main() {
     auto output_shape = output_info.GetShape();
 
     //std::cout << "Output tensor shape: ";
-    for (auto dim : output_shape) //std::cout << dim << " ";
+    // for (auto dim : output_shape) //std::cout << dim << " ";
     //std::cout << std::endl;
 
     // Optionally print first few output values
     //std::cout << "First 10 output values:" << std::endl;
-    for (int i = 0; i < 10 && i < output_info.GetElementCount(); i++) {
+    //for (int i = 0; i < 10 && i < output_info.GetElementCount(); i++) {
       //std::cout << float_array[i] << " ";
-    }
+    //}
     //std::cout << std::endl;
 
     return 0;
