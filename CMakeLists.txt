@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.14)
 project(deep VERSION 1.0 LANGUAGES CXX)
 
 # === Options ===
-option(ENABLE_NEURALNETS "Enable neural networks (uses ONNX Runtime)" ON)
+option(ENABLE_NEURALNETS "Enable use of ONNX Runtime" OFF)
 option(ENABLE_CUDA "Enable CUDA support for ONNX Runtime" OFF)
 
 # === Use ccache if available ===
@@ -94,7 +94,7 @@ target_precompile_headers(deep PRIVATE src/utilities/pch.h)
 
 # === Neural Net (ONNX) Runtime Setup ===
 if(ENABLE_NEURALNETS)
-    message(STATUS "Neural networks are ENABLED")
+    message(STATUS "ONNX inference is ENABLED")
 
     set(ONNXRUNTIME_DIR "${CMAKE_SOURCE_DIR}/lib/onnxruntime" CACHE PATH "Path to ONNX Runtime")
     include_directories(${ONNXRUNTIME_DIR}/include)

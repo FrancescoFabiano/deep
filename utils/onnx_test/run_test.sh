@@ -34,7 +34,8 @@ cd "$BUILD_DIR"
 cmake ..
 make -j$(nproc)
 
-if ./test_onnx; then
+cd ..
+if ./build/onnx_test; then
     echo "ONNX Runtime test ran successfully."
 else
     echo "[ERROR] ONNX Runtime test failed."

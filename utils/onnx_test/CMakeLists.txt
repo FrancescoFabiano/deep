@@ -10,7 +10,7 @@ set(ONNXRUNTIME_DIR "../../lib/onnxruntime")
 include_directories(${ONNXRUNTIME_DIR}/include)
 link_directories(${ONNXRUNTIME_DIR}/lib)
 
-add_executable(onnx_test test_onnx.cpp)
+add_executable(onnx_test onnx_test.cpp)
 
 target_link_libraries(onnx_test PRIVATE onnxruntime)
 

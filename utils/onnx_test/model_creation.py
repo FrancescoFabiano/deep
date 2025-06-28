@@ -23,10 +23,17 @@ graph_def = helper.make_graph(
     [output_tensor]
 )
 
-# Create the model (ModelProto)
-model_def = helper.make_model(graph_def, producer_name='onnx-example')
+# Create the model (ModelProto) with explicit opset 10
+model_def = helper.make_model(
+    graph_def,
+    producer_name='onnx-example',
+    opset_imports=[helper.make_opsetid("", 10)]  # <-- ensure opset 10
+)
+
+# Explicitly set the IR version (protobuf) to 10 to match older runtimes
+model_def.ir_version = 10
 
 # Save the model
 onnx.save(model_def, 'model.onnx')
 
-print("Minimal ONNX model 'model.onnx' created.")
+print("Minimal ONNX model with opset 10 saved as 'model.onnx'.")
