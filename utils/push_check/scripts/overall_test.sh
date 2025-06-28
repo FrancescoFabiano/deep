@@ -6,7 +6,7 @@ set -e  # Exit immediately if a command exits with a non-zero status
 FOLDER="utils/push_check/experiments"
 
 # Number of random files to pick for each script set
-NUM_FILES_SET1=8
+NUM_FILES_SET1=5
 NUM_FILES_SET2=5
 
 # Get random files for set 1

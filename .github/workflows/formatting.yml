@@ -20,9 +20,14 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           submodules: recursive
 
-      - name: Convert line endings to LF
+      - name: Convert code files' line endings to LF
         run: |
           find . -type f \( -name '*.sh' -o -name '*.cpp' -o -name '*.h' -o -name '*.hpp' -o -name '*.tpp' \) \
+            -exec sed -i 's/\r$//' {} +
+
+      - name: Convert experiments files' line endings to LF
+        run: |
+          find exp utils/push_check/experiments -type f \( -name '*.txt' -o -name '*.eppdl' -o -name '*.pddl' \) \
             -exec sed -i 's/\r$//' {} +
 
       - name: Check and fix C++ formatting

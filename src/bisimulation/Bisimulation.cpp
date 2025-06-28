@@ -1914,7 +1914,7 @@ void Bisimulation::calc_min_bisimilar(KripkeState &kstate) {
 #ifdef DEBUG
     ArgumentParser::get_instance().get_output_stream()
         << "[Warning] Exception during Bisimulation."
-           "We will keep the original state.\nError Message: "
+           " We will keep the original state.\nError Message: "
         << ex.what() << std::endl;
 #endif
   }

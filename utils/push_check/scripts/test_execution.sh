@@ -25,7 +25,7 @@ FILENAME="$1"
 # Extract actions
 actions=$(grep -oP '%%% Executed actions:\s*\K.*?(?=\s*%%%$)' "$FILENAME")
 if [ -z "$actions" ]; then
-  echo "No executable actions found."
+  echo "No executable actions found for $FILENAME."
   exit 1
 fi
 
