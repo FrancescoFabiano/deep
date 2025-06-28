@@ -118,8 +118,8 @@ if(ENABLE_NEURALNETS)
 endif()
 
 # === Boost management Header ===
-find_package(Boost REQUIRED)
-target_include_directories(deep PRIVATE ${Boost_INCLUDE_DIRS})
+find_package(Boost CONFIG REQUIRED)
+target_link_libraries(deep PRIVATE Boost::boost)
 
 # === Compiler flags ===
 target_compile_options(deep PRIVATE -Wall -Wextra -Wpedantic -ansi -Wfatal-errors -pthread -std=c++20)

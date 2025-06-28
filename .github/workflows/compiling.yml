@@ -25,17 +25,12 @@ jobs:
         run: |
           chmod +x ./build.sh
 
-      - name: First compilation (DEBUG, no onnx, no cuda)
+      - name: First compilation and dependencies installation (DEBUG, no onnx, no cuda)
         run: |
           set -e
-          sudo ./build.sh debug
+          sudo ./build.sh install_all debug
 
       - name: Second compilation (DEBUG, with onnx, no cuda)
         run: |
           set -e
           sudo ./build.sh debug nn no_onnx_test
-
-      - name: Third compilation (RELEASE, with onnx, no cuda)
-        run: |
-          set -e
-          sudo ./build.sh nn no_onnx_test

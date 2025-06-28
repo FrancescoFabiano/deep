@@ -29,7 +29,7 @@ jobs:
 
       - name: Install dependencies and compile (RELEASE, with onnx, no cuda)
         run: |
-          sudo ./build.sh install_all no_onnx_test
+          sudo ./build.sh install_all nn no_onnx_test
 
       - name: Run minimal onnx check script
         run: |
