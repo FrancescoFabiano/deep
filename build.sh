@@ -14,7 +14,7 @@ show_usage() {
     echo "  use_gpu         Use GPU-accelerated ONNX Runtime (requires NVIDIA GPU and CUDA installed)"
     echo "  force_gpu       Force install of GPU ONNX Runtime without checking for CUDA or GPU"
     echo "  install_all     Automatically install required system packages (requires sudo)"
-    echo "  no_torch_test   Skip running the onnx tests before build"
+    echo "  no_onnx_test   Skip running the onnx tests before build"
 
     echo ""
     echo "Examples:"

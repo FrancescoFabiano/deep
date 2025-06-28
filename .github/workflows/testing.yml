@@ -1,0 +1,40 @@
+name: Testing
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Convert line endings to LF
+        run: |
+          find . -type f \( -name '*.sh' -o -name '*.cpp' -o -name '*.h' -o -name '*.hpp' -o -name '*.tpp' \) \
+            -exec sed -i 's/\r$//' {} +
+
+      - name: Set running permissions for scripts
+        run: |
+          chmod +x ./build.sh
+          chmod +x ./utils/push_check/scripts/*.sh
+          chmod +x ./utils/onnx_test/run_test.sh
+
+      - name: Install dependencies and compile (RELEASE, with onnx, no cuda)
+        run: |
+          sudo ./build.sh install_all no_onnx_test
+
+      - name: Run minimal onnx check script
+        run: |
+          ./utils/onnx_test/run_test.sh
+
+      - name: Run minimal execution and planning check script
+        run: |
+          ./utils/push_check/scripts/overall_test.sh
