@@ -134,8 +134,8 @@ private:
     std::unique_ptr<Ort::AllocatorWithDefaultOptions> m_allocator; ///< Allocator for ONNX Runtime memory management.
     std::unique_ptr<Ort::MemoryInfo> m_memory_info; ///< Memory info for ONNX Runtime tensors.
 
-    std::vector<const char *> m_input_names; ///< Names of the input nodes for the ONNX model.
-    std::vector<const char *> m_output_names; ///< Names of the output nodes for the ONNX model.
+    std::vector<std::string> m_input_names; ///< Names of the input nodes for the ONNX model.
+    std::vector<std::string> m_output_names; ///< Names of the output nodes for the ONNX model.
 
     bool m_model_loaded = false; ///< Indicates whether the ONNX model has been loaded.
 

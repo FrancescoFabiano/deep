@@ -24,42 +24,42 @@ endif()
 
 # === Include directories ===
 include_directories(
-        src
-        src/actions
-        src/argparse
-        src/bisimulation
-        src/domain
-        src/formulae
-        src/heuristics
-        src/heuristics/strategies
-        src/heuristics/strategies/epg
-        src/parse
-        src/states
-        src/states/representations/kripke
-        src/states/representations/kripke/helpers
-        src/utilities
-        src/search
-        lib/bisimulation
+    src
+    src/actions
+    src/argparse
+    src/bisimulation
+    src/domain
+    src/formulae
+    src/heuristics
+    src/heuristics/strategies
+    src/heuristics/strategies/epg
+    src/parse
+    src/states
+    src/states/representations/kripke
+    src/states/representations/kripke/helpers
+    src/utilities
+    src/search
+    lib/bisimulation
 )
 
 # === Templatic headers ===
 set(TEMPLATIC_HEADERS
-        src/heuristics/HeuristicsManager.h
-        src/heuristics/strategies/SatisfiedGoals.h
-        src/heuristics/strategies/epg/StateLevel.h
-        src/heuristics/strategies/epg/PlanningGraph.h
-        src/heuristics/strategies/neuralnets/TrainingDataset.h
-        src/search/SpaceSearcher.h
-        src/search/search_strategies/BreadthFirst.h
-        src/search/search_strategies/DepthFirst.h
-        src/search/search_strategies/BestFirst.h
-        src/states/State.h
-        src/utilities/SetHelper.h
+    src/heuristics/HeuristicsManager.h
+    src/heuristics/strategies/SatisfiedGoals.h
+    src/heuristics/strategies/epg/StateLevel.h
+    src/heuristics/strategies/epg/PlanningGraph.h
+    src/heuristics/strategies/neuralnets/TrainingDataset.h
+    src/search/SpaceSearcher.h
+    src/search/search_strategies/BreadthFirst.h
+    src/search/search_strategies/DepthFirst.h
+    src/search/search_strategies/BestFirst.h
+    src/states/State.h
+    src/utilities/SetHelper.h
 )
 
 if(ENABLE_NEURALNETS)
     list(APPEND TEMPLATIC_HEADERS
-            src/heuristics/strategies/neuralnets/GraphNN.h
+        src/heuristics/strategies/neuralnets/GraphNN.h
     )
 endif()
 
@@ -82,7 +82,6 @@ ADD_FLEX_BISON_DEPENDENCY(Lexer Parser)
 
 list(APPEND SOURCES ${FLEX_Lexer_OUTPUTS} ${BISON_Parser_OUTPUTS})
 
-
 # === Executable ===
 add_executable(deep ${SOURCES})
 
@@ -97,11 +96,27 @@ if(ENABLE_NEURALNETS)
     message(STATUS "ONNX inference is ENABLED")
 
     set(ONNXRUNTIME_DIR "${CMAKE_SOURCE_DIR}/lib/onnxruntime" CACHE PATH "Path to ONNX Runtime")
-    include_directories(${ONNXRUNTIME_DIR}/include)
-    link_directories(${ONNXRUNTIME_DIR}/lib)
+    set(ONNXRUNTIME_LIB "${ONNXRUNTIME_DIR}/lib/libonnxruntime.so")
 
+    # Add ONNXRuntime as an IMPORTED shared library target
+    add_library(onnxruntime SHARED IMPORTED GLOBAL)
+    set_target_properties(onnxruntime PROPERTIES
+        IMPORTED_LOCATION "${ONNXRUNTIME_LIB}"
+        INTERFACE_INCLUDE_DIRECTORIES "${ONNXRUNTIME_DIR}/include"
+    )
+
+    # Enable runtime inference
     target_compile_definitions(deep PRIVATE USE_NEURALNETS)
     target_link_libraries(deep PRIVATE onnxruntime)
+
+    # Embed runtime path for libonnxruntime.so
+    set_target_properties(deep PROPERTIES
+        BUILD_RPATH "${ONNXRUNTIME_DIR}/lib"
+        INSTALL_RPATH "${ONNXRUNTIME_DIR}/lib"
+        SKIP_BUILD_RPATH FALSE
+        SKIP_INSTALL_RPATH FALSE
+        BUILD_WITH_INSTALL_RPATH TRUE
+    )
 
     if(ENABLE_CUDA)
         find_package(CUDAToolkit QUIET)
@@ -117,7 +132,7 @@ if(ENABLE_NEURALNETS)
     endif()
 endif()
 
-# === Boost management Header ===
+# === Boost ===
 find_package(Boost CONFIG REQUIRED)
 target_link_libraries(deep PRIVATE Boost::boost)
 
@@ -138,39 +153,39 @@ target_link_libraries(deep PRIVATE pthread rt CLI11::CLI11)
 
 # === Output directories ===
 set_target_properties(deep PROPERTIES
-        RUNTIME_OUTPUT_DIRECTORY ${BIN_DIR}
-        ARCHIVE_OUTPUT_DIRECTORY ${BUILD_DIR}
-        LIBRARY_OUTPUT_DIRECTORY ${BUILD_DIR}
+    RUNTIME_OUTPUT_DIRECTORY ${BIN_DIR}
+    ARCHIVE_OUTPUT_DIRECTORY ${BUILD_DIR}
+    LIBRARY_OUTPUT_DIRECTORY ${BUILD_DIR}
 )
 
 # === Ensure output directories ===
 add_custom_target(prepare_build_dir ALL
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${BUILD_DIR}
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${BIN_DIR}
-        COMMENT "Ensuring build and bin directories exist"
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${BUILD_DIR}
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${BIN_DIR}
+    COMMENT "Ensuring build and bin directories exist"
 )
 add_dependencies(deep prepare_build_dir)
 
 # === Cleaning ===
 add_custom_target(clean_build
-        COMMAND ${CMAKE_COMMAND} -E remove_directory ${BIN_DIR}
-        COMMAND ${CMAKE_COMMAND} -E remove_directory ${BUILD_DIR}
-        COMMENT "Cleaning build and binary directories"
+    COMMAND ${CMAKE_COMMAND} -E remove_directory ${BIN_DIR}
+    COMMAND ${CMAKE_COMMAND} -E remove_directory ${BUILD_DIR}
+    COMMENT "Cleaning build and binary directories"
 )
 
 add_custom_target(clean_out
-        COMMAND ${CMAKE_COMMAND} -E remove_directory ${CMAKE_BINARY_DIR}/out
-        COMMAND ${CMAKE_COMMAND} -E remove -f ${CMAKE_BINARY_DIR}/*.tmp
-        COMMENT "Cleaning output directory and temporary files"
+    COMMAND ${CMAKE_COMMAND} -E remove_directory ${CMAKE_BINARY_DIR}/out
+    COMMAND ${CMAKE_COMMAND} -E remove -f ${CMAKE_BINARY_DIR}/*.tmp
+    COMMENT "Cleaning output directory and temporary files"
 )
 
 add_custom_target(clear
-        DEPENDS clean_build clean_out
-        COMMENT "Clearing all build and output files"
+    DEPENDS clean_build clean_out
+    COMMENT "Clearing all build and output files"
 )
 
 add_custom_target(fresh
-        DEPENDS clear
-        COMMAND ${CMAKE_COMMAND} -E remove_directory ${CMAKE_BINARY_DIR}/doxygen/Docs
-        COMMENT "Performing a fresh cleanup"
+    DEPENDS clear
+    COMMAND ${CMAKE_COMMAND} -E remove_directory ${CMAKE_BINARY_DIR}/doxygen/Docs
+    COMMENT "Performing a fresh cleanup"
 )

@@ -41,7 +41,6 @@ template <StateRepresentation StateRepr> GraphNN<StateRepr>::GraphNN() {
   initialize_onnx_model();
 }
 
-
 template <StateRepresentation StateRepr>
 void GraphNN<StateRepr>::initialize_onnx_model() {
   if (m_model_loaded)
@@ -66,26 +65,26 @@ void GraphNN<StateRepr>::initialize_onnx_model() {
     }
 #endif
 
-    m_session = std::make_unique<Ort::Session>(m_env, model_path.c_str(), m_session_options);
+    m_session = std::make_unique<Ort::Session>(m_env, m_model_path.c_str(), m_session_options);
     m_allocator = std::make_unique<Ort::AllocatorWithDefaultOptions>();
     m_memory_info = std::make_unique<Ort::MemoryInfo>(
         Ort::MemoryInfo::CreateCpu(OrtDeviceAllocator, OrtMemTypeCPU));
 
-    m_input_names.push_back(m_session->GetInputName(0, *m_allocator));
-    m_output_names.push_back(m_session->GetOutputName(0, *m_allocator));
+    // Fixed: No allocator argument
+    m_input_names = m_session->GetInputNames();
+    m_output_names = m_session->GetOutputNames();
 
     m_model_loaded = true;
   } catch (const std::exception &e) {
     ExitHandler::exit_with_message(
         ExitHandler::ExitCode::GNNModelLoadError,
         std::string("Failed to load ONNX model: ") + e.what());
-    std::exit(static_cast<int>(ExitHandler::ExitCode::ExitForCompiler));
+  }
 
-    if (ArgumentParser::get_instance().get_verbose()) {
-      ArgumentParser::get_instance().get_output_stream() << "[ONNX] Model loaded: " << m_model_path << std::endl;
-    }}
+  if (ArgumentParser::get_instance().get_verbose()) {
+    ArgumentParser::get_instance().get_output_stream() << "[ONNX] Model loaded: " << m_model_path << std::endl;
+  }
 }
-
 
 template <StateRepresentation StateRepr>
 [[nodiscard]] short
@@ -108,14 +107,9 @@ GraphNN<StateRepr>::get_score(const State<StateRepr> &state) {
   }
 #endif
 
-  /// load onnx
-
-  /// give state_tensor as input (and goal if is not merged)
-  /// get result from onn + input
-
-  return 1;
+  const short result = static_cast<short>(std::round(run_inference(state_tensor) * 1000));
+  return result;
 }
-
 
 template <StateRepresentation StateRepr>
 float GraphNN<StateRepr>::run_inference(const GraphTensor &tensor) {
@@ -125,7 +119,6 @@ float GraphNN<StateRepr>::run_inference(const GraphTensor &tensor) {
   }
 
   auto &session = *m_session;
-  auto &allocator = *m_allocator;
   auto &memory_info = *m_memory_info;
 
   const size_t num_edges = tensor.edge_src.size();
@@ -156,31 +149,30 @@ float GraphNN<StateRepr>::run_inference(const GraphTensor &tensor) {
       memory_info, const_cast<uint64_t *>(tensor.real_node_ids.data()), tensor.real_node_ids.size(),
       node_ids_shape.data(), node_ids_shape.size());
 
-  // Prepare input names (in order as expected by model)
+  // Prepare input tensors
   std::vector<Ort::Value> input_tensors;
-  std::vector<const char *> input_names = {
-      m_input_names[0], // assume order: edge_index
-      m_input_names[1], // edge_attr
-      m_input_names[2]  // real_node_ids
-  };
-
   input_tensors.emplace_back(std::move(edge_index_tensor));
   input_tensors.emplace_back(std::move(edge_attr_tensor));
   input_tensors.emplace_back(std::move(real_node_ids_tensor));
 
+  // Convert input/output names to const char* arrays
+  std::vector<const char*> input_names_cstr;
+  for (const auto& name : m_input_names) input_names_cstr.push_back(name.c_str());
+  std::vector<const char*> output_names_cstr;
+  for (const auto& name : m_output_names) output_names_cstr.push_back(name.c_str());
+
   // Run the model
   auto output_tensors = session.Run(Ort::RunOptions{nullptr},
-                                    input_names.data(), input_tensors.data(),
+                                    input_names_cstr.data(), input_tensors.data(),
                                     input_tensors.size(),
-                                    m_output_names.data(), m_output_names.size());
+                                    output_names_cstr.data(), output_names_cstr.size());
 
   // Get the result (assuming scalar output)
   float *output_data = output_tensors[0].GetTensorMutableData<float>();
-  float score = output_data[0];
+  const float score = output_data[0];
 
   return score;
 }
-
 
 template <StateRepresentation StateRepr>
 [[nodiscard]] short
@@ -402,30 +394,30 @@ bool GraphNN<StateRepr>::write_and_compare_tensor_to_dot(
   ofs << "digraph G {\n";
 
   // edge_ids shape: [2, num_edges]
-  auto edge_ids = state_tensor.edge_ids;
   auto edge_attrs = state_tensor.edge_attrs;
+  auto edge_src = state_tensor.edge_src;
+  auto edge_dst = state_tensor.edge_dst;
+  auto real_node_ids = state_tensor.real_node_ids;
 
-  int64_t num_edges = edge_ids.size(1);
+  const auto num_edges = edge_src.size();
+  if (num_edges != edge_dst.size()) {
+    ExitHandler::exit_with_message(
+        ExitHandler::ExitCode::GNNTensorTranslationError,
+        "Inconsistent edge data in GraphTensor: "
+        "edge_src and edge_dst must have the same number of edges.");
+  }
 
   // Print edges with optional edge_attrs label
   for (int64_t e = 0; e < num_edges; ++e) {
-    int64_t src_symbolic = edge_ids[0][e].item<int64_t>();
-    int64_t dst_symbolic = edge_ids[1][e].item<int64_t>();
+    int64_t src_symbolic = edge_src[e];
+    int64_t dst_symbolic = edge_dst[e];
 
-    auto accessor = state_tensor.real_node_ids.accessor<uint64_t, 2>();
+    uint64_t src = real_node_ids[src_symbolic];
+    uint64_t dst = real_node_ids[dst_symbolic];
 
-    uint64_t src = accessor[src_symbolic][0];
-    uint64_t dst = accessor[dst_symbolic][0];
+    int64_t attr = edge_attrs[e];
 
-    // Get edge attribute if exists
-    std::string label_str = "";
-    if (edge_attrs.defined() && edge_attrs.numel() > e) {
-      int64_t attr =
-          edge_attrs[e][0].item<int64_t>(); // assuming shape [num_edges,1]
-      label_str = " [label=\"" + std::to_string(attr) + "\"]";
-    }
-
-    ofs << "  " << src << " -> " << dst << label_str << ";\n";
+    ofs << "  " << src << " -> " << dst << " [label=\"" << std::to_string(attr) << "\"]" << ";\n";
   }
 
   ofs << "}\n";

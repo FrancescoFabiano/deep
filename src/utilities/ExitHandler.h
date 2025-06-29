@@ -172,11 +172,10 @@ public:
    */
   static void exit_with_message(ExitCode code, const std::string_view message) {
     std::cerr << "\n[ERROR] " << message << std::endl;
-#ifdef DEBUG
-    std::cerr << "\nProcess finished with exit code: " << static_cast<int>(code)
+    std::cerr << "\nError code: " << static_cast<int>(code)
               << " (Mostly useful for development)\n"
               << std::endl;
     std::exit(static_cast<int>(code));
-#endif
+
   }
 };
