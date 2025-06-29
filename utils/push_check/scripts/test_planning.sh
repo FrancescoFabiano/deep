@@ -1,7 +1,7 @@
 #!/bin/bash
 
-if [ $# -ne 1 ]; then
-  echo "Usage: $0 <filename>"
+if [ $# -ne 2 ]; then
+  echo "Usage: $0 <binary_path> <filename>"
   exit 1
 fi
 
@@ -30,10 +30,11 @@ run_with_timeout() {
   sleep 2
 }
 
-FILENAME="$1"
+BIN_PATH="$1"
+FILENAME="$2"
 
 run_with_timeout "deep on $FILENAME with portfolio (5 threads)" \
-  ./cmake-build/bin/deep "$FILENAME" -p 5
+  "$BIN_PATH" "$FILENAME" -p 5
 
 run_with_timeout "deep on $FILENAME with portfolio (5 threads) bisimulation and visited state check" \
-  ./cmake-build/bin/deep "$FILENAME" -b -c -p 5
+  "$BIN_PATH" "$FILENAME" -b -c -p 5

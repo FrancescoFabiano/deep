@@ -5,7 +5,7 @@ run_deep() {
   local description="$1"
   shift
   echo "Running: deep on $FILENAME with actions $actions ($description)"
-  ./cmake-build/bin/deep "$FILENAME" "$@"
+  "$BIN_PATH" "$FILENAME" "$@"
   local ret=$?
   if [ $ret -ne 0 ]; then
     echo "Error: deep execution failed during '$FILENAME' with actions '$actions' ('$description') (exit code $ret)"
@@ -15,12 +15,13 @@ run_deep() {
 }
 
 # Input validation
-if [ $# -ne 1 ]; then
-  echo "Usage: $0 <filename>"
+if [ $# -ne 2 ]; then
+  echo "Usage: $0 <binary_path> <filename>"
   exit 1
 fi
 
-FILENAME="$1"
+BIN_PATH="$1"
+FILENAME="$2"
 
 # Extract actions
 actions=$(grep -oP '%%% Executed actions:\s*\K.*?(?=\s*%%%$)' "$FILENAME")
