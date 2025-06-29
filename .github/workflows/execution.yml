@@ -1,4 +1,4 @@
-name: Testing
+name: Execution Check
 
 on:
   push:
