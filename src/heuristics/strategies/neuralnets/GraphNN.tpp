@@ -47,25 +47,33 @@ void GraphNN<StateRepr>::initialize_onnx_model() {
     return;
 
   try {
-    m_session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
+    m_session_options.SetGraphOptimizationLevel(
+        GraphOptimizationLevel::ORT_ENABLE_ALL);
 
 #ifdef USE_CUDA
     try {
       OrtCUDAProviderOptions cuda_options;
       m_session_options.AppendExecutionProvider_CUDA(cuda_options);
       if (ArgumentParser::get_instance().get_verbose()) {
-        ArgumentParser::get_instance().get_output_stream() << "[ONNX] CUDA execution provider enabled via USE_CUDA." << std::endl;
+        ArgumentParser::get_instance().get_output_stream()
+            << "[ONNX] CUDA execution provider enabled via USE_CUDA."
+            << std::endl;
       }
     } catch (const Ort::Exception &e) {
-      ArgumentParser::get_instance().get_output_stream() << "[WARNING][ONNX] Failed to enable CUDA, defaulting to CPU: " << e.what() << std::endl;
+      ArgumentParser::get_instance().get_output_stream()
+          << "[WARNING][ONNX] Failed to enable CUDA, defaulting to CPU: "
+          << e.what() << std::endl;
     }
 #else
     if (ArgumentParser::get_instance().get_verbose()) {
-      ArgumentParser::get_instance().get_output_stream() << "[ONNX] Compiled without CUDA (USE_CUDA not defined), using CPU." << std::endl;
+      ArgumentParser::get_instance().get_output_stream()
+          << "[ONNX] Compiled without CUDA (USE_CUDA not defined), using CPU."
+          << std::endl;
     }
 #endif
 
-    m_session = std::make_unique<Ort::Session>(m_env, m_model_path.c_str(), m_session_options);
+    m_session = std::make_unique<Ort::Session>(m_env, m_model_path.c_str(),
+                                               m_session_options);
     m_allocator = std::make_unique<Ort::AllocatorWithDefaultOptions>();
     m_memory_info = std::make_unique<Ort::MemoryInfo>(
         Ort::MemoryInfo::CreateCpu(OrtDeviceAllocator, OrtMemTypeCPU));
@@ -76,13 +84,14 @@ void GraphNN<StateRepr>::initialize_onnx_model() {
 
     m_model_loaded = true;
   } catch (const std::exception &e) {
-    ExitHandler::exit_with_message(
-        ExitHandler::ExitCode::GNNModelLoadError,
-        std::string("Failed to load ONNX model: ") + e.what());
+    ExitHandler::exit_with_message(ExitHandler::ExitCode::GNNModelLoadError,
+                                   std::string("Failed to load ONNX model: ") +
+                                       e.what());
   }
 
   if (ArgumentParser::get_instance().get_verbose()) {
-    ArgumentParser::get_instance().get_output_stream() << "[ONNX] Model loaded: " << m_model_path << std::endl;
+    ArgumentParser::get_instance().get_output_stream()
+        << "[ONNX] Model loaded: " << m_model_path << std::endl;
   }
 }
 
@@ -107,7 +116,8 @@ GraphNN<StateRepr>::get_score(const State<StateRepr> &state) {
   }
 #endif
 
-  const short result = static_cast<short>(std::round(run_inference(state_tensor) * 1000));
+  const short result =
+      static_cast<short>(std::round(run_inference(state_tensor) * 1000));
   return result;
 }
 
@@ -140,14 +150,15 @@ float GraphNN<StateRepr>::run_inference(const GraphTensor &tensor) {
   // Construct edge_attr tensor: shape [num_edges, 1]
   std::array<int64_t, 2> edge_attr_shape{static_cast<int64_t>(num_edges), 1};
   Ort::Value edge_attr_tensor = Ort::Value::CreateTensor<int64_t>(
-      memory_info, const_cast<int64_t *>(tensor.edge_attrs.data()), tensor.edge_attrs.size(),
-      edge_attr_shape.data(), edge_attr_shape.size());
+      memory_info, const_cast<int64_t *>(tensor.edge_attrs.data()),
+      tensor.edge_attrs.size(), edge_attr_shape.data(), edge_attr_shape.size());
 
   // Construct real_node_ids tensor: shape [num_nodes, 1]
   std::array<int64_t, 2> node_ids_shape{static_cast<int64_t>(num_nodes), 1};
   Ort::Value real_node_ids_tensor = Ort::Value::CreateTensor<uint64_t>(
-      memory_info, const_cast<uint64_t *>(tensor.real_node_ids.data()), tensor.real_node_ids.size(),
-      node_ids_shape.data(), node_ids_shape.size());
+      memory_info, const_cast<uint64_t *>(tensor.real_node_ids.data()),
+      tensor.real_node_ids.size(), node_ids_shape.data(),
+      node_ids_shape.size());
 
   // Prepare input tensors
   std::vector<Ort::Value> input_tensors;
@@ -156,16 +167,17 @@ float GraphNN<StateRepr>::run_inference(const GraphTensor &tensor) {
   input_tensors.emplace_back(std::move(real_node_ids_tensor));
 
   // Convert input/output names to const char* arrays
-  std::vector<const char*> input_names_cstr;
-  for (const auto& name : m_input_names) input_names_cstr.push_back(name.c_str());
-  std::vector<const char*> output_names_cstr;
-  for (const auto& name : m_output_names) output_names_cstr.push_back(name.c_str());
+  std::vector<const char *> input_names_cstr;
+  for (const auto &name : m_input_names)
+    input_names_cstr.push_back(name.c_str());
+  std::vector<const char *> output_names_cstr;
+  for (const auto &name : m_output_names)
+    output_names_cstr.push_back(name.c_str());
 
   // Run the model
-  auto output_tensors = session.Run(Ort::RunOptions{nullptr},
-                                    input_names_cstr.data(), input_tensors.data(),
-                                    input_tensors.size(),
-                                    output_names_cstr.data(), output_names_cstr.size());
+  auto output_tensors = session.Run(
+      Ort::RunOptions{nullptr}, input_names_cstr.data(), input_tensors.data(),
+      input_tensors.size(), output_names_cstr.data(), output_names_cstr.size());
 
   // Get the result (assuming scalar output)
   float *output_data = output_tensors[0].GetTensorMutableData<float>();
@@ -417,7 +429,8 @@ bool GraphNN<StateRepr>::write_and_compare_tensor_to_dot(
 
     int64_t attr = edge_attrs[e];
 
-    ofs << "  " << src << " -> " << dst << " [label=\"" << std::to_string(attr) << "\"]" << ";\n";
+    ofs << "  " << src << " -> " << dst << " [label=\"" << std::to_string(attr)
+        << "\"]" << ";\n";
   }
 
   ofs << "}\n";

@@ -142,7 +142,7 @@ public:
              ///< better)
     GNNTensorTranslationError = 894, ///< Error indicating that the translation
                                      ///< from state to Tensor did not work
-      GNNModelLoadError = 895, ///< Error loading the GNN model.
+    GNNModelLoadError = 895,         ///< Error loading the GNN model.
 
     // --- State/Action Related (900-919) ---
     StateActionNotExecutableError =
@@ -176,6 +176,5 @@ public:
               << " (Mostly useful for development)\n"
               << std::endl;
     std::exit(static_cast<int>(code));
-
   }
 };

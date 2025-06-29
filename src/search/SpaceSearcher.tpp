@@ -436,10 +436,11 @@ void SpaceSearcher<StateRepr, Strategy>::print_dot_for_execute_plan(
 
   if (last) {
     std::string script_cmd = "./scripts/dot_to_png.sh " + dot_files_folder;
-      if (std::system(script_cmd.c_str()) != 0) {
-          auto &os = ArgumentParser::get_instance().get_output_stream();
-          os << "[WARNING] dot to png conversion failed for folder: " << dot_files_folder << std::endl;
-      }
+    if (std::system(script_cmd.c_str()) != 0) {
+      auto &os = ArgumentParser::get_instance().get_output_stream();
+      os << "[WARNING] dot to png conversion failed for folder: "
+         << dot_files_folder << std::endl;
+    }
   }
 }
 
