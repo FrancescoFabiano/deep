@@ -30,9 +30,8 @@ struct GraphTensor {
   std::vector<int64_t>
       edge_attrs; ///< [num_edges, 1] Edge attributes or labels,
   ///< aligned with edge_ids.
-  std::vector<uint64_t>
-      real_node_ids; ///< [num_nodes, 1] Mapping from symbolic node
-                     ///< IDs to real/hashed node IDs.
+  std::vector<uint64_t> real_node_ids; ///< [num_nodes, 1] Mapping from symbolic
+                                       ///< node IDs to real/hashed node IDs.
 };
 
 /**
