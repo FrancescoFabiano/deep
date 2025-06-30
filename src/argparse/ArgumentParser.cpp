@@ -215,9 +215,9 @@ ArgumentParser::ArgumentParser() : app("deep") {
       ->add_option("--GNN_model", m_GNN_model_path,
                    "Specify the path of the model used by the heuristics "
                    "'GNN'. The default model is the one located in "
-                   "'lib/RL/models/GNN_model_default.pt'. Only used if "
+                   "'lib/RL/models/distance_estimator.onnx'. Only used if "
                    "--search HFS with GNN heuristics is selected.")
-      ->default_val("lib/RL/models/GNN_model_default.pt");
+      ->default_val("lib/RL/models/distance_estimator.onnx");
   /*search_group->add_option("--search_threads", m_threads_per_search,
                             "Set the number of threads to use for each search
      strategy (default: 1). If set > 1, each search strategy (e.g., BFS/DFS/HFS)

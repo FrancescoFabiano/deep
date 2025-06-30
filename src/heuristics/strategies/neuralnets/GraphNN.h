@@ -205,7 +205,7 @@ private:
    *
    * \param tensor Reference to the GraphTensor to be populated.
    */
-  void fill_graph_tensor(GraphTensor &tensor);
+  void fill_graph_tensor(GraphTensor &tensor) const;
 
   /**
    * \brief Converts the goal graph into the info that will then be added to a
@@ -235,7 +235,7 @@ private:
    * \param tensor The GraphTensor containing the graph data for inference.
    * \return The output score from the GNN model as a float.
    */
-  float run_inference(const GraphTensor &tensor);
+  float run_inference(const GraphTensor &tensor) const;
 
   /**
    * \brief Returns the symbolic ID for a node, assigning a new one if it does

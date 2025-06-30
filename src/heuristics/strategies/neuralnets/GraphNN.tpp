@@ -116,49 +116,51 @@ GraphNN<StateRepr>::get_score(const State<StateRepr> &state) {
   }
 #endif
 
-  const short result =
+  const auto result =
       static_cast<short>(std::round(run_inference(state_tensor) * 1000));
   return result;
 }
 
 template <StateRepresentation StateRepr>
-float GraphNN<StateRepr>::run_inference(const GraphTensor &tensor) {
+float GraphNN<StateRepr>::run_inference(const GraphTensor &tensor) const
+{
   if (!m_model_loaded) {
     ExitHandler::exit_with_message(ExitHandler::ExitCode::GNNInstanceError,
                                    "[ONNX] Model not loaded before inference.");
   }
 
   auto &session = *m_session;
-  auto &memory_info = *m_memory_info;
+  const auto &memory_info = *m_memory_info;
 
   const size_t num_edges = tensor.edge_src.size();
   const size_t num_nodes = tensor.real_node_ids.size();
 
   // Construct edge_index tensor: shape [2, num_edges]
-  std::vector<int64_t> edge_index_data;
+  std::vector<float> edge_index_data;
   edge_index_data.reserve(2 * num_edges);
   for (size_t i = 0; i < num_edges; ++i) {
     edge_index_data.push_back(tensor.edge_src[i]);
     edge_index_data.push_back(tensor.edge_dst[i]);
   }
 
-  std::array<int64_t, 2> edge_index_shape{2, static_cast<int64_t>(num_edges)};
-  Ort::Value edge_index_tensor = Ort::Value::CreateTensor<int64_t>(
+  const std::array<int64_t, 2> edge_index_shape{2, static_cast<int64_t>(num_edges)};
+  Ort::Value edge_index_tensor = Ort::Value::CreateTensor<float>(
       memory_info, edge_index_data.data(), edge_index_data.size(),
       edge_index_shape.data(), edge_index_shape.size());
 
   // Construct edge_attr tensor: shape [num_edges, 1]
-  std::array<int64_t, 2> edge_attr_shape{static_cast<int64_t>(num_edges), 1};
-  Ort::Value edge_attr_tensor = Ort::Value::CreateTensor<int64_t>(
-      memory_info, const_cast<int64_t *>(tensor.edge_attrs.data()),
-      tensor.edge_attrs.size(), edge_attr_shape.data(), edge_attr_shape.size());
+  std::vector<float> edge_attrs_float(tensor.edge_attrs.begin(), tensor.edge_attrs.end());
+  const std::array<int64_t, 2> edge_attr_shape{static_cast<int64_t>(num_edges), 1};
+  Ort::Value edge_attr_tensor = Ort::Value::CreateTensor<float>(
+      memory_info, edge_attrs_float.data(), edge_attrs_float.size(),
+      edge_attr_shape.data(), edge_attr_shape.size());
 
   // Construct real_node_ids tensor: shape [num_nodes, 1]
-  std::array<int64_t, 2> node_ids_shape{static_cast<int64_t>(num_nodes), 1};
-  Ort::Value real_node_ids_tensor = Ort::Value::CreateTensor<uint64_t>(
-      memory_info, const_cast<uint64_t *>(tensor.real_node_ids.data()),
-      tensor.real_node_ids.size(), node_ids_shape.data(),
-      node_ids_shape.size());
+  std::vector<float> real_node_ids_float(tensor.real_node_ids.begin(), tensor.real_node_ids.end());
+  const std::array<int64_t, 2> node_ids_shape{static_cast<int64_t>(num_nodes), 1};
+  Ort::Value real_node_ids_tensor = Ort::Value::CreateTensor<float>(
+      memory_info, real_node_ids_float.data(), real_node_ids_float.size(),
+      node_ids_shape.data(), node_ids_shape.size());
 
   // Prepare input tensors
   std::vector<Ort::Value> input_tensors;
@@ -180,7 +182,7 @@ float GraphNN<StateRepr>::run_inference(const GraphTensor &tensor) {
       input_tensors.size(), output_names_cstr.data(), output_names_cstr.size());
 
   // Get the result (assuming scalar output)
-  float *output_data = output_tensors[0].GetTensorMutableData<float>();
+  auto *output_data = output_tensors[0].GetTensorMutableData<float>();
   const float score = output_data[0];
 
   return score;
@@ -323,7 +325,7 @@ GraphNN<StateRepr>::state_to_tensor_minimal(const KripkeState &kstate) {
     const size_t src = from_pw.get_id();
 
     for (const auto &[agent, to_set] : from_map) {
-      const int64_t label = static_cast<int64_t>(
+      const auto label = static_cast<int64_t>(
           training_dataset.get_unique_a_id_from_map(agent));
 
       for (const auto &to_pw : to_set) {
@@ -351,7 +353,8 @@ GraphNN<StateRepr>::state_to_tensor_minimal(const KripkeState &kstate) {
 }
 
 template <StateRepresentation StateRepr>
-void GraphNN<StateRepr>::fill_graph_tensor(GraphTensor &tensor) {
+void GraphNN<StateRepr>::fill_graph_tensor(GraphTensor &tensor) const
+{
   tensor.edge_src = m_edge_src;
   tensor.edge_dst = m_edge_dst;
   tensor.edge_attrs = m_edge_labels;
@@ -377,8 +380,8 @@ bool GraphNN<StateRepr>::check_tensor_against_dot(
   bool ret =
       write_and_compare_tensor_to_dot(m_checking_file_path, state_tensor);
   if (!ArgumentParser::get_instance().get_dataset_mapped() && ret) {
-    ret = ret && write_and_compare_tensor_to_dot(m_goal_file_path,
-                                                 m_goal_graph_tensor);
+    ret = write_and_compare_tensor_to_dot(m_goal_file_path,
+                                          m_goal_graph_tensor) && ret;
   }
 
   return ret;
@@ -420,7 +423,7 @@ bool GraphNN<StateRepr>::write_and_compare_tensor_to_dot(
   }
 
   // Print edges with optional edge_attrs label
-  for (int64_t e = 0; e < num_edges; ++e) {
+  for (size_t e = 0; e < num_edges; ++e) {
     int64_t src_symbolic = edge_src[e];
     int64_t dst_symbolic = edge_dst[e];
 
@@ -484,7 +487,4 @@ bool GraphNN<StateRepr>::write_and_compare_tensor_to_dot(
 
     ++line_number;
   }
-
-  // Jut To please the compiler
-  exit(static_cast<int>(ExitHandler::ExitCode::ExitForCompiler));
 }
