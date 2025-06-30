@@ -90,8 +90,50 @@ void GraphNN<StateRepr>::initialize_onnx_model() {
   }
 
   if (ArgumentParser::get_instance().get_verbose()) {
-    ArgumentParser::get_instance().get_output_stream()
+    auto & os = ArgumentParser::get_instance().get_output_stream()
         << "[ONNX] Model loaded: " << m_model_path << std::endl;
+
+    // Print model input and output details
+    const auto input_names = m_session->GetInputNames();
+    const auto output_names = m_session->GetOutputNames();
+
+    os << "[ONNX] Model Inputs:\n";
+    for (size_t i = 0; i < input_names.size(); ++i) {
+      const auto& name = input_names[i];
+      auto type_info = m_session->GetInputTypeInfo(i);
+      auto tensor_info = type_info.GetTensorTypeAndShapeInfo();
+      const auto element_type = tensor_info.GetElementType();
+      auto shape = tensor_info.GetShape();
+
+      os << "  Name: " << name << "\n";
+      os << "  Type: " << element_type << "\n";
+      os << "  Shape: [";
+      for (size_t j = 0; j < shape.size(); ++j) {
+        os << shape[j];
+        if (j < shape.size() - 1) os << ", ";
+      }
+      os << "]\n";
+    }
+
+    os << "[ONNX] Model Outputs:\n";
+    for (size_t i = 0; i < output_names.size(); ++i) {
+      const auto& name = output_names[i];
+      auto type_info = m_session->GetOutputTypeInfo(i);
+      auto tensor_info = type_info.GetTensorTypeAndShapeInfo();
+      auto element_type = tensor_info.GetElementType();
+      auto shape = tensor_info.GetShape();
+
+      os << "  Name: " << name << "\n";
+      os << "  Type: " << element_type << "\n";
+      os << "  Shape: [";
+      for (size_t j = 0; j < shape.size(); ++j) {
+        os << shape[j];
+        if (j < shape.size() - 1) os << ", ";
+      }
+      os << "]\n";
+    }
+    os << "[ONNX] Model successfully printed." << std::endl;
+
   }
 }
 
