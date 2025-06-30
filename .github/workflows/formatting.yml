@@ -22,7 +22,7 @@ jobs:
 
       - name: Convert code files' line endings to LF
         run: |
-          find . -type f \( -name '*.sh' -o -name '*.cpp' -o -name '*.h' -o -name '*.hpp' -o -name '*.tpp' \) \
+          find . \( -type d -name lib -o -type d -name build \) -prune -o -type f \( -name '*.sh' -o -name '*.cpp' -o -name '*.h' -o -name '*.hpp' -o -name '*.tpp' -o -name '*.py' \) \
             -exec sed -i 's/\r$//' {} +
 
       - name: Convert experiments files' line endings to LF
