@@ -1,0 +1,84 @@
+# Limit LF enforcement to specific directories
+
+# Directories to normalize line endings
+.github/workflows/**   text eol=lf
+exp/**                 text eol=lf
+scripts/**             text eol=lf
+src/**                 text eol=lf
+utils/**               text eol=lf
+
+# Specific files to normalize line endings
+.gitattributes         text eol=lf
+.gitignore             text eol=lf
+.gitmodules            text eol=lf
+build.sh               text eol=lf
+CMakeLists.txt         text eol=lf
+Readme.md              text eol=lf
+README.md              text eol=lf
+
+# === Common binary/model/data files (DO NOT normalize) ===
+
+# Images
+*.png                  binary
+*.jpg                  binary
+*.jpeg                 binary
+*.gif                  binary
+*.svg                  binary
+*.ico                  binary
+
+# Documents
+*.pdf                  binary
+*.doc                  binary
+*.docx                 binary
+*.xls                  binary
+*.xlsx                 binary
+*.ppt                  binary
+*.pptx                 binary
+
+# Audio/video
+*.mp3                  binary
+*.wav                  binary
+*.mp4                  binary
+*.mov                  binary
+*.avi                  binary
+
+# Archives and packages
+*.zip                  binary
+*.tar                  binary
+*.gz                   binary
+*.7z                   binary
+*.rar                  binary
+*.bz2                  binary
+
+# Compiled objects and libraries
+*.o                    binary
+*.obj                  binary
+*.so                   binary
+*.dll                  binary
+*.exe                  binary
+*.lib                  binary
+*.a                    binary
+
+# Machine learning/model formats
+*.onnx                 binary
+*.pb                   binary
+*.tflite               binary
+*.bin                  binary
+*.pt                   binary
+*.pth                  binary
+*.ckpt                 binary
+*.joblib               binary
+*.npy                  binary
+*.npz                  binary
+*.h5                   binary
+
+# Database files
+*.db                   binary
+*.sqlite               binary
+*.mdb                  binary
+
+# Fonts
+*.ttf                  binary
+*.otf                  binary
+*.woff                 binary
+*.woff2                binary
