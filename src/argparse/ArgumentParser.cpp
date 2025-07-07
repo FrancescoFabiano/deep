@@ -114,7 +114,6 @@ void ArgumentParser::parse(int argc, char **argv) {
                           << m_portfolio_threads << " portfolio threads)."
                           << std::endl;
     }
-
   } catch (const CLI::CallForHelp &) {
     print_usage();
     std::exit(static_cast<int>(ExitHandler::ExitCode::SuccessNotPlanningMode));
@@ -206,16 +205,19 @@ ArgumentParser::ArgumentParser() : app("deep") {
       ->add_option(
           "-u,--heuristics", m_heuristic_opt,
           "Specify the heuristic for HFS search: 'SUBGOALS' (default), 'L_PG', "
-          "'S_PG', 'C_PG', or 'GNN'. Only used if --search HFS is selected.")
+          "'S_PG', 'C_PG', or 'GNN'. Only used if --search HFS is selected."
+          "If GNN is enabled, ensure you are using a model compiled with the "
+          "'ENABLE_NEURALNETS' option; otherwise, torch will not be installed "
+          "or linked for efficiency purposes.")
       ->check(CLI::IsMember({"SUBGOALS", "L_PG", "S_PG", "C_PG", "GNN"}))
       ->default_val("SUBGOALS");
   search_group
       ->add_option("--GNN_model", m_GNN_model_path,
                    "Specify the path of the model used by the heuristics "
                    "'GNN'. The default model is the one located in "
-                   "'lib/RL/models/GNN_model_default.pt'. Only used if "
+                   "'lib/RL/models/distance_estimator.onnx'. Only used if "
                    "--search HFS with GNN heuristics is selected.")
-      ->default_val("lib/RL/models/GNN_model_default.pt");
+      ->default_val("lib/RL/models/distance_estimator.onnx");
   /*search_group->add_option("--search_threads", m_threads_per_search,
                             "Set the number of threads to use for each search
      strategy (default: 1). If set > 1, each search strategy (e.g., BFS/DFS/HFS)
@@ -304,6 +306,7 @@ bool ArgumentParser::get_check_visited() const noexcept {
 bool ArgumentParser::get_bisimulation() const noexcept {
   return m_bisimulation;
 }
+
 const std::string &ArgumentParser::get_bisimulation_type() const noexcept {
   return m_bisimulation_type;
 }
@@ -311,18 +314,23 @@ const std::string &ArgumentParser::get_bisimulation_type() const noexcept {
 bool ArgumentParser::get_dataset_mode() const noexcept {
   return m_dataset_mode;
 }
+
 int ArgumentParser::get_dataset_depth() const noexcept {
   return m_dataset_depth;
 }
+
 bool ArgumentParser::get_dataset_mapped() const noexcept {
   return m_dataset_mapped;
 }
+
 bool ArgumentParser::get_dataset_both() const noexcept {
   return m_dataset_both;
 }
+
 bool ArgumentParser::get_dataset_merged() const noexcept {
   return m_dataset_merged;
 }
+
 bool ArgumentParser::get_dataset_merged_both() const noexcept {
   return m_dataset_merged_both;
 }
@@ -340,6 +348,7 @@ const std::string &ArgumentParser::get_search_strategy() const noexcept {
 }
 
 bool ArgumentParser::get_execute_plan() const noexcept { return m_exec_plan; }
+
 const std::string &ArgumentParser::get_plan_file() const noexcept {
   return m_plan_file;
 }
@@ -355,6 +364,7 @@ ArgumentParser::get_execution_actions() noexcept {
 bool ArgumentParser::get_results_info() const noexcept {
   return m_output_results_info;
 }
+
 bool ArgumentParser::get_log_enabled() const noexcept { return m_log_enabled; }
 
 std::ostream &ArgumentParser::get_output_stream() const {
@@ -364,9 +374,11 @@ std::ostream &ArgumentParser::get_output_stream() const {
 int ArgumentParser::get_threads_per_search() const noexcept {
   return m_threads_per_search;
 }
+
 int ArgumentParser::get_portfolio_threads() const noexcept {
   return m_portfolio_threads;
 }
+
 const std::string &ArgumentParser::get_config_file() const noexcept {
   return m_config_file;
 }

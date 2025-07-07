@@ -7,7 +7,6 @@
  * \date May 12, 2025
  */
 
-#include <boost/make_shared.hpp>
 #include <iostream>
 
 #include "Configuration.h"

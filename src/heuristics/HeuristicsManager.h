@@ -11,7 +11,7 @@
 #pragma once
 
 #include "epg/PlanningGraph.h"
-#include "neuralnets/GraphNN.h"
+
 #include "strategies/SatisfiedGoals.h"
 #include "utilities/Define.h"
 

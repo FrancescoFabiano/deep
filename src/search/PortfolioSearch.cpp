@@ -9,6 +9,7 @@
 
 #include "HelperPrint.h"
 #include "argparse/Configuration.h"
+#include "neuralnets/TrainingDataset.h"
 #include "search/SpaceSearcher.h"
 #include "search_strategies/BestFirst.h"
 #include "search_strategies/BreadthFirst.h"

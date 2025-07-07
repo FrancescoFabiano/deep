@@ -209,7 +209,7 @@ private:
   std::string m_heuristic_opt =
       "SUBGOALS"; ///< Heuristic type (SUBGOALS by default).
   std::string m_GNN_model_path =
-      "lib/RL/models/GNN_model_default.pt"; ///< Path to the GNN model for
+      "lib/RL/models/distance_estimator.onnx"; ///< Path to the GNN model for
                                             ///< heuristic evaluation.
   bool m_exec_plan =
       false; ///< Flag to indicate if the plan should be executed.

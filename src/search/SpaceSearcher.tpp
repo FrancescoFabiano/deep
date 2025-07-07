@@ -130,8 +130,9 @@ bool SpaceSearcher<StateRepr, Strategy>::search_sequential(
       if (current.is_executable(action)) {
         State successor = current.compute_successor(action);
 
-        /// DEBUG \todo remove this, only for bisimulation testing
-        /// check_bisimulation_equivalence(successor);
+#ifdef DEBUG
+        check_bisimulation_equivalence(successor);
+#endif
 
         if (Configuration::get_instance().get_bisimulation()) {
           successor.contract_with_bisimulation();
@@ -435,7 +436,11 @@ void SpaceSearcher<StateRepr, Strategy>::print_dot_for_execute_plan(
 
   if (last) {
     std::string script_cmd = "./scripts/dot_to_png.sh " + dot_files_folder;
-    std::system(script_cmd.c_str());
+    if (std::system(script_cmd.c_str()) != 0) {
+      auto &os = ArgumentParser::get_instance().get_output_stream();
+      os << "[WARNING] dot to png conversion failed for folder: "
+         << dot_files_folder << std::endl;
+    }
   }
 }
 

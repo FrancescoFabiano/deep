@@ -136,6 +136,13 @@ public:
     GNNInstanceError = 890, ///< Error in creating GNN training files.
     GNNFileError = 891,     ///< Error in accessing a file.
     GNNScriptError = 892,   ///< Error in running the GNN script file.
+    GNNMappedNotSupportedError =
+        893, ///< Error indicating that we do not support the mapped version
+             ///< with the inference in C++ (it is useless, hashing should be
+             ///< better)
+    GNNTensorTranslationError = 894, ///< Error indicating that the translation
+                                     ///< from state to Tensor did not work
+    GNNModelLoadError = 895,         ///< Error loading the GNN model.
 
     // --- State/Action Related (900-919) ---
     StateActionNotExecutableError =
@@ -164,8 +171,8 @@ public:
    * \param message The message to display before exiting.
    */
   static void exit_with_message(ExitCode code, const std::string_view message) {
-    std::cerr << "\n" << message << std::endl;
-    std::cerr << "\nProcess finished with exit code: " << static_cast<int>(code)
+    std::cerr << "\n[ERROR] " << message << std::endl;
+    std::cerr << "\nError code: " << static_cast<int>(code)
               << " (Mostly useful for development)\n"
               << std::endl;
     std::exit(static_cast<int>(code));

@@ -16,9 +16,11 @@ PlanningGraph::PlanningGraph(const PlanningGraph &pg) { set_pg(pg); }
 
 void PlanningGraph::init(const FormulaeList &goal, const StateLevel &pg_init) {
   // Start timing for planning graph construction
+#ifdef DEBUG
   if (ArgumentParser::get_instance().get_verbose()) {
     m_clocks.start_clock1 = std::chrono::system_clock::now();
   }
+#endif
 
   set_goal(goal);
   m_state_levels.push_back(pg_init);
@@ -34,9 +36,11 @@ void PlanningGraph::init(const FormulaeList &goal, const StateLevel &pg_init) {
   set_sum(0);
 
   // Start timing for initial goal check
+#ifdef DEBUG
   if (ArgumentParser::get_instance().get_verbose()) {
     m_clocks.start_clock2 = std::chrono::system_clock::now();
   }
+#endif
 
   bool not_goal = false;
   for (auto it_fl = m_goal.begin(); it_fl != m_goal.end();) {
@@ -49,6 +53,7 @@ void PlanningGraph::init(const FormulaeList &goal, const StateLevel &pg_init) {
   }
 
   // End timing for initial goal check and reset other timers
+#ifdef DEBUG
   if (ArgumentParser::get_instance().get_verbose()) {
     const auto end_pg_goal_ini = std::chrono::system_clock::now();
     m_clocks.t5 = end_pg_goal_ini - m_clocks.start_clock2;
@@ -57,6 +62,7 @@ void PlanningGraph::init(const FormulaeList &goal, const StateLevel &pg_init) {
     m_clocks.t3 = std::chrono::milliseconds::zero();
     m_clocks.t4 = std::chrono::milliseconds::zero();
   }
+#endif
 
   if (not_goal) {
     pg_build();
@@ -70,6 +76,7 @@ void PlanningGraph::init(const FormulaeList &goal, const StateLevel &pg_init) {
   }
 
   // End timing for planning graph construction
+#ifdef DEBUG
   if (ArgumentParser::get_instance().get_verbose()) {
     auto &os = ArgumentParser::get_instance().get_output_stream();
     const auto end_pg_build = std::chrono::system_clock::now();
@@ -83,6 +90,7 @@ void PlanningGraph::init(const FormulaeList &goal, const StateLevel &pg_init) {
     os << "\nActions Execution:     " << m_clocks.t4.count();
     os << "\n\nGoals Check:           " << m_clocks.t3.count() << std::endl;
   }
+#endif
 }
 
 void PlanningGraph::set_satisfiable(const bool sat) { m_satisfiable = sat; }
@@ -95,9 +103,11 @@ void PlanningGraph::pg_build() {
   a_level_curr.set_depth(get_length());
 
   // Start timing for action level creation
+#ifdef DEBUG
   if (ArgumentParser::get_instance().get_verbose()) {
     m_clocks.start_clock1 = std::chrono::system_clock::now();
   }
+#endif
 
   if (!m_action_levels.empty()) {
     a_level_curr = m_action_levels.back();
@@ -114,9 +124,11 @@ void PlanningGraph::pg_build() {
   }
 
   // End timing for action level creation
+#ifdef DEBUG
   if (ArgumentParser::get_instance().get_verbose()) {
     m_clocks.t1 += std::chrono::system_clock::now() - m_clocks.start_clock1;
   }
+#endif
 
   add_action_level(a_level_curr);
   set_length(get_length() + 1);
@@ -126,13 +138,11 @@ void PlanningGraph::pg_build() {
   s_level_next.set_depth(get_length());
   bool new_state_insertion = false;
 
+#ifdef DEBUG
   // Start timing for state level creation
   if (ArgumentParser::get_instance().get_verbose()) {
     m_clocks.start_clock1 = std::chrono::system_clock::now();
-  }
 
-  // Print debug info for planning graph length and timings
-  if (ArgumentParser::get_instance().get_verbose()) {
     auto &os = ArgumentParser::get_instance().get_output_stream();
     os << "\n\nPlaning Graph Length: " << get_length();
     if (get_length() > 0) {
@@ -141,12 +151,15 @@ void PlanningGraph::pg_build() {
       os << "\nActions execution:     " << m_clocks.t4.count();
     }
   }
+#endif
 
   for (const auto &action : a_level_curr.get_actions()) {
     // Start timing for action execution
+#ifdef DEBUG
     if (ArgumentParser::get_instance().get_verbose()) {
       m_clocks.start_clock2 = std::chrono::system_clock::now();
     }
+#endif
 
     if (s_level_next.compute_successor(action, s_level_curr,
                                        m_belief_formula_false)) {
@@ -154,9 +167,11 @@ void PlanningGraph::pg_build() {
     }
 
     // End timing for action execution
+#ifdef DEBUG
     if (ArgumentParser::get_instance().get_verbose()) {
       m_clocks.t4 += std::chrono::system_clock::now() - m_clocks.start_clock2;
     }
+#endif
   }
 
   // End timing for state level creation
@@ -169,9 +184,11 @@ void PlanningGraph::pg_build() {
   bool not_goal = false;
 
   // Start timing for goal check
+#ifdef DEBUG
   if (ArgumentParser::get_instance().get_verbose()) {
     m_clocks.start_clock1 = std::chrono::system_clock::now();
   }
+#endif
 
   // Remove each subgoal already satisfied: it will always be. We just need to
   // check it once
@@ -186,20 +203,25 @@ void PlanningGraph::pg_build() {
   }
 
   // End timing for goal check
+#ifdef DEBUG
   if (ArgumentParser::get_instance().get_verbose()) {
     m_clocks.t3 += std::chrono::system_clock::now() - m_clocks.start_clock1;
   }
+#endif
 
   if (!not_goal) {
     set_satisfiable(true);
     return;
   } else if (!new_state_insertion) {
     set_satisfiable(false);
+#ifdef DEBUG
     if (ArgumentParser::get_instance().get_verbose()) {
       if (get_length() > 5) {
         print();
       }
     }
+#endif
+
     return;
   } else {
     pg_build();

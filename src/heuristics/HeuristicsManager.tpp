@@ -2,15 +2,16 @@
 #include "HeuristicsManager.h"
 #include <ranges>
 
+#ifdef USE_NEURALNETS
+#include "neuralnets/GraphNN.h"
+#endif
+
 template <StateRepresentation StateRepr>
 HeuristicsManager<StateRepr>::HeuristicsManager(
     const State<StateRepr> &initial_state) {
   set_used_h(Configuration::get_instance().get_heuristic_opt());
   m_goals = Domain::get_instance().get_goal_description();
   switch (m_used_heuristics) {
-  case Heuristics::GNN:
-    GraphNN<StateRepr>::create_instance();
-    break;
   case Heuristics::L_PG:
   case Heuristics::S_PG:
     expand_goals();
@@ -42,6 +43,17 @@ HeuristicsManager<StateRepr>::HeuristicsManager(
     expand_goals();
     SatisfiedGoals::get_instance().set(m_goals);
     break;
+  case Heuristics::GNN:
+#ifdef USE_NEURALNETS
+    GraphNN<StateRepr>::create_instance();
+    break;
+#else
+    ExitHandler::exit_with_message(
+        ExitHandler::ExitCode::HeuristicsBadDeclaration,
+        "GNN heuristics selected, but neural network support (torch) is not "
+        "enabled or linked. Please recompile with the nn option.");
+    break;
+#endif
   default:
     ExitHandler::exit_with_message(
         ExitHandler::ExitCode::HeuristicsBadDeclaration,
@@ -93,9 +105,17 @@ void HeuristicsManager<StateRepr>::set_heuristic_value(
     break;
   }
   case Heuristics::GNN: {
+#ifdef USE_NEURALNETS
     eState.set_heuristic_value(
         GraphNN<StateRepr>::get_instance().get_score(eState));
     break;
+#else
+    ExitHandler::exit_with_message(
+        ExitHandler::ExitCode::HeuristicsBadDeclaration,
+        "GNN heuristics selected, but neural network support (torch) is not "
+        "enabled or linked. Please recompile with the nn option.");
+    break;
+#endif
   }
   default: {
     ExitHandler::exit_with_message(

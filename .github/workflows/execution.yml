@@ -1,0 +1,35 @@
+name: Execution Check
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Set running permissions for scripts
+        run: |
+          chmod +x ./build.sh
+          chmod +x ./utils/push_check/scripts/*.sh
+          chmod +x ./utils/onnx_test/run_test.sh
+
+      - name: Install dependencies and compile (RELEASE, with onnx, no cuda)
+        run: |
+          sudo ./build.sh install_all nn no_onnx_test
+
+      - name: Run minimal onnx check script
+        run: |
+          ./utils/onnx_test/run_test.sh
+
+      - name: Run minimal execution and planning check script
+        run: |
+          ./utils/push_check/scripts/overall_test.sh cmake-build-nn/bin/deep

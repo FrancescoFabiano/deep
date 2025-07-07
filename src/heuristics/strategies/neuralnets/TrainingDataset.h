@@ -33,24 +33,14 @@ inline std::uniform_real_distribution<> m_dis(0.0, 1.0);
  */
 template <StateRepresentation StateRepr> class TrainingDataset {
 public:
-  inline static const std::string m_to_goal_edge_id =
-      "0"; ///< Edge ID for goal connection in merged graph
-  inline static const std::string m_to_state_edge_id =
-      "1"; ///< Edge ID for state connection in merged graph
-  inline static const std::string m_epsilon_node_id = "-1";
-  ///< ID of the node that connects the two sub-graphs (goal and state) in the
-  ///< merged graph
-  inline static const std::string m_goal_parent_id = "-2";
-  ///< ID of the node that is the initial parent of the goal graph
-
   /**
-   * \brief Get the singleton instance of GraphNN.
+   * \brief Get the singleton instance of TrainingDataset.
    * \return Reference to the singleton instance.
    */
   static TrainingDataset &get_instance();
 
   /**
-   * \brief Create the singleton instance of GraphNN.
+   * \brief Create the singleton instance of TrainingDataset.
    */
   static void create_instance();
 
@@ -66,21 +56,37 @@ public:
    */
   const std::string &get_folder() const;
 
-  /// \brief Gets the to-goal edge ID.
+  /// \brief Gets the to-goal edge ID as string.
   /// \return The to-goal edge ID.
-  static constexpr const std::string &get_to_goal_edge_id();
+  static constexpr const std::string &get_to_goal_edge_id_string();
 
-  /// \brief Gets the to-state edge ID.
+  /// \brief Gets the to-state edge ID as string.
   /// \return The to-state edge ID.
-  static constexpr const std::string &get_to_state_edge_id();
+  static constexpr const std::string &get_to_state_edge_id_string();
 
-  /// \brief Gets the epsilon node ID.
+  /// \brief Gets the epsilon node ID as string.
   /// \return The epsilon node ID.
-  static constexpr const std::string &get_epsilon_node_id();
+  static constexpr const std::string &get_epsilon_node_id_string();
 
-  /// \brief Gets the goal parent ID.
+  /// \brief Gets the goal parent ID as string.
   /// \return The goal parent ID.
-  static constexpr const std::string &get_goal_parent_id();
+  static constexpr const std::string &get_goal_parent_id_string();
+
+  /// \brief Gets the to-goal edge ID as int.
+  /// \return The to-goal edge ID.
+  static constexpr int get_to_goal_edge_id_int();
+
+  /// \brief Gets the to-state edge ID as int.
+  /// \return The to-state edge ID.
+  static constexpr int get_to_state_edge_id_int();
+
+  /// \brief Gets the epsilon node ID as int.
+  /// \return The epsilon node ID.
+  static constexpr int get_epsilon_node_id_int();
+
+  /// \brief Gets the goal parent ID as int.
+  /// \return The goal parent ID.
+  static constexpr int get_goal_parent_id_int();
 
   /// \brief Gets the shift state IDs.
   /// \return The shift state IDs.
@@ -125,8 +131,9 @@ private:
   static TrainingDataset *instance; ///< Singleton instance pointer
 
   // --- Dataset and file management ---
-  std::string m_folder; ///< Folder for datasets (contains raw files of states,
-                        ///< csv with all the info and goal file)
+  std::string m_folder;
+  ///< Folder for datasets (contains raw files of states,
+  ///< csv with all the info and goal file)
   std::string m_training_raw_files_folder; ///< Raw data folder
   std::string m_filepath_csv;              ///< Current dataset csv file path
   std::string m_goal_file_path;            ///< Goal file path
@@ -138,13 +145,10 @@ private:
       m_fluent_to_id; ///< Mapping from fluent to unique ID
   std::unordered_map<Agent, size_t>
       m_agent_to_id; ///< Mapping from agent to unique ID
-  int m_shift_state_ids = 0;
-  ///< Used to shift the ids of the state (especially when mapped) so that there
-  ///< is no overlap between the goal and the state (only the agents ID are
-  ///< preserved ank kept the same)
-  std::string m_goal_string; ///< String representation of the goal tree for
-                             ///< efficient printing
-  int m_failed_state = -1;   ///< Value for the failed exploration
+  std::string m_goal_string;
+  ///< String representation of the goal tree for
+  ///< efficient printing
+  int m_failed_state = 1000000; ///< Value for the failed exploration
 
   // --- Node and search statistics ---
   size_t m_current_nodes = 0;                 ///< Current number of nodes
@@ -163,6 +167,29 @@ private:
   ///< Set of visited states \warning cannot use unordered set because I am
   ///< missing a clear way of hashing the state
   std::map<State<StateRepr>, int> m_states_scores; ///< State scores
+
+  /// \brief Integer edge ID for goal connection in merged graph.
+  static constexpr int m_to_goal_edge_id_int = 2;
+  /// \brief String edge ID for goal connection in merged graph.
+  inline static const std::string m_to_goal_edge_id = "2";
+  /// \brief Integer edge ID for state connection in merged graph.
+  static constexpr int m_to_state_edge_id_int = 3;
+  /// \brief String edge ID for state connection in merged graph.
+  inline static const std::string m_to_state_edge_id = "3";
+  /// \brief Integer node ID that connects the two sub-graphs (goal and state)
+  /// in the merged graph.
+  static constexpr int m_epsilon_node_id_int = 0;
+  /// \brief String node ID that connects the two sub-graphs (goal and state) in
+  /// the merged graph.
+  inline static const std::string m_epsilon_node_id = "0";
+  /// \brief Integer node ID that is the initial parent of the goal graph.
+  static constexpr int m_goal_parent_id_int = 1;
+  /// \brief String node ID that is the initial parent of the goal graph.
+  inline static const std::string m_goal_parent_id = "1";
+  int m_shift_state_ids = 0;
+  ///< Used to shift the ids of the state (especially when mapped) so that there
+  ///< is no overlap between the goal and the state (only the agents ID are
+  ///< preserved ank kept the same)
 
   // --- Internal utility functions ---
   /**
@@ -294,7 +321,7 @@ private:
    * contains both the goal and the state. \return Formatted name.
    */
   std::string format_name(const std::string &base_filename,
-                          const std::string &type, const bool merged) const;
+                          const std::string &type, bool merged) const;
 };
 
 #include "TrainingDataset.tpp"
