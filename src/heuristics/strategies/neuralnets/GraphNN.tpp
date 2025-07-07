@@ -90,8 +90,8 @@ void GraphNN<StateRepr>::initialize_onnx_model() {
   }
 
   if (ArgumentParser::get_instance().get_verbose()) {
-    auto & os = ArgumentParser::get_instance().get_output_stream()
-        << "[ONNX] Model loaded: " << m_model_path << std::endl;
+    auto &os = ArgumentParser::get_instance().get_output_stream()
+               << "[ONNX] Model loaded: " << m_model_path << std::endl;
 
     // Print model input and output details
     const auto input_names = m_session->GetInputNames();
@@ -99,7 +99,7 @@ void GraphNN<StateRepr>::initialize_onnx_model() {
 
     os << "[ONNX] Model Inputs:\n";
     for (size_t i = 0; i < input_names.size(); ++i) {
-      const auto& name = input_names[i];
+      const auto &name = input_names[i];
       auto type_info = m_session->GetInputTypeInfo(i);
       auto tensor_info = type_info.GetTensorTypeAndShapeInfo();
       const auto element_type = tensor_info.GetElementType();
@@ -110,14 +110,15 @@ void GraphNN<StateRepr>::initialize_onnx_model() {
       os << "  Shape: [";
       for (size_t j = 0; j < shape.size(); ++j) {
         os << shape[j];
-        if (j < shape.size() - 1) os << ", ";
+        if (j < shape.size() - 1)
+          os << ", ";
       }
       os << "]\n";
     }
 
     os << "[ONNX] Model Outputs:\n";
     for (size_t i = 0; i < output_names.size(); ++i) {
-      const auto& name = output_names[i];
+      const auto &name = output_names[i];
       auto type_info = m_session->GetOutputTypeInfo(i);
       auto tensor_info = type_info.GetTensorTypeAndShapeInfo();
       auto element_type = tensor_info.GetElementType();
@@ -128,12 +129,12 @@ void GraphNN<StateRepr>::initialize_onnx_model() {
       os << "  Shape: [";
       for (size_t j = 0; j < shape.size(); ++j) {
         os << shape[j];
-        if (j < shape.size() - 1) os << ", ";
+        if (j < shape.size() - 1)
+          os << ", ";
       }
       os << "]\n";
     }
     os << "[ONNX] Model successfully printed." << std::endl;
-
   }
 }
 
@@ -163,14 +164,16 @@ GraphNN<StateRepr>::get_score(const State<StateRepr> &state) {
   return result;
 }
 
-inline void debug_tensor_shape(const Ort::Value &tensor, const std::string &name) {
+inline void debug_tensor_shape(const Ort::Value &tensor,
+                               const std::string &name) {
   const auto type_info = tensor.GetTensorTypeAndShapeInfo();
   const auto shape = type_info.GetShape();
   const auto type = type_info.GetElementType();
   std::cout << "[DEBUG] Tensor: " << name << " Type: " << type << ", Shape: [";
   for (size_t i = 0; i < shape.size(); ++i) {
     std::cout << shape[i];
-    if (i < shape.size() - 1) std::cout << ", ";
+    if (i < shape.size() - 1)
+      std::cout << ", ";
   }
   std::cout << "]" << std::endl;
 }
@@ -193,50 +196,53 @@ float GraphNN<StateRepr>::run_inference(const GraphTensor &tensor) const {
   for (size_t i = 0; i < num_nodes; ++i) {
     state_node_names_data[i] = static_cast<float>(i);
   }
-  const std::array<int64_t, 1> state_node_names_shape{static_cast<int64_t>(state_node_names_data.size())};
+  const std::array<int64_t, 1> state_node_names_shape{
+      static_cast<int64_t>(state_node_names_data.size())};
   Ort::Value state_node_names_tensor = Ort::Value::CreateTensor<float>(
       memory_info, state_node_names_data.data(), state_node_names_data.size(),
       state_node_names_shape.data(), state_node_names_shape.size());
 
-  debug_tensor_shape(state_node_names_tensor,"state_node_names");
+  debug_tensor_shape(state_node_names_tensor, "state_node_names");
 
   // Construct state_edge_index tensor: shape [2, -1]
   std::vector<int64_t> edge_index_data(2 * num_edges, 0);
-  const std::array<int64_t, 2> edge_index_shape{2, static_cast<int64_t>(num_edges)};
+  const std::array<int64_t, 2> edge_index_shape{
+      2, static_cast<int64_t>(num_edges)};
   Ort::Value edge_index_tensor = Ort::Value::CreateTensor<int64_t>(
       memory_info, edge_index_data.data(), edge_index_data.size(),
       edge_index_shape.data(), edge_index_shape.size());
 
-  debug_tensor_shape(edge_index_tensor,"edge_index");
+  debug_tensor_shape(edge_index_tensor, "edge_index");
 
   // Construct state_edge_attr tensor: shape [-1, 1]
   std::vector<float> edge_attrs_data(num_edges, 0);
-  const std::array<int64_t, 2> edge_attr_shape{static_cast<int64_t>(num_edges), 1};
+  const std::array<int64_t, 2> edge_attr_shape{static_cast<int64_t>(num_edges),
+                                               1};
   Ort::Value edge_attr_tensor = Ort::Value::CreateTensor<float>(
       memory_info, edge_attrs_data.data(), edge_attrs_data.size(),
       edge_attr_shape.data(), edge_attr_shape.size());
 
-  debug_tensor_shape(edge_attr_tensor,"edge_attrs");
-
+  debug_tensor_shape(edge_attr_tensor, "edge_attrs");
 
   // Construct state_batch tensor: shape [-1]
   std::vector<int64_t> state_batch_data(num_nodes, 0);
-  const std::array<int64_t, 1> state_batch_shape{static_cast<int64_t>(state_batch_data.size())};
+  const std::array<int64_t, 1> state_batch_shape{
+      static_cast<int64_t>(state_batch_data.size())};
   Ort::Value state_batch_tensor = Ort::Value::CreateTensor<int64_t>(
       memory_info, state_batch_data.data(), state_batch_data.size(),
       state_batch_shape.data(), state_batch_shape.size());
 
-  debug_tensor_shape(state_batch_tensor,"state_batch");
+  debug_tensor_shape(state_batch_tensor, "state_batch");
 
   // Construct depth tensor: shape [-1]
   std::vector<float> depth_data(num_nodes, 0);
-  const std::array<int64_t, 1> depth_shape{static_cast<int64_t>(depth_data.size())};
+  const std::array<int64_t, 1> depth_shape{
+      static_cast<int64_t>(depth_data.size())};
   Ort::Value depth_tensor = Ort::Value::CreateTensor<float>(
-      memory_info, depth_data.data(), depth_data.size(),
-      depth_shape.data(), depth_shape.size());
+      memory_info, depth_data.data(), depth_data.size(), depth_shape.data(),
+      depth_shape.size());
 
-  debug_tensor_shape(depth_tensor,"depth");
-
+  debug_tensor_shape(depth_tensor, "depth");
 
   // Prepare input tensors
   std::vector<Ort::Value> input_tensors;
@@ -288,24 +294,25 @@ float GraphNN<StateRepr>::run_inference(const GraphTensor &tensor) const
     edge_index_data.push_back(tensor.edge_dst[i]);
   }
 
-  const std::array<int64_t, 2> edge_index_shape{2, static_cast<int64_t>(num_edges)};
-  Ort::Value edge_index_tensor = Ort::Value::CreateTensor<float>(
-      memory_info, edge_index_data.data(), edge_index_data.size(),
-      edge_index_shape.data(), edge_index_shape.size());
+  const std::array<int64_t, 2> edge_index_shape{2,
+static_cast<int64_t>(num_edges)}; Ort::Value edge_index_tensor =
+Ort::Value::CreateTensor<float>( memory_info, edge_index_data.data(),
+edge_index_data.size(), edge_index_shape.data(), edge_index_shape.size());
 
   // Construct edge_attr tensor: shape [num_edges, 1]
-  std::vector<float> edge_attrs_float(tensor.edge_attrs.begin(), tensor.edge_attrs.end());
-  const std::array<int64_t, 2> edge_attr_shape{static_cast<int64_t>(num_edges), 1};
-  Ort::Value edge_attr_tensor = Ort::Value::CreateTensor<float>(
-      memory_info, edge_attrs_float.data(), edge_attrs_float.size(),
-      edge_attr_shape.data(), edge_attr_shape.size());
+  std::vector<float> edge_attrs_float(tensor.edge_attrs.begin(),
+tensor.edge_attrs.end()); const std::array<int64_t, 2>
+edge_attr_shape{static_cast<int64_t>(num_edges), 1}; Ort::Value edge_attr_tensor
+= Ort::Value::CreateTensor<float>( memory_info, edge_attrs_float.data(),
+edge_attrs_float.size(), edge_attr_shape.data(), edge_attr_shape.size());
 
   // Construct real_node_ids tensor: shape [num_nodes, 1]
-  std::vector<float> real_node_ids_float(tensor.real_node_ids.begin(), tensor.real_node_ids.end());
-  const std::array<int64_t, 2> node_ids_shape{static_cast<int64_t>(num_nodes), 1};
-  Ort::Value real_node_ids_tensor = Ort::Value::CreateTensor<float>(
-      memory_info, real_node_ids_float.data(), real_node_ids_float.size(),
-      node_ids_shape.data(), node_ids_shape.size());
+  std::vector<float> real_node_ids_float(tensor.real_node_ids.begin(),
+tensor.real_node_ids.end()); const std::array<int64_t, 2>
+node_ids_shape{static_cast<int64_t>(num_nodes), 1}; Ort::Value
+real_node_ids_tensor = Ort::Value::CreateTensor<float>( memory_info,
+real_node_ids_float.data(), real_node_ids_float.size(), node_ids_shape.data(),
+node_ids_shape.size());
 
   // Prepare input tensors
   std::vector<Ort::Value> input_tensors;
@@ -498,8 +505,7 @@ GraphNN<StateRepr>::state_to_tensor_minimal(const KripkeState &kstate) {
 }
 
 template <StateRepresentation StateRepr>
-void GraphNN<StateRepr>::fill_graph_tensor(GraphTensor &tensor) const
-{
+void GraphNN<StateRepr>::fill_graph_tensor(GraphTensor &tensor) const {
   tensor.edge_src = m_edge_src;
   tensor.edge_dst = m_edge_dst;
   tensor.edge_attrs = m_edge_labels;
@@ -526,7 +532,8 @@ bool GraphNN<StateRepr>::check_tensor_against_dot(
       write_and_compare_tensor_to_dot(m_checking_file_path, state_tensor);
   if (!ArgumentParser::get_instance().get_dataset_mapped() && ret) {
     ret = write_and_compare_tensor_to_dot(m_goal_file_path,
-                                          m_goal_graph_tensor) && ret;
+                                          m_goal_graph_tensor) &&
+          ret;
   }
 
   return ret;
