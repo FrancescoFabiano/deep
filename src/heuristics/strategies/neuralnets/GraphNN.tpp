@@ -148,23 +148,35 @@ GraphNN<StateRepr>::get_score(const State<StateRepr> &state) {
     if (!check_tensor_against_dot(state_tensor, state)) {
       ExitHandler::exit_with_message(
           ExitHandler::ExitCode::GNNTensorTranslationError,
-          "[ERROR] Error while comparing the state/goal in " +
-              m_checking_file_path + "/" + m_goal_file_path +
+          "Error while comparing the state/goal in " +
+              m_checking_file_path + " or " + m_goal_file_path +
               ". Its tensor representation generated a different dot file.");
     } else {
       ArgumentParser::get_instance().get_output_stream()
           << "[DEBUG] State and goal represented as dot and as tensor match:)"
           << std::endl;
     }
+
+      call_python_predictor(state,run_inference(state_tensor));
+
   }
 #endif
 
+    if (!ArgumentParser::get_instance().get_dataset_merged()) {
+            ExitHandler::exit_with_message(
+                ExitHandler::ExitCode::GNNMappedNotSupportedError,
+                "We do not support the not merged version with the inference in C++ yet"
+                "(need to implement).");
+
+    }
   const auto result =
       static_cast<short>(std::round(run_inference(state_tensor) * 1000));
+
+
   return result;
 }
 
-inline void debug_tensor_shape(const Ort::Value &tensor,
+/*inline void debug_tensor_shape(const Ort::Value &tensor,
                                const std::string &name) {
   const auto type_info = tensor.GetTensorTypeAndShapeInfo();
   const auto shape = type_info.GetShape();
@@ -178,7 +190,7 @@ inline void debug_tensor_shape(const Ort::Value &tensor,
   std::cout << "]" << std::endl;
 }
 
-/*template <StateRepresentation StateRepr>
+template <StateRepresentation StateRepr>
 float GraphNN<StateRepr>::run_inference(const GraphTensor &tensor) const {
   if (!m_model_loaded) {
     ExitHandler::exit_with_message(ExitHandler::ExitCode::GNNInstanceError,
@@ -339,11 +351,99 @@ float GraphNN<StateRepr>::run_inference(const GraphTensor &tensor) const {
   const auto *output_data = output_tensors[0].GetTensorMutableData<float>();
   const float score = output_data[0];
 
-  std::cout << "[DEBUG] Inference completed successfully with score: " << score
-            << std::endl;
-
   return score;
 }
+
+
+template <StateRepresentation StateRepr>
+void GraphNN<StateRepr>::call_python_predictor(const State<StateRepr>& state, float c_score)
+{
+    constexpr float tolerance = 1e-2f; // Define tolerance here
+
+    std::ofstream ofs(m_checking_file_path);
+    if (!ofs) {
+        ExitHandler::exit_with_message(
+            ExitHandler::ExitCode::GNNFileError,
+            "Failed to open file for NN state checking: " + m_checking_file_path);
+    }
+
+    state.print_dataset_format(
+        ofs,
+        !ArgumentParser::get_instance().get_dataset_mapped(),
+        ArgumentParser::get_instance().get_dataset_merged());
+
+    const std::string output_file = "prediction_results.out";
+    const std::string command = "python3 lib/RL/check.py " + m_checking_file_path +
+                                " lib/RL/models/distance_estimator.pt lib/RL/models/distance_estimator.onnx " +
+                                std::to_string(c_score) + " 0 0 --output_file " + output_file;
+
+    int ret_code = std::system(command.c_str());
+    if (ret_code != 0) {
+        ExitHandler::exit_with_message(
+            ExitHandler::ExitCode::GNNFileError,
+            "Python script failed with exit code " + std::to_string(ret_code));
+    }
+
+    std::ifstream infile(output_file);
+    if (!infile.is_open()) {
+        ExitHandler::exit_with_message(
+            ExitHandler::ExitCode::GNNFileError,
+            "Could not open output file: " + output_file);
+    }
+
+    float pytorch_pred = -1.0f;
+    float onnx_pred = -1.0f;
+
+    std::string line;
+    while (std::getline(infile, line)) {
+        std::istringstream iss(line);
+        std::string label;
+        float value;
+
+        if (line.rfind("PyTorch:", 0) == 0) {
+            if (iss >> label >> value) {
+                pytorch_pred = value;
+            }
+        } else if (line.rfind("ONNX:", 0) == 0) {
+            if (iss >> label >> value) {
+                onnx_pred = value;
+            }
+        }
+    }
+
+    infile.close();
+
+    // Validate all values are set
+    if (pytorch_pred < 0 || onnx_pred < 0) {
+        ExitHandler::exit_with_message(
+            ExitHandler::ExitCode::GNNFileError,
+            "Could not parse prediction values correctly from output file: " + output_file);
+    }
+
+    // Compare the values
+    bool torch_diff = std::abs(c_score - pytorch_pred) > tolerance;
+    bool onnx_diff  = std::abs(c_score - onnx_pred) > tolerance;
+    bool torch_vs_onnx_diff = std::abs(pytorch_pred - onnx_pred) > tolerance;
+
+    if (torch_diff || onnx_diff || torch_vs_onnx_diff) {
+        std::ostringstream oss;
+        oss << "[ERROR] Predictions differ beyond tolerance (" << tolerance << ")\n";
+        oss << "  C++ planner score: " << c_score << "\n";
+        oss << "  PyTorch prediction: " << pytorch_pred << "\n";
+        oss << "  ONNX prediction: " << onnx_pred << "\n";
+        oss << "  |C++ - PyTorch| = " << std::abs(c_score - pytorch_pred) << "\n";
+        oss << "  |C++ - ONNX|    = " << std::abs(c_score - onnx_pred) << "\n";
+        oss << "  |PyTorch - ONNX| = " << std::abs(pytorch_pred - onnx_pred) << "\n";
+
+        ExitHandler::exit_with_message(
+            ExitHandler::ExitCode::GNNFileError,
+            oss.str());
+    }
+
+    std::cout << "[OK] All predictions within tolerance (" << tolerance << ")\n";
+}
+
+
 
 template <StateRepresentation StateRepr>
 [[nodiscard]] short

@@ -139,11 +139,11 @@ target_link_libraries(deep PRIVATE Boost::boost)
 # === Compiler flags ===
 target_compile_options(deep PRIVATE -Wall -Wextra -Wpedantic -ansi -Wfatal-errors -pthread -std=c++20)
 
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+if(CMAKE_BUILD_TYPE MATCHES "^[Dd][Ee][Bb][Uu][Gg]$")
     message(STATUS "Building in Debug mode")
     target_compile_options(deep PRIVATE -g)
     target_compile_definitions(deep PRIVATE DEBUG)
-elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
+elseif(CMAKE_BUILD_TYPE MATCHES "^[Rr][Ee][Ll][Ee][Aa][Ss][Ee]$")
     message(STATUS "Building in Release mode")
     target_compile_options(deep PRIVATE -O3)
 endif()
