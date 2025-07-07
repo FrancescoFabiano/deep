@@ -178,7 +178,7 @@ inline void debug_tensor_shape(const Ort::Value &tensor,
   std::cout << "]" << std::endl;
 }
 
-template <StateRepresentation StateRepr>
+/*template <StateRepresentation StateRepr>
 float GraphNN<StateRepr>::run_inference(const GraphTensor &tensor) const {
   if (!m_model_loaded) {
     ExitHandler::exit_with_message(ExitHandler::ExitCode::GNNInstanceError,
@@ -234,91 +234,12 @@ float GraphNN<StateRepr>::run_inference(const GraphTensor &tensor) const {
 
   debug_tensor_shape(state_batch_tensor, "state_batch");
 
-  // Construct depth tensor: shape [-1]
-  std::vector<float> depth_data(num_nodes, 0);
-  const std::array<int64_t, 1> depth_shape{
-      static_cast<int64_t>(depth_data.size())};
-  Ort::Value depth_tensor = Ort::Value::CreateTensor<float>(
-      memory_info, depth_data.data(), depth_data.size(), depth_shape.data(),
-      depth_shape.size());
-
-  debug_tensor_shape(depth_tensor, "depth");
-
   // Prepare input tensors
   std::vector<Ort::Value> input_tensors;
   input_tensors.emplace_back(std::move(state_node_names_tensor));
   input_tensors.emplace_back(std::move(edge_index_tensor));
   input_tensors.emplace_back(std::move(edge_attr_tensor));
   input_tensors.emplace_back(std::move(state_batch_tensor));
-  input_tensors.emplace_back(std::move(depth_tensor));
-
-  // Convert input/output names to const char* arrays
-  std::vector<const char *> input_names_cstr;
-  for (const auto &name : m_input_names)
-    input_names_cstr.push_back(name.c_str());
-  std::vector<const char *> output_names_cstr;
-  for (const auto &name : m_output_names)
-    output_names_cstr.push_back(name.c_str());
-
-  // Run the model
-  auto output_tensors = session.Run(
-      Ort::RunOptions{nullptr}, input_names_cstr.data(), input_tensors.data(),
-      input_tensors.size(), output_names_cstr.data(), output_names_cstr.size());
-
-  // Get the result (assuming scalar output)
-  const auto *output_data = output_tensors[0].GetTensorMutableData<float>();
-  const float score = output_data[0];
-
-  return score;
-}
-
-/*template <StateRepresentation StateRepr>
-float GraphNN<StateRepr>::run_inference(const GraphTensor &tensor) const
-{
-  if (!m_model_loaded) {
-    ExitHandler::exit_with_message(ExitHandler::ExitCode::GNNInstanceError,
-                                   "[ONNX] Model not loaded before inference.");
-  }
-
-  auto &session = *m_session;
-  const auto &memory_info = *m_memory_info;
-
-  const size_t num_edges = tensor.edge_src.size();
-  const size_t num_nodes = tensor.real_node_ids.size();
-
-  // Construct edge_index tensor: shape [2, num_edges]
-  std::vector<float> edge_index_data;
-  edge_index_data.reserve(2 * num_edges);
-  for (size_t i = 0; i < num_edges; ++i) {
-    edge_index_data.push_back(tensor.edge_src[i]);
-    edge_index_data.push_back(tensor.edge_dst[i]);
-  }
-
-  const std::array<int64_t, 2> edge_index_shape{2,
-static_cast<int64_t>(num_edges)}; Ort::Value edge_index_tensor =
-Ort::Value::CreateTensor<float>( memory_info, edge_index_data.data(),
-edge_index_data.size(), edge_index_shape.data(), edge_index_shape.size());
-
-  // Construct edge_attr tensor: shape [num_edges, 1]
-  std::vector<float> edge_attrs_float(tensor.edge_attrs.begin(),
-tensor.edge_attrs.end()); const std::array<int64_t, 2>
-edge_attr_shape{static_cast<int64_t>(num_edges), 1}; Ort::Value edge_attr_tensor
-= Ort::Value::CreateTensor<float>( memory_info, edge_attrs_float.data(),
-edge_attrs_float.size(), edge_attr_shape.data(), edge_attr_shape.size());
-
-  // Construct real_node_ids tensor: shape [num_nodes, 1]
-  std::vector<float> real_node_ids_float(tensor.real_node_ids.begin(),
-tensor.real_node_ids.end()); const std::array<int64_t, 2>
-node_ids_shape{static_cast<int64_t>(num_nodes), 1}; Ort::Value
-real_node_ids_tensor = Ort::Value::CreateTensor<float>( memory_info,
-real_node_ids_float.data(), real_node_ids_float.size(), node_ids_shape.data(),
-node_ids_shape.size());
-
-  // Prepare input tensors
-  std::vector<Ort::Value> input_tensors;
-  input_tensors.emplace_back(std::move(edge_index_tensor));
-  input_tensors.emplace_back(std::move(edge_attr_tensor));
-  input_tensors.emplace_back(std::move(real_node_ids_tensor));
 
   // Convert input/output names to const char* arrays
   std::vector<const char *> input_names_cstr;
@@ -339,6 +260,88 @@ node_ids_shape.size());
 
   return score;
 }*/
+
+template <StateRepresentation StateRepr>
+float GraphNN<StateRepr>::run_inference(const GraphTensor &tensor) const
+{
+  if (!m_model_loaded) {
+    ExitHandler::exit_with_message(ExitHandler::ExitCode::GNNInstanceError,
+                                   "[ONNX] Model not loaded before inference.");
+  }
+
+  auto &session = *m_session;
+  const auto &memory_info = *m_memory_info;
+
+  const size_t num_edges = tensor.edge_src.size();
+  const size_t num_nodes = tensor.real_node_ids.size();
+
+
+  // Construct real_node_ids tensor: shape [num_nodes, 1]
+  std::vector<float> real_node_ids_float(tensor.real_node_ids.begin(), tensor.real_node_ids.end());
+  const std::array<int64_t, 1> node_ids_shape{static_cast<int64_t>(real_node_ids_float.size())};
+  Ort::Value real_node_ids_tensor = Ort::Value::CreateTensor<float>(
+      memory_info, real_node_ids_float.data(), real_node_ids_float.size(),
+      node_ids_shape.data(), node_ids_shape.size());
+
+
+
+  // Construct edge_index tensor: shape [2, num_edges]
+  std::vector<int64_t> edge_index_data(2 * num_edges);
+  for (size_t i = 0; i < num_edges; ++i) {
+    edge_index_data[i] = (tensor.edge_src[i]);                // First row: edge_src
+    edge_index_data[num_edges + i] = (tensor.edge_dst[i]);    // Second row: edge_dst
+  }
+
+  const std::array<int64_t, 2> edge_index_shape{2, static_cast<int64_t>(num_edges)};
+  Ort::Value edge_index_tensor = Ort::Value::CreateTensor<int64_t>(
+      memory_info, edge_index_data.data(), edge_index_data.size(),
+      edge_index_shape.data(), edge_index_shape.size());
+
+
+  // Construct edge_attr tensor: shape [num_edges, 1]
+  std::vector<float> edge_attrs_float(tensor.edge_attrs.begin(),
+tensor.edge_attrs.end()); const std::array<int64_t, 2>
+edge_attr_shape{static_cast<int64_t>(num_edges), 1}; Ort::Value edge_attr_tensor
+= Ort::Value::CreateTensor<float>( memory_info, edge_attrs_float.data(),
+edge_attrs_float.size(), edge_attr_shape.data(), edge_attr_shape.size());
+
+
+  // Construct state_batch tensor: shape [-1]
+  std::vector<int64_t> state_batch_data(num_nodes, 0);
+  const std::array<int64_t, 1> state_batch_shape{static_cast<int64_t>(state_batch_data.size())};
+  Ort::Value state_batch_tensor = Ort::Value::CreateTensor<int64_t>(
+      memory_info, state_batch_data.data(), state_batch_data.size(),
+      state_batch_shape.data(), state_batch_shape.size());
+
+  // Prepare input tensors
+  // Prepare input tensors
+  std::vector<Ort::Value> input_tensors;
+  input_tensors.emplace_back(std::move(real_node_ids_tensor));
+  input_tensors.emplace_back(std::move(edge_index_tensor));
+  input_tensors.emplace_back(std::move(edge_attr_tensor));
+  input_tensors.emplace_back(std::move(state_batch_tensor));
+
+  // Convert input/output names to const char* arrays
+  std::vector<const char *> input_names_cstr;
+  for (const auto &name : m_input_names)
+    input_names_cstr.push_back(name.c_str());
+  std::vector<const char *> output_names_cstr;
+  for (const auto &name : m_output_names)
+    output_names_cstr.push_back(name.c_str());
+
+  // Run the model
+  auto output_tensors = session.Run(
+      Ort::RunOptions{nullptr}, input_names_cstr.data(), input_tensors.data(),
+      input_tensors.size(), output_names_cstr.data(), output_names_cstr.size());
+
+  // Get the result (assuming scalar output)
+  const auto *output_data = output_tensors[0].GetTensorMutableData<float>();
+  const float score = output_data[0];
+
+  std::cout << "[DEBUG] Inference completed successfully with score: " << score << std::endl;
+
+  return score;
+}
 
 template <StateRepresentation StateRepr>
 [[nodiscard]] short
