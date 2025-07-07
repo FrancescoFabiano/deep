@@ -260,7 +260,7 @@ private:
      * \param state The state to evaluate.
      * \param c_score The score computed by the C++ ONNX model.
      */
-    void call_python_predictor(const State<StateRepr> &state, float c_score);
+    void compare_predictions(const State<StateRepr> &state, float c_score);
 
   /**
    * \brief Returns the symbolic ID for a node, assigning a new one if it does
