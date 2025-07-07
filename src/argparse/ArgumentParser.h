@@ -210,7 +210,7 @@ private:
       "SUBGOALS"; ///< Heuristic type (SUBGOALS by default).
   std::string m_GNN_model_path =
       "lib/RL/models/distance_estimator.onnx"; ///< Path to the GNN model for
-                                            ///< heuristic evaluation.
+                                               ///< heuristic evaluation.
   bool m_exec_plan =
       false; ///< Flag to indicate if the plan should be executed.
   std::vector<std::string>
