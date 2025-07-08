@@ -287,7 +287,7 @@ void GraphNN<StateRepr>::compare_predictions(const State<StateRepr> &state,
 
   const std::string command = shell_script + std::string(" ") +
                               m_checking_file_path + " " +
-                              "lib/RL/models/distance_estimator.pt " +
+                              "lib/RL/models/best.pt " +
                               "lib/RL/models/distance_estimator.onnx ";
 
   int ret_code = std::system(command.c_str());
@@ -343,7 +343,7 @@ void GraphNN<StateRepr>::compare_predictions(const State<StateRepr> &state,
 
   if (torch_diff || onnx_diff || torch_vs_onnx_diff) {
     std::ostringstream oss;
-    oss << "[ERROR] Predictions differ beyond tolerance (" << tolerance
+    oss << "Predictions differ beyond tolerance (" << tolerance
         << ")\n";
     oss << "  C++ planner score: " << c_score << "\n";
     oss << "  PyTorch prediction: " << pytorch_pred << "\n";

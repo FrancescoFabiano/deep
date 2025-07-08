@@ -32,8 +32,8 @@ def main() -> None:
 
     output_lines = []
 
-    output_lines.append(f"PyTorch: {pytorch_pred:.3f}")
-    output_lines.append(f"ONNX: {python_onnx_pred:.3f}")
+    output_lines.append(f"PyTorch: {pytorch_pred:.5f}")
+    output_lines.append(f"ONNX: {python_onnx_pred:.5f}")
 
     output_file = args.output_file
 
