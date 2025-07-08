@@ -29,18 +29,18 @@ def main() -> None:
     model.load_model(pytorch_model_file)
 
     pytorch_pred = model.predict_single(path_state)
-    python_onnx_pred = model.try_onnx(onnx_model_file, state_dot_files=[path_state])
+    python_onnx_pred = model.try_onnx(onnx_model_file, state_dot_files=[path_state])[0]
 
     c_score_perc = c_score * th
 
-    if c_score - c_score_perc < pytorch_pred < c_score_perc + c_score_perc:
-        print(f"[WARNING] Planner output: {c_score}:.3f vs. PyTorch ouput: {pytorch_pred} | Difference: {((pytorch_pred-c_score)/c_score)*100}%")
+    if not(c_score - c_score_perc < pytorch_pred < c_score + c_score_perc):
+        print(f"[WARNING] Planner output: {c_score:.3f} vs. PyTorch ouput: {pytorch_pred:.3f} | Difference: {((pytorch_pred-c_score)/c_score)*100:.2f}%")
 
-    if c_score - c_score_perc < python_onnx_pred < c_score_perc + c_score_perc:
-        print(f"[WARNING] Planner output: {c_score}:.3f vs. Python-ONNX ouput: {python_onnx_pred} | Difference: {((python_onnx_pred-c_score)/c_score)*100}%")
+    if not(c_score - c_score_perc < python_onnx_pred < c_score + c_score_perc):
+        print(f"[WARNING] Planner output: {c_score:.3f} vs. Python-ONNX ouput: {python_onnx_pred:.3f} | Difference: {((python_onnx_pred-c_score)/c_score)*100:.2f}%")
 
     print(f"PyTorch: {pytorch_pred:.3f}")
-    print(f"Python ONNX: {python_onnx_pred}:.3f")
+    print(f"Python ONNX: {python_onnx_pred:.3f}")
 
 if __name__ == "__main__":
     main()
