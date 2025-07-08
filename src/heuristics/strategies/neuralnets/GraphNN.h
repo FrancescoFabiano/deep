@@ -250,6 +250,18 @@ private:
    */
   float run_inference(const GraphTensor &tensor) const;
 
+    /**
+     * \brief Compares the inference results of the C++ ONNX model with those obtained from Python (both ONNX and PyTorch models) for correctness checking.
+     *
+     * This function is used to validate the consistency between the C++ ONNX Runtime inference and the Python-based predictors.
+     * It takes the given state and the C++ computed score, then calls the Python predictor to perform inference using both ONNX and PyTorch models.
+     * The results are compared to ensure correctness and identify any discrepancies between the implementations.
+     *
+     * \param state The state to evaluate.
+     * \param c_score The score computed by the C++ ONNX model.
+     */
+    void compare_predictions(const State<StateRepr> &state, float c_score);
+
   /**
    * \brief Returns the symbolic ID for a node, assigning a new one if it does
    * not exist.
