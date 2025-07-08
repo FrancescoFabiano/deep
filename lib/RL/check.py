@@ -9,8 +9,6 @@ def main() -> None:
     parser.add_argument("path", type=str, help="Path to state DOT graph")
     parser.add_argument("pytorch_model_file", type=str, help="PyTorch Path to GGN model file")
     parser.add_argument("onnx_model_file", type=str, help="ONNX Path to GGN model file")
-    parser.add_argument("use_goal", type=bool, help="Use goal dot as additional feature")
-    parser.add_argument("use_depth", type=bool, help="Use depth as additional feature")
     parser.add_argument("output_file", type=str, help="File to write results to")
     args = parser.parse_args()
 
@@ -23,8 +21,8 @@ def main() -> None:
     pytorch_model_file = args.pytorch_model_file
     onnx_model_file = args.onnx_model_file
 
-    USE_GOAL = args.use_goal
-    USE_DEPTH = args.use_depth
+    USE_GOAL = False
+    USE_DEPTH = False
 
     model = select_model("distance_estimator", USE_GOAL, USE_DEPTH)
     model.load_model(pytorch_model_file)

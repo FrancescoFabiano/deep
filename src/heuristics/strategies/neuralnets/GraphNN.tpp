@@ -288,8 +288,7 @@ void GraphNN<StateRepr>::compare_predictions(const State<StateRepr> &state,
   const std::string command = shell_script + std::string(" ") +
                               m_checking_file_path + " " +
                               "lib/RL/models/distance_estimator.pt " +
-                              "lib/RL/models/distance_estimator.onnx " +
-                              "0 0";
+                              "lib/RL/models/distance_estimator.onnx ";
 
   int ret_code = std::system(command.c_str());
   if (ret_code != 0) {

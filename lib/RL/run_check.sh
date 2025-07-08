@@ -14,8 +14,8 @@ fi
 source "$VENV_PATH"
 
 # Check number of arguments
-if [[ "$#" -ne 5 ]]; then
-  echo "Usage: $0 path_to_dot pt_model onnx_model use_goal use_depth"
+if [[ "$#" -ne 3 ]]; then
+  echo "Usage: $0 path_to_dot pt_model onnx_model"
   exit 1
 fi
 
@@ -23,4 +23,4 @@ fi
 OUTPUT_FILE="prediction_results.out"
 
 # Call the Python script with the fixed output file name
-python3 lib/RL/check.py "$1" "$2" "$3" "$4" "$5" "$OUTPUT_FILE"
+python3 lib/RL/check.py "$1" "$2" "$3" "$OUTPUT_FILE"
