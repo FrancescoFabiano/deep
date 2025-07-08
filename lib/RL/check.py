@@ -9,19 +9,19 @@ def main() -> None:
     parser.add_argument("path", type=str, help="Path to state DOT graph")
     parser.add_argument("pytorch_model_file", type=str, help="PyTorch Path to GGN model file")
     parser.add_argument("onnx_model_file", type=str, help="ONNX Path to GGN model file")
-    parser.add_argument("use_goal", type=bool, help="Use goal dot as additional feature", default=False)
-    parser.add_argument("use_depth", type=bool, help="Use depth as additional feature", default=False)
-    parser.add_argument("output_file", type=str, default="prediction_results.out", help="File to write results to")
-    parser.add_argument("c_score", type=float, help="Score get from real-time planner")
-    parser.add_argument("threshold", type=float, help="Threshold percentage to print warning", default=0.2)
+    parser.add_argument("use_goal", type=bool, help="Use goal dot as additional feature")
+    parser.add_argument("use_depth", type=bool, help="Use depth as additional feature")
+    parser.add_argument("output_file", type=str, help="File to write results to")
     args = parser.parse_args()
+
+    # Write parsed arguments to info.out
+    with open("info.out", "w") as info_file:
+        for arg_name, arg_value in vars(args).items():
+            info_file.write(f"{arg_name}: {arg_value}\n")
 
     path_state = args.path
     pytorch_model_file = args.pytorch_model_file
     onnx_model_file = args.onnx_model_file
-
-    c_score = args.c_score
-    th = args.threshold
 
     USE_GOAL = args.use_goal
     USE_DEPTH = args.use_depth
@@ -32,21 +32,14 @@ def main() -> None:
     pytorch_pred = model.predict_single(path_state)
     python_onnx_pred = model.try_onnx(onnx_model_file, state_dot_files=[path_state])[0]
 
-    c_score_perc = c_score * th
-
     output_lines = []
 
     output_lines.append(f"PyTorch: {pytorch_pred:.3f}")
-    if not(c_score - c_score_perc < pytorch_pred < c_score + c_score_perc):
-        output_lines.append(f"[WARNING] Planner output: {c_score:.3f} vs. PyTorch ouput: {pytorch_pred:.3f} | Difference: {((pytorch_pred-c_score)/c_score)*100:.2f}%")
-
     output_lines.append(f"ONNX: {python_onnx_pred:.3f}")
-    if not(c_score - c_score_perc < python_onnx_pred < c_score + c_score_perc):
-        output_lines.append(f"[WARNING] Planner output: {c_score:.3f} vs. Python-ONNX ouput: {python_onnx_pred:.3f} | Difference: {((python_onnx_pred-c_score)/c_score)*100:.2f}%")
 
     output_file = args.output_file
 
-    # Write to file
+    # Write to prediction output file
     with open(output_file, "w") as f:
         for line in output_lines:
             f.write(line + "\n")
