@@ -12,3 +12,4 @@ pre-commit
 torch-geometric
 pydot
 scikit-learn
+onnxruntime
