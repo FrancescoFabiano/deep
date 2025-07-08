@@ -22,16 +22,23 @@
  * exported to ONNX format.
  */
 struct GraphTensor {
-  std::vector<int64_t> edge_src; ///< [2, num_edges] -- First dimension.
-                                 ///< Symbolic source node ID for each edge.
+  std::vector<int64_t> edge_src;
+  ///< [1, num_edges] -- First dimension.
+  ///< Symbolic source node ID for each edge.
   std::vector<int64_t>
-      edge_dst; ///< [2, num_edges] -- Second dimension. Symbolic destination
+      edge_dst; ///< [1, num_edges] -- Second dimension. Symbolic destination
                 ///< node ID for each edge.
+
+  /// edge_src and edge_dest are used to create edge_index -> list <edge_source,
+  /// edge_target> -> [2, num_edges]
+
   std::vector<int64_t>
-      edge_attrs; ///< [num_edges, 1] Edge attributes or labels,
+      edge_attrs; ///< [1, num_edges] Edge attributes or labels,
+
   ///< aligned with edge_ids.
-  std::vector<uint64_t> real_node_ids; ///< [num_nodes, 1] Mapping from symbolic
-                                       ///< node IDs to real/hashed node IDs.
+  std::vector<uint64_t> real_node_ids;
+  ///< [num_nodes, 1] Mapping from symbolic
+  ///< node IDs to real/hashed node IDs.
 };
 
 /**
@@ -78,10 +85,13 @@ public:
 
   /** \brief Deleted copy constructor (singleton pattern). */
   GraphNN(const GraphNN &) = delete;
+
   /** \brief Deleted copy assignment operator (singleton pattern). */
   GraphNN &operator=(const GraphNN &) = delete;
+
   /** \brief Deleted move constructor (singleton pattern). */
   GraphNN(GraphNN &&) = delete;
+
   /** \brief Deleted move assignment operator (singleton pattern). */
   GraphNN &operator=(GraphNN &&) = delete;
 
@@ -103,25 +113,28 @@ private:
       Configuration::get_instance()
           .get_GNN_model_path(); ///< Path to the GNN model
 
-  GraphTensor
-      m_goal_graph_tensor; ///< This is the goal tensor, computed only once for
-                           ///< efficiency. If merged is active also the
-                           ///< additional structural nodes are added
+  GraphTensor m_goal_graph_tensor;
+  ///< This is the goal tensor, computed only once for
+  ///< efficiency. If merged is active also the
+  ///< additional structural nodes are added
 
-  size_t m_symbolic_id = 0; ///< Current symbolic ID counter (will be
-                            ///< incremented if a new ID is assigned)
+  size_t m_symbolic_id = 0;
+  ///< Current symbolic ID counter (will be
+  ///< incremented if a new ID is assigned)
   std::unordered_map<size_t, size_t>
       m_node_to_symbolic; ///<  Map from real node IDs to symbolic IDs.
-  std::vector<size_t>
-      m_real_node_ids; ///< Vector storing real node IDs in symbolic order.
-                       ///< (Assume that the position is meaningful)
-  std::vector<int64_t> m_edge_src; ///< Source node IDs for each edge. (Assume
-                                   ///< that the position is meaningful)
-  std::vector<int64_t> m_edge_dst; ///< Destination node IDs for each edge.
-                                   ///< (Assume that the position is meaningful)
-  std::vector<int64_t>
-      m_edge_labels; ///< Labels or attributes for each edge. (Assume that the
-                     ///< position is meaningful)
+  std::vector<size_t> m_real_node_ids;
+  ///< Vector storing real node IDs in symbolic order.
+  ///< (Assume that the position is meaningful)
+  std::vector<int64_t> m_edge_src;
+  ///< Source node IDs for each edge. (Assume
+  ///< that the position is meaningful)
+  std::vector<int64_t> m_edge_dst;
+  ///< Destination node IDs for each edge.
+  ///< (Assume that the position is meaningful)
+  std::vector<int64_t> m_edge_labels;
+  ///< Labels or attributes for each edge. (Assume that the
+  ///< position is meaningful)
 
   size_t m_edges_initial_size =
       0; ///< Initial size for the edges vector (to remove the new inserted
