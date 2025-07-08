@@ -587,7 +587,7 @@ int TrainingDataset<StateRepr>::dfs_worker(
         const int child_score =
             dfs_worker(next_state, depth + 1, actions, global_dataset);
 
-        if (child_score >= 0) {
+        if (child_score < m_failed_state) {
           if (!has_successor || child_score < best_successor_score) {
             best_successor_score = child_score;
           }
