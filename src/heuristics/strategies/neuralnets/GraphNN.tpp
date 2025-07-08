@@ -355,7 +355,7 @@ void GraphNN<StateRepr>::compare_predictions(const State<StateRepr> &state,
                                    oss.str());
   }
 
-  std::cout << "[OK] All predictions within tolerance (" << tolerance << ")\n";
+  std::cout << "[DEBUG] All predictions within tolerance (" << tolerance << ")\n";
 }
 
 template <StateRepresentation StateRepr>
