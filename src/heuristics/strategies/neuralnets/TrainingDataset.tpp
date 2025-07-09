@@ -524,7 +524,6 @@ int TrainingDataset<StateRepr>::dfs_worker(
   }
 
   int best_successor_score = m_failed_state;
-  bool has_successor = false;
   const auto max_depth =
       static_cast<size_t>(ArgumentParser::get_instance().get_dataset_depth());
   // Create a local vector from action_set
@@ -587,17 +586,15 @@ int TrainingDataset<StateRepr>::dfs_worker(
         const int child_score =
             dfs_worker(next_state, depth + 1, actions, global_dataset);
 
-        if (child_score < m_failed_state) {
-          if (!has_successor || child_score < best_successor_score) {
+        if (child_score < best_successor_score) {
             best_successor_score = child_score;
           }
-          has_successor = true;
+
         }
-      }
     }
   }
 
-  if (current_score == m_failed_state && has_successor) {
+  if (current_score > (best_successor_score + 1)) {
     current_score = best_successor_score + 1;
   }
 
