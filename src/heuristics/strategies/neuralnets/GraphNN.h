@@ -250,18 +250,21 @@ private:
    */
   float run_inference(const GraphTensor &tensor) const;
 
-
-    /**
- * \brief Runs ONNX Runtime inference on the provided GraphTensor, incorporating the goal graph as seperate input.
- *
- * This method takes a GraphTensor representing the input graph and the GraphTensor representing the goal graph
- * (as needed by the model), prepares the necessary ONNX Runtime tensors, and performs inference using the loaded GNN model.
- * It returns the resulting score or output from the neural network, considering the goal information.
- *
- * \param tensor The GraphTensor containing the graph data for inference.
- * \return The output score from the GNN model as a float, with goal information included.
- */
-    float run_inference_with_goal(const GraphTensor &tensor) const;
+  /**
+   * \brief Runs ONNX Runtime inference on the provided GraphTensor,
+   * incorporating the goal graph as seperate input.
+   *
+   * This method takes a GraphTensor representing the input graph and the
+   * GraphTensor representing the goal graph (as needed by the model), prepares
+   * the necessary ONNX Runtime tensors, and performs inference using the loaded
+   * GNN model. It returns the resulting score or output from the neural
+   * network, considering the goal information.
+   *
+   * \param tensor The GraphTensor containing the graph data for inference.
+   * \return The output score from the GNN model as a float, with goal
+   * information included.
+   */
+  float run_inference_with_goal(const GraphTensor &tensor) const;
 
   /**
    * \brief Compares the inference results of the C++ ONNX model with those

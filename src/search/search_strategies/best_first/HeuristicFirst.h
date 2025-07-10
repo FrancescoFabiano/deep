@@ -39,7 +39,7 @@ public:
         this->m_heuristics_manager.get_heuristic_value(s);
     // This is to exclude the initial state that might cause problems
     if (heuristics_value < 0 && s.get_plan_length() != 0) {
-        return; // Skip states with negative heuristic values.
+      return; // Skip states with negative heuristic values.
     }
     s.set_heuristic_value(heuristics_value); // Set the heuristic value
     this->search_space.push(s);

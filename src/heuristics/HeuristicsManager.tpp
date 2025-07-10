@@ -92,8 +92,8 @@ int HeuristicsManager<StateRepr>::get_heuristic_value(
           h_value += score;
       }
       h_value = static_cast<int>(100 - ((static_cast<float>(h_value) /
-                                           static_cast<float>(m_pg_max_score)) *
-                                          100)); // Invert: 0 is 100%, 100 is 0%
+                                         static_cast<float>(m_pg_max_score)) *
+                                        100)); // Invert: 0 is 100%, 100 is 0%
     }
 
     return h_value;

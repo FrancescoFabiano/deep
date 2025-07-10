@@ -43,9 +43,8 @@ public:
     if (heuristics_value < 0 && plan_length != 0) {
       return; // Skip states with negative heuristic values.
     }
-    s.set_heuristic_value(
-        heuristics_value + plan_length
-        ); // Overwrite heuristic with f = g + h
+    s.set_heuristic_value(heuristics_value +
+                          plan_length); // Overwrite heuristic with f = g + h
     this->search_space.push(s);
   }
 
