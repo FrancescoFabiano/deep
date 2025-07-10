@@ -80,17 +80,17 @@ void ArgumentParser::parse(int argc, char **argv) {
     }
 
     // --- Heuristic consistency check ---
-    if (m_search_strategy != "HFS" && app.count("--heuristics")) {
+    if (m_search_strategy != "HFS" && m_search_strategy != "Astar" && app.count("--heuristics")) {
       ExitHandler::exit_with_message(
           ExitHandler::ExitCode::ArgParseError,
-          "--heuristics can only be used with --search HFS.");
+          "--heuristics can only be used with --search HFS or --search Astar.");
     }
-    if (m_search_strategy == "HFS" && m_heuristic_opt != "GNN" &&
+    if ((m_search_strategy == "HFS" || m_search_strategy == "Astar") && m_heuristic_opt != "GNN" &&
         app.count("--GNN_model")) {
       ExitHandler::exit_with_message(ExitHandler::ExitCode::ArgParseError,
                                      "--GNN_model can only be used with "
-                                     "--search HFS and --heuristics GNN.");
-    }
+                                     "--search HFS or --search Astar and --heuristics GNN.");
+        }
 
     // --- Execution plan checks and action loading ---
     if (m_exec_plan) {
@@ -192,11 +192,12 @@ ArgumentParser::ArgumentParser() : app("deep") {
   // Search group
   auto *search_group = app.add_option_group("Search");
   search_group
-      ->add_option("-s,--search", m_search_strategy,
-                   "Select the search strategy: 'BFS' (Best First Search, "
-                   "default), 'DFS' (Depth First Search), 'IDFS' (Iterative "
-                   "Depth First Search), or 'HFS' (Heuristic First Search).")
-      ->check(CLI::IsMember({"BFS", "DFS", "IDFS", "HFS"}))
+    ->add_option("-s,--search", m_search_strategy,
+                 "Select the search strategy: 'BFS' (Best First Search, "
+                 "default), 'DFS' (Depth First Search), 'IDFS' (Iterative "
+                 "Depth First Search), 'HFS' (Heuristic First Search), or "
+                 "'Astar' (A* Search, uses heuristics with A* method).")
+    ->check(CLI::IsMember({"BFS", "DFS", "IDFS", "HFS", "Astar"}))
       ->default_val("BFS");
   search_group->add_flag("-c,--check_visited", m_check_visited,
                          "Enable checking for previously visited states during "
@@ -204,8 +205,8 @@ ArgumentParser::ArgumentParser() : app("deep") {
   search_group
       ->add_option(
           "-u,--heuristics", m_heuristic_opt,
-          "Specify the heuristic for HFS search: 'SUBGOALS' (default), 'L_PG', "
-          "'S_PG', 'C_PG', or 'GNN'. Only used if --search HFS is selected."
+          "Specify the heuristic for HFS or Astar search: 'SUBGOALS' (default), 'L_PG', "
+          "'S_PG', 'C_PG', or 'GNN'. Only used if HFS or Astar are selected as search method."
           "If GNN is enabled, ensure you are using a model compiled with the "
           "'ENABLE_NEURALNETS' option; otherwise, torch will not be installed "
           "or linked for efficiency purposes.")
@@ -216,7 +217,7 @@ ArgumentParser::ArgumentParser() : app("deep") {
                    "Specify the path of the model used by the heuristics "
                    "'GNN'. The default model is the one located in "
                    "'lib/RL/models/distance_estimator.onnx'. Only used if "
-                   "--search HFS with GNN heuristics is selected.")
+                   "HFS/Astar with GNN heuristics is selected.")
       ->default_val("lib/RL/models/distance_estimator.onnx");
   /*search_group->add_option("--search_threads", m_threads_per_search,
                             "Set the number of threads to use for each search

@@ -97,6 +97,7 @@ enum class SearchType {
   DFS,  ///< Depth first search.
   IDFS, ///< Iterative depth first search.
   HFS,  ///< Heuristic first search.
+    Astar, ///< A* search (heuristic first search with A*).
 };
 
 /// \name Belief Formulae Related

@@ -151,7 +151,10 @@ void Configuration::set_search_strategy_enum() {
     m_search_strategy_enum = SearchType::IDFS;
   } else if (m_search_strategy == "HFS") {
     m_search_strategy_enum = SearchType::HFS;
-  } else {
+  }else if (m_search_strategy == "Astar") {
+    m_search_strategy_enum = SearchType::Astar;
+  }
+  else {
     ExitHandler::exit_with_message(ExitHandler::ExitCode::ArgParseError,
                                    "Invalid search strategy specified: " +
                                        m_search_strategy);

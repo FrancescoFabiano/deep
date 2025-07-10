@@ -11,10 +11,11 @@
 #include "argparse/Configuration.h"
 #include "neuralnets/TrainingDataset.h"
 #include "search/SpaceSearcher.h"
-#include "search_strategies/BestFirst.h"
+#include "search_strategies/best_first/HeuristicFirst.h"
 #include "search_strategies/BreadthFirst.h"
 #include "search_strategies/DepthFirst.h"
 #include "search_strategies/IterativeDepthFirst.h"
+#include "search_strategies/best_first/Astar.h"
 #include "states/State.h"
 #include "states/representations/kripke/KripkeState.h"
 #include "utilities/ExitHandler.h"
@@ -135,8 +136,8 @@ bool PortfolioSearch::run_portfolio_search() const {
       break;
     }
     case SearchType::HFS: {
-      SpaceSearcher<KripkeState, BestFirst<KripkeState>> searcherHFS{
-          BestFirst<KripkeState>(initial_state), found_goal};
+      SpaceSearcher<KripkeState, HeuristicFirst<KripkeState>> searcherHFS{
+          HeuristicFirst<KripkeState>(initial_state), found_goal};
       result = searcherHFS.search(initial_state);
       actions_id = searcherHFS.get_plan_actions_id();
       search_type_name = searcherHFS.get_search_type();
@@ -144,6 +145,16 @@ bool PortfolioSearch::run_portfolio_search() const {
       expanded = searcherHFS.get_expanded_nodes();
       break;
     }
+        case SearchType::Astar: {
+      SpaceSearcher<KripkeState, Astar<KripkeState>> searcherHFS{
+        Astar<KripkeState>(initial_state), found_goal};
+      result = searcherHFS.search(initial_state);
+      actions_id = searcherHFS.get_plan_actions_id();
+      search_type_name = searcherHFS.get_search_type();
+      elapsed = searcherHFS.get_elapsed_seconds();
+      expanded = searcherHFS.get_expanded_nodes();
+      break;
+      }
     default:
       if (ArgumentParser::get_instance().get_verbose()) {
         static std::mutex cout_mutex;
@@ -258,6 +269,6 @@ void PortfolioSearch::set_default_configurations() {
       {{"search", "HFS"}, {"heuristics", "S_PG"}});
   m_search_configurations.push_back(
       {{"search", "HFS"}, {"heuristics", "C_PG"}});
-  m_search_configurations.push_back({{"search", "HFS"}, {"heuristics", "GNN"}});
+  m_search_configurations.push_back({{"search", "Astar"}, {"heuristics", "GNN"}});
   m_search_configurations.push_back({{"search", "IDFS"}});
 }

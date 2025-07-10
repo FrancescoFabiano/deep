@@ -63,18 +63,19 @@ HeuristicsManager<StateRepr>::HeuristicsManager(
   }
 }
 
+
 template <StateRepresentation StateRepr>
-void HeuristicsManager<StateRepr>::set_heuristic_value(
+short HeuristicsManager<StateRepr>::get_heuristic_value(
     State<StateRepr> &eState) {
   switch (m_used_heuristics) {
   case Heuristics::L_PG: {
     const PlanningGraph pg(m_goals, eState);
-    eState.set_heuristic_value(pg.is_satisfiable() ? pg.get_length() : -1);
+    return (pg.is_satisfiable() ? pg.get_length() : -1);
     break;
   }
   case Heuristics::S_PG: {
     const PlanningGraph pg(m_goals, eState);
-    eState.set_heuristic_value(pg.is_satisfiable() ? pg.get_sum() : -1);
+    return (pg.is_satisfiable() ? pg.get_sum() : -1);
     break;
   }
   case Heuristics::C_PG: {
@@ -96,7 +97,7 @@ void HeuristicsManager<StateRepr>::set_heuristic_value(
                                           100)); // Invert: 0 is 100%, 100 is 0%
     }
 
-    eState.set_heuristic_value(h_value);
+    return h_value;
     break;
   }
   case Heuristics::SUBGOALS: {
@@ -106,8 +107,7 @@ void HeuristicsManager<StateRepr>::set_heuristic_value(
   }
   case Heuristics::GNN: {
 #ifdef USE_NEURALNETS
-    eState.set_heuristic_value(
-        GraphNN<StateRepr>::get_instance().get_score(eState));
+    return GraphNN<StateRepr>::get_instance().get_score(eState);
     break;
 #else
     ExitHandler::exit_with_message(
@@ -125,6 +125,12 @@ void HeuristicsManager<StateRepr>::set_heuristic_value(
     break;
   }
   }
+}
+
+template <StateRepresentation StateRepr>
+void HeuristicsManager<StateRepr>::set_heuristic_value(
+    State<StateRepr> &eState) {
+    eState.set_heuristic_value(compute_heuristic_value(eState));
 }
 
 template <StateRepresentation StateRepr>

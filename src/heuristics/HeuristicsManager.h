@@ -27,6 +27,17 @@ public:
    */
   explicit HeuristicsManager(const State<StateRepr> &initial_state);
 
+
+    /**
+     * \brief Computes and returns the heuristic value for a given state.
+     * \param[in,out] eState The state for which the heuristics value is calculated.
+     *
+     * \note If the heuristic value is negative, it indicates that the heuristic
+     * is not applicable or the state does not satisfy the goals and needs to be
+     * discarded.
+     */
+    short get_heuristic_value(State<StateRepr> &eState);
+
   /**
    * \brief Computes and sets the heuristic value for a given state.
    * \param[in,out] eState The state to update with the calculated heuristic

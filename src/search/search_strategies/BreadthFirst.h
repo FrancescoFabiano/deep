@@ -43,7 +43,7 @@ public:
   /**
    * \brief Get the name of the search strategy.
    */
-  std::string get_name() const { return m_name; }
+  [[nodiscard]] std::string get_name() const { return m_name; }
 
   /**
    * \brief Reset the search container.

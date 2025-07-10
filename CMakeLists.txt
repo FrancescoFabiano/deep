@@ -52,7 +52,9 @@ set(TEMPLATIC_HEADERS
     src/search/SpaceSearcher.h
     src/search/search_strategies/BreadthFirst.h
     src/search/search_strategies/DepthFirst.h
-    src/search/search_strategies/BestFirst.h
+    src/search/search_strategies/best_first/BestFirst.h
+    src/search/search_strategies/best_first/HeuristicFirst.h
+    src/search/search_strategies/best_first/Astar.h
     src/states/State.h
     src/utilities/SetHelper.h
 )
