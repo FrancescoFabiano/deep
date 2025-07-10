@@ -587,10 +587,9 @@ int TrainingDataset<StateRepr>::dfs_worker(
             dfs_worker(next_state, depth + 1, actions, global_dataset);
 
         if (child_score < best_successor_score) {
-            best_successor_score = child_score;
-          }
-
+          best_successor_score = child_score;
         }
+      }
     }
   }
 

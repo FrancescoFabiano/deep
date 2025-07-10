@@ -3,7 +3,8 @@
  * \brief Abstract base class for Best First Search strategies.
  *
  * This class provides the core search queue functionality for heuristic-driven
- * search. Derived classes must implement the \ref push and \ref get_name methods.
+ * search. Derived classes must implement the \ref push and \ref get_name
+ * methods.
  *
  * \copyright GNU Public License.
  * \author Francesco Fabiano
@@ -24,12 +25,13 @@
  * \tparam StateRepr The state representation type.
  * \param state1 The first state to compare.
  * \param state2 The second state to compare.
- * \return true if state1 has a higher heuristic value than state2, false otherwise.
+ * \return true if state1 has a higher heuristic value than state2, false
+ * otherwise.
  *
- * \note Lower scores are better. States with higher heuristic values have lower priority.
+ * \note Lower scores are better. States with higher heuristic values have lower
+ * priority.
  */
-template <StateRepresentation StateRepr>
-struct StateComparator {
+template <StateRepresentation StateRepr> struct StateComparator {
   bool operator()(const State<StateRepr> &state1,
                   const State<StateRepr> &state2) const {
     return state1.get_heuristic_value() > state2.get_heuristic_value();
@@ -39,15 +41,16 @@ struct StateComparator {
 /**
  * \brief Abstract base class for Best First Search strategies.
  *
- * \tparam StateRepr The state representation type (must satisfy StateRepresentation).
+ * \tparam StateRepr The state representation type (must satisfy
+ * StateRepresentation).
  */
-template <StateRepresentation StateRepr>
-class BestFirst {
+template <StateRepresentation StateRepr> class BestFirst {
 public:
   /**
    * \brief Constructor.
    *
-   * \param initial_state The initial state used to initialize the heuristics manager.
+   * \param initial_state The initial state used to initialize the heuristics
+   * manager.
    */
   explicit BestFirst(const State<StateRepr> &initial_state)
       : m_heuristics_manager(initial_state) {}
@@ -60,7 +63,8 @@ public:
   /**
    * \brief Pure virtual function to push a state into the search container.
    *
-   * Must be implemented by derived classes to define filtering or priority behavior.
+   * Must be implemented by derived classes to define filtering or priority
+   * behavior.
    *
    * \param s The state to push.
    */
@@ -101,14 +105,17 @@ protected:
   /**
    * \brief Priority queue for managing the search space.
    *
-   * States are ordered based on their heuristic value, with lower values having higher priority.
+   * States are ordered based on their heuristic value, with lower values having
+   * higher priority.
    */
   using StatePriorityQueue =
       std::priority_queue<State<StateRepr>, std::vector<State<StateRepr>>,
                           StateComparator<StateRepr>>;
 
-  StatePriorityQueue search_space; ///< The search space represented as a priority queue of states.
+  StatePriorityQueue search_space; ///< The search space represented as a
+                                   ///< priority queue of states.
 
   HeuristicsManager<StateRepr>
-      m_heuristics_manager; ///< Heuristics manager to compute heuristic values for states.
+      m_heuristics_manager; ///< Heuristics manager to compute heuristic values
+                            ///< for states.
 };

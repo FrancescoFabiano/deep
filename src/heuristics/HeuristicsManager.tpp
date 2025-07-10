@@ -63,7 +63,6 @@ HeuristicsManager<StateRepr>::HeuristicsManager(
   }
 }
 
-
 template <StateRepresentation StateRepr>
 short HeuristicsManager<StateRepr>::get_heuristic_value(
     State<StateRepr> &eState) {
@@ -130,7 +129,7 @@ short HeuristicsManager<StateRepr>::get_heuristic_value(
 template <StateRepresentation StateRepr>
 void HeuristicsManager<StateRepr>::set_heuristic_value(
     State<StateRepr> &eState) {
-    eState.set_heuristic_value(compute_heuristic_value(eState));
+  eState.set_heuristic_value(compute_heuristic_value(eState));
 }
 
 template <StateRepresentation StateRepr>
