@@ -64,7 +64,7 @@ HeuristicsManager<StateRepr>::HeuristicsManager(
 }
 
 template <StateRepresentation StateRepr>
-short HeuristicsManager<StateRepr>::get_heuristic_value(
+int HeuristicsManager<StateRepr>::get_heuristic_value(
     State<StateRepr> &eState) {
   switch (m_used_heuristics) {
   case Heuristics::L_PG: {
@@ -78,7 +78,7 @@ short HeuristicsManager<StateRepr>::get_heuristic_value(
     break;
   }
   case Heuristics::C_PG: {
-    short h_value = 0;
+    int h_value = 0;
 
     if (m_pg_goal_not_found) {
       h_value = -1; // Goal not reachable, set heuristic to -1.
@@ -91,7 +91,7 @@ short HeuristicsManager<StateRepr>::get_heuristic_value(
         if (eState.entails(belief) && score > 0)
           h_value += score;
       }
-      h_value = static_cast<short>(100 - ((static_cast<float>(h_value) /
+      h_value = static_cast<int>(100 - ((static_cast<float>(h_value) /
                                            static_cast<float>(m_pg_max_score)) *
                                           100)); // Invert: 0 is 100%, 100 is 0%
     }
@@ -100,8 +100,7 @@ short HeuristicsManager<StateRepr>::get_heuristic_value(
     break;
   }
   case Heuristics::SUBGOALS: {
-    eState.set_heuristic_value(
-        SatisfiedGoals::get_instance().get_unsatisfied_goals(eState));
+    return SatisfiedGoals::get_instance().get_unsatisfied_goals(eState);
     break;
   }
   case Heuristics::GNN: {
@@ -124,6 +123,7 @@ short HeuristicsManager<StateRepr>::get_heuristic_value(
     break;
   }
   }
+  return -1; // Default return value, should not be reached.
 }
 
 template <StateRepresentation StateRepr>

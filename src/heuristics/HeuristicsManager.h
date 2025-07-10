@@ -36,7 +36,7 @@ public:
    * is not applicable or the state does not satisfy the goals and needs to be
    * discarded.
    */
-  short get_heuristic_value(State<StateRepr> &eState);
+  int get_heuristic_value(State<StateRepr> &eState);
 
   /**
    * \brief Computes and sets the heuristic value for a given state.

@@ -51,11 +51,28 @@ At the moment we implemented:
 
 ### Requirements
 
-- flex
-- bison
-- texlive-font-utils
-- graphviz
-- boost
+- copy from build.sh and github action
+
+### Requirements for the Script
+
+#### Python
+
+- Python 3.6 or higher (recommended 3.8+)
+- Uses only standard Python libraries (no extra installs required)
+
+##### LaTeX
+
+- A working LaTeX distribution with `pdflatex`:
+  - TeX Live, MiKTeX, or MacTeX
+- Required LaTeX packages (usually pre-installed):
+  - `booktabs.sty`
+  - `geometry.sty`
+  - `fontenc.sty`
+  - `lmodern.sty`
+
+---
+Make sure `pdflatex` is in your system PATH to enable automatic PDF compilation by the script.
+
 
 ### Usage
 

@@ -37,12 +37,15 @@ public:
   void push(State<StateRepr> &s) override {
     const auto heuristics_value =
         this->m_heuristics_manager.get_heuristic_value(s);
-    if (heuristics_value < 0) {
+    const auto plan_length = s.get_plan_length();
+
+    // This is to exclude the initial state that might cause problems
+    if (heuristics_value < 0 && plan_length != 0) {
       return; // Skip states with negative heuristic values.
     }
     s.set_heuristic_value(
-        heuristics_value +
-        s.get_plan_length()); // Overwrite heuristic with f = g + h
+        heuristics_value + plan_length
+        ); // Overwrite heuristic with f = g + h
     this->search_space.push(s);
   }
 
