@@ -1,4 +1,4 @@
-%%% Executed actions: open_a peek_a signal_a_b signal_a_c shout_tail_a %%%
+%%% Executed actions: open_a peek_a %%%
 
 fluent tail, has_key_a, has_key_b, has_key_c, opened ,looking_a, looking_b, looking_c;
 
@@ -10,9 +10,9 @@ action shout_tail_a, shout_tail_b, shout_tail_c;
 
 agent a,b,c;
 
+%
 
-
-executable open_a if B(a,has_key_a), has_key_a;
+executable open_a;
 open_a causes opened;
 b observes open_a if looking_b;
 c observes open_a if looking_c;
@@ -150,5 +150,5 @@ initially C([a,b,c], -looking_c);
 initially tail, has_key_a, -has_key_b, -has_key_c, -opened, looking_a, -looking_b, -looking_c;
 %initially C([a,b,c],B(a,tail));
 
-% 5 actions
-goal C([a,b,c], tail);
+% 2 actions
+goal B(a,tail);

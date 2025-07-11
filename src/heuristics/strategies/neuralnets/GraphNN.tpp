@@ -139,7 +139,7 @@ void GraphNN<StateRepr>::initialize_onnx_model() {
 }
 
 template <StateRepresentation StateRepr>
-[[nodiscard]] short
+[[nodiscard]] int
 GraphNN<StateRepr>::get_score(const State<StateRepr> &state) {
   const auto state_tensor = state_to_tensor_minimal(state.get_representation());
 
@@ -173,9 +173,14 @@ GraphNN<StateRepr>::get_score(const State<StateRepr> &state) {
     inference_result = run_inference(state_tensor);
   }
 
-  const auto result = static_cast<short>(std::round(inference_result * 1000));
 
-  return result;
+    if (inference_result < 0) {
+        return 0;
+    }
+    else {
+        return static_cast<int>(std::round(inference_result * 1000));
+    }
+
 }
 
 /*inline void debug_tensor_shape(const Ort::Value &tensor,

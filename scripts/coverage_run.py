@@ -14,21 +14,44 @@ NUMERIC_COLUMNS = ["PlanLength", "NodesExpanded", "TotalExecutionTime", "InitTim
 def latex_escape_underscores(s: str) -> str:
   return s.replace('_', r'\_')
 
+
+import re
+
+SEARCH_NAME_MAP = {
+  "Breadth First Search": "BFS",
+  "Depth First Search": "DFS",
+  "Heuristics First Search": "HFS",
+  "Astar": "A*",
+  "A Star": "A*",
+  "AStar": "A*",}
+
 def parse_output(output: str):
   def extract(pat, default='-'):
     m = re.search(pat, output)
     return m.group(1).strip() if m else default
+
+  # Change here: greedy + instead of non-greedy +?
+  m = re.search(r"Search used:\s*([A-Za-z ]+)(\([^)]+\))?", output)
+  if m:
+    raw_search = m.group(1).strip()
+    parens = m.group(2) or ""
+    mapped_search = SEARCH_NAME_MAP.get(raw_search, raw_search)
+    search_used = f"{mapped_search}{parens}"
+  else:
+    search_used = "-"
+
   return {
     "GoalFound": "Yes" if "Goal found :)" in output else "No",
     "ActionExecuted": extract(r"Action executed:\s*(.*)"),
     "PlanLength": extract(r"Plan length:\s*(\d+)"),
-    "SearchUsed": extract(r"Search used:\s*(.*?)\s*(?:\(|$)"),
+    "SearchUsed": search_used,
     "NodesExpanded": extract(r"Nodes expanded:\s*(\d+)"),
     "TotalExecutionTime": extract(r"Total execution time:\s*(\d+)\s*ms"),
     "InitTime": extract(r"Initial state construction.*?:\s*(\d+)\s*ms"),
     "SearchTime": extract(r"Search time:\s*(\d+)\s*ms"),
     "ThreadOverhead": extract(r"Thread management overhead:\s*(\d+)\s*ms"),
   }
+
 
 def run_instance(binary_path, filepath, binary_args, search_prefix, timeout):
   folder = Path(filepath).parent.name
@@ -321,8 +344,8 @@ def main_all_domains(binary_path, parent_folder, output_tex, threads, binary_arg
   compile_latex_to_pdf(monolithic_path)
 
   # Combined LaTeX + summary tables
-  if args.search_prefix:
-    search_used_label = args.search_prefix
+  if search_prefix:
+    search_used_label = search_prefix
   else:
   # fallback: first domain's first instance search used or "-"
     search_used_label = "-"
@@ -398,6 +421,10 @@ def format_summary_table(all_results,search_used_label):
   ]
   return "\n".join(lines)
 
+def parse_portfolio_threads(binary_args):
+  # Match -p 3 or --portfolio_threads 3
+  match = re.search(r"(?:-p|--portfolio_threads)\s+(\d+)", binary_args)
+  return int(match.group(1)) if match else 1
 
 def get_arg_parser():
   p = argparse.ArgumentParser(
@@ -406,22 +433,40 @@ def get_arg_parser():
   python scripts/coverage_run.py ./cmake-build-debug-nn/bin/deep ./exp/coverage \\
     --threads 2 \\
     --binary_args "-b -c -p 3" \\
-    --search_prefix "Portfolio" \\
     --timeout 600
 This will run the planner with 2 threads on all .txt and .eppdl files under ./exp/coverage/*,
-passing '-b -c -p 3' to the binary, prefixing search names with 'Portfolio-', and timing out each run after 600 seconds.
+passing '-b -c -p 3' to the binary, prefixing search names with 'P-', and timing out each run after 600 seconds.
 """)
   p.add_argument("binary", help="Path to planner binary executable")
   p.add_argument("parent_folder", help="Parent folder containing domain subfolders with problem files")
-  p.add_argument("--threads", type=int, default=4, help="Number of parallel threads")
+  p.add_argument("--threads", type=int, default=1, help="Number of parallel thread workers")
+  p.add_argument("--binary_args", type=str, default="", help="Additional args to pass to the binary")
   p.add_argument("--timeout", type=int, default=600, help="Timeout per run in seconds")
-  p.add_argument("--binary_args", default="", help="Additional command line arguments for binary")
-  p.add_argument("--search_prefix", default="", help="Prefix for search names in output")
-  p.add_argument("--output_tex", default="all_domains_summary.tex", help="Filename for combined LaTeX summary")
+  p.add_argument("--output_tex", type=str, default="all_results_monolithic.tex", help="Name of output LaTeX file")
   return p
 
 
 if __name__ == "__main__":
   args = get_arg_parser().parse_args()
-  main_all_domains(args.binary, args.parent_folder, args.output_tex, args.threads,
-                   args.binary_args, args.search_prefix, args.timeout)
+
+  available_cores = multiprocessing.cpu_count()
+  portfolio_threads = parse_portfolio_threads(args.binary_args)
+
+  total_threads_used = args.threads * portfolio_threads
+  if total_threads_used > available_cores - 1:
+    print(f"Error: Total threads requested ({args.threads} * {portfolio_threads} = {total_threads_used}) "
+          f"exceeds available cores - 1 ({available_cores - 1}). Reduce --threads or --portfolio_threads.")
+    sys.exit(1)
+
+  # Force prefix to "P" if portfolio threads is specified
+  search_prefix = "P" if portfolio_threads > 1 else ""
+
+  main_all_domains(
+    binary_path=args.binary,
+    parent_folder=args.parent_folder,
+    output_tex=args.output_tex,
+    threads=args.threads,
+    binary_args=args.binary_args,
+    search_prefix=search_prefix,
+    timeout=args.timeout
+  )

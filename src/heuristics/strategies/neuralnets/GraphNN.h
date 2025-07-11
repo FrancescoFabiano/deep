@@ -73,7 +73,7 @@ public:
    * \param state The state to evaluate.
    * \return The heuristic score for the state.
    */
-  [[nodiscard]] short get_score(const State<StateRepr> &state);
+  [[nodiscard]] int get_score(const State<StateRepr> &state);
 
   /**
    * \brief Get the score for a given state using the neural network heuristic
