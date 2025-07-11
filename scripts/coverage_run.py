@@ -1,7 +1,9 @@
 import csv
+import multiprocessing
 import subprocess
 import re
 import shlex
+import sys
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from statistics import mean
@@ -224,8 +226,30 @@ passing '-b -c -p 3' to the binary, prefixing search names with 'Portfolio-', an
   p.add_argument("--timeout", type=int, default=30, help="Timeout in seconds for each planner run (default: 30)")
   return p
 
+def extract_portfolio_threads(binary_args: str) -> int:
+  """Extract the value of --portfolio_threads or -p from binary_args."""
+  long_match = re.search(r"--portfolio_threads\s+(\d+)", binary_args)
+  short_match = re.search(r"-p\s+(\d+)", binary_args)
+  if long_match:
+    return int(long_match.group(1))
+  elif short_match:
+    return int(short_match.group(1))
+  return 1  # default if not specified
+
 if __name__ == "__main__":
   args = get_arg_parser().parse_args()
+
+  portfolio_threads = extract_portfolio_threads(args.binary_args)
+  total_threads_needed = args.threads * portfolio_threads
+  available_threads = multiprocessing.cpu_count()
+  reserved_threads = 1  # You can increase this if needed
+
+  if total_threads_needed >= available_threads - reserved_threads:
+    print(f"\nError: Requested total threads ({args.threads} × {portfolio_threads} = {total_threads_needed}) "
+          f"exceeds available CPU threads ({available_threads}) minus reserved ({reserved_threads}).")
+    print("Reduce --threads or (-p,--portfolio_threads) in binary_args.")
+    sys.exit(1)
+
   main_all_domains(
     args.binary_path, args.parent_folder, args.output_tex, args.threads,
     args.binary_args, args.search_prefix, args.timeout
