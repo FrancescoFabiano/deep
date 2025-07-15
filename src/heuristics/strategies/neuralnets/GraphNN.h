@@ -165,8 +165,8 @@ private:
   bool m_model_loaded =
       false; ///< Indicates whether the ONNX model has been loaded.
 
-    float m_normalization_constant =
-        1.0f; ///< Normalization constant for the GNN model output.
+  float m_normalization_constant =
+      1.0f; ///< Normalization constant for the GNN model output.
 
   /**
    * \brief Converts a KripkeState to a minimal GraphTensor representation.
@@ -301,14 +301,14 @@ private:
    */
   void add_edge(int64_t src, int64_t dst, int64_t label);
 
-    /**
-     * \brief Parses the constant used for normalization in prediction results.
-     *
-     * This function reads and sets the normalization constant, which is used to
-     * multiply the float value returned by the neural network prediction to scale
-     * the output appropriately.
-     */
-    void parse_constant_for_normalization();
+  /**
+   * \brief Parses the constant used for normalization in prediction results.
+   *
+   * This function reads and sets the normalization constant, which is used to
+   * multiply the float value returned by the neural network prediction to scale
+   * the output appropriately.
+   */
+  void parse_constant_for_normalization();
 };
 
 #include "GraphNN.tpp"

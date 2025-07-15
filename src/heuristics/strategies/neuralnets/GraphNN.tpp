@@ -139,7 +139,6 @@ void GraphNN<StateRepr>::initialize_onnx_model() {
   }
 }
 
-
 template <StateRepresentation StateRepr>
 [[nodiscard]] int GraphNN<StateRepr>::get_score(const State<StateRepr> &state) {
   const auto state_tensor = state_to_tensor_minimal(state.get_representation());
@@ -162,14 +161,14 @@ template <StateRepresentation StateRepr>
   }
 #endif
 
-
-  if (const float inference_result =  run_inference(state_tensor); inference_result < 0) {
+  if (const float inference_result = run_inference(state_tensor);
+      inference_result < 0) {
     return 0;
   } else {
-    return static_cast<int>(std::round(inference_result * m_normalization_constant));
+    return static_cast<int>(
+        std::round(inference_result * m_normalization_constant));
   }
 }
-
 
 template <StateRepresentation StateRepr>
 float GraphNN<StateRepr>::run_inference(const GraphTensor &tensor) const {
@@ -409,7 +408,7 @@ void GraphNN<StateRepr>::add_edge(const int64_t src, const int64_t dst,
   m_edge_labels.push_back(label);
 }
 
-template<StateRepresentation StateRepr>
+template <StateRepresentation StateRepr>
 void GraphNN<StateRepr>::parse_constant_for_normalization() {
   std::string filename = Configuration::get_instance().get_GNN_constant_path();
   std::ifstream infile(filename);
@@ -421,9 +420,9 @@ void GraphNN<StateRepr>::parse_constant_for_normalization() {
 
   std::string line;
   if (!std::getline(infile, line)) {
-    ExitHandler::exit_with_message(
-        ExitHandler::ExitCode::GNNFileError,
-        "Normalization constant file is empty: " + filename);
+    ExitHandler::exit_with_message(ExitHandler::ExitCode::GNNFileError,
+                                   "Normalization constant file is empty: " +
+                                       filename);
   }
 
   std::regex pattern(R"(C\s*=\s*([+-]?\d*\.?\d+(?:[eE][+-]?\d+)?))");

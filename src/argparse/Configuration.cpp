@@ -113,14 +113,14 @@ void Configuration::set_GNN_model_path(const std::string &val) {
 }
 
 void Configuration::set_GNN_constant_path(const std::string &val) {
-  m_GNN_constant_path= val;
+  m_GNN_constant_path = val;
 }
 
 const std::string &Configuration::get_GNN_model_path() const noexcept {
   return m_GNN_model_path;
 }
 
-const std::string & Configuration::get_GNN_constant_path() const noexcept {
+const std::string &Configuration::get_GNN_constant_path() const noexcept {
   return m_GNN_constant_path;
 }
 

@@ -116,11 +116,11 @@ public:
    */
   void set_GNN_model_path(const std::string &val);
 
-    /**
-     * \brief Sets the path to the file that stores the constant used to normalize the GNN heuristics.
-     * \param val The path value.
-     */
-    void set_GNN_constant_path(const std::string &val);
+  /**
+   * \brief Sets the path to the file that stores the constant used to normalize
+   * the GNN heuristics. \param val The path value.
+   */
+  void set_GNN_constant_path(const std::string &val);
 
   /**
    * \brief Retrieves the path to the model used by the GNN heuristics.
@@ -128,11 +128,12 @@ public:
    */
   [[nodiscard]] const std::string &get_GNN_model_path() const noexcept;
 
-    /**
-     * \brief Retrieves the path to the file that stores the constant used to normalize the GNN heuristics.
-     * \return The path to the file that stores the constant used to normalize the GNN heuristics.
-     */
-    [[nodiscard]] const std::string &get_GNN_constant_path() const noexcept;
+  /**
+   * \brief Retrieves the path to the file that stores the constant used to
+   * normalize the GNN heuristics. \return The path to the file that stores the
+   * constant used to normalize the GNN heuristics.
+   */
+  [[nodiscard]] const std::string &get_GNN_constant_path() const noexcept;
 
   /**
    * \brief Sets the field of the class to value
@@ -178,10 +179,10 @@ private:
       Heuristics::SUBGOALS; ///< Heuristic option enum.
   std::string m_GNN_model_path =
       "lib/RL/models/distance_estimator.onnx"; ///< Path to the GNN model for
-                                            ///< heuristic evaluation.
-    std::string m_GNN_constant_path =
-"lib/RL/models/C.txt"; ///< Path to the file that contains the normalization
-    ///< constant for the GNN model.
+                                               ///< heuristic evaluation.
+  std::string m_GNN_constant_path =
+      "lib/RL/models/C.txt"; ///< Path to the file that contains the
+                             ///< normalization constant for the GNN model.
 
   /**
    * \brief Sets the bisimulation type as a boolean.
