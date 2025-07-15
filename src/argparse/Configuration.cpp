@@ -112,8 +112,16 @@ void Configuration::set_GNN_model_path(const std::string &val) {
   m_GNN_model_path = val;
 }
 
+void Configuration::set_GNN_constant_path(const std::string &val) {
+  m_GNN_constant_path= val;
+}
+
 const std::string &Configuration::get_GNN_model_path() const noexcept {
   return m_GNN_model_path;
+}
+
+const std::string & Configuration::get_GNN_constant_path() const noexcept {
+  return m_GNN_constant_path;
 }
 
 // In Configuration.cpp
@@ -131,6 +139,8 @@ void Configuration::set_field_by_name(const std::string &field,
     set_heuristic_opt(value);
   else if (field == "GNN_model")
     set_GNN_model_path(value);
+  else if (field == "GNN_constant_file")
+    set_GNN_constant_path(value);
   else {
     ExitHandler::exit_with_message(
         ExitHandler::ExitCode::PortfolioConfigFieldError,
@@ -207,5 +217,6 @@ void Configuration::print(std::ostream &os) const {
   if (m_search_strategy_enum == SearchType::HFS &&
       m_heuristic_enum == Heuristics::GNN) {
     os << "    Path to GNN model: " << m_GNN_model_path << '\n';
+    os << "    Path to GNN constant file: " << m_GNN_constant_path << '\n';
   }
 }

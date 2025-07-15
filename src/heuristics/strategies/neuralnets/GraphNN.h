@@ -165,6 +165,9 @@ private:
   bool m_model_loaded =
       false; ///< Indicates whether the ONNX model has been loaded.
 
+    float m_normalization_constant =
+        1.0f; ///< Normalization constant for the GNN model output.
+
   /**
    * \brief Converts a KripkeState to a minimal GraphTensor representation.
    *
@@ -251,22 +254,6 @@ private:
   float run_inference(const GraphTensor &tensor) const;
 
   /**
-   * \brief Runs ONNX Runtime inference on the provided GraphTensor,
-   * incorporating the goal graph as seperate input.
-   *
-   * This method takes a GraphTensor representing the input graph and the
-   * GraphTensor representing the goal graph (as needed by the model), prepares
-   * the necessary ONNX Runtime tensors, and performs inference using the loaded
-   * GNN model. It returns the resulting score or output from the neural
-   * network, considering the goal information.
-   *
-   * \param tensor The GraphTensor containing the graph data for inference.
-   * \return The output score from the GNN model as a float, with goal
-   * information included.
-   */
-  float run_inference_with_goal(const GraphTensor &tensor) const;
-
-  /**
    * \brief Compares the inference results of the C++ ONNX model with those
    * obtained from Python (both ONNX and PyTorch models) for correctness
    * checking.
@@ -313,6 +300,15 @@ private:
    * \param label The label or attribute associated with the edge.
    */
   void add_edge(int64_t src, int64_t dst, int64_t label);
+
+    /**
+     * \brief Parses the constant used for normalization in prediction results.
+     *
+     * This function reads and sets the normalization constant, which is used to
+     * multiply the float value returned by the neural network prediction to scale
+     * the output appropriately.
+     */
+    void parse_constant_for_normalization();
 };
 
 #include "GraphNN.tpp"

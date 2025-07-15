@@ -211,6 +211,9 @@ private:
   std::string m_GNN_model_path =
       "lib/RL/models/distance_estimator.onnx"; ///< Path to the GNN model for
                                                ///< heuristic evaluation.
+    std::string m_GNN_constant_path =
+"lib/RL/models/C.txt"; ///< Path to the file that contains the normalization
+                                               ///< constant for the GNN model.
   bool m_exec_plan =
       false; ///< Flag to indicate if the plan should be executed.
   std::vector<std::string>
@@ -255,6 +258,13 @@ private:
    * \return The path to the model used by the GNN heuristics.
    */
   [[nodiscard]] const std::string &get_GNN_model_path() const noexcept;
+
+    /**
+ * \brief Retrieves the path to the file containing the normalization constant for the GNN model.
+ * \return Reference to the normalization constant file path string.
+ */
+    [[nodiscard]] const std::string &get_GNN_constant_path() const noexcept;
+
 
   /**
    * \brief Retrieves the search strategy to be used.

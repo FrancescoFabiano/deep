@@ -94,6 +94,12 @@ void ArgumentParser::parse(int argc, char **argv) {
           "--search HFS or --search Astar and --heuristics GNN.");
     }
 
+      if (app.count("--GNN_constant_file") && m_heuristic_opt != "GNN") {
+          ExitHandler::exit_with_message(
+              ExitHandler::ExitCode::ArgParseError,
+              "--GNN_constant_file can only be used with --heuristics GNN.");
+      }
+
     // --- Execution plan checks and action loading ---
     if (m_exec_plan) {
       if (m_exec_actions.empty()) {
@@ -223,6 +229,12 @@ ArgumentParser::ArgumentParser() : app("deep") {
                    "'lib/RL/models/distance_estimator.onnx'. Only used if "
                    "HFS/Astar with GNN heuristics is selected.")
       ->default_val("lib/RL/models/distance_estimator.onnx");
+    search_group
+        ->add_option("--GNN_constant_file", m_GNN_constant_path,
+                     "Specify the path to the normalization constant file for the GNN model. "
+                     "Only used if --heuristics GNN is selected.")
+        ->default_val("lib/RL/models/C.txt");
+
   /*search_group->add_option("--search_threads", m_threads_per_search,
                             "Set the number of threads to use for each search
      strategy (default: 1). If set > 1, each search strategy (e.g., BFS/DFS/HFS)
@@ -347,6 +359,12 @@ const std::string &ArgumentParser::get_heuristic() const noexcept {
 const std::string &ArgumentParser::get_GNN_model_path() const noexcept {
   return m_GNN_model_path;
 }
+
+const std::string &ArgumentParser::get_GNN_constant_path() const noexcept {
+    return m_GNN_constant_path;
+}
+
+
 
 const std::string &ArgumentParser::get_search_strategy() const noexcept {
   return m_search_strategy;

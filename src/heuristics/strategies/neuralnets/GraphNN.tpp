@@ -82,6 +82,7 @@ void GraphNN<StateRepr>::initialize_onnx_model() {
     m_input_names = m_session->GetInputNames();
     m_output_names = m_session->GetOutputNames();
 
+    parse_constant_for_normalization();
     m_model_loaded = true;
   } catch (const std::exception &e) {
     ExitHandler::exit_with_message(ExitHandler::ExitCode::GNNModelLoadError,
@@ -138,6 +139,7 @@ void GraphNN<StateRepr>::initialize_onnx_model() {
   }
 }
 
+
 template <StateRepresentation StateRepr>
 [[nodiscard]] int GraphNN<StateRepr>::get_score(const State<StateRepr> &state) {
   const auto state_tensor = state_to_tensor_minimal(state.get_representation());
@@ -160,38 +162,14 @@ template <StateRepresentation StateRepr>
   }
 #endif
 
-  float inference_result = -1;
-  // We use both to indicate that we want to use not merged with no goal -- just
-  // debuging phase
-  //  \todo adjust this
-  //  \todo also remove and keep only one mode for optimization
-  if (!ArgumentParser::get_instance().get_dataset_merged() &&
-      !ArgumentParser::get_instance().get_dataset_both()) {
-    inference_result = run_inference_with_goal(state_tensor);
-  } else {
-    inference_result = run_inference(state_tensor);
-  }
 
-  if (inference_result < 0) {
+  if (const float inference_result =  run_inference(state_tensor); inference_result < 0) {
     return 0;
   } else {
-    return static_cast<int>(std::round(inference_result * 1000));
+    return static_cast<int>(std::round(inference_result * m_normalization_constant));
   }
 }
 
-/*inline void debug_tensor_shape(const Ort::Value &tensor,
-                               const std::string &name) {
-  const auto type_info = tensor.GetTensorTypeAndShapeInfo();
-  const auto shape = type_info.GetShape();
-  const auto type = type_info.GetElementType();
-  std::cout << "[DEBUG] Tensor: " << name << " Type: " << type << ", Shape: [";
-  for (size_t i = 0; i < shape.size(); ++i) {
-    std::cout << shape[i];
-    if (i < shape.size() - 1)
-      std::cout << ", ";
-  }
-  std::cout << "]" << std::endl;
-}*/
 
 template <StateRepresentation StateRepr>
 float GraphNN<StateRepr>::run_inference(const GraphTensor &tensor) const {
@@ -268,125 +246,6 @@ float GraphNN<StateRepr>::run_inference(const GraphTensor &tensor) const {
       input_tensors.size(), output_names_cstr.data(), output_names_cstr.size());
 
   // Get the result (assuming scalar output)
-  const auto *output_data = output_tensors[0].GetTensorMutableData<float>();
-  const float score = output_data[0];
-
-  return score;
-}
-
-template <StateRepresentation StateRepr>
-float GraphNN<StateRepr>::run_inference_with_goal(
-    const GraphTensor &tensor) const {
-  if (!m_model_loaded) {
-    ExitHandler::exit_with_message(ExitHandler::ExitCode::GNNInstanceError,
-                                   "[ONNX] Model not loaded before inference.");
-  }
-
-  auto &session = *m_session;
-  const auto &memory_info = *m_memory_info;
-
-  // --- Prepare state tensors ---
-  const size_t num_edges = tensor.edge_src.size();
-  const size_t num_nodes = tensor.real_node_ids.size();
-
-  std::vector<float> real_node_ids_float(tensor.real_node_ids.begin(),
-                                         tensor.real_node_ids.end());
-  const std::array<int64_t, 1> node_ids_shape{
-      static_cast<int64_t>(real_node_ids_float.size())};
-  Ort::Value real_node_ids_tensor = Ort::Value::CreateTensor<float>(
-      memory_info, real_node_ids_float.data(), real_node_ids_float.size(),
-      node_ids_shape.data(), node_ids_shape.size());
-
-  std::vector<int64_t> edge_index_data(2 * num_edges);
-  for (size_t i = 0; i < num_edges; ++i) {
-    edge_index_data[i] = tensor.edge_src[i];
-    edge_index_data[num_edges + i] = tensor.edge_dst[i];
-  }
-  const std::array<int64_t, 2> edge_index_shape{
-      2, static_cast<int64_t>(num_edges)};
-  Ort::Value edge_index_tensor = Ort::Value::CreateTensor<int64_t>(
-      memory_info, edge_index_data.data(), edge_index_data.size(),
-      edge_index_shape.data(), edge_index_shape.size());
-
-  std::vector<float> edge_attrs_float(tensor.edge_attrs.begin(),
-                                      tensor.edge_attrs.end());
-  const std::array<int64_t, 2> edge_attr_shape{static_cast<int64_t>(num_edges),
-                                               1};
-  Ort::Value edge_attr_tensor = Ort::Value::CreateTensor<float>(
-      memory_info, edge_attrs_float.data(), edge_attrs_float.size(),
-      edge_attr_shape.data(), edge_attr_shape.size());
-
-  std::vector<int64_t> state_batch_data(num_nodes, 0);
-  const std::array<int64_t, 1> state_batch_shape{
-      static_cast<int64_t>(state_batch_data.size())};
-  Ort::Value state_batch_tensor = Ort::Value::CreateTensor<int64_t>(
-      memory_info, state_batch_data.data(), state_batch_data.size(),
-      state_batch_shape.data(), state_batch_shape.size());
-
-  // --- Prepare goal tensors from m_goal_graph_tensor ---
-  const auto &goal = m_goal_graph_tensor;
-  const size_t num_goal_edges = goal.edge_src.size();
-  const size_t num_goal_nodes = goal.real_node_ids.size();
-
-  std::vector<float> goal_node_ids_float(goal.real_node_ids.begin(),
-                                         goal.real_node_ids.end());
-  const std::array<int64_t, 1> goal_node_ids_shape{
-      static_cast<int64_t>(goal_node_ids_float.size())};
-  Ort::Value goal_node_ids_tensor = Ort::Value::CreateTensor<float>(
-      memory_info, goal_node_ids_float.data(), goal_node_ids_float.size(),
-      goal_node_ids_shape.data(), goal_node_ids_shape.size());
-
-  std::vector<int64_t> goal_edge_index_data(2 * num_goal_edges);
-  for (size_t i = 0; i < num_goal_edges; ++i) {
-    goal_edge_index_data[i] = goal.edge_src[i];
-    goal_edge_index_data[num_goal_edges + i] = goal.edge_dst[i];
-  }
-  const std::array<int64_t, 2> goal_edge_index_shape{
-      2, static_cast<int64_t>(num_goal_edges)};
-  Ort::Value goal_edge_index_tensor = Ort::Value::CreateTensor<int64_t>(
-      memory_info, goal_edge_index_data.data(), goal_edge_index_data.size(),
-      goal_edge_index_shape.data(), goal_edge_index_shape.size());
-
-  std::vector<float> goal_edge_attrs_float(goal.edge_attrs.begin(),
-                                           goal.edge_attrs.end());
-  const std::array<int64_t, 2> goal_edge_attr_shape{
-      static_cast<int64_t>(num_goal_edges), 1};
-  Ort::Value goal_edge_attr_tensor = Ort::Value::CreateTensor<float>(
-      memory_info, goal_edge_attrs_float.data(), goal_edge_attrs_float.size(),
-      goal_edge_attr_shape.data(), goal_edge_attr_shape.size());
-
-  std::vector<int64_t> goal_state_batch_data(num_goal_nodes, 0);
-  const std::array<int64_t, 1> goal_state_batch_shape{
-      static_cast<int64_t>(goal_state_batch_data.size())};
-  Ort::Value goal_state_batch_tensor = Ort::Value::CreateTensor<int64_t>(
-      memory_info, goal_state_batch_data.data(), goal_state_batch_data.size(),
-      goal_state_batch_shape.data(), goal_state_batch_shape.size());
-
-  // --- Prepare input tensors: state tensors first, then goal tensors ---
-  std::vector<Ort::Value> input_tensors;
-  input_tensors.emplace_back(std::move(real_node_ids_tensor));
-  input_tensors.emplace_back(std::move(edge_index_tensor));
-  input_tensors.emplace_back(std::move(edge_attr_tensor));
-  input_tensors.emplace_back(std::move(state_batch_tensor));
-  input_tensors.emplace_back(std::move(goal_node_ids_tensor));
-  input_tensors.emplace_back(std::move(goal_edge_index_tensor));
-  input_tensors.emplace_back(std::move(goal_edge_attr_tensor));
-  input_tensors.emplace_back(std::move(goal_state_batch_tensor));
-
-  // --- Prepare input/output names ---
-  std::vector<const char *> input_names_cstr;
-  for (const auto &name : m_input_names)
-    input_names_cstr.push_back(name.c_str());
-  std::vector<const char *> output_names_cstr;
-  for (const auto &name : m_output_names)
-    output_names_cstr.push_back(name.c_str());
-
-  // --- Run the model ---
-  auto output_tensors = session.Run(
-      Ort::RunOptions{nullptr}, input_names_cstr.data(), input_tensors.data(),
-      input_tensors.size(), output_names_cstr.data(), output_names_cstr.size());
-
-  // --- Get the result (assuming scalar output) ---
   const auto *output_data = output_tensors[0].GetTensorMutableData<float>();
   const float score = output_data[0];
 
@@ -548,6 +407,40 @@ void GraphNN<StateRepr>::add_edge(const int64_t src, const int64_t dst,
   m_edge_src.push_back(get_symbolic_id(src));
   m_edge_dst.push_back(get_symbolic_id(dst));
   m_edge_labels.push_back(label);
+}
+
+template<StateRepresentation StateRepr>
+void GraphNN<StateRepr>::parse_constant_for_normalization() {
+  std::string filename = Configuration::get_instance().get_GNN_constant_path();
+  std::ifstream infile(filename);
+  if (!infile) {
+    ExitHandler::exit_with_message(
+        ExitHandler::ExitCode::GNNFileError,
+        "Failed to open normalization constant file: " + filename);
+  }
+
+  std::string line;
+  if (!std::getline(infile, line)) {
+    ExitHandler::exit_with_message(
+        ExitHandler::ExitCode::GNNFileError,
+        "Normalization constant file is empty: " + filename);
+  }
+
+  std::regex pattern(R"(C\s*=\s*([+-]?\d*\.?\d+(?:[eE][+-]?\d+)?))");
+  std::smatch match;
+  if (std::regex_search(line, match, pattern) && match.size() == 2) {
+    try {
+      m_normalization_constant = std::stof(match[1].str());
+    } catch (const std::exception &e) {
+      ExitHandler::exit_with_message(
+          ExitHandler::ExitCode::GNNFileError,
+          "Failed to parse normalization constant: " + std::string(e.what()));
+    }
+  } else {
+    ExitHandler::exit_with_message(
+        ExitHandler::ExitCode::GNNFileError,
+        "Normalization constant not found in file: " + filename);
+  }
 }
 
 template <StateRepresentation StateRepr>
