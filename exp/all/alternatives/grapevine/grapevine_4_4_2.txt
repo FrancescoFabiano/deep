@@ -1,0 +1,97 @@
+fluent s_0, s_1, s_2, s_3, in_room_1_ag_0, in_room_1_ag_1, in_room_1_ag_2, in_room_1_ag_3, in_room_2_ag_0, in_room_2_ag_1, in_room_2_ag_2, in_room_2_ag_3;
+action tell_0, tell_1, tell_2, tell_3, left_0, right_0, left_1, right_1, left_2, right_2, left_3, right_3;
+agent ag_0, ag_1, ag_2, ag_3;
+
+
+executable tell_0 if  (  (  ( - B( ag_0 , s_0 )  )  |  ( - B( ag_1 , s_0 )  )  |  ( - B( ag_2 , s_0 )  )  |  ( - B( ag_3 , s_0 )  )  )  , s_0 )  ;
+tell_0 announces s_0 ;
+ag_0 observes tell_0;
+ag_1 observes tell_0 if  (  ( in_room_1_ag_0 , in_room_1_ag_1 )  |  ( -in_room_1_ag_0 , -in_room_1_ag_1 )  ) ;
+ag_2 observes tell_0 if  (  ( in_room_1_ag_0 , in_room_1_ag_2 )  |  ( -in_room_1_ag_0 , -in_room_1_ag_2 )  ) ;
+ag_3 observes tell_0 if  (  ( in_room_1_ag_0 , in_room_1_ag_3 )  |  ( -in_room_1_ag_0 , -in_room_1_ag_3 )  ) ;
+
+executable tell_1 if  (  (  ( - B( ag_0 , s_1 )  )  |  ( - B( ag_1 , s_1 )  )  |  ( - B( ag_2 , s_1 )  )  |  ( - B( ag_3 , s_1 )  )  )  , s_1 )  ;
+tell_1 announces s_1 ;
+ag_1 observes tell_1;
+ag_0 observes tell_1 if  (  ( in_room_1_ag_1 , in_room_1_ag_0 )  |  ( -in_room_1_ag_1 , -in_room_1_ag_0 )  ) ;
+ag_2 observes tell_1 if  (  ( in_room_1_ag_1 , in_room_1_ag_2 )  |  ( -in_room_1_ag_1 , -in_room_1_ag_2 )  ) ;
+ag_3 observes tell_1 if  (  ( in_room_1_ag_1 , in_room_1_ag_3 )  |  ( -in_room_1_ag_1 , -in_room_1_ag_3 )  ) ;
+
+executable tell_2 if  (  (  ( - B( ag_0 , s_2 )  )  |  ( - B( ag_1 , s_2 )  )  |  ( - B( ag_2 , s_2 )  )  |  ( - B( ag_3 , s_2 )  )  )  , s_2 )  ;
+tell_2 announces s_2 ;
+ag_2 observes tell_2;
+ag_0 observes tell_2 if  (  ( in_room_1_ag_2 , in_room_1_ag_0 )  |  ( -in_room_1_ag_2 , -in_room_1_ag_0 )  ) ;
+ag_1 observes tell_2 if  (  ( in_room_1_ag_2 , in_room_1_ag_1 )  |  ( -in_room_1_ag_2 , -in_room_1_ag_1 )  ) ;
+ag_3 observes tell_2 if  (  ( in_room_1_ag_2 , in_room_1_ag_3 )  |  ( -in_room_1_ag_2 , -in_room_1_ag_3 )  ) ;
+
+executable tell_3 if  (  (  ( - B( ag_0 , s_3 )  )  |  ( - B( ag_1 , s_3 )  )  |  ( - B( ag_2 , s_3 )  )  |  ( - B( ag_3 , s_3 )  )  )  , s_3 )  ;
+tell_3 announces s_3 ;
+ag_3 observes tell_3;
+ag_0 observes tell_3 if  (  ( in_room_1_ag_3 , in_room_1_ag_0 )  |  ( -in_room_1_ag_3 , -in_room_1_ag_0 )  ) ;
+ag_1 observes tell_3 if  (  ( in_room_1_ag_3 , in_room_1_ag_1 )  |  ( -in_room_1_ag_3 , -in_room_1_ag_1 )  ) ;
+ag_2 observes tell_3 if  (  ( in_room_1_ag_3 , in_room_1_ag_2 )  |  ( -in_room_1_ag_3 , -in_room_1_ag_2 )  ) ;
+
+executable left_0 if -in_room_1_ag_0 ;
+left_0 causes in_room_1_ag_0 ;
+ag_0 observes left_0;
+ag_1 observes left_0;
+ag_2 observes left_0;
+ag_3 observes left_0;
+
+executable right_0 if in_room_1_ag_0 ;
+right_0 causes -in_room_1_ag_0 ;
+ag_0 observes right_0;
+ag_1 observes right_0;
+ag_2 observes right_0;
+ag_3 observes right_0;
+
+executable left_1 if -in_room_1_ag_1 ;
+left_1 causes in_room_1_ag_1 ;
+ag_0 observes left_1;
+ag_1 observes left_1;
+ag_2 observes left_1;
+ag_3 observes left_1;
+
+executable right_1 if in_room_1_ag_1 ;
+right_1 causes -in_room_1_ag_1 ;
+ag_0 observes right_1;
+ag_1 observes right_1;
+ag_2 observes right_1;
+ag_3 observes right_1;
+
+executable left_2 if -in_room_1_ag_2 ;
+left_2 causes in_room_1_ag_2 ;
+ag_0 observes left_2;
+ag_1 observes left_2;
+ag_2 observes left_2;
+ag_3 observes left_2;
+
+executable right_2 if in_room_1_ag_2 ;
+right_2 causes -in_room_1_ag_2 ;
+ag_0 observes right_2;
+ag_1 observes right_2;
+ag_2 observes right_2;
+ag_3 observes right_2;
+
+executable left_3 if -in_room_1_ag_3 ;
+left_3 causes in_room_1_ag_3 ;
+ag_0 observes left_3;
+ag_1 observes left_3;
+ag_2 observes left_3;
+ag_3 observes left_3;
+
+executable right_3 if in_room_1_ag_3 ;
+right_3 causes -in_room_1_ag_3 ;
+ag_0 observes right_3;
+ag_1 observes right_3;
+ag_2 observes right_3;
+ag_3 observes right_3;
+
+
+initially in_room_1_ag_0, in_room_1_ag_1, in_room_1_ag_2, in_room_1_ag_3, s_0, s_1, s_2, s_3;
+initially C([ag_0, ag_1, ag_2, ag_3], ( ( B( ag_0 , s_0 ) ) | ( B( ag_0 , (-s_0) ) ) ) );
+initially C([ag_0, ag_1, ag_2, ag_3], ( ( B( ag_1 , s_1 ) ) | ( B( ag_1 , (-s_1) ) ) ) );
+initially C([ag_0, ag_1, ag_2, ag_3], ( ( B( ag_2 , s_2 ) ) | ( B( ag_2 , (-s_2) ) ) ) );
+initially C([ag_0, ag_1, ag_2, ag_3], ( ( B( ag_3 , s_3 ) ) | ( B( ag_3 , (-s_3) ) ) ) );
+
+goal  (  B( ag_0 ,  ( s_1 , s_2 , s_3 )  )  ,  B( ag_1 ,  ( s_0 , s_2 , s_3 )  )  ,  ( - B( ag_2 ,  B( ag_0 ,  ( s_1 , s_3 )  )  )  )  ,  ( - B( ag_2 ,  B( ag_1 ,  ( s_0 , s_3 )  )  )  )  ,  ( - B( ag_3 ,  B( ag_0 ,  ( s_1 , s_2 )  )  )  )  ,  ( - B( ag_3 ,  B( ag_1 ,  ( s_0 , s_2 )  )  )  )  ) ;
