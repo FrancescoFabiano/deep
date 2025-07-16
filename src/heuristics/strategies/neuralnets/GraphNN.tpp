@@ -166,7 +166,7 @@ template <StateRepresentation StateRepr>
     return 0;
   } else {
     return static_cast<int>(
-        std::round(inference_result * m_normalization_constant));
+        std::round(inference_result / m_normalization_constant));
   }
 }
 
