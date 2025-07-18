@@ -185,9 +185,7 @@ private:
 
   void CreateG(int num_v, const VectorBisWrapper<Bis_vElem> &G_temp);
 
-
   void SetPointers(int n);
-
 
   void GetMinimizedAutoma(BisAutomata &A);
 

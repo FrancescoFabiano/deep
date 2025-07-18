@@ -110,12 +110,14 @@ public:
   void set_bf2(const BeliefFormulaParsed &to_set);
 
   /** \brief Setter for the field m_formula_type.
-   *  \param[in] to_set The \ref BeliefFormulaType object to copy in m_formula_type.
+   *  \param[in] to_set The \ref BeliefFormulaType object to copy in
+   * m_formula_type.
    */
   void set_formula_type(BeliefFormulaType to_set);
 
   /** \brief Setter for the field m_operator.
-   *  \param[in] to_set The \ref BeliefFormulaOperator object to copy in m_operator.
+   *  \param[in] to_set The \ref BeliefFormulaOperator object to copy in
+   * m_operator.
    */
   void set_operator(BeliefFormulaOperator to_set);
 

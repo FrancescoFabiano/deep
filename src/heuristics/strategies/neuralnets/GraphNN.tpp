@@ -234,14 +234,14 @@ float GraphNN<StateRepr>::run_inference(const GraphTensor &tensor) const {
   // Convert input/output names to const char* arrays
   std::vector<const char *> input_names_cstr;
   input_names_cstr.reserve(m_input_names.size());
-for (const auto &name : m_input_names) {
-  input_names_cstr.push_back(name.c_str());
-}
+  for (const auto &name : m_input_names) {
+    input_names_cstr.push_back(name.c_str());
+  }
   std::vector<const char *> output_names_cstr;
   output_names_cstr.reserve(m_output_names.size());
-for (const auto &name : m_output_names) {
-  output_names_cstr.push_back(name.c_str());
-}
+  for (const auto &name : m_output_names) {
+    output_names_cstr.push_back(name.c_str());
+  }
 
   // Run the model
   auto output_tensors = session.Run(

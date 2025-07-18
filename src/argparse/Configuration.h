@@ -180,9 +180,12 @@ private:
   std::string m_GNN_model_path =
       "lib/RL/models/distance_estimator.onnx"; ///< Path to the GNN model for
                                                ///< heuristic evaluation.
-  std::string m_GNN_constant_path =
-      "lib/RL/models/distance_estimator_normalization_constants.txt"; ///< Path to the file that contains the
-                             ///< normalization constant for the GNN model.
+  std::string m_GNN_constant_path = "lib/RL/models/"
+                                    "distance_estimator_normalization_"
+                                    "constants.txt"; ///< Path to the file that
+                                                     ///< contains the
+                                                     ///< normalization constant
+                                                     ///< for the GNN model.
 
   /**
    * \brief Sets the bisimulation type as a boolean.

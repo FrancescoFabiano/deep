@@ -234,7 +234,8 @@ ArgumentParser::ArgumentParser() : app("deep") {
                    "Specify the path to the normalization constant file for "
                    "the GNN model. "
                    "Only used if --heuristics GNN is selected.")
-      ->default_val("lib/RL/models/distance_estimator_normalization_constants.txt");
+      ->default_val(
+          "lib/RL/models/distance_estimator_normalization_constants.txt");
 
   /*search_group->add_option("--search_threads", m_threads_per_search,
                             "Set the number of threads to use for each search
@@ -411,13 +412,14 @@ void ArgumentParser::print_usage() const {
   std::cout << "\nEXAMPLES:\n";
   std::cout << "  " << prog_name << " domain.txt\n";
   std::cout << "    Find a plan for domain.txt\n\n";
-  std::cout << "  " << prog_name << " domain.txt -s Astar --heuristic SUBGOALS\n";
+  std::cout << "  " << prog_name
+            << " domain.txt -s Astar --heuristic SUBGOALS\n";
   std::cout << "    Plan using heuristic 'SUBGOALS' and 'Astar' search\n\n";
   std::cout << "  " << prog_name
             << " domain.txt -e --execute-actions open_a peek_a\n";
   std::cout << "    Execute actions [open_a, peek_a] step by step\n\n";
- // std::cout << "  " << prog_name << " domain.txt --threads_per_search 4\n";
- // std::cout << "    Run search with 4 threads per search strategy\n\n";
+  // std::cout << "  " << prog_name << " domain.txt --threads_per_search 4\n";
+  // std::cout << "    Run search with 4 threads per search strategy\n\n";
   std::cout << "  " << prog_name << " domain.txt --portfolio_threads 3\n";
   std::cout
       << "    Run 3 planner configurations in parallel (portfolio search)\n\n";

@@ -34,18 +34,19 @@ enum class BeliefFormulaType {
   BELIEF_FORMULA, ///< A \ref BeliefFormula of the form B(Agent, *phi*).
   PROPOSITIONAL_FORMULA, ///< A \ref BeliefFormula composed with logical
                          ///< operators and \ref BeliefFormula(e).
-  E_FORMULA,   ///< A \ref BeliefFormula of the form E([set of Agent],
-               ///< *phi*).
-  C_FORMULA,   ///< A \ref BeliefFormula of the form C([set of Agent],
-               ///< *phi*).
-  BF_EMPTY,    ///< When the belief formula is empty.
-  BF_TYPE_FAIL ///< The failure case.
+  E_FORMULA,             ///< A \ref BeliefFormula of the form E([set of Agent],
+                         ///< *phi*).
+  C_FORMULA,             ///< A \ref BeliefFormula of the form C([set of Agent],
+                         ///< *phi*).
+  BF_EMPTY,              ///< When the belief formula is empty.
+  BF_TYPE_FAIL           ///< The failure case.
 };
 
 /**
  * \brief The logical operator for \ref BeliefFormula(e).
  *
- * These are used in the case that the BeliefFormulaType of a \ref BeliefFormula is PROPOSITIONAL_FORMULA.
+ * These are used in the case that the BeliefFormulaType of a \ref BeliefFormula
+ * is PROPOSITIONAL_FORMULA.
  */
 enum class BeliefFormulaOperator {
   BF_AND,     ///< The AND between \ref BeliefFormula(e).
