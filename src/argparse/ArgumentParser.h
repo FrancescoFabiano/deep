@@ -209,9 +209,9 @@ private:
   std::string m_heuristic_opt =
       "SUBGOALS"; ///< Heuristic type (SUBGOALS by default).
   std::string m_GNN_model_path =
-      "lib/RL/models/distance_estimator.onnx"; ///< Path to the GNN model for
+      "lib/epistemic_rl/models/distance_estimator.onnx"; ///< Path to the GNN model for
                                                ///< heuristic evaluation.
-  std::string m_GNN_constant_path = "lib/RL/models/"
+  std::string m_GNN_constant_path = "lib/epistemic_rl/models/"
                                     "distance_estimator_normalization_"
                                     "constants.txt"; ///< Path to the file that
                                                      ///< contains the

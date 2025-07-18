@@ -191,16 +191,14 @@ add_custom_target(clear
 
 add_custom_target(fresh
     DEPENDS clear
-    COMMAND ${CMAKE_COMMAND} -E remove_directory ${CMAKE_BINARY_DIR}/doxygen/Docs
+    COMMAND ${CMAKE_COMMAND} -E remove_directory ${CMAKE_BINARY_DIR}/docs/html
     COMMENT "Performing a fresh cleanup"
 )
 
 # === Doxygen Documentation ===
-find_package(Doxygen REQUIRED)
-
 if(DOXYGEN_FOUND)
     set(DOXYGEN_INPUT_DIR ${CMAKE_SOURCE_DIR}/src)
-    set(DOXYGEN_OUTPUT_DIR ${CMAKE_SOURCE_DIR}/docs)  # <- Output to root/docs/Docs
+    set(DOXYGEN_OUTPUT_DIR ${CMAKE_SOURCE_DIR}/docs)  # <- Output to root/docs/
     set(DOXYGEN_CONFIG_FILE ${CMAKE_BINARY_DIR}/Doxyfile)  # Config generated in build/
 
     configure_file(${CMAKE_SOURCE_DIR}/docs/Doxyfile.in ${DOXYGEN_CONFIG_FILE} @ONLY)
