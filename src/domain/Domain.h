@@ -30,8 +30,7 @@
 class Domain {
 public:
   /** \brief To get always (the same instance of) *this* and the same
-   * instantiated fields. \warning the \ref set_domain has to called in the main
-   * file only.*/
+   * instantiated fields.*/
   static Domain &get_instance();
 
   /** \brief Function that builds all the domain information.     */
@@ -39,7 +38,7 @@ public:
 
   /** \brief Getter of the field \ref m_fluents. */
   [[nodiscard]] const FluentsSet &get_fluents() const noexcept;
-  /** \brief Function that returns the number of \ref fluent in the domain. */
+  /** \brief Function that returns the number of Fluent in the domain. */
   [[nodiscard]] unsigned int get_fluent_number() const noexcept;
   /** \brief Function that returns the size of the fluent set (which also
    * include negations). */
@@ -68,12 +67,12 @@ private:
       m_name; ///< The name of the file that contains the description of *this*.
   // Grounder m_grounder; ///< A \ref grounder object used to store the name of
   // the information.
-  FluentsSet m_fluents; ///< Set containing all the (grounded) \ref fluent of
+  FluentsSet m_fluents; ///< Set containing all the (grounded) Fluent of
                         ///< the domain.
-  ActionsSet m_actions; ///< Set containing all the \ref action (with effects,
+  ActionsSet m_actions; ///< Set containing all the Action (with effects,
                         ///< conditions, obs etc.) of the domain.
   AgentsSet
-      m_agents; ///< Set containing all the (grounded) \ref agent of the domain.
+      m_agents; ///< Set containing all the (grounded) Agent of the domain.
   InitialStateInformation
       m_initial_description;       ///< The description of the initial State.
   FormulaeList m_goal_description; ///< The formula that describes the goal.

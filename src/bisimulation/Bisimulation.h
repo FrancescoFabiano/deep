@@ -183,23 +183,12 @@ private:
    */
   void FillStructures(const BisAutomata &A);
 
-  /**
-   * \brief Converts the BisGraph with only labeled edges into one with only
-   * labeled states. \param[in] num_v The number of vertices. \param[in] G_temp
-   * The BisGraph with only labeled edges.
-   */
   void CreateG(int num_v, const VectorBisWrapper<Bis_vElem> &G_temp);
 
-  /**
-   * \brief Manages the pointers between the array X and the array G.
-   * \param[in] n The total number of labels.
-   */
+
   void SetPointers(int n);
 
-  /**
-   * \brief Updates the automaton with the minimized structure.
-   * \param[in] A The automaton to update.
-   */
+
   void GetMinimizedAutoma(BisAutomata &A);
 
   /**
@@ -207,10 +196,6 @@ private:
    */
   void MarkDeletedNodes();
 
-  /**
-   * \brief Deletes nodes from the automaton.
-   * \param[in] A The automaton to update.
-   */
   void DeleteNodes(BisAutomata &A) const;
 
   /**
@@ -228,7 +213,9 @@ private:
 
   /**
    * \brief Returns true if fast Bisimulation has been executed, false
-   * otherwise. \param[in] A The automaton to minimize. \return True if
+   * otherwise.
+   * \param[in] A The automaton to minimize.
+   * \return True if
    * minimization was successful.
    */
   [[nodiscard]] bool MinimizeAutomaFB(BisAutomata &A);

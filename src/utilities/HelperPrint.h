@@ -10,7 +10,7 @@ class BeliefFormulaParsed;
  * \class HelperPrint
  * \brief Singleton class to facilitate printing of domain structures.
  *
- * \details Prints \ref string_set, \ref string_set_set, and other
+ * \details Prints \ref StringsSet, \ref StringSetsSet, and other
  * domain-related sets. Only std::string representations are printed for
  * clarity. Use \ref get_instance() to access the singleton.
  *

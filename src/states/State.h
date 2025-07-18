@@ -110,20 +110,20 @@ public:
   /** \brief Constructor with that set *this* as successor of the given one.
    *
    * @param prev_state: the \ref State that is the predecessor of *this*.
-   *  @param executed_action: the \ref action applied to \p prev_state.*/
+   *  @param executed_action: the Action applied to \p prev_state.*/
   State(const State &prev_state, const Action &executed_action);
 
   /** \brief Function that compute the next state applying an action to this.
    *
-   *  @param executed_action: the \ref action applied to \p prev_state.*/
+   *  @param executed_action: the Action applied to \p prev_state.*/
   [[nodiscard]] State compute_successor(const Action &executed_action);
 
   /** \brief Getter of \ref m_executed_actions_id.
    *
-   * @return the \ref ActionIdsList that represents all the executed \ref action
+   * @return the \ref ActionIdsList that represents all the executed Action
    * before to obtain *this*.*/
   [[nodiscard]] const ActionIdsList &get_executed_actions() const;
-  /** \brief Getter of \ref m_plan_length.
+  /** \brief Getter of plan length.
    *
    * @return the length of the plan up to *this*.*/
   [[nodiscard]] unsigned short get_plan_length() const;
@@ -140,9 +140,9 @@ public:
    * @return the m_representation of *this*.*/
   [[nodiscard]] const StateRepr &get_representation() const;
 
-  /** \brief Function that add and \ref action_id to \ref m_executed_actions_id.
+  /** \brief Function that add and \ref ActionId to \ref m_executed_actions_id.
    *
-   * @param[in] to_add: the \ref action_id to add to \ref
+   * @param[in] to_add: the ActionId to add to \ref
    * m_executed_actions_id.*/
   void add_executed_action(const Action &to_add);
 
@@ -152,25 +152,24 @@ public:
    * m_representation.*/
   void set_representation(const StateRepr &to_set);
 
-  /** \brief Function that checks if *this* entails a \ref fluent.
+  /** \brief Function that checks if *this* entails a Fluent.
    *
    * The actual entailment is left to the specific State-representation (\ref
    * m_representation).
    *
-   * @param to_check: the \ref fluent to check if is entailed by *this*.
+   * @param to_check: the Fluent to check if is entailed by *this*.
    *
    * @return true if \p to_check is entailed by *this*.
    * @return false if \p -to_check is entailed by *this*.
    */
   [[nodiscard]] bool entails(const Fluent &to_check) const;
 
-  /** \brief Function that checks if *this* entails a conjunctive set of \ref
-   * fluent.
+  /** \brief Function that checks if *this* entails a conjunctive set of Fluent.
    *
    * The actual entailment is left to the specific State-representation (\ref
    * m_representation).
    *
-   * @param to_check: the conjunctive set of \ref fluent to check if is entailed
+   * @param to_check: the conjunctive set of Fluent to check if is entailed
    * by *this*.
    *
    * @return true if \p to_check is entailed by *this*.
@@ -213,9 +212,9 @@ public:
    * @return false if \p -to_check is entailed by *this*.*/
   [[nodiscard]] bool entails(const FormulaeList &to_check) const;
 
-  /** \brief Function that builds the initial \ref state and set *this* with it.
+  /** \brief Function that builds the initial State and set *this* with it.
    *
-   * The actual construction of the \ref state is left to the specific
+   * The actual construction of the State is left to the specific
    * State-representation (\ref m_representation).
    *
    * @see initially*/
@@ -236,7 +235,7 @@ public:
    * @return false: otherwise.*/
   [[nodiscard]] bool is_goal() const;
 
-  /** \brief Function that determines the minimum \ref e-state that is bisimilar
+  /** \brief Function that determines the minimum e-state that is bisimilar
    * to the current one.
    *
    * The function depends on the type of e-State.
@@ -246,7 +245,7 @@ public:
 
   /** \brief The copy operator.
    *
-   * @param [in] to_assign: the \ref state to assign to *this*.
+   * @param [in] to_assign: the State to assign to *this*.
    * @return This with the copied assigned values.*/
   State &operator=(const State<StateRepr> &to_assign);
 
@@ -254,7 +253,7 @@ public:
    *
    * The result is left to the representations.
    *
-   * @param [in] to_compare: the \ref state to to_compare to *this*.
+   * @param [in] to_compare: the State to to_compare to *this*.
    * @return true: if *this* is smaller than to_compare.
    * @return false: otherwise.*/
   bool operator<(const State<StateRepr> &to_compare) const;
@@ -303,7 +302,7 @@ private:
    * One of the Possible representation for a State */
   StateRepr m_representation;
 
-  /** \brief The list of executed \ref action to get from the initial state to
+  /** \brief The list of executed Action to get from the initial state to
    * *this*.
    *
    * Is a std::vector because we can repeat the same action.
@@ -312,12 +311,12 @@ private:
 
   /** \brief The heuristic value of the *this*.
    *
-   * This value is given by the chosen implementation of \ref heuristic.*/
+   * This value is given by the chosen implementation of Heuristics.*/
   int m_heuristic_value = 0;
 
   /** \brief Setter for the field \ref m_executed_actions_id.
    *
-   * @param[in] to_set: the list of \ref action_id object to copy in \ref
+   * @param[in] to_set: the list of ActionId object to copy in \ref
    * m_executed_actions_id.*/
   void set_executed_actions(const ActionIdsList &to_set);
 };

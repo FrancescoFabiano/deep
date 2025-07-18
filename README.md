@@ -1,125 +1,200 @@
 # deep
 
-## TODOs
+**deep** (Dynamic Epistemic logic-basEd Planning) is a multi-agent epistemic planner that operates over the full scope of Dynamic Epistemic Logic (DEL), leveraging optimized search algorithms and heuristics. It is designed for scalable planning in multi-agent domains, supporting advanced reasoning over knowledge and belief.
 
-- [ ] Fix the ReadME
-- [ ] Check the doxygen and structure for consistency
-- [ ] Create a docker version maybe
-- [ ] Provide some support in the compilation tools
-- [ ] Add Francois partial state
-- [ ] Add EPDDL support
-- [ ] Create generic update function with event model but maybe keep optimized solving strategies/heuristics for mA* (
-  planning graph)
-- [ ] Start to test against other planning types (classical, conformant etc.)
-- [ ] Enrich the search strategies with Local Search, MonteCarlo, add Delphic from Buri's, Christian's etc.
+For a more detailed overview, see the works reference in the Bibliography section at teh end of this README.
 
-## Goal
+## Features
 
-Realize a scalable Planner that tackles Multi-Agent Epistemic Planning exploiting the full power of Dynamic Epistemic
-Logic.
-This tool is able to reason over belief/knoweldge relations, i.e., over infomration flows.
+- Multi-agent epistemic planning using Dynamic Epistemic Logic (DEL)
+- Optimized search strategies: BFS, DFS, A*, etc.
+- Support for heuristics, including optional neural network-based heuristics
+- Modular and extensible C++ codebase
+- Templated heuristics and flexible state representations
 
-## Current situation:
+> Note: EPDDL support is planned but not yet integrated. The current version works with the `mA*` language.
 
-Moreover the planner admits templatic heuristics usage.
-At the moment we implemented:
+## Requirements
 
-- a complete version of the *Epistemic planning graph* introduced in (Le et al. 2018);
-- *number of satisfied goals* that possibly expands the original goal for a better scalability;
-- BFS, DFS and DFS Iterative searches.
-
-## Future works and some ideas
-
-- Think about OBDDs.
-- More Heuristics.
-- Is announcement with false beliefs an ontic? It creates the world if it didn't exist. old semantic + ontic update for
-  fully observant (sensing the same)
-- If **ag_i** sees as partial **ag_y** announcing **phi** and **ag_i** thought that **ag_y** did not know **phi** how
-  should **ag_i** react?
-- If **ag_i** sees as partial **ag_y** announcing **f** and **ag_i** knows **f** then
-    - **ag_i** believes that **ag_y** knows **f**; or
-    - **ag_i** believes that **ag_y** knows (**f OR -f**).
-- Objective vs subjective common knowledge;
-- announcement/sensing of Belief formulae;
-- ontic that remove uncertanty;
-- static laws (the same as biased info?);
-- intial state;
-- false beliefs correction.
+- C++20 compiler (e.g., g++ 10+, clang 11+)
+- CMake 3.14 or higher
+- Boost (header-only)
+- Bison and Flex
+- Python 3.6+ (for optional scripts and comparisons)
+- ONNX Runtime (installed automatically through build script) (optional, for neural network heuristics)
+- LaTeX (optional, for PDF state visualization)
+- Doxygen (optional, for documentation generation)
+- GraphViz  (optional, for PDF state visualization and documentation generation)
 
 
-- ethic constraints.
+> CUDA is **not required**. GPU support via ONNX Runtime with CUDA is available but **not tested**.
 
-### Requirements
+### Linux Dependencies
 
-- copy from build.sh and github action
+Install required tools and libraries:
 
-### Requirements for the Script
+    sudo apt-get install build-essential cmake bison flex libboost-dev unzip curl
 
-#### Python
+## Build Instructions
 
-- Python 3.6 or higher (recommended 3.8+)
-- Uses only standard Python libraries (no extra installs required)
+### Clone the repository
 
-##### LaTeX
+    git clone --recurse-submodules https://github.com/FrancescoFabiano/deep.git
+    cd deep
 
-- A working LaTeX distribution with `pdflatex`:
-  - TeX Live, MiKTeX, or MacTeX
-- Required LaTeX packages (usually pre-installed):
-  - `booktabs.sty`
-  - `geometry.sty`
-  - `fontenc.sty`
-  - `lmodern.sty`
+The `--recurse-submodules` flag ensures that all submodules (like CLI11) are cloned as well.
 
----
-Make sure `pdflatex` is in your system PATH to enable automatic PDF compilation by the script.
+### Build the project
+
+Use the build script with `-h` to view all available options:
+
+    ./build.sh -h
+
+For example, a simple release build:
+
+    ./build.sh
+
+Or a release build with neural networks enabled:
+
+    ./build.sh nn
+
+#### CMake Build Options
+
+You can customize the build using these options:
+
+- `ENABLE_NEURALNETS=ON` – Enable ONNX Runtime for heuristic inference
+- `ENABLE_CUDA=ON`       – Attempt to enable CUDA inference if CUDA Toolkit is found
+
+Example:
+
+    cmake .. -DENABLE_NEURALNETS=ON -DENABLE_CUDA=OFF
+
+> CUDA acceleration is supported if available, but **not required or tested**.
 
 
-### Usage
+## Usage
 
-- **make**: to compile the planner.
-- **make doxygen**: to compile the planner and the documentation (to check it open doxygen/Docs/html/index.html).
-- **make clean**: removes all compilation-generated files.
-- **make clean_build**: removes all compilation-generated files.
-- **make clean_out**: removes all the file in out/ (the pdf visualization of the states).
-- **make clear**: executes both **clean_build** and **clean_out**.
-- **make fresh**: executes **clear** and also removes doxygen documentation.
-- **make old**: cleans and compile the old version (1.0) of EFP.
-- **make all**: executes **make doxygen** and **make_old**.
+Common `make` targets after building:
 
-### Extras
+    make             # Compile the planner
+    make doxygen     # Generate documentation (see doxygen/Docs/html/index.html)
+    make clean       # Remove build files
+    make clean_build # Remove build and binary directories
+    make clean_out   # Remove output files (e.g., PDF visualizations)
+    make clear       # Clean both build and output files
+    make fresh       # Clean everything, including documentation
 
-- The repository also includes several scripts to help in the testing/debugging process. These are located inside the
-  folder *scripts*.
-- All the utilized beanchmark are preserved in the folder *exp*.
-- The folder *ICAPS_EFP_OLD* contains EFP v. 1.0 (introduced in (Le et al. 2018)) for comparison and testing.
-- The repository contains DockerFile for create container and images to compile and run
-- The repository include project settings and various profile to works on ide (CLion), profiles available: Build, Build
-  Clean, Execute, Execute and Build
-- Now can debug at run time with debugger (Clion), profiling with CLion profiler integrated (Callstack, Memory, CPU
-  usage and More)
+If built in a different folder from root, for example `cmake-build-release`, run with -C option like this for documentation generation:
 
-#### Bibliography
+    make -C cmake-build-release doxygen
 
-Baral, C.; Gelfond, G.; Pontelli, E.; and Son, T. C. 2015.
-An action language for multi-agent domains: Foundations.
-CoRR abs/1511.01960.
+## Execution Examples
 
-Burigana, A., Fabiano, F., Dovier, A. & Pontelli, E. 2020.
-Modelling Multi-Agent Epistemic Planning in ASP.
-Theory and Practice of Logic Programming.
+Assuming the binary is located at `./cmake-build-release/bin/deep`, here are some example commands you can run in your terminal:
 
-Fabiano, F.; Burigana, A.; Dovier, A.; and Pontelli, E. 2020.
-EFP 2.0: A Multi-Agent Epistemic Solver with Multiple e-State Representations.
-In Proceedings of the 30th International Conference on Automated Planning and Scheduling.
+```console
+$ ./cmake-build-release/bin/deep -h
+# Use '-h' or '--help' to see all options (this option is automatically activated when wrong arguments are parsed)
 
-Fabiano, F., Burigana, A., Dovier, A., Pontelli, E. & Son, T. C. 2021.
-Multi-agent Epistemic Planning with Inconsistent Beliefs, Trust and Lies.
-In Proceedings of the 18th Pacific Rim International Conference on Artificial Intelligence.
+$ ./cmake-build-release/bin/deep domain.txt
+# Find a plan for domain.txt
 
-Fabiano, F.; Riouak, I.; Dovier, A.; and Pontelli, E. 2019.
-Non-well-founded set based multi-agent epistemic action language.
-In Proceedings of the 34th Italian Conference on Computational Logic.
+$ ./cmake-build-release/bin/deep domain.txt -s Astar --heuristic SUBGOALS
+# Plan using the heuristic 'SUBGOALS' and 'Astar' search
 
-Le, T.; Fabiano, F.; Son, T. C.; and Pontelli, E. 2018.
-EFP and PG-EFP: Epistemic forward search planners in multiagent domains.
-In Proceedings of the Twenty-Eighth International Conference on Automated Planning and Scheduling.
+$ ./cmake-build-release/bin/deep domain.txt -e --execute-actions open_a peek_a
+# Execute actions [open_a, peek_a] step by step
+
+$ ./cmake-build-release/bin/deep domain.txt --portfolio_threads 3
+# Run 3 planner configurations in parallel (portfolio search)
+```
+
+
+
+## Scripts
+
+Helper scripts for testing and debugging are located in the `scripts/` directory.
+
+## Benchmarks
+
+Benchmarks are available in the `exp/` directory.
+
+## Citation
+
+If you use deep in your research, please cite:
+
+```bibtex'
+    @inproceedings{prima_Fabiano24,
+      title = {$\mathcal{{H}}$-{EFP}: Bridging Efficiency in Multi-agent Epistemic Planning with Heuristics.},
+      booktitle = {PRIMA 2024: Principles and Practice of Multi-Agent Systems},
+      year      = {2024},
+      author    = {Fabiano, Francesco and Platt, Theoderic and Son, Tran Cao and Pontelli, Enrico}
+      editor    = {Arisaka, Ryuta and Sanchez-Anguix, Victor and Stein, Sebastian and Aydo{\u{g}}an, Reyhan and van der Torre, Leon and Ito, Takayuki},
+      publisher = {Springer Nature Switzerland},
+      address   = {Cham},
+      pages     = {81--86},
+      doi       = {10.1007/978-3-031-77367-9\_7},
+      isbn      = {978-3-031-77367-9}
+    }
+```
+
+## Bibliography
+
+#### Strong integration of heuristics
+- Fabiano, F., Platt, T., Son, T. C., & Pontelli, E. (2024).  
+  *𝓗-EFP: Bridging Efficiency in Multi-agent Epistemic Planning with Heuristics.*  
+  In *PRIMA 2024: Principles and Practice of Multi-Agent Systems* (pp. 81–86).  
+  DOI: [10.1007/978-3-031-77367-9_7](https://doi.org/10.1007/978-3-031-77367-9_7)
+
+
+#### EFP 2.0 with updated transition function and multiple e-state representations
+- Fabiano, F., Burigana, A., Dovier, A., & Pontelli, E. (2020).  
+  *EFP 2.0: A Multi-Agent Epistemic Solver with Multiple E-State Representations.*  
+  In *Proceedings of the 30th International Conference on Automated Planning and Scheduling (ICAPS 2020)*, Nancy, France (pp. 101–109).  
+  [Link](https://ojs.aaai.org/index.php/ICAPS/article/view/6650)
+
+
+
+#### Foundational work on optimizing the code and transition function
+- Burigana, A., Fabiano, F., Dovier, A., & Pontelli, E. (2020).  
+  *Modelling Multi-Agent Epistemic Planning in ASP.*  
+  *Theory and Practice of Logic Programming*, 20(5), 593–608.  
+  DOI: [10.1017/S1471068420000289](https://doi.org/10.1017/S1471068420000289)
+
+
+- Fabiano, F., Riouak, I., Dovier, A., & Pontelli, E. (2019).  
+  *Non-Well-Founded Set Based Multi-Agent Epistemic Action Language.*  
+  In *Proceedings of the 34th Italian Conference on Computational Logic (CILC 2019)*, Trieste, Italy (pp. 242–259).  
+  [Link](https://ceur-ws.org/Vol-2396/paper38.pdf)
+
+
+
+#### EFP version 1.0
+- Le, T., Fabiano, F., Son, T. C., & Pontelli, E. (2018).  
+  *EFP and PG-EFP: Epistemic Forward Search Planners in Multi-Agent Domains.*  
+  In *Proceedings of the 28th International Conference on Automated Planning and Scheduling (ICAPS 2018)*, Delft, Netherlands (pp. 161–170).  
+  [Link](https://aaai.org/ocs/index.php/ICAPS/ICAPS18/paper/view/17733)
+
+
+#### Works on EPDDL (final version to come)
+- Burigana, A. & Fabiano, F. (2022).  
+  *The Epistemic Planning Domain Definition Language (Short Paper).*  
+  In *Proceedings of the 10th Italian Workshop on Planning and Scheduling (IPS 2022)*, Udine, Italy.  
+  [Link](https://ceur-ws.org/Vol-3345/paper5_2497.pdf)
+
+- Fabiano, F., Srivastava, B., Lenchner, J., Horesh, L., Rossi, F., & Ganapini, M. B. (2021).  
+  *E-PDDL: A Standardized Way of Defining Epistemic Planning Problems.*  
+  *CoRR*, abs/2107.08739.  
+  [arXiv](https://arxiv.org/abs/2107.08739)
+
+
+
+#### Work on mA* (language currently used)
+- Baral, C., Gelfond, G., Pontelli, E., & Son, T. C. (2015).  
+  *An action language for multi-agent domains: Foundations.*  
+  *CoRR*, abs/1511.01960.
+
+
+## License
+
+This project is licensed under the GNU General Public License v3.0 – see the LICENSE file for details.

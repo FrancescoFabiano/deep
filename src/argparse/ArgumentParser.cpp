@@ -142,7 +142,7 @@ void ArgumentParser::parse(int argc, char **argv) {
 
 ArgumentParser::ArgumentParser() : app("deep") {
   app.add_option("input_file", m_input_file,
-                 "Specify the input problem file (e.g., problem.epddl). This "
+                 "Specify the input problem file (e.g., problem.txt). This "
                  "file defines the planning problem.")
       ->required();
 
@@ -234,7 +234,7 @@ ArgumentParser::ArgumentParser() : app("deep") {
                    "Specify the path to the normalization constant file for "
                    "the GNN model. "
                    "Only used if --heuristics GNN is selected.")
-      ->default_val("lib/RL/models/C.txt");
+      ->default_val("lib/RL/models/distance_estimator_normalization_constants.txt");
 
   /*search_group->add_option("--search_threads", m_threads_per_search,
                             "Set the number of threads to use for each search
@@ -409,20 +409,20 @@ void ArgumentParser::print_usage() const {
   std::cout << app.help() << std::endl;
   const std::string prog_name = "deep";
   std::cout << "\nEXAMPLES:\n";
-  std::cout << "  " << prog_name << " domain.epddl\n";
-  std::cout << "    Find a plan for domain.epddl\n\n";
-  std::cout << "  " << prog_name << " domain.epddl --heuristic SUBGOALS\n";
-  std::cout << "    Plan using heuristic 'SUBGOALS'\n\n";
+  std::cout << "  " << prog_name << " domain.txt\n";
+  std::cout << "    Find a plan for domain.txt\n\n";
+  std::cout << "  " << prog_name << " domain.txt -s Astar --heuristic SUBGOALS\n";
+  std::cout << "    Plan using heuristic 'SUBGOALS' and 'Astar' search\n\n";
   std::cout << "  " << prog_name
-            << " domain.epddl -e --execute-actions open_a peek_a\n";
+            << " domain.txt -e --execute-actions open_a peek_a\n";
   std::cout << "    Execute actions [open_a, peek_a] step by step\n\n";
-  std::cout << "  " << prog_name << " domain.epddl --threads_per_search 4\n";
-  std::cout << "    Run search with 4 threads per search strategy\n\n";
-  std::cout << "  " << prog_name << " domain.epddl --portfolio_threads 3\n";
+ // std::cout << "  " << prog_name << " domain.txt --threads_per_search 4\n";
+ // std::cout << "    Run search with 4 threads per search strategy\n\n";
+  std::cout << "  " << prog_name << " domain.txt --portfolio_threads 3\n";
   std::cout
       << "    Run 3 planner configurations in parallel (portfolio search)\n\n";
-  std::cout << "  " << prog_name
-            << " domain.epddl --threads_per_search 2 --portfolio_threads 2\n";
-  std::cout << "    Run 2 planner configurations in parallel, each using 2 "
-               "threads (total 4 threads)\n\n";
+  // std::cout << "  " << prog_name
+  //           << " domain.txt --threads_per_search 2 --portfolio_threads 2\n";
+  // std::cout << "    Run 2 planner configurations in parallel, each using 2 "
+  //              "threads (total 4 threads)\n\n";
 }

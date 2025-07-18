@@ -2,7 +2,7 @@
  * \class KripkeWorld
  * \brief Represents a possible interpretation of the world and agents' beliefs.
  *
- * \details A KripkeWorld is a consistent set of \ref fluent (a \ref
+ * \details A KripkeWorld is a consistent set of Fluent (a
  * FluentsSet), with an information set representing the possibilities agents
  * consider true. \see KripkeState, KripkeStorage \copyright GNU Public License.
  * \author Francesco Fabiano.

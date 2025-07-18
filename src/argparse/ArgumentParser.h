@@ -212,7 +212,7 @@ private:
       "lib/RL/models/distance_estimator.onnx"; ///< Path to the GNN model for
                                                ///< heuristic evaluation.
   std::string m_GNN_constant_path =
-      "lib/RL/models/C.txt"; ///< Path to the file that contains the
+      "lib/RL/models/distance_estimator_normalization_constants.txt"; ///< Path to the file that contains the
                              ///< normalization constant for the GNN model.
   bool m_exec_plan =
       false; ///< Flag to indicate if the plan should be executed.

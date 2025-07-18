@@ -14,8 +14,7 @@
  * \date May 2025
  */
 
-/// \name Entailment for KripkeWorld
-///@{
+
 bool KripkeEntailmentHelper::entails(const Fluent &to_check,
                                      const KripkeWorld &world) {
   return world.get_fluent_set().contains(to_check);
@@ -50,10 +49,6 @@ bool KripkeEntailmentHelper::entails(const FluentFormula &to_check,
   });
 }
 
-///@}
-
-/// \name Entailment for KripkeWorldPointer
-///@{
 bool KripkeEntailmentHelper::entails(const Fluent &to_check,
                                      const KripkeWorldPointer &world) {
   if (!world.get_ptr()) {
@@ -87,10 +82,7 @@ bool KripkeEntailmentHelper::entails(const FluentFormula &to_check,
   return entails(to_check, *world.get_ptr());
 }
 
-///@}
 
-/// \name Entailment KripkeState
-///@{
 bool KripkeEntailmentHelper::entails(const BeliefFormula &to_check,
                                      const KripkeWorldPointersSet &reachable,
                                      const KripkeState &kstate) {
@@ -174,7 +166,7 @@ bool KripkeEntailmentHelper::entails(const FormulaeList &to_check,
   });
 }
 
-///@}
+
 
 bool KripkeEntailmentHelper::check_properties(const AgentsSet &fully,
                                               const AgentsSet &partially,

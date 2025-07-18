@@ -4,8 +4,8 @@
  *
  * \details This class is used during the parsing process to store all the read
  * information, i.e., the complete description of the domain (as std::string) is
- * found here. All the domain information stored are yet to be grounded (\ref
- * grounder).
+ * found here. All the domain information stored are yet to be grounded (
+ * Grounder).
  *
  * \todo The fields of the class are public but should be private and accessed
  * through getters and setters. \bug the () extra causes weird errors \bug the -

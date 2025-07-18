@@ -89,7 +89,7 @@ public:
 
   /** \brief Less-than operator for set operations.
    *  \param[in] to_compare The KripkeState to compare.
-   *  \return True if this is less than \ref to_compare, false otherwise.
+   *  \return True if this is less than to_compare, false otherwise.
    */
   [[nodiscard]] bool operator<(const KripkeState &to_compare) const;
 
@@ -99,21 +99,20 @@ public:
    */
   void build_initial();
 
-  /** \brief Function that checks if *this* entails a \ref fluent.
+  /** \brief Function that checks if *this* entails a Fluent.
    *
    *
-   * @param to_check: the \ref fluent to check if is entailed by *this*.
+   * @param to_check: the Fluent to check if is entailed by *this*.
    *
    * @return true if \p to_check is entailed by *this*.
    * @return false if \p -to_check is entailed by *this*.
    */
   [[nodiscard]] bool entails(const Fluent &to_check) const;
 
-  /** \brief Function that checks if *this* entails a conjunctive set of \ref
-   * fluent.
+  /** \brief Function that checks if *this* entails a conjunctive set of Fluent.
    *
    *
-   * @param to_check: the conjunctive set of \ref fluent to check if is entailed
+   * @param to_check: the conjunctive set of \ref Fluent to check if is entailed
    * by *this*.
    *
    * @return true if \p to_check is entailed by *this*.

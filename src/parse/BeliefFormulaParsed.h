@@ -2,17 +2,16 @@
  * \class BeliefFormulaParsed
  * \brief Class that implements a parsed Belief Formula (string-based fields).
  * This is just used to get the parsed information and then build the grounded
- * version of the \ref BeliefFormula. We do not want strings in the \ref
+ * version of the \ref BeliefFormula. We do not want strings in the
  * BeliefFormula class for optimization purposes.
  *
  * \details A \ref BeliefFormulaParsed can have several forms:
- *    - \ref FLUENT_FORMULA -- \ref fluent_formula;
- *    - \ref BELIEF_FORMULA -- B(\ref agent, *phi*);
+ *    - \ref FLUENT_FORMULA -- FluentFormula;
+ *    - \ref BELIEF_FORMULA -- B(Agent, *phi*);
  *    - \ref PROPOSITIONAL_FORMULA -- \ref BF_NOT(*phi*) or (*phi_1* \ref BF_AND
  * *phi_2*) or (*phi_1* \ref BF_OR *phi_2*);
- *    - \ref E_FORMULA -- E([set of \ref agent], *phi*);
- *    - \ref C_FORMULA -- C([set of \ref agent], *phi*);
- *    - \ref D_FORMULA -- D([set of \ref agent], *phi*);
+ *    - \ref E_FORMULA -- E([set of Agent], *phi*);
+ *    - \ref C_FORMULA -- C([set of Agent], *phi*);
  *
  * \see reader, domain
  *
@@ -30,14 +29,14 @@
  * \brief The possible types of \ref BeliefFormula.
  */
 enum class BeliefFormulaType {
-  FLUENT_FORMULA, ///< A \ref BeliefFormula is also a \ref fluent_formula (base
+  FLUENT_FORMULA, ///< A \ref BeliefFormula is also a \ref FluentFormula (base
                   ///< case for recursion).
-  BELIEF_FORMULA, ///< A \ref BeliefFormula of the form B(\ref agent, *phi*).
+  BELIEF_FORMULA, ///< A \ref BeliefFormula of the form B(Agent, *phi*).
   PROPOSITIONAL_FORMULA, ///< A \ref BeliefFormula composed with logical
                          ///< operators and \ref BeliefFormula(e).
-  E_FORMULA,   ///< A \ref BeliefFormula of the form E([set of \ref agent],
+  E_FORMULA,   ///< A \ref BeliefFormula of the form E([set of Agent],
                ///< *phi*).
-  C_FORMULA,   ///< A \ref BeliefFormula of the form C([set of \ref agent],
+  C_FORMULA,   ///< A \ref BeliefFormula of the form C([set of Agent],
                ///< *phi*).
   BF_EMPTY,    ///< When the belief formula is empty.
   BF_TYPE_FAIL ///< The failure case.
@@ -46,8 +45,7 @@ enum class BeliefFormulaType {
 /**
  * \brief The logical operator for \ref BeliefFormula(e).
  *
- * These are used in the case that the \ref bf_type of a \ref BeliefFormula is
- * \ref PROPOSITIONAL_FORMULA.
+ * These are used in the case that the BeliefFormulaType of a \ref BeliefFormula is PROPOSITIONAL_FORMULA.
  */
 enum class BeliefFormulaOperator {
   BF_AND,     ///< The AND between \ref BeliefFormula(e).
@@ -56,7 +54,7 @@ enum class BeliefFormulaOperator {
   BF_INPAREN, ///< When the \ref BeliefFormula is only surrounded by "()".
   BF_FAIL
   ///< When the \ref BeliefFormula is not set properly (shouldn't be accessed if
-  ///< not \ref PROPOSITIONAL_FORMULA).
+  ///< not PROPOSITIONAL_FORMULA).
 };
 
 class BeliefFormulaParsed {
@@ -73,7 +71,7 @@ public:
 
   /// \name Setters
   ///@{
-  /** \brief Setter for the field m_string_fluent_formula. */
+  /** \brief Setter for the field m_string_FluentFormula. */
   void set_string_fluent_formula(const StringSetsSet &to_set);
 
   /** \brief Setter for the field m_string_agent. */
@@ -94,7 +92,7 @@ public:
   /** \brief Setter for the field m_operator. */
   void set_operator(BeliefFormulaOperator to_set);
 
-  /** \brief Setter from a fluent_formula (string-based). */
+  /** \brief Setter from a FluentFormula (string-based). */
   void set_from_ff(const StringSetsSet &to_build);
   ///@}
 

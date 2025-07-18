@@ -1,0 +1,59 @@
+# Doxyfile.in - template for generating Doxygen config via CMake
+
+# Project info
+PROJECT_NAME           = "deep"
+PROJECT_NUMBER         = "1.0"
+
+# Output directory for generated documentation inside build folder
+OUTPUT_DIRECTORY 	   = @CMAKE_SOURCE_DIR@/docs
+CREATE_SUBDIRS         = YES
+
+# Input files and directories
+INPUT                  = @CMAKE_SOURCE_DIR@/src
+RECURSIVE              = YES
+FILE_PATTERNS          = *.h *.hpp *.hh *.c *.cpp *.tpp
+
+# Exclude directories (if any)
+EXCLUDE                =
+
+# Build options
+EXTRACT_ALL            = YES
+EXTRACT_PRIVATE        = YES
+EXTRACT_STATIC         = YES
+
+# Source browsing
+SOURCE_BROWSER         = YES
+INLINE_SOURCES         = YES
+REFERENCED_BY_RELATION = YES
+REFERENCES_RELATION    = YES
+
+# HTML output
+GENERATE_HTML          = YES
+HTML_OUTPUT            = html
+HTML_COLORSTYLE_HUE    = 220
+HTML_COLORSTYLE_SAT    = 100
+HTML_COLORSTYLE_GAMMA  = 80
+HTML_TIMESTAMP         = YES
+
+# Diagrams
+HAVE_DOT               = YES
+DOT_IMAGE_FORMAT       = svg
+CALL_GRAPH             = YES
+CALLER_GRAPH           = YES
+CLASS_DIAGRAMS         = YES
+DOT_GRAPH_MAX_NODES    = 50
+MAX_DOT_GRAPH_DEPTH    = 3
+
+# Warnings and errors
+WARNINGS               = YES
+QUIET                  = NO
+WARN_IF_UNDOCUMENTED   = YES
+
+# Other formats
+GENERATE_LATEX         = NO
+GENERATE_RTF           = NO
+GENERATE_MAN           = NO
+
+# Misc
+GENERATE_TREEVIEW      = YES
+GENERATE_XML           = NO

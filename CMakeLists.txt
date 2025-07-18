@@ -84,6 +84,9 @@ ADD_FLEX_BISON_DEPENDENCY(Lexer Parser)
 
 list(APPEND SOURCES ${FLEX_Lexer_OUTPUTS} ${BISON_Parser_OUTPUTS})
 
+# Doxygen Documentation
+find_package(Doxygen OPTIONAL_COMPONENTS dot)
+
 # === Executable ===
 add_executable(deep ${SOURCES})
 
@@ -191,3 +194,23 @@ add_custom_target(fresh
     COMMAND ${CMAKE_COMMAND} -E remove_directory ${CMAKE_BINARY_DIR}/doxygen/Docs
     COMMENT "Performing a fresh cleanup"
 )
+
+# === Doxygen Documentation ===
+find_package(Doxygen REQUIRED)
+
+if(DOXYGEN_FOUND)
+    set(DOXYGEN_INPUT_DIR ${CMAKE_SOURCE_DIR}/src)
+    set(DOXYGEN_OUTPUT_DIR ${CMAKE_SOURCE_DIR}/docs)  # <- Output to root/docs/Docs
+    set(DOXYGEN_CONFIG_FILE ${CMAKE_BINARY_DIR}/Doxyfile)  # Config generated in build/
+
+    configure_file(${CMAKE_SOURCE_DIR}/docs/Doxyfile.in ${DOXYGEN_CONFIG_FILE} @ONLY)
+
+    add_custom_target(doxygen
+            COMMAND ${DOXYGEN_EXECUTABLE} ${DOXYGEN_CONFIG_FILE}
+            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}  # Needed for relative INPUT path
+            COMMENT "Generating API documentation with Doxygen"
+            VERBATIM
+    )
+else()
+    message(STATUS "Doxygen not found. Documentation target will be skipped.")
+endif()

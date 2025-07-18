@@ -233,11 +233,15 @@ float GraphNN<StateRepr>::run_inference(const GraphTensor &tensor) const {
 
   // Convert input/output names to const char* arrays
   std::vector<const char *> input_names_cstr;
-  for (const auto &name : m_input_names)
-    input_names_cstr.push_back(name.c_str());
+  input_names_cstr.reserve(m_input_names.size());
+for (const auto &name : m_input_names) {
+  input_names_cstr.push_back(name.c_str());
+}
   std::vector<const char *> output_names_cstr;
-  for (const auto &name : m_output_names)
-    output_names_cstr.push_back(name.c_str());
+  output_names_cstr.reserve(m_output_names.size());
+for (const auto &name : m_output_names) {
+  output_names_cstr.push_back(name.c_str());
+}
 
   // Run the model
   auto output_tensors = session.Run(
@@ -357,8 +361,6 @@ GraphNN<StateRepr>::get_score_python(const State<StateRepr> &state) {
       ArgumentParser::get_instance().get_dataset_merged());
 
   // Run the external Python script for NN inference
-  /// todo Replace this with C++ call that opens the model and runs the
-  /// inference
   std::string command = "./lib/RL/run_prediction.sh " + m_checking_file_path +
                         " " + std::to_string(state.get_plan_length()) + " " +
                         m_goal_file_path + " " + m_model_path;

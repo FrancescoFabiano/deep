@@ -107,7 +107,7 @@ void Domain::build_agents(Grounder &grounder) {
   const int agents_length = FormulaHelper::length_to_power_two(
       static_cast<int>(domain_reader->m_agents.size()));
 
-  /////@TODO This will be replaced by epddl parser. Reader needs to be changed
+  /////\todo This will be replaced by epddl parser. Reader needs to be changed
   /// and make sure to have getter and setter
   for (const auto &agent_name : domain_reader->m_agents) {
     Agent agent(agents_length, i);
@@ -135,7 +135,7 @@ void Domain::build_fluents(Grounder &grounder) {
                        1;
   // +1 for the negation bit
 
-  /////@TODO This will be replaced by epddl parser. Reader needs to be changed
+  /////\todo This will be replaced by epddl parser. Reader needs to be changed
   /// and make sure to have getter and setter
   for (const auto &fluent_name : domain_reader->m_fluents) {
     Fluent fluent_real(bit_size, i);
@@ -172,7 +172,7 @@ void Domain::build_actions(Grounder &grounder) {
   int number_of_actions = static_cast<int>(domain_reader->m_actions.size());
   int bit_size = FormulaHelper::length_to_power_two(number_of_actions);
 
-  /////@TODO This will be replaced by epddl parser. Reader needs to be changed
+  /////\todo This will be replaced by epddl parser. Reader needs to be changed
   /// and make sure to have getter and setter
   for (const auto &action_name : domain_reader->m_actions) {
     ActionId action_bitset(bit_size, i);
@@ -206,7 +206,7 @@ void Domain::build_propositions() {
     os << "Adding propositions to actions..." << std::endl;
   }
 
-  /////@TODO This will be replaced by epddl parser. Reader needs to be changed
+  ////\todo This will be replaced by epddl parser. Reader needs to be changed
   /// and make sure to have getter and setter
   for (auto &prop : domain_reader->m_propositions) {
     auto action_to_modify =
@@ -233,7 +233,7 @@ void Domain::build_initially() {
     os << "Adding to pointed world and initial conditions..." << std::endl;
   }
 
-  /////@TODO This will be replaced by epddl parser. Reader needs to be changed
+  ///\todo This will be replaced by epddl parser. Reader needs to be changed
   /// and make sure to have getter and setter
   for (auto &formula_parsed : domain_reader->m_bf_initially) {
     const auto formula = BeliefFormula(formula_parsed);
@@ -277,7 +277,7 @@ void Domain::build_goal() {
     os << "Adding to Goal..." << std::endl;
   }
 
-  /////@TODO This will be replaced by epddl parser. Reader needs to be changed
+  ////\todo This will be replaced by epddl parser. Reader needs to be changed
   /// and make sure to have getter and setter
   for (auto &formula_parsed : domain_reader->m_bf_goal) {
     const auto formula = BeliefFormula(formula_parsed);

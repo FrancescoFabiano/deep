@@ -19,29 +19,29 @@
 
 class FormulaHelper {
 public:
-  /** \brief Function that checks if two \ref fluent_set are consistent.
+  /** \brief Function that checks if two FluentsSet are consistent.
    *
-   * Two \ref fluent_set are consistent if they not contains a \ref fluent and
+   * Two FluentsSet are consistent if they not contains a Fluent and
    * its negation together.*/
   static bool is_consistent(const FluentsSet &, const FluentsSet &);
 
-  /** \brief Function that returns the negation of a given \ref fluent.
+  /** \brief Function that returns the negation of a given Fluent.
    *
-   * @param[in] to_negate: the \ref fluent to negate
+   * @param[in] to_negate: the Fluent to negate
    *
    * @return the negation of \p to_negate.*/
   static Fluent negate_fluent(const Fluent &to_negate);
 
-  /** \brief Function that returns the negation of a given \ref fluent_formula.
+  /** \brief Function that returns the negation of a given FluentFormula.
    *
-   * @param[in] to_negate: the \ref fluent_formula to negate
+   * @param[in] to_negate: the FluentFormula to negate
    *
    * @return the negation of \p to_negate.*/
   static FluentFormula negate_fluent_formula(const FluentFormula &to_negate);
 
-  /** \brief Function that returns the positive version of a given \ref fluent.
+  /** \brief Function that returns the positive version of a given Fluent.
    *
-   * @param[in] to_normalize: the \ref fluent to normalize
+   * @param[in] to_normalize: the Fluent to normalize
    *
    * @return the normalized of fluent.*/
   static Fluent normalize_fluent(const Fluent &to_normalize);
@@ -51,16 +51,16 @@ public:
   /** \brief Function to set the truth value of a fluent in a world description.
    *
    * @param[in] effect: the fluent to set.
-   * @param[out] world_description: the \ref fluent_set contained inside a
+   * @param[out] world_description: the FluentsSet contained inside a
    * single world to modify.*/
   static void apply_effect(const Fluent &effect, FluentsSet &world_description);
 
-  /** \brief Function to merge the results of an \ref ONTIC \ref action with a
+  /** \brief Function to merge the results of an \ref ONTIC Action with a
    * world description.
    *
-   * @param[in] effect: part of the effect of an \ref ONTIC \ref action in CNF
+   * @param[in] effect: part of the effect of an \ref ONTIC Action in CNF
    * form.
-   * @param[out] world_description: the \ref fluent_set contained inside a
+   * @param[out] world_description: the FluentsSet contained inside a
    * single world.
    *
    * @return the description of the world after \p effect has been applied to \p
@@ -68,37 +68,37 @@ public:
   static void apply_effect(const FluentsSet &effect,
                            FluentsSet &world_description);
 
-  /** \brief Function that merges two conjunctive set of \ref fluent into one.
+  /** \brief Function that merges two conjunctive set of Fluent into one.
    *
-   * @param[in]  to_merge_1: the first conjunctive set of \ref fluent to merge.
-   * @param[in]  to_merge_2: the second conjunctive set of \ref fluent to merge.
+   * @param[in]  to_merge_1: the first conjunctive set of Fluent to merge.
+   * @param[in]  to_merge_2: the second conjunctive set of Fluent to merge.
    *
-   * @return the union of all the \ref fluent in \p to_merge_1\2 if is
+   * @return the union of all the Fluent in \p to_merge_1\2 if is
    * consistent (exit otherwise).*/
   static FluentsSet and_ff(const FluentsSet &to_merge_1,
                            const FluentsSet &to_merge_2);
 
-  /** \brief Function that merges two \ref fluent_formula into one.
+  /** \brief Function that merges two FluentFormula into one.
    *
-   * @param[in] to_merge_1: the first \ref fluent_formula to merge.
-   * @param[in] to_merge_2: the second \ref fluent_formula to merge.
+   * @param[in] to_merge_1: the first FluentFormula to merge.
+   * @param[in] to_merge_2: the second FluentFormula to merge.
    *
-   * @return the union of all the \ref fluent_set in \p to_merge_1\2 if is
+   * @return the union of all the FluentsSet in \p to_merge_1\2 if is
    * consistent (exit otherwise).*/
   static FluentFormula and_ff(const FluentFormula &to_merge_1,
                               const FluentFormula &to_merge_2);
 
-  /** \brief Function that checks if two \ref belief_formula are of the form
-   * B(i, *phi*) -- B(i, -*phi*) where *phi* is a \ref fluent_formula.
+  /** \brief Function that checks if two BeliefFormula are of the form
+   * B(i, *phi*) -- B(i, -*phi*) where *phi* is a FluentFormula.
    *
    * This function is useful to identify when an agent \p knows the true value
-   * of *phi*. Is one of the accepted formulae in \ref S5.
+   * of *phi*. Is one of the accepted formulae in S5.
    *
-   * @param[in] to_check_1: the first \ref belief_formula to check.
-   * @param[in] to_check_2: the second \ref belief_formula to check.
-   * @param[out] ret: the \ref fluent_formula containing *phi*.
+   * @param[in] to_check_1: the first BeliefFormula to check.
+   * @param[in] to_check_2: the second BeliefFormula to check.
+   * @param[out] ret: the FluentFormula containing *phi*.
    *
-   * @return true: if the two \ref belief_formula contain \ref fluent_formula
+   * @return true: if the two BeliefFormula contain FluentFormula
    * that are the negation of each other.
    * @return false: otherwise.*/
   static bool check_Bff_notBff(const BeliefFormula &to_check_1,
@@ -110,7 +110,7 @@ public:
    *
    * Then it calls apply_effect(const fluent_set&, const fluent_set&);
    *
-   * @param[in] effect: the effect of an \ref ONTIC \ref action.
+   * @param[in] effect: the effect of an \ref ONTIC Action.
    * @param[out] world_description: the description of the world after \p effect
    * has been applied to \p world_description.
    *
@@ -142,7 +142,7 @@ public:
    */
   static bool fluentset_negated_empty_intersection(const FluentsSet &set1,
                                                    const FluentsSet &set2);
-  /** \brief Function that return the set of \ref agent that entails the obs
+  /** \brief Function that return the set of Agent that entails the obs
    * condition.
    *
    * @param[in] map: the map that contains the tuples to check for entailment.
@@ -152,7 +152,7 @@ public:
   static AgentsSet get_agents_if_entailed(const ObservabilitiesMap &map,
                                           const KripkeState &state);
 
-  /** \brief Function that return the \ref fluent_formula (effect) that entails
+  /** \brief Function that return the FluentFormula (effect) that entails
    * the exe condition.
    *
    * @param[in] map: the map that contains the tuples to check for entailment.

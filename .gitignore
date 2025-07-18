@@ -47,6 +47,8 @@ IDEA_ORIGINAL/*
 
 # Doxygen
 Doxygen/Docs/
+docs/html/
+docs/html/*
 
 # Out files
 out/
