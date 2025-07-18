@@ -178,8 +178,10 @@ private:
   Heuristics m_heuristic_enum =
       Heuristics::SUBGOALS; ///< Heuristic option enum.
   std::string m_GNN_model_path =
-      "lib/epistemic_rl/models/distance_estimator.onnx"; ///< Path to the GNN model for
-                                               ///< heuristic evaluation.
+      "lib/epistemic_rl/models/distance_estimator.onnx"; ///< Path to the GNN
+                                                         ///< model for
+                                                         ///< heuristic
+                                                         ///< evaluation.
   std::string m_GNN_constant_path = "lib/epistemic_rl/models/"
                                     "distance_estimator_normalization_"
                                     "constants.txt"; ///< Path to the file that
