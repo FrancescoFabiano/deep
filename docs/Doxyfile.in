@@ -9,9 +9,12 @@ OUTPUT_DIRECTORY 	   = @CMAKE_SOURCE_DIR@/docs
 CREATE_SUBDIRS         = YES
 
 # Input files and directories
-INPUT                  = @CMAKE_SOURCE_DIR@/src
+USE_MDFILE_AS_MAINPAGE = README.md
+INPUT                  = @CMAKE_SOURCE_DIR@/README.md @CMAKE_SOURCE_DIR@/src
 RECURSIVE              = YES
 FILE_PATTERNS          = *.h *.hpp *.hh *.c *.cpp *.tpp
+EXTENSION_MAPPING      = md=markdown
+MARKDOWN_SUPPORT       = YES
 
 # Exclude directories (if any)
 EXCLUDE                =

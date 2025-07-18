@@ -77,7 +77,7 @@ Example:
 Common `make` targets after building:
 
     make             # Compile the planner
-    make doxygen     # Generate documentation (see doxygen/Docs/html/index.html)
+    make doxygen     # Generate documentation (see docs/html/index.html)
     make clean       # Remove build files
     make clean_build # Remove build and binary directories
     make clean_out   # Remove output files (e.g., PDF visualizations)
