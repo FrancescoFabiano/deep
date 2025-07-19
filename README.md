@@ -93,20 +93,20 @@ If built in a different folder from root, for example `cmake-build-release`, run
 Assuming the binary is located at `./cmake-build-release/bin/deep`, here are some example commands you can run in your terminal:
 
 ```console
-$ ./cmake-build-release/bin/deep -h
 # Use '-h' or '--help' to see all options (this option is automatically activated when wrong arguments are parsed)
+$ ./cmake-build-release/bin/deep -h
 
-$ ./cmake-build-release/bin/deep domain.txt
 # Find a plan for domain.txt
+$ ./cmake-build-release/bin/deep domain.txt
 
-$ ./cmake-build-release/bin/deep domain.txt -s Astar --heuristic SUBGOALS
 # Plan using the heuristic 'SUBGOALS' and 'Astar' search
+$ ./cmake-build-release/bin/deep domain.txt -s Astar --heuristic SUBGOALS
 
-$ ./cmake-build-release/bin/deep domain.txt -e --execute-actions open_a peek_a
 # Execute actions [open_a, peek_a] step by step
+$ ./cmake-build-release/bin/deep domain.txt -e --execute-actions open_a peek_a
 
-$ ./cmake-build-release/bin/deep domain.txt --portfolio_threads 3
 # Run 3 planner configurations in parallel (portfolio search)
+$ ./cmake-build-release/bin/deep domain.txt --portfolio_threads 3
 ```
 
 
@@ -114,6 +114,7 @@ $ ./cmake-build-release/bin/deep domain.txt --portfolio_threads 3
 ## Scripts
 
 Helper scripts for testing and debugging are located in the `scripts/` directory.
+All scripts contain a `-h` or `--help` option to display usage information.
 
 ## Benchmarks
 
