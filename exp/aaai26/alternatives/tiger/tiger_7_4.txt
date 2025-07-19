@@ -1,0 +1,155 @@
+fluent knight_1, knight_2, knight_3, knight_4, knight_5, knight_6, knight_7, princess_1, princess_2, princess_3, princess_4, princess_5, princess_6, princess_7, tiger_1, tiger_2, tiger_3, tiger_4, tiger_5, tiger_6, tiger_7, open_1, open_2, open_3, open_4, open_5, open_6, open_7, saved_princess;
+action listen_1, open_1, look_1, save_1, listen_2, open_2, look_2, save_2, listen_3, open_3, look_3, save_3, listen_4, open_4, look_4, save_4, listen_5, open_5, look_5, save_5, listen_6, open_6, look_6, save_6, listen_7, open_7, look_7, save_7, left, right;
+agent knight;
+
+
+executable listen_1 if  (  ( - B( knight , tiger_1 )  )  , knight_1 )  ;
+listen_1 determines tiger_1 ;
+knight observes listen_1;
+
+executable open_1 if  (  B( knight , -tiger_1 )  , knight_1 , -open_1 )  ;
+open_1 causes open_1 ;
+knight observes open_1;
+
+executable look_1 if  (  ( - B( knight , princess_1 )  )  , knight_1 )  ;
+look_1 determines princess_1 ;
+knight observes look_1;
+
+executable save_1 if  (  B( knight , princess_1 )  , knight_1 , open_1 )  ;
+save_1 causes saved_princess;
+knight observes save_1;
+
+executable listen_2 if  (  ( - B( knight , tiger_2 )  )  , knight_2 )  ;
+listen_2 determines tiger_2 ;
+knight observes listen_2;
+
+executable open_2 if  (  B( knight , -tiger_2 )  , knight_2 , -open_2 )  ;
+open_2 causes open_2 ;
+knight observes open_2;
+
+executable look_2 if  (  ( - B( knight , princess_2 )  )  , knight_2 )  ;
+look_2 determines princess_2 ;
+knight observes look_2;
+
+executable save_2 if  (  B( knight , princess_2 )  , knight_2 , open_2 )  ;
+save_2 causes saved_princess;
+knight observes save_2;
+
+executable listen_3 if  (  ( - B( knight , tiger_3 )  )  , knight_3 )  ;
+listen_3 determines tiger_3 ;
+knight observes listen_3;
+
+executable open_3 if  (  B( knight , -tiger_3 )  , knight_3 , -open_3 )  ;
+open_3 causes open_3 ;
+knight observes open_3;
+
+executable look_3 if  (  ( - B( knight , princess_3 )  )  , knight_3 )  ;
+look_3 determines princess_3 ;
+knight observes look_3;
+
+executable save_3 if  (  B( knight , princess_3 )  , knight_3 , open_3 )  ;
+save_3 causes saved_princess;
+knight observes save_3;
+
+executable listen_4 if  (  ( - B( knight , tiger_4 )  )  , knight_4 )  ;
+listen_4 determines tiger_4 ;
+knight observes listen_4;
+
+executable open_4 if  (  B( knight , -tiger_4 )  , knight_4 , -open_4 )  ;
+open_4 causes open_4 ;
+knight observes open_4;
+
+executable look_4 if  (  ( - B( knight , princess_4 )  )  , knight_4 )  ;
+look_4 determines princess_4 ;
+knight observes look_4;
+
+executable save_4 if  (  B( knight , princess_4 )  , knight_4 , open_4 )  ;
+save_4 causes saved_princess;
+knight observes save_4;
+
+executable listen_5 if  (  ( - B( knight , tiger_5 )  )  , knight_5 )  ;
+listen_5 determines tiger_5 ;
+knight observes listen_5;
+
+executable open_5 if  (  B( knight , -tiger_5 )  , knight_5 , -open_5 )  ;
+open_5 causes open_5 ;
+knight observes open_5;
+
+executable look_5 if  (  ( - B( knight , princess_5 )  )  , knight_5 )  ;
+look_5 determines princess_5 ;
+knight observes look_5;
+
+executable save_5 if  (  B( knight , princess_5 )  , knight_5 , open_5 )  ;
+save_5 causes saved_princess;
+knight observes save_5;
+
+executable listen_6 if  (  ( - B( knight , tiger_6 )  )  , knight_6 )  ;
+listen_6 determines tiger_6 ;
+knight observes listen_6;
+
+executable open_6 if  (  B( knight , -tiger_6 )  , knight_6 , -open_6 )  ;
+open_6 causes open_6 ;
+knight observes open_6;
+
+executable look_6 if  (  ( - B( knight , princess_6 )  )  , knight_6 )  ;
+look_6 determines princess_6 ;
+knight observes look_6;
+
+executable save_6 if  (  B( knight , princess_6 )  , knight_6 , open_6 )  ;
+save_6 causes saved_princess;
+knight observes save_6;
+
+executable listen_7 if  (  ( - B( knight , tiger_7 )  )  , knight_7 )  ;
+listen_7 determines tiger_7 ;
+knight observes listen_7;
+
+executable open_7 if  (  B( knight , -tiger_7 )  , knight_7 , -open_7 )  ;
+open_7 causes open_7 ;
+knight observes open_7;
+
+executable look_7 if  (  ( - B( knight , princess_7 )  )  , knight_7 )  ;
+look_7 determines princess_7 ;
+knight observes look_7;
+
+executable save_7 if  (  B( knight , princess_7 )  , knight_7 , open_7 )  ;
+save_7 causes saved_princess;
+knight observes save_7;
+
+executable left if -knight_1 ;
+left causes -knight_2 if knight_2 ;
+left causes  knight_1 if knight_2 ;
+left causes -knight_3 if knight_3 ;
+left causes  knight_2 if knight_3 ;
+left causes -knight_4 if knight_4 ;
+left causes  knight_3 if knight_4 ;
+left causes -knight_5 if knight_5 ;
+left causes  knight_4 if knight_5 ;
+left causes -knight_6 if knight_6 ;
+left causes  knight_5 if knight_6 ;
+left causes -knight_7 if knight_7 ;
+left causes  knight_6 if knight_7 ;
+knight observes left;
+
+executable right if -knight_7 ;
+right causes -knight_1 if knight_1 ;
+right causes  knight_2 if knight_1 ;
+right causes -knight_2 if knight_2 ;
+right causes  knight_3 if knight_2 ;
+right causes -knight_3 if knight_3 ;
+right causes  knight_4 if knight_3 ;
+right causes -knight_4 if knight_4 ;
+right causes  knight_5 if knight_4 ;
+right causes -knight_5 if knight_5 ;
+right causes  knight_6 if knight_5 ;
+right causes -knight_6 if knight_6 ;
+right causes  knight_7 if knight_6 ;
+knight observes right;
+
+
+initially knight_1, tiger_1, tiger_2, tiger_3, tiger_4, princess_7;
+initially C( [knight] , knight_1 );
+initially C( [knight],  (  ( princess_1 , -princess_2 , -princess_3 , -princess_4 , -princess_5 , -princess_6 , -princess_7 )  |  ( princess_2 , -princess_1 , -princess_3 , -princess_4 , -princess_5 , -princess_6 , -princess_7 )  |  ( princess_3 , -princess_1 , -princess_2 , -princess_4 , -princess_5 , -princess_6 , -princess_7 )  |  ( princess_4 , -princess_1 , -princess_2 , -princess_3 , -princess_5 , -princess_6 , -princess_7 )  |  ( princess_5 , -princess_1 , -princess_2 , -princess_3 , -princess_4 , -princess_6 , -princess_7 )  |  ( princess_6 , -princess_1 , -princess_2 , -princess_3 , -princess_4 , -princess_5 , -princess_7 )  |  ( princess_7 , -princess_1 , -princess_2 , -princess_3 , -princess_4 , -princess_5 , -princess_6 )  )  );
+initially C( [knight],  (  ( princess_1 , tiger_4 , tiger_5 , tiger_6 , tiger_7 )  |  ( princess_1 , tiger_3 , tiger_5 , tiger_6 , tiger_7 )  |  ( princess_1 , tiger_3 , tiger_4 , tiger_6 , tiger_7 )  |  ( princess_1 , tiger_3 , tiger_4 , tiger_5 , tiger_7 )  |  ( princess_1 , tiger_3 , tiger_4 , tiger_5 , tiger_6 )  |  ( princess_1 , tiger_2 , tiger_5 , tiger_6 , tiger_7 )  |  ( princess_1 , tiger_2 , tiger_4 , tiger_6 , tiger_7 )  |  ( princess_1 , tiger_2 , tiger_4 , tiger_5 , tiger_7 )  |  ( princess_1 , tiger_2 , tiger_4 , tiger_5 , tiger_6 )  |  ( princess_1 , tiger_2 , tiger_3 , tiger_6 , tiger_7 )  |  ( princess_1 , tiger_2 , tiger_3 , tiger_5 , tiger_7 )  |  ( princess_1 , tiger_2 , tiger_3 , tiger_5 , tiger_6 )  |  ( princess_1 , tiger_2 , tiger_3 , tiger_4 , tiger_7 )  |  ( princess_1 , tiger_2 , tiger_3 , tiger_4 , tiger_6 )  |  ( princess_1 , tiger_2 , tiger_3 , tiger_4 , tiger_5 )  |  ( princess_2 , tiger_4 , tiger_5 , tiger_6 , tiger_7 )  |  ( princess_2 , tiger_3 , tiger_5 , tiger_6 , tiger_7 )  |  ( princess_2 , tiger_3 , tiger_4 , tiger_6 , tiger_7 )  |  ( princess_2 , tiger_3 , tiger_4 , tiger_5 , tiger_7 )  |  ( princess_2 , tiger_3 , tiger_4 , tiger_5 , tiger_6 )  |  ( princess_2 , tiger_1 , tiger_5 , tiger_6 , tiger_7 )  |  ( princess_2 , tiger_1 , tiger_4 , tiger_6 , tiger_7 )  |  ( princess_2 , tiger_1 , tiger_4 , tiger_5 , tiger_7 )  |  ( princess_2 , tiger_1 , tiger_4 , tiger_5 , tiger_6 )  |  ( princess_2 , tiger_1 , tiger_3 , tiger_6 , tiger_7 )  |  ( princess_2 , tiger_1 , tiger_3 , tiger_5 , tiger_7 )  |  ( princess_2 , tiger_1 , tiger_3 , tiger_5 , tiger_6 )  |  ( princess_2 , tiger_1 , tiger_3 , tiger_4 , tiger_7 )  |  ( princess_2 , tiger_1 , tiger_3 , tiger_4 , tiger_6 )  |  ( princess_2 , tiger_1 , tiger_3 , tiger_4 , tiger_5 )  |  ( princess_3 , tiger_4 , tiger_5 , tiger_6 , tiger_7 )  |  ( princess_3 , tiger_2 , tiger_5 , tiger_6 , tiger_7 )  |  ( princess_3 , tiger_2 , tiger_4 , tiger_6 , tiger_7 )  |  ( princess_3 , tiger_2 , tiger_4 , tiger_5 , tiger_7 )  |  ( princess_3 , tiger_2 , tiger_4 , tiger_5 , tiger_6 )  |  ( princess_3 , tiger_1 , tiger_5 , tiger_6 , tiger_7 )  |  ( princess_3 , tiger_1 , tiger_4 , tiger_6 , tiger_7 )  |  ( princess_3 , tiger_1 , tiger_4 , tiger_5 , tiger_7 )  |  ( princess_3 , tiger_1 , tiger_4 , tiger_5 , tiger_6 )  |  ( princess_3 , tiger_1 , tiger_2 , tiger_6 , tiger_7 )  |  ( princess_3 , tiger_1 , tiger_2 , tiger_5 , tiger_7 )  |  ( princess_3 , tiger_1 , tiger_2 , tiger_5 , tiger_6 )  |  ( princess_3 , tiger_1 , tiger_2 , tiger_4 , tiger_7 )  |  ( princess_3 , tiger_1 , tiger_2 , tiger_4 , tiger_6 )  |  ( princess_3 , tiger_1 , tiger_2 , tiger_4 , tiger_5 )  |  ( princess_4 , tiger_3 , tiger_5 , tiger_6 , tiger_7 )  |  ( princess_4 , tiger_2 , tiger_5 , tiger_6 , tiger_7 )  |  ( princess_4 , tiger_2 , tiger_3 , tiger_6 , tiger_7 )  |  ( princess_4 , tiger_2 , tiger_3 , tiger_5 , tiger_7 )  |  ( princess_4 , tiger_2 , tiger_3 , tiger_5 , tiger_6 )  |  ( princess_4 , tiger_1 , tiger_5 , tiger_6 , tiger_7 )  |  ( princess_4 , tiger_1 , tiger_3 , tiger_6 , tiger_7 )  |  ( princess_4 , tiger_1 , tiger_3 , tiger_5 , tiger_7 )  |  ( princess_4 , tiger_1 , tiger_3 , tiger_5 , tiger_6 )  |  ( princess_4 , tiger_1 , tiger_2 , tiger_6 , tiger_7 )  |  ( princess_4 , tiger_1 , tiger_2 , tiger_5 , tiger_7 )  |  ( princess_4 , tiger_1 , tiger_2 , tiger_5 , tiger_6 )  |  ( princess_4 , tiger_1 , tiger_2 , tiger_3 , tiger_7 )  |  ( princess_4 , tiger_1 , tiger_2 , tiger_3 , tiger_6 )  |  ( princess_4 , tiger_1 , tiger_2 , tiger_3 , tiger_5 )  |  ( princess_5 , tiger_3 , tiger_4 , tiger_6 , tiger_7 )  |  ( princess_5 , tiger_2 , tiger_4 , tiger_6 , tiger_7 )  |  ( princess_5 , tiger_2 , tiger_3 , tiger_6 , tiger_7 )  |  ( princess_5 , tiger_2 , tiger_3 , tiger_4 , tiger_7 )  |  ( princess_5 , tiger_2 , tiger_3 , tiger_4 , tiger_6 )  |  ( princess_5 , tiger_1 , tiger_4 , tiger_6 , tiger_7 )  |  ( princess_5 , tiger_1 , tiger_3 , tiger_6 , tiger_7 )  |  ( princess_5 , tiger_1 , tiger_3 , tiger_4 , tiger_7 )  |  ( princess_5 , tiger_1 , tiger_3 , tiger_4 , tiger_6 )  |  ( princess_5 , tiger_1 , tiger_2 , tiger_6 , tiger_7 )  |  ( princess_5 , tiger_1 , tiger_2 , tiger_4 , tiger_7 )  |  ( princess_5 , tiger_1 , tiger_2 , tiger_4 , tiger_6 )  |  ( princess_5 , tiger_1 , tiger_2 , tiger_3 , tiger_7 )  |  ( princess_5 , tiger_1 , tiger_2 , tiger_3 , tiger_6 )  |  ( princess_5 , tiger_1 , tiger_2 , tiger_3 , tiger_4 )  |  ( princess_6 , tiger_3 , tiger_4 , tiger_5 , tiger_7 )  |  ( princess_6 , tiger_2 , tiger_4 , tiger_5 , tiger_7 )  |  ( princess_6 , tiger_2 , tiger_3 , tiger_5 , tiger_7 )  |  ( princess_6 , tiger_2 , tiger_3 , tiger_4 , tiger_7 )  |  ( princess_6 , tiger_2 , tiger_3 , tiger_4 , tiger_5 )  |  ( princess_6 , tiger_1 , tiger_4 , tiger_5 , tiger_7 )  |  ( princess_6 , tiger_1 , tiger_3 , tiger_5 , tiger_7 )  |  ( princess_6 , tiger_1 , tiger_3 , tiger_4 , tiger_7 )  |  ( princess_6 , tiger_1 , tiger_3 , tiger_4 , tiger_5 )  |  ( princess_6 , tiger_1 , tiger_2 , tiger_5 , tiger_7 )  |  ( princess_6 , tiger_1 , tiger_2 , tiger_4 , tiger_7 )  |  ( princess_6 , tiger_1 , tiger_2 , tiger_4 , tiger_5 )  |  ( princess_6 , tiger_1 , tiger_2 , tiger_3 , tiger_7 )  |  ( princess_6 , tiger_1 , tiger_2 , tiger_3 , tiger_5 )  |  ( princess_6 , tiger_1 , tiger_2 , tiger_3 , tiger_4 )  |  ( princess_7 , tiger_3 , tiger_4 , tiger_5 , tiger_6 )  |  ( princess_7 , tiger_2 , tiger_4 , tiger_5 , tiger_6 )  |  ( princess_7 , tiger_2 , tiger_3 , tiger_5 , tiger_6 )  |  ( princess_7 , tiger_2 , tiger_3 , tiger_4 , tiger_6 )  |  ( princess_7 , tiger_2 , tiger_3 , tiger_4 , tiger_5 )  |  ( princess_7 , tiger_1 , tiger_4 , tiger_5 , tiger_6 )  |  ( princess_7 , tiger_1 , tiger_3 , tiger_5 , tiger_6 )  |  ( princess_7 , tiger_1 , tiger_3 , tiger_4 , tiger_6 )  |  ( princess_7 , tiger_1 , tiger_3 , tiger_4 , tiger_5 )  |  ( princess_7 , tiger_1 , tiger_2 , tiger_5 , tiger_6 )  |  ( princess_7 , tiger_1 , tiger_2 , tiger_4 , tiger_6 )  |  ( princess_7 , tiger_1 , tiger_2 , tiger_4 , tiger_5 )  |  ( princess_7 , tiger_1 , tiger_2 , tiger_3 , tiger_6 )  |  ( princess_7 , tiger_1 , tiger_2 , tiger_3 , tiger_5 )  |  ( princess_7 , tiger_1 , tiger_2 , tiger_3 , tiger_4 )  )  );
+initially C( [knight],  (  ( tiger_4 , tiger_5 , tiger_6 , tiger_7 , -tiger_1 , -tiger_2 , -tiger_3 )  |  ( tiger_3 , tiger_5 , tiger_6 , tiger_7 , -tiger_1 , -tiger_2 , -tiger_4 )  |  ( tiger_3 , tiger_4 , tiger_6 , tiger_7 , -tiger_1 , -tiger_2 , -tiger_5 )  |  ( tiger_3 , tiger_4 , tiger_5 , tiger_7 , -tiger_1 , -tiger_2 , -tiger_6 )  |  ( tiger_3 , tiger_4 , tiger_5 , tiger_6 , -tiger_1 , -tiger_2 , -tiger_7 )  |  ( tiger_2 , tiger_5 , tiger_6 , tiger_7 , -tiger_1 , -tiger_3 , -tiger_4 )  |  ( tiger_2 , tiger_4 , tiger_6 , tiger_7 , -tiger_1 , -tiger_3 , -tiger_5 )  |  ( tiger_2 , tiger_4 , tiger_5 , tiger_7 , -tiger_1 , -tiger_3 , -tiger_6 )  |  ( tiger_2 , tiger_4 , tiger_5 , tiger_6 , -tiger_1 , -tiger_3 , -tiger_7 )  |  ( tiger_2 , tiger_3 , tiger_6 , tiger_7 , -tiger_1 , -tiger_4 , -tiger_5 )  |  ( tiger_2 , tiger_3 , tiger_5 , tiger_7 , -tiger_1 , -tiger_4 , -tiger_6 )  |  ( tiger_2 , tiger_3 , tiger_5 , tiger_6 , -tiger_1 , -tiger_4 , -tiger_7 )  |  ( tiger_2 , tiger_3 , tiger_4 , tiger_7 , -tiger_1 , -tiger_5 , -tiger_6 )  |  ( tiger_2 , tiger_3 , tiger_4 , tiger_6 , -tiger_1 , -tiger_5 , -tiger_7 )  |  ( tiger_2 , tiger_3 , tiger_4 , tiger_5 , -tiger_1 , -tiger_6 , -tiger_7 )  |  ( tiger_1 , tiger_5 , tiger_6 , tiger_7 , -tiger_2 , -tiger_3 , -tiger_4 )  |  ( tiger_1 , tiger_4 , tiger_6 , tiger_7 , -tiger_2 , -tiger_3 , -tiger_5 )  |  ( tiger_1 , tiger_4 , tiger_5 , tiger_7 , -tiger_2 , -tiger_3 , -tiger_6 )  |  ( tiger_1 , tiger_4 , tiger_5 , tiger_6 , -tiger_2 , -tiger_3 , -tiger_7 )  |  ( tiger_1 , tiger_3 , tiger_6 , tiger_7 , -tiger_2 , -tiger_4 , -tiger_5 )  |  ( tiger_1 , tiger_3 , tiger_5 , tiger_7 , -tiger_2 , -tiger_4 , -tiger_6 )  |  ( tiger_1 , tiger_3 , tiger_5 , tiger_6 , -tiger_2 , -tiger_4 , -tiger_7 )  |  ( tiger_1 , tiger_3 , tiger_4 , tiger_7 , -tiger_2 , -tiger_5 , -tiger_6 )  |  ( tiger_1 , tiger_3 , tiger_4 , tiger_6 , -tiger_2 , -tiger_5 , -tiger_7 )  |  ( tiger_1 , tiger_3 , tiger_4 , tiger_5 , -tiger_2 , -tiger_6 , -tiger_7 )  |  ( tiger_1 , tiger_2 , tiger_6 , tiger_7 , -tiger_3 , -tiger_4 , -tiger_5 )  |  ( tiger_1 , tiger_2 , tiger_5 , tiger_7 , -tiger_3 , -tiger_4 , -tiger_6 )  |  ( tiger_1 , tiger_2 , tiger_5 , tiger_6 , -tiger_3 , -tiger_4 , -tiger_7 )  |  ( tiger_1 , tiger_2 , tiger_4 , tiger_7 , -tiger_3 , -tiger_5 , -tiger_6 )  |  ( tiger_1 , tiger_2 , tiger_4 , tiger_6 , -tiger_3 , -tiger_5 , -tiger_7 )  |  ( tiger_1 , tiger_2 , tiger_4 , tiger_5 , -tiger_3 , -tiger_6 , -tiger_7 )  |  ( tiger_1 , tiger_2 , tiger_3 , tiger_7 , -tiger_4 , -tiger_5 , -tiger_6 )  |  ( tiger_1 , tiger_2 , tiger_3 , tiger_6 , -tiger_4 , -tiger_5 , -tiger_7 )  |  ( tiger_1 , tiger_2 , tiger_3 , tiger_5 , -tiger_4 , -tiger_6 , -tiger_7 )  |  ( tiger_1 , tiger_2 , tiger_3 , tiger_4 , -tiger_5 , -tiger_6 , -tiger_7 )  )  );
+
+goal  (  B( knight , tiger_1 )  ,  B( knight , tiger_2 )  ,  B( knight , tiger_3 )  ,  B( knight , tiger_4 )  , saved_princess ) ;

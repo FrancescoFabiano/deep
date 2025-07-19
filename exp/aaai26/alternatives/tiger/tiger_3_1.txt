@@ -1,0 +1,75 @@
+fluent knight_1, knight_2, knight_3, princess_1, princess_2, princess_3, tiger_1, tiger_2, tiger_3, open_1, open_2, open_3, saved_princess;
+action listen_1, open_1, look_1, save_1, listen_2, open_2, look_2, save_2, listen_3, open_3, look_3, save_3, left, right;
+agent knight;
+
+
+executable listen_1 if  (  ( - B( knight , tiger_1 )  )  , knight_1 )  ;
+listen_1 determines tiger_1 ;
+knight observes listen_1;
+
+executable open_1 if  (  B( knight , -tiger_1 )  , knight_1 , -open_1 )  ;
+open_1 causes open_1 ;
+knight observes open_1;
+
+executable look_1 if  (  ( - B( knight , princess_1 )  )  , knight_1 )  ;
+look_1 determines princess_1 ;
+knight observes look_1;
+
+executable save_1 if  (  B( knight , princess_1 )  , knight_1 , open_1 )  ;
+save_1 causes saved_princess;
+knight observes save_1;
+
+executable listen_2 if  (  ( - B( knight , tiger_2 )  )  , knight_2 )  ;
+listen_2 determines tiger_2 ;
+knight observes listen_2;
+
+executable open_2 if  (  B( knight , -tiger_2 )  , knight_2 , -open_2 )  ;
+open_2 causes open_2 ;
+knight observes open_2;
+
+executable look_2 if  (  ( - B( knight , princess_2 )  )  , knight_2 )  ;
+look_2 determines princess_2 ;
+knight observes look_2;
+
+executable save_2 if  (  B( knight , princess_2 )  , knight_2 , open_2 )  ;
+save_2 causes saved_princess;
+knight observes save_2;
+
+executable listen_3 if  (  ( - B( knight , tiger_3 )  )  , knight_3 )  ;
+listen_3 determines tiger_3 ;
+knight observes listen_3;
+
+executable open_3 if  (  B( knight , -tiger_3 )  , knight_3 , -open_3 )  ;
+open_3 causes open_3 ;
+knight observes open_3;
+
+executable look_3 if  (  ( - B( knight , princess_3 )  )  , knight_3 )  ;
+look_3 determines princess_3 ;
+knight observes look_3;
+
+executable save_3 if  (  B( knight , princess_3 )  , knight_3 , open_3 )  ;
+save_3 causes saved_princess;
+knight observes save_3;
+
+executable left if -knight_1 ;
+left causes -knight_2 if knight_2 ;
+left causes  knight_1 if knight_2 ;
+left causes -knight_3 if knight_3 ;
+left causes  knight_2 if knight_3 ;
+knight observes left;
+
+executable right if -knight_3 ;
+right causes -knight_1 if knight_1 ;
+right causes  knight_2 if knight_1 ;
+right causes -knight_2 if knight_2 ;
+right causes  knight_3 if knight_2 ;
+knight observes right;
+
+
+initially knight_1, tiger_1, princess_3;
+initially C( [knight] , knight_1 );
+initially C( [knight],  (  ( princess_1 , -princess_2 , -princess_3 )  |  ( princess_2 , -princess_1 , -princess_3 )  |  ( princess_3 , -princess_1 , -princess_2 )  )  );
+initially C( [knight],  (  ( princess_1 , tiger_3 )  |  ( princess_1 , tiger_2 )  |  ( princess_2 , tiger_3 )  |  ( princess_2 , tiger_1 )  |  ( princess_3 , tiger_2 )  |  ( princess_3 , tiger_1 )  )  );
+initially C( [knight],  (  ( tiger_3 , -tiger_1 , -tiger_2 )  |  ( tiger_2 , -tiger_1 , -tiger_3 )  |  ( tiger_1 , -tiger_2 , -tiger_3 )  )  );
+
+goal  (  B( knight , tiger_1 )  , saved_princess ) ;
