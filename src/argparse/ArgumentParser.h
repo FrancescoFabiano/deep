@@ -208,16 +208,17 @@ private:
   std::string m_search_strategy = "BFS"; ///< Search strategy (BFS by default).
   std::string m_heuristic_opt =
       "SUBGOALS"; ///< Heuristic type (SUBGOALS by default).
-  std::string m_GNN_model_path =
-      "lib/epistemic_rl/models/default/distance_estimator.onnx"; ///< Path to the GNN
-                                                         ///< model for
-                                                         ///< heuristic
-                                                         ///< evaluation.
-  std::string m_GNN_constant_path = "lib/epistemic_rl/models/default/"
-                                    "distance_estimator_C.txt"; ///< Path to the file that
-                                                     ///< contains the
-                                                     ///< normalization constant
-                                                     ///< for the GNN model.
+  std::string m_GNN_model_path = "lib/epistemic_rl/models/default/"
+                                 "distance_estimator.onnx"; ///< Path to the GNN
+                                                            ///< model for
+                                                            ///< heuristic
+                                                            ///< evaluation.
+  std::string m_GNN_constant_path =
+      "lib/epistemic_rl/models/default/"
+      "distance_estimator_C.txt"; ///< Path to the file that
+                                  ///< contains the
+                                  ///< normalization constant
+                                  ///< for the GNN model.
   bool m_exec_plan =
       false; ///< Flag to indicate if the plan should be executed.
   std::vector<std::string>

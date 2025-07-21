@@ -177,16 +177,17 @@ private:
   std::string m_heuristic_opt = "SUBGOALS"; ///< Heuristic option string.
   Heuristics m_heuristic_enum =
       Heuristics::SUBGOALS; ///< Heuristic option enum.
-  std::string m_GNN_model_path =
-      "lib/epistemic_rl/models/default/distance_estimator.onnx"; ///< Path to the GNN
-                                                         ///< model for
-                                                         ///< heuristic
-                                                         ///< evaluation.
-  std::string m_GNN_constant_path = "lib/epistemic_rl/models/default/"
-                                    "distance_estimator_C.txt"; ///< Path to the file that
-                                                     ///< contains the
-                                                     ///< normalization constant
-                                                     ///< for the GNN model.
+  std::string m_GNN_model_path = "lib/epistemic_rl/models/default/"
+                                 "distance_estimator.onnx"; ///< Path to the GNN
+                                                            ///< model for
+                                                            ///< heuristic
+                                                            ///< evaluation.
+  std::string m_GNN_constant_path =
+      "lib/epistemic_rl/models/default/"
+      "distance_estimator_C.txt"; ///< Path to the file that
+                                  ///< contains the
+                                  ///< normalization constant
+                                  ///< for the GNN model.
 
   /**
    * \brief Sets the bisimulation type as a boolean.

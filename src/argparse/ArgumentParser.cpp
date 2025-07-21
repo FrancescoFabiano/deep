@@ -223,12 +223,12 @@ ArgumentParser::ArgumentParser() : app("deep") {
       ->check(CLI::IsMember({"SUBGOALS", "L_PG", "S_PG", "C_PG", "GNN"}))
       ->default_val("SUBGOALS");
   search_group
-      ->add_option(
-          "--GNN_model", m_GNN_model_path,
-          "Specify the path of the model used by the heuristics "
-          "'GNN'. The default model is the one located in "
-          "'lib/epistemic_rl/models/default/distance_estimator.onnx'. Only used if "
-          "HFS/Astar with GNN heuristics is selected.")
+      ->add_option("--GNN_model", m_GNN_model_path,
+                   "Specify the path of the model used by the heuristics "
+                   "'GNN'. The default model is the one located in "
+                   "'lib/epistemic_rl/models/default/distance_estimator.onnx'. "
+                   "Only used if "
+                   "HFS/Astar with GNN heuristics is selected.")
       ->default_val("lib/epistemic_rl/models/default/distance_estimator.onnx");
   search_group
       ->add_option("--GNN_constant_file", m_GNN_constant_path,
