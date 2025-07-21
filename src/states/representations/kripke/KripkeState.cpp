@@ -220,7 +220,7 @@ void KripkeState::generate_initial_worlds(FluentsSet &permutation,
 void KripkeState::add_initial_world(const KripkeWorld &possible_add) {
   const InitialStateInformation ini_conditions =
       Domain::get_instance().get_initial_description();
-  const auto& ff_forS5 = ini_conditions.get_ff_forS5();
+  const auto &ff_forS5 = ini_conditions.get_ff_forS5();
   FluentFormula ff_forS5_nonempty;
   for (const auto &s : ff_forS5) {
     if (!s.empty()) {
