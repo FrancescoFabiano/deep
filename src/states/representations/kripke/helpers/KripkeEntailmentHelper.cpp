@@ -37,10 +37,11 @@ bool KripkeEntailmentHelper::entails(const FluentFormula &to_check,
                                      const KripkeWorld &world) {
   // Maybe just set to True (It was like that in EFP)
   if (to_check.empty()) {
-    ExitHandler::exit_with_message(
-        ExitHandler::ExitCode::KripkeWorldEntailmentError,
-        "Attempted to check entailment of an empty FluentFormula in "
-        "KripkeEntailmentHelper::entails(FluentFormula, world).\n");
+    return true;
+    // ExitHandler::exit_with_message(
+   //     ExitHandler::ExitCode::KripkeWorldEntailmentError,
+   //     "Attempted to check entailment of an empty FluentFormula in "
+   //     "KripkeEntailmentHelper::entails(FluentFormula, world).\n");
   }
   // Returns true if the formula is entailed in at least one reachable world.
   return std::ranges::any_of(to_check, [&](const FluentsSet &fluentSet) {
