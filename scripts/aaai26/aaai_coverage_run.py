@@ -276,33 +276,46 @@ def main_all_domains(binary_path, parent_folder, threads, binary_args, search_pr
     all_test_global = []
     domain_results = []
 
+    has_heuristics = "-u GNN" in binary_args or "--heuristics GNN" in binary_args
+
     for domain_folder in sorted(Path(parent_folder).iterdir()):
         if not domain_folder.is_dir() or domain_folder.name.startswith('_'):
             continue  # Skip folders starting with underscore
 
-        print(f"\nProcessing domain: {domain_folder.name}")
+        domain_name = domain_folder.name
+        print(f"\nProcessing domain: {domain_name}")
 
         training_path = domain_folder / "Training"
         test_path = domain_folder / "Test"
 
-        training_rows = process_domain_split(binary_path, training_path, threads, binary_args, search_prefix, timeout) if training_path.exists() else []
-        test_rows = process_domain_split(binary_path, test_path, threads, binary_args, search_prefix, timeout) if test_path.exists() else []
+        # Append model file path if heuristics used
+        domain_binary_args = binary_args
+        if has_heuristics:
+            model_path = Path(parent_folder) / "_models" / domain_name / "distance_estimator.onnx"
+            domain_binary_args += f" --GNN_model {model_path}"
+            constant_path = Path(parent_folder) / "_models" / domain_name / "distance_estimator_C.txt"
+            domain_binary_args += f" --GNN_constant_file {constant_path}"
 
-        domain_results.append((domain_folder.name, training_rows, test_rows))
+        print(f"binary_args for {domain_name}: {domain_binary_args}")
 
-        # Add domain name to each training row
+        training_rows = process_domain_split(binary_path, training_path, threads, domain_binary_args, search_prefix, timeout) if training_path.exists() else []
+        test_rows = process_domain_split(binary_path, test_path, threads, domain_binary_args, search_prefix, timeout) if test_path.exists() else []
+
+        domain_results.append((domain_name, training_rows, test_rows))
+
         for r in training_rows:
-            r["Domain"] = domain_folder.name
+            r["Domain"] = domain_name
             r["Mode"] = "Training"
         all_training_global.extend(training_rows)
 
-        # Add domain name to each test row
         for r in test_rows:
-            r["Domain"] = domain_folder.name
+            r["Domain"] = domain_name
             r["Mode"] = "Test"
         all_test_global.extend(test_rows)
 
-        generate_domain_combined_tex(run_folder, domain_folder.name, training_rows, test_rows, search_prefix)
+        generate_domain_combined_tex(run_folder, domain_name, training_rows, test_rows, search_prefix)
+
+    generate_monolithic_combined_tex(run_folder, all_training_global, all_test_global, search_prefix)
 
     generate_monolithic_combined_tex(run_folder, all_training_global, all_test_global, search_prefix)
 
