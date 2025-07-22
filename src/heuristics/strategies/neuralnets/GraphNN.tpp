@@ -157,7 +157,7 @@ template <StateRepresentation StateRepr>
           << std::endl;
     }
 
-    //compare_predictions(state, run_inference(state_tensor));
+    // compare_predictions(state, run_inference(state_tensor));
   }
 #endif
 
@@ -166,7 +166,8 @@ template <StateRepresentation StateRepr>
     return 0;
   } else {
     return static_cast<int>(
-        std::round((inference_result / m_normalization_slope) - m_normalization_intercept));
+        std::round((inference_result - m_normalization_intercept) /
+                   m_normalization_slope));
   }
 }
 
@@ -423,7 +424,8 @@ void GraphNN<StateRepr>::parse_constant_for_normalization() {
   std::string line;
 
   std::regex pattern_slope(R"(slope\s*=\s*([+-]?\d*\.?\d+(?:[eE][+-]?\d+)?))");
-  std::regex pattern_intercept(R"(intercept\s*=\s*([+-]?\d*\.?\d+(?:[eE][+-]?\d+)?))");
+  std::regex pattern_intercept(
+      R"(intercept\s*=\s*([+-]?\d*\.?\d+(?:[eE][+-]?\d+)?))");
 
   bool slope_found = false;
   bool intercept_found = false;
@@ -431,44 +433,46 @@ void GraphNN<StateRepr>::parse_constant_for_normalization() {
   while (std::getline(infile, line)) {
     std::smatch match;
 
-    if (!slope_found && std::regex_search(line, match, pattern_slope) && match.size() == 2) {
+    if (!slope_found && std::regex_search(line, match, pattern_slope) &&
+        match.size() == 2) {
       try {
         m_normalization_slope = std::stof(match[1].str());
         slope_found = true;
-      } catch (const std::exception& e) {
-        ExitHandler::exit_with_message(
-                  ExitHandler::ExitCode::GNNFileError,
-                  "Failed to parse normalization slope: " + std::string(e.what()));
+      } catch (const std::exception &e) {
+        ExitHandler::exit_with_message(ExitHandler::ExitCode::GNNFileError,
+                                       "Failed to parse normalization slope: " +
+                                           std::string(e.what()));
       }
     }
 
-    if (!intercept_found && std::regex_search(line, match, pattern_intercept) && match.size() == 2) {
+    if (!intercept_found && std::regex_search(line, match, pattern_intercept) &&
+        match.size() == 2) {
       try {
         m_normalization_intercept = std::stof(match[1].str());
         intercept_found = true;
-      } catch (const std::exception& e) {
+      } catch (const std::exception &e) {
         ExitHandler::exit_with_message(
-          ExitHandler::ExitCode::GNNFileError,
-          "Failed to parse normalization intercept: " + std::string(e.what()));
+            ExitHandler::ExitCode::GNNFileError,
+            "Failed to parse normalization intercept: " +
+                std::string(e.what()));
       }
     }
 
     if (slope_found && intercept_found) {
-      break;  // both found, can stop early
+      break; // both found, can stop early
     }
   }
 
   if (!slope_found) {
-    ExitHandler::exit_with_message(
-        ExitHandler::ExitCode::GNNFileError,
-        "Normalization slope not found in file: " + filename);
+    ExitHandler::exit_with_message(ExitHandler::ExitCode::GNNFileError,
+                                   "Normalization slope not found in file: " +
+                                       filename);
   }
   if (!intercept_found) {
     ExitHandler::exit_with_message(
         ExitHandler::ExitCode::GNNFileError,
         "Normalization intercept not found in file: " + filename);
   }
-
 }
 
 template <StateRepresentation StateRepr>

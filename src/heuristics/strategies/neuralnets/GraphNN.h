@@ -168,8 +168,8 @@ private:
   float m_normalization_slope =
       1.0f; ///< Normalization slope for the GNN model output.
 
-    float m_normalization_intercept =
-    0.0f; ///< Normalization intercept for the GNN model output.
+  float m_normalization_intercept =
+      0.0f; ///< Normalization intercept for the GNN model output.
 
   /**
    * \brief Converts a KripkeState to a minimal GraphTensor representation.
@@ -271,7 +271,7 @@ private:
    * \param state The state to evaluate.
    * \param c_score The score computed by the C++ ONNX model.
    */
-  //void compare_predictions(const State<StateRepr> &state, float c_score);
+  // void compare_predictions(const State<StateRepr> &state, float c_score);
 
   /**
    * \brief Returns the symbolic ID for a node, assigning a new one if it does

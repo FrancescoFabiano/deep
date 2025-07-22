@@ -92,7 +92,6 @@ public:
   /// \return The shift state IDs.
   int get_shift_state_ids() const;
 
-
   /// \brief Gets the goal dot string.
   /// \return The dot string.
   constexpr const std::string &get_goal_string() const;
@@ -152,7 +151,7 @@ private:
   int m_failed_state = 1000000; ///< Value for the failed exploration
 
   // --- Node and search statistics ---
-  size_t m_current_nodes = 0;                 ///< Current number of nodes
+  size_t m_current_nodes = 0;                  ///< Current number of nodes
   size_t m_threshold_node_generation = 100000; ///< Node generation threshold
   double m_threshold_node_generation_log =
       std::log(m_threshold_node_generation * 3);
@@ -324,19 +323,22 @@ private:
   std::string format_name(const std::string &base_filename,
                           const std::string &type, bool merged) const;
 
-    /**
-* @brief Generates a unique folder path by appending an incrementing number if needed.
-*
-* Constructs a folder path using the base path and domain name. If the resulting
-* path already exists in the filesystem, appends an underscore and a number
-* (e.g., _1, _2, ...) until a unique path is found.
-*
-* @param base_path The root path where the dataset folder should be created.
-* @param domain_name The base name of the folder (e.g., derived from the dataset name).
-* @return A string representing a unique folder path that does not currently exist,
-*         with a trailing slash.
-*/
-  static std::string make_unique_folder(const std::string &base_path, const std::string &domain_name);
+  /**
+   * @brief Generates a unique folder path by appending an incrementing number
+   * if needed.
+   *
+   * Constructs a folder path using the base path and domain name. If the
+   * resulting path already exists in the filesystem, appends an underscore and
+   * a number (e.g., _1, _2, ...) until a unique path is found.
+   *
+   * @param base_path The root path where the dataset folder should be created.
+   * @param domain_name The base name of the folder (e.g., derived from the
+   * dataset name).
+   * @return A string representing a unique folder path that does not currently
+   * exist, with a trailing slash.
+   */
+  static std::string make_unique_folder(const std::string &base_path,
+                                        const std::string &domain_name);
 };
 
 #include "TrainingDataset.tpp"
