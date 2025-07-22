@@ -157,7 +157,7 @@ template <StateRepresentation StateRepr>
           << std::endl;
     }
 
-    compare_predictions(state, run_inference(state_tensor));
+    //compare_predictions(state, run_inference(state_tensor));
   }
 #endif
 
@@ -255,7 +255,7 @@ float GraphNN<StateRepr>::run_inference(const GraphTensor &tensor) const {
   return score;
 }
 
-template <StateRepresentation StateRepr>
+/*template <StateRepresentation StateRepr>
 void GraphNN<StateRepr>::compare_predictions(const State<StateRepr> &state,
                                              float c_score) {
   std::ofstream ofs(m_checking_file_path);
@@ -344,9 +344,9 @@ void GraphNN<StateRepr>::compare_predictions(const State<StateRepr> &state,
 
   std::cout << "[DEBUG] All predictions within tolerance (" << tolerance
             << ")\n";
-}
+}*/
 
-template <StateRepresentation StateRepr>
+/*template <StateRepresentation StateRepr>
 [[nodiscard]] short
 GraphNN<StateRepr>::get_score_python(const State<StateRepr> &state) {
   // Print the state in the required dataset format to the checking file
@@ -391,7 +391,7 @@ GraphNN<StateRepr>::get_score_python(const State<StateRepr> &state) {
 
   // Just to please the compiler
   std::exit(static_cast<int>(ExitHandler::ExitCode::ExitForCompiler));
-}
+}*/
 
 template <StateRepresentation StateRepr>
 size_t GraphNN<StateRepr>::get_symbolic_id(const size_t node) {
