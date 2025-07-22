@@ -82,13 +82,31 @@ int TrainingDataset<StateRepr>::get_shift_state_ids() const {
   return m_shift_state_ids;
 }
 
+
+template <StateRepresentation StateRepr>
+std::string
+TrainingDataset<StateRepr>::make_unique_folder(const std::string& base_path, const std::string& domain_name) {
+
+  const std::filesystem::path folder_path = std::filesystem::path(base_path) / domain_name;
+  std::string unique_path = folder_path.string();
+
+  int counter = 1;
+  while (std::filesystem::exists(unique_path)) {
+    std::ostringstream oss;
+    oss << folder_path.string() << "_" << counter;
+    unique_path = oss.str();
+    ++counter;
+  }
+
+  return unique_path + "/";  // ensure trailing slash if you want it
+}
+
 template <StateRepresentation StateRepr>
 TrainingDataset<StateRepr>::TrainingDataset() {
   const std::string domain_name = Domain::get_instance().get_name();
 
   if (ArgumentParser::get_instance().get_dataset_mode()) {
-    m_folder = std::string(OutputPaths::DATASET_TRAINING_FOLDER) + "/" +
-               domain_name + "/";
+    m_folder = make_unique_folder(OutputPaths::DATASET_TRAINING_FOLDER, domain_name);
     m_training_raw_files_folder = m_folder + "RawFiles/";
 
     const std::string filename =
@@ -445,7 +463,8 @@ bool TrainingDataset<StateRepr>::search_space_exploration() {
   auto end_time = std::chrono::system_clock::now();
   std::chrono::duration<double> elapsed = end_time - start_time;
   auto &os = ArgumentParser::get_instance().get_output_stream();
-  os << "\nDataset Generated in " << elapsed.count() << " seconds" << std::endl;
+  os << "\nDataset Generated in " << elapsed.count() << " seconds." << std::endl;
+  os << "Dataset stored in " << m_folder << " folder." << std::endl;
 
   std::ofstream result_file(m_filepath_csv, std::ofstream::app);
   for (const auto &row : global_dataset) {
@@ -495,7 +514,9 @@ bool TrainingDataset<StateRepr>::dfs_exploration(
        << std::endl;
   }
 
-  return !global_dataset.empty();
+  return !global_dataset.empty() &&
+         (m_goal_founds > 0); // Return true if dataset is not empty and goals
+                              // were found
 }
 
 template <StateRepresentation StateRepr>

@@ -92,3 +92,7 @@ lib/libtorch.zip
 **/*.ut
 /utils/plans/
 /utils/configs/
+
+# Training files
+**/training_data/
+**/training_data/*

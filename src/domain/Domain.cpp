@@ -20,7 +20,15 @@ Domain::Domain() {
   const auto &argument_parser = ArgumentParser::get_instance();
   const std::string input_file = argument_parser.get_input_file();
   const std::filesystem::path domain_path(input_file);
-  m_name = domain_path.stem().string();
+  std::string last_component = domain_path.stem().string();
+  if (last_component == "Test" || last_component == "Training") {
+    // Use the name of the parent directory
+    m_name = domain_path.parent_path().stem().string();
+  }
+  else {
+    m_name = last_component;
+  }
+
 
   if (freopen(input_file.c_str(), "r", stdin) == nullptr) {
     ExitHandler::exit_with_message(

@@ -25,7 +25,7 @@ int main(int argc, char **argv) {
   // Dataset Generation for ML Heuristics
   if (ArgumentParser::get_instance().get_dataset_mode()) {
     TrainingDataset<KripkeState>::create_instance();
-    if (!TrainingDataset<KripkeState>::get_instance().generate_dataset()) {
+    if (TrainingDataset<KripkeState>::get_instance().generate_dataset()) {
       std::exit(
           static_cast<int>(ExitHandler::ExitCode::SuccessNotPlanningMode));
     }

@@ -165,8 +165,11 @@ private:
   bool m_model_loaded =
       false; ///< Indicates whether the ONNX model has been loaded.
 
-  float m_normalization_constant =
-      1.0f; ///< Normalization constant for the GNN model output.
+  float m_normalization_slope =
+      1.0f; ///< Normalization slope for the GNN model output.
+
+    float m_normalization_intercept =
+    0.0f; ///< Normalization intercept for the GNN model output.
 
   /**
    * \brief Converts a KripkeState to a minimal GraphTensor representation.
