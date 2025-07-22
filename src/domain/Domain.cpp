@@ -24,11 +24,9 @@ Domain::Domain() {
   if (last_component == "Test" || last_component == "Training") {
     // Use the name of the parent directory
     m_name = domain_path.parent_path().stem().string();
-  }
-  else {
+  } else {
     m_name = last_component;
   }
-
 
   if (freopen(input_file.c_str(), "r", stdin) == nullptr) {
     ExitHandler::exit_with_message(
