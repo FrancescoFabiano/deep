@@ -75,13 +75,13 @@ public:
    */
   [[nodiscard]] int get_score(const State<StateRepr> &state);
 
-  /**
+  /*
    * \brief Get the score for a given state using the neural network heuristic
    * thorugh the python code \tparam StateRepr The state representation type.
    * \param state The state to evaluate.
    * \return The heuristic score for the state.
    */
-  [[nodiscard]] short get_score_python(const State<StateRepr> &state);
+  //[[nodiscard]] short get_score_python(const State<StateRepr> &state);
 
   /** \brief Deleted copy constructor (singleton pattern). */
   GraphNN(const GraphNN &) = delete;
@@ -256,7 +256,7 @@ private:
    */
   float run_inference(const GraphTensor &tensor) const;
 
-  /**
+  /*
    * \brief Compares the inference results of the C++ ONNX model with those
    * obtained from Python (both ONNX and PyTorch models) for correctness
    * checking.
@@ -271,7 +271,7 @@ private:
    * \param state The state to evaluate.
    * \param c_score The score computed by the C++ ONNX model.
    */
-  void compare_predictions(const State<StateRepr> &state, float c_score);
+  //void compare_predictions(const State<StateRepr> &state, float c_score);
 
   /**
    * \brief Returns the symbolic ID for a node, assigning a new one if it does
