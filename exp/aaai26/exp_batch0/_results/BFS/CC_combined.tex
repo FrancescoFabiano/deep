@@ -1,0 +1,57 @@
+\documentclass{article}
+\usepackage{booktabs}
+\usepackage[margin=1in]{geometry}
+\begin{document}
+\section*{Results for domain: \texttt{CC}}
+\textbf{Search prefix:} 
+\\[0.5cm]
+\subsection*{Training (Solved 8/9)}
+\begin{tabular}{lcccccccc}
+\toprule
+Problem & Goal & Length & Nodes & Total (ms) & Init (ms) & Search (ms) & Overhead (ms) & Search \\
+\midrule
+CC\_2\_2\_3\_\_pl\_4 & Yes & 4 & 17 & 105 & 17 & 87 & 0 & BFS \\
+CC\_2\_2\_3\_\_pl\_6 & Yes & 6 & 287 & 1751 & 19 & 1713 & 18 & BFS \\
+CC\_2\_2\_4\_\_pl\_3 & Yes & 3 & 6 & 162 & 40 & 119 & 2 & BFS \\
+CC\_2\_2\_4\_\_pl\_5 & Yes & 5 & 170 & 3253 & 49 & 3168 & 35 & BFS \\
+CC\_2\_3\_4\_\_pl\_3 & Yes & 3 & 6 & 1567 & 451 & 1099 & 16 & BFS \\
+CC\_2\_3\_4\_\_pl\_7 & TO & - & - & - & - & - & - & - \\
+CC\_3\_2\_3\_\_pl\_4 & Yes & 4 & 30 & 306 & 29 & 273 & 3 & BFS \\
+CC\_3\_2\_3\_\_pl\_5 & Yes & 5 & 178 & 1859 & 29 & 1814 & 15 & BFS \\
+CC\_3\_3\_3\_\_pl\_4 & Yes & 4 & 39 & 709 & 61 & 633 & 14 & BFS \\
+\textbf{Averages:} & & 4.25 & 91.62 & 1214 & 86.88 & 1113.25 & 12.88 & \\
+\bottomrule
+\end{tabular}
+\\[0.7cm]
+\subsection*{Test (Solved 2/2)}
+\begin{tabular}{lcccccccc}
+\toprule
+Problem & Goal & Length & Nodes & Total (ms) & Init (ms) & Search (ms) & Overhead (ms) & Search \\
+\midrule
+CC\_2\_2\_3\_\_pl\_3 & Yes & 3 & 9 & 43 & 14 & 29 & 0 & BFS \\
+CC\_2\_2\_3\_\_pl\_5 & Yes & 5 & 78 & 354 & 13 & 336 & 4 & BFS \\
+\textbf{Averages:} & & 4 & 43.5 & 198.5 & 13.5 & 182.5 & 2 & \\
+\bottomrule
+\end{tabular}
+\\[0.7cm]
+\subsection*{Combined (Solved 10/11)}
+\begin{tabular}{lcccccccc}
+\toprule
+Problem & Goal & Length & Nodes & Total (ms) & Init (ms) & Search (ms) & Overhead (ms) & Search \\
+\midrule
+CC\_2\_2\_3\_\_pl\_3 & Yes & 3 & 9 & 43 & 14 & 29 & 0 & BFS \\
+CC\_2\_2\_3\_\_pl\_4 & Yes & 4 & 17 & 105 & 17 & 87 & 0 & BFS \\
+CC\_2\_2\_3\_\_pl\_5 & Yes & 5 & 78 & 354 & 13 & 336 & 4 & BFS \\
+CC\_2\_2\_3\_\_pl\_6 & Yes & 6 & 287 & 1751 & 19 & 1713 & 18 & BFS \\
+CC\_2\_2\_4\_\_pl\_3 & Yes & 3 & 6 & 162 & 40 & 119 & 2 & BFS \\
+CC\_2\_2\_4\_\_pl\_5 & Yes & 5 & 170 & 3253 & 49 & 3168 & 35 & BFS \\
+CC\_2\_3\_4\_\_pl\_3 & Yes & 3 & 6 & 1567 & 451 & 1099 & 16 & BFS \\
+CC\_2\_3\_4\_\_pl\_7 & TO & - & - & - & - & - & - & - \\
+CC\_3\_2\_3\_\_pl\_4 & Yes & 4 & 30 & 306 & 29 & 273 & 3 & BFS \\
+CC\_3\_2\_3\_\_pl\_5 & Yes & 5 & 178 & 1859 & 29 & 1814 & 15 & BFS \\
+CC\_3\_3\_3\_\_pl\_4 & Yes & 4 & 39 & 709 & 61 & 633 & 14 & BFS \\
+\textbf{Averages:} & & 4.2 & 82 & 1010.9 & 72.2 & 927.1 & 10.7 & \\
+\bottomrule
+\end{tabular}
+\\[0.7cm]
+\end{document}

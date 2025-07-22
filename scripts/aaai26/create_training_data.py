@@ -25,13 +25,10 @@ def process_file(deep_exe, file_path, target_folder, no_goal):
     if not no_goal:
         command.append("--dataset_merged")
 
-
-    print(f"Running: {' '.join(command)}")
-
     try:
         result = subprocess.run(
             command,
-            check=False,  # Don't raise immediately
+            check=False,
             text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT
@@ -53,19 +50,36 @@ def process_file(deep_exe, file_path, target_folder, no_goal):
             print(f"[WARNING] Could not find output folder in C++ output for {file_name}. Skipping.")
             return
 
-        print(f"Here with match: {match}")
-
         cpp_output_folder = match.group(1).strip()
-        print(f"Here with cpp_output_folder: {cpp_output_folder}")
 
         if os.path.exists(output_target):
             shutil.rmtree(output_target)
         shutil.move(cpp_output_folder, output_target)
 
-        print(f"[SUCCESS] Moved results to {output_target}")
+        project_root = os.getcwd()
+        old_path_rel = os.path.relpath(cpp_output_folder, project_root).replace("\\", "/")
+        new_path_rel = os.path.relpath(output_target, project_root).replace("\\", "/")
+
+        # Update the only CSV file in the folder with relative path
+        for f in os.listdir(output_target):
+            if f.endswith(".csv"):
+                csv_path = os.path.join(output_target, f)
+                try:
+                    with open(csv_path, "r", encoding="utf-8") as file:
+                        content = file.read()
+                    updated = content.replace(old_path_rel, new_path_rel)
+                    if updated != content:
+                        with open(csv_path, "w", encoding="utf-8") as file:
+                            file.write(updated)
+                        # print(f"[UPDATED] CSV: {csv_path}")
+                except Exception as e:
+                    print(f"[WARNING] Could not update CSV {csv_path}: {e}")
+
+        print(f"[SUCCESS] Generated training data in: {output_target}")
 
     except Exception as e:
         print(f"[ERROR] Unexpected error for {file_name}: {e}")
+
 
 def run_cpp_on_training_files_multithreaded(deep_exe, training_folder, models_folder, no_goal):
     if not os.path.isdir(training_folder):
@@ -109,16 +123,16 @@ def main():
 
     args = parser.parse_args()
 
-    print(">>> Running from project root. Make sure the path structure is correct.")
+    #print(">>> Running from project root. Make sure the path structure is correct.")
 
     domain_folder = os.path.join(args.base_folder, args.domain_name)
     training_folder = os.path.join(domain_folder, "Training")
     models_root = os.path.join(args.base_folder, "_models", args.domain_name)
-    trained_model_file = os.path.join(models_root, "distance_estimator.onnx")
+    #trained_model_file = os.path.join(models_root, "distance_estimator.onnx")
 
-    if os.path.isfile(trained_model_file):
-        print(f"Model already exists in {models_root}. Skipping all files.")
-        return
+    #if os.path.isfile(trained_model_file):
+    #    print(f"Model already exists in {models_root}. Skipping all files.")
+    #    return
 
     models_folder = create_models_folder(args.base_folder, args.domain_name)
     run_cpp_on_training_files_multithreaded(args.deep_exe, training_folder, models_folder, args.no_goal)

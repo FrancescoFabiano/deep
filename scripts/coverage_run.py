@@ -15,8 +15,6 @@ def latex_escape_underscores(s: str) -> str:
   return s.replace('_', r'\_')
 
 
-import re
-
 SEARCH_NAME_MAP = {
   "Breadth First Search": "BFS",
   "Depth First Search": "DFS",
@@ -430,7 +428,7 @@ def get_arg_parser():
   p = argparse.ArgumentParser(
     description="Run planner binary on all problem files in domain subfolders, gather results and generate LaTeX tables.",
     epilog="""Example usage:
-  python scripts/coverage_run.py ./cmake-build-debug-nn/bin/deep ./exp/coverage \\
+  python scripts/coverage_run.py ./cmake-build-debug-nn/bin/deep exp/coverage \\
     --threads 2 \\
     --binary_args "-b -c -p 3" \\
     --timeout 600

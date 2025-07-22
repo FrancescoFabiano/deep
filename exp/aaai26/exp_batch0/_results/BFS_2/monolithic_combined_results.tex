@@ -1,0 +1,74 @@
+\documentclass{article}
+\usepackage{booktabs}
+\usepackage[margin=1in]{geometry}
+\usepackage{lscape}
+\begin{document}
+\section*{Monolithic Combined Results (All Domains)}
+\textbf{Search prefix:} 
+\\[0.5cm]
+\subsection*{Training}
+\begin{landscape}
+\begin{tabular}{llcccccccc}
+\toprule
+Domain & Problem & Goal & Length & Nodes & Total (ms) & Init (ms) & Search (ms) & Overhead (ms) & Search \\
+\midrule
+Training & Assemble\_B3\_\_pl\_5 & Yes & 5 & 14 & 115 & 9 & 105 & 0 & BFS \\
+Training & Assemble\_B5\_\_pl\_5 & Yes & 5 & 14 & 249 & 9 & 240 & 0 & BFS \\
+Training & Assemble\_B7\_\_pl\_5 & Yes & 5 & 14 & 8794 & 8 & 8785 & 0 & BFS \\
+Training & CC\_2\_2\_3\_\_pl\_4 & Yes & 4 & 17 & 87 & 18 & 68 & 0 & BFS \\
+Training & CC\_2\_2\_3\_\_pl\_6 & Yes & 6 & 287 & 1600 & 19 & 1566 & 14 & BFS \\
+Training & CC\_2\_2\_4\_\_pl\_3 & Yes & 3 & 6 & 167 & 39 & 126 & 1 & BFS \\
+Training & CC\_2\_2\_4\_\_pl\_5 & Yes & 5 & 170 & 2934 & 35 & 2865 & 33 & BFS \\
+Training & CC\_2\_3\_4\_\_pl\_3 & Yes & 3 & 6 & 1433 & 436 & 986 & 10 & BFS \\
+Training & CC\_2\_3\_4\_\_pl\_7 & TO & - & - & - & - & - & - & - \\
+Training & CC\_3\_2\_3\_\_pl\_4 & Yes & 4 & 30 & 288 & 23 & 262 & 2 & BFS \\
+Training & CC\_3\_2\_3\_\_pl\_5 & Yes & 5 & 178 & 1685 & 23 & 1640 & 21 & BFS \\
+Training & CC\_3\_3\_3\_\_pl\_4 & Yes & 4 & 39 & 650 & 63 & 570 & 16 & BFS \\
+\textbf{Averages:} & & 4.45 & 70.45 & 1636.55 & 62 & 1564.82 & 8.82 & \\
+\bottomrule
+\end{tabular}
+\end{landscape}
+\newpage
+\subsection*{Test}
+\begin{landscape}
+\begin{tabular}{llcccccccc}
+\toprule
+Domain & Problem & Goal & Length & Nodes & Total (ms) & Init (ms) & Search (ms) & Overhead (ms) & Search \\
+\midrule
+Test & Assemble\_B2\_\_pl\_5 & Yes & 5 & 14 & 112 & 7 & 105 & 0 & BFS \\
+Test & Assemble\_B4\_\_pl\_5 & Yes & 5 & 14 & 120 & 7 & 112 & 0 & BFS \\
+Test & CC\_2\_2\_3\_\_pl\_3 & Yes & 3 & 9 & 52 & 14 & 37 & 0 & BFS \\
+Test & CC\_2\_2\_3\_\_pl\_5 & Yes & 5 & 78 & 366 & 13 & 348 & 4 & BFS \\
+\textbf{Averages:} & & 4.5 & 28.75 & 162.5 & 10.25 & 150.5 & 1 & \\
+\bottomrule
+\end{tabular}
+\end{landscape}
+\newpage
+\subsection*{Combined (Training + Test)}
+\begin{landscape}
+\begin{tabular}{llcccccccc}
+\toprule
+Domain & Problem & Goal & Length & Nodes & Total (ms) & Init (ms) & Search (ms) & Overhead (ms) & Search \\
+\midrule
+Test & Assemble\_B2\_\_pl\_5 & Yes & 5 & 14 & 112 & 7 & 105 & 0 & BFS \\
+Test & Assemble\_B4\_\_pl\_5 & Yes & 5 & 14 & 120 & 7 & 112 & 0 & BFS \\
+Test & CC\_2\_2\_3\_\_pl\_3 & Yes & 3 & 9 & 52 & 14 & 37 & 0 & BFS \\
+Test & CC\_2\_2\_3\_\_pl\_5 & Yes & 5 & 78 & 366 & 13 & 348 & 4 & BFS \\
+Training & Assemble\_B3\_\_pl\_5 & Yes & 5 & 14 & 115 & 9 & 105 & 0 & BFS \\
+Training & Assemble\_B5\_\_pl\_5 & Yes & 5 & 14 & 249 & 9 & 240 & 0 & BFS \\
+Training & Assemble\_B7\_\_pl\_5 & Yes & 5 & 14 & 8794 & 8 & 8785 & 0 & BFS \\
+Training & CC\_2\_2\_3\_\_pl\_4 & Yes & 4 & 17 & 87 & 18 & 68 & 0 & BFS \\
+Training & CC\_2\_2\_3\_\_pl\_6 & Yes & 6 & 287 & 1600 & 19 & 1566 & 14 & BFS \\
+Training & CC\_2\_2\_4\_\_pl\_3 & Yes & 3 & 6 & 167 & 39 & 126 & 1 & BFS \\
+Training & CC\_2\_2\_4\_\_pl\_5 & Yes & 5 & 170 & 2934 & 35 & 2865 & 33 & BFS \\
+Training & CC\_2\_3\_4\_\_pl\_3 & Yes & 3 & 6 & 1433 & 436 & 986 & 10 & BFS \\
+Training & CC\_2\_3\_4\_\_pl\_7 & TO & - & - & - & - & - & - & - \\
+Training & CC\_3\_2\_3\_\_pl\_4 & Yes & 4 & 30 & 288 & 23 & 262 & 2 & BFS \\
+Training & CC\_3\_2\_3\_\_pl\_5 & Yes & 5 & 178 & 1685 & 23 & 1640 & 21 & BFS \\
+Training & CC\_3\_3\_3\_\_pl\_4 & Yes & 4 & 39 & 650 & 63 & 570 & 16 & BFS \\
+\textbf{Averages:} & & 4.47 & 59.33 & 1243.47 & 48.2 & 1187.67 & 6.73 & \\
+\bottomrule
+\end{tabular}
+\end{landscape}
+\newpage
+\end{document}

@@ -1,0 +1,45 @@
+\documentclass{article}
+\usepackage{booktabs}
+\usepackage[margin=1in]{geometry}
+\begin{document}
+\section*{Results for domain: \texttt{Assemble}}
+\textbf{Search prefix:} 
+\\[0.5cm]
+\subsection*{Training (Solved 3/3)}
+\begin{tabular}{lcccccccc}
+\toprule
+Problem & Goal & Length & Nodes & Total (ms) & Init (ms) & Search (ms) & Overhead (ms) & Search \\
+\midrule
+Assemble\_B3\_\_pl\_5 & Yes & 5 & 14 & 118 & 8 & 109 & 0 & BFS \\
+Assemble\_B5\_\_pl\_5 & Yes & 5 & 14 & 246 & 7 & 237 & 1 & BFS \\
+Assemble\_B7\_\_pl\_5 & Yes & 5 & 14 & 8696 & 7 & 8683 & 5 & BFS \\
+\textbf{Averages:} & 3/3 (100\%) & 5 & 14 & 3020 & 7.33 & 3009.67 & 2 & \\
+\bottomrule
+\end{tabular}
+\\[0.7cm]
+\subsection*{Test (Solved 2/2)}
+\begin{tabular}{lcccccccc}
+\toprule
+Problem & Goal & Length & Nodes & Total (ms) & Init (ms) & Search (ms) & Overhead (ms) & Search \\
+\midrule
+Assemble\_B2\_\_pl\_5 & Yes & 5 & 14 & 110 & 6 & 104 & 0 & BFS \\
+Assemble\_B4\_\_pl\_5 & Yes & 5 & 14 & 119 & 6 & 112 & 0 & BFS \\
+\textbf{Averages:} & 2/2 (100\%) & 5 & 14 & 114.5 & 6 & 108 & 0 & \\
+\bottomrule
+\end{tabular}
+\\[0.7cm]
+\subsection*{Combined (Solved 5/5)}
+\begin{tabular}{lcccccccc}
+\toprule
+Problem & Goal & Length & Nodes & Total (ms) & Init (ms) & Search (ms) & Overhead (ms) & Search \\
+\midrule
+Assemble\_B2\_\_pl\_5 & Yes & 5 & 14 & 110 & 6 & 104 & 0 & BFS \\
+Assemble\_B3\_\_pl\_5 & Yes & 5 & 14 & 118 & 8 & 109 & 0 & BFS \\
+Assemble\_B4\_\_pl\_5 & Yes & 5 & 14 & 119 & 6 & 112 & 0 & BFS \\
+Assemble\_B5\_\_pl\_5 & Yes & 5 & 14 & 246 & 7 & 237 & 1 & BFS \\
+Assemble\_B7\_\_pl\_5 & Yes & 5 & 14 & 8696 & 7 & 8683 & 5 & BFS \\
+\textbf{Averages:} & 5/5 (100\%) & 5 & 14 & 1857.8 & 6.8 & 1849 & 1.2 & \\
+\bottomrule
+\end{tabular}
+\\[0.7cm]
+\end{document}
