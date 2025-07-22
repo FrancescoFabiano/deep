@@ -94,19 +94,19 @@ Assuming the binary is located at `./cmake-build-release/bin/deep`, here are som
 
 ```console
 # Use '-h' or '--help' to see all options (this option is automatically activated when wrong arguments are parsed)
-$ ./cmake-build-release/bin/deep -h
+./cmake-build-release/bin/deep -h
 
 # Find a plan for domain.txt
-$ ./cmake-build-release/bin/deep domain.txt
+./cmake-build-release/bin/deep domain.txt
 
 # Plan using the heuristic 'SUBGOALS' and 'Astar' search
-$ ./cmake-build-release/bin/deep domain.txt -s Astar --heuristic SUBGOALS
+./cmake-build-release/bin/deep domain.txt -s Astar --heuristic SUBGOALS
 
 # Execute actions [open_a, peek_a] step by step
-$ ./cmake-build-release/bin/deep domain.txt -e --execute-actions open_a peek_a
+./cmake-build-release/bin/deep domain.txt -e --execute-actions open_a peek_a
 
 # Run 3 planner configurations in parallel (portfolio search)
-$ ./cmake-build-release/bin/deep domain.txt --portfolio_threads 3
+./cmake-build-release/bin/deep domain.txt --portfolio_threads 3
 ```
 
 
