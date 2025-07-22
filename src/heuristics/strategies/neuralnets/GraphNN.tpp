@@ -421,11 +421,6 @@ void GraphNN<StateRepr>::parse_constant_for_normalization() {
   }
 
   std::string line;
-  if (!std::getline(infile, line)) {
-    ExitHandler::exit_with_message(ExitHandler::ExitCode::GNNFileError,
-                                   "Normalization constant file is empty: " +
-                                       filename);
-  }
 
   std::regex pattern_slope(R"(slope\s*=\s*([+-]?\d*\.?\d+(?:[eE][+-]?\d+)?))");
   std::regex pattern_intercept(R"(intercept\s*=\s*([+-]?\d*\.?\d+(?:[eE][+-]?\d+)?))");
