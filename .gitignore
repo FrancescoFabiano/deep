@@ -96,3 +96,5 @@ lib/libtorch.zip
 # Training files
 **/training_data/
 **/training_data/*
+data/
+data/*
