@@ -40,7 +40,7 @@ def main():
         print(f"\n=== Processing: {domain_name} ===")
 
         cmd = [
-            "python",
+            "python3",
             "scripts/aaai26/create_training_data.py",
             batch_path,
             domain_name,

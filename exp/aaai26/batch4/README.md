@@ -18,7 +18,7 @@ All commands should be run from the root directory of the repository.
 This creates training datasets for each domain:
 
 ```console
-python scripts/aaai26/create_all_training_data.py exp/aaai26/batch4 --deep_exe cmake-build-release-nn/bin/deep
+python3 scripts/aaai26/create_all_training_data.py exp/aaai26/batch4 --deep_exe cmake-build-release-nn/bin/deep
 ```
 Replace --deep_exe with the path to your compiled deep binary.
 
@@ -28,7 +28,7 @@ This trains one model per domain using the previously generated training data.
 
 
 ```console
-python scripts/aaai26/train_models.py exp/aaai26/batch4
+python3 scripts/aaai26/train_models.py exp/aaai26/batch4
 ```
 
 ### 3. Run evaluation and aggregate results
@@ -38,13 +38,13 @@ Run inference using the trained models and aggregate the results into the `_resu
 #### GNN heuristic
 This command runs inference using the GNN heuristic with the appropriate model generated in the previous step.
 ```console
-python scripts/aaai26/aaai_coverage_run.py cmake-build-release-nn/bin/deep exp/aaai26/batch4/ --threads 8 --binary_args "-s Astar -u GNN -c -b" --timeout 600
+python3 scripts/aaai26/aaai_coverage_run.py cmake-build-release-nn/bin/deep exp/aaai26/batch4/ --threads 8 --binary_args "-s Astar -u GNN -c -b" --timeout 600
 ```
 
 #### Breadth-First Search
 This command runs inference using the BFS heuristic, which is the baseline for comparison.
 ```console
-python scripts/aaai26/aaai_coverage_run.py cmake-build-release-nn/bin/deep exp/aaai26/batch4/ --threads 8 --binary_args "-c -b" --timeout 600
+python3 scripts/aaai26/aaai_coverage_run.py cmake-build-release-nn/bin/deep exp/aaai26/batch4/ --threads 8 --binary_args "-c -b" --timeout 600
 ```
 
 ##### Arguments
