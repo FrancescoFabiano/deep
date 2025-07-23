@@ -1,4 +1,4 @@
-# Experiment Batch 1: Knowledge Transfer Benchmarks
+# Experiment Batch 5: Knowledge Transfer Benchmarks
 
 This folder contains the fifth batch of experiments for the project.
 
