@@ -16,7 +16,7 @@ def find_training_data_folders(batch_root):
 
     return training_data_folders
 
-def run_training(training_data_folder, batch_root):
+def run_training(training_data_folder, batch_root, no_goal):
     if not os.path.isdir(training_data_folder):
         print(f"[ERROR] Training data folder not found: {training_data_folder}")
         return
@@ -39,7 +39,12 @@ def run_training(training_data_folder, batch_root):
         "--dir-save-model", model_dir,
     ]
 
-    #print(f"[INFO] Launching training for {training_data_folder}")
+    if no_goal:
+        cmd.append("--kind-of-data")
+        cmd.append("separated")
+
+
+#print(f"[INFO] Launching training for {training_data_folder}")
 
     try:
         process = subprocess.Popen(
@@ -57,9 +62,9 @@ def run_training(training_data_folder, batch_root):
 
         for line in iter(process.stdout.readline, ''):
             now = time.time()
-            if now - last_print_time >= 15:
-                print(f"{prefix} {line.strip()}")
-                last_print_time = now
+            #if now - last_print_time >= 15:
+            print(f"{prefix} {line.strip()}")
+            last_print_time = now
 
         process.stdout.close()
         return_code = process.wait()
@@ -81,6 +86,7 @@ def main():
         "batch_root",
         help="Path to batch folder (e.g., exp/aaai26/batch1)"
     )
+    parser.add_argument("--no_goal", action="store_true", help="Set '--kind-of-data separated' for model training")
 
     args = parser.parse_args()
 
@@ -94,7 +100,7 @@ def main():
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = [
-            executor.submit(run_training, folder, args.batch_root)
+            executor.submit(run_training, folder, args.batch_root, args.no_goal)
             for folder in training_data_folders
         ]
         for future in concurrent.futures.as_completed(futures):

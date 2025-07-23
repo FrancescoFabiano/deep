@@ -18,12 +18,15 @@ def process_file(deep_exe, file_path, target_folder, no_goal):
 
     command = [
         deep_exe,
-        "--dataset", file_path,
+        file_path,
+        "--dataset",
         "--dataset_depth", "25"
     ]
 
     if not no_goal:
         command.append("--dataset_merged")
+
+    print(f"Command is {command}")
 
     try:
         result = subprocess.run(

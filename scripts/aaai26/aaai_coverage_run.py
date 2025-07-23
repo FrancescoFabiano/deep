@@ -296,7 +296,7 @@ def main_all_domains(binary_path, parent_folder, threads, binary_args, search_pr
             constant_path = Path(parent_folder) / "_models" / domain_name / "distance_estimator_C.txt"
             domain_binary_args += f" --GNN_constant_file {constant_path}"
 
-        print(f"binary_args for {domain_name}: {domain_binary_args}")
+        #print(f"binary_args for {domain_name}: {domain_binary_args}")
 
         training_rows = process_domain_split(binary_path, training_path, threads, domain_binary_args, search_prefix, timeout) if training_path.exists() else []
         test_rows = process_domain_split(binary_path, test_path, threads, domain_binary_args, search_prefix, timeout) if test_path.exists() else []
