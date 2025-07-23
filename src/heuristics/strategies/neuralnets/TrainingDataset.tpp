@@ -595,7 +595,7 @@ int TrainingDataset<StateRepr>::dfs_worker(
           }
 
           // Clamp between [0, 0.8] (still allow deeper exploration)
-          discard_probability = std::min(discard_probability, 0.8);
+          discard_probability = std::min(discard_probability, 0.4);
         }
 
         if (m_dis(m_gen) < discard_probability) {
