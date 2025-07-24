@@ -37,6 +37,10 @@ In case some domains consistently fail to produce training data, you can try adj
   Lowering this value results in deeper and more exhaustive exploration.
   Increasing it makes the exploration more "jumpy" and likely to skip over parts of the tree.
 
+Example command with adjusted parameters:
+```console
+python3 scripts/aaai26/create_all_training_data.py exp/aaai26/batch5 --deep_exe cmake-build-release-nn/bin/deep --depth 40 --discard_factor 0.2
+```
 
 ### 2. Train GNN models
 This trains one model per domain using the previously generated training data.
