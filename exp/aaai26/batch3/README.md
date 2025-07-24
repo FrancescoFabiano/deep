@@ -39,7 +39,7 @@ In case some domains consistently fail to produce training data, you can try adj
 
 Example command with adjusted parameters:
 ```console
-python3 scripts/aaai26/create_all_training_data.py exp/aaai26/batch5 --deep_exe cmake-build-release-nn/bin/deep --no_goal --depth 40 --discard_factor 0.2
+python3 scripts/aaai26/create_all_training_data.py exp/aaai26/batch3 --deep_exe cmake-build-release-nn/bin/deep --no_goal --depth 40 --discard_factor 0.2
 ```
 
 ### 2. Train GNN models
