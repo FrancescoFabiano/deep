@@ -18,6 +18,9 @@ def main():
     parser.add_argument("batch_path", help="Path to the batch folder (e.g., exp/aaai26/batch1/)")
     parser.add_argument("--deep_exe", default="cmake-release-nn/bin/deep", help="Path to the deep C++ executable")
     parser.add_argument("--no_goal", action="store_true", help="Omit --dataset_merged from C++ execution")
+    parser.add_argument("--depth", type=int, default=25, help="Depth for dataset generation (default: 25)")
+    parser.add_argument("--discard_factor", dest="discard_factor", type=float, default=0.4, help="Maximum discard factor (default: 0.4)")
+
 
     args = parser.parse_args()
     batch_path = os.path.abspath(args.batch_path)
@@ -44,7 +47,9 @@ def main():
             "scripts/aaai26/create_training_data.py",
             batch_path,
             domain_name,
-            args.deep_exe
+            args.deep_exe,
+            "--depth", str(args.depth),
+            "--discard_factor", str(args.discard_factor)
         ]
 
         if args.no_goal:
