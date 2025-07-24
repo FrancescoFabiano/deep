@@ -196,11 +196,11 @@ ArgumentParser::ArgumentParser() : app("deep") {
   dataset_group->add_flag(
       "--dataset_merged_both", m_dataset_merged_both,
       "Enable both merged and non-merged dataset generation.");
-    dataset_group->add_option(
-        "--dataset_discard_factor", m_dataset_discard_factor,
-        "Set the maximum value for discard factor during dataset generation (Must be within 0 and 1, not included).")
-    ->default_val("0.4");
-
+  dataset_group
+      ->add_option("--dataset_discard_factor", m_dataset_discard_factor,
+                   "Set the maximum value for discard factor during dataset "
+                   "generation (Must be within 0 and 1, not included).")
+      ->default_val("0.4");
 
   // Search group
   auto *search_group = app.add_option_group("Search");

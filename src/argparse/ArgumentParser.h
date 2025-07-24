@@ -61,10 +61,10 @@ public:
    */
   [[nodiscard]] int get_dataset_depth() const noexcept;
 
-    /**
- * \brief Retrieves the max discard factor for dataset generation.
- * \return The max discard factor.
- */
+  /**
+   * \brief Retrieves the max discard factor for dataset generation.
+   * \return The max discard factor.
+   */
   double get_dataset_discard_factor() const noexcept;
 
   /**
@@ -201,7 +201,8 @@ private:
   bool m_check_visited = false; ///< Flag to check for visited states.
   bool m_dataset_mode = false;  ///< Flag to indicate dataset mode.
   int m_dataset_depth = 10;     ///< Maximum depth for dataset generation.
-    double m_dataset_discard_factor = 0.4;     ///< Maximum discard factor for dataset generation.
+  double m_dataset_discard_factor =
+      0.4; ///< Maximum discard factor for dataset generation.
 
   bool m_dataset_mapped = false;
   bool m_dataset_merged = false; ///< Flag to indicate if dataset entry point is

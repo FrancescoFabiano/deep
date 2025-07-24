@@ -594,13 +594,14 @@ int TrainingDataset<StateRepr>::dfs_worker(
             discard_probability += 0.2;
           }
 
-          // Clamp between [0, max_discard_factor] (still allow deeper exploration)
+          // Clamp between [0, max_discard_factor] (still allow deeper
+          // exploration)
           const auto discard_factor =
               ArgumentParser::get_instance().get_dataset_discard_factor();
           if (discard_factor <= 0.0 || discard_factor >= 1.0) {
-            ExitHandler::exit_with_message(
-                ExitHandler::ExitCode::ParsingError,
-                "Invalid discard factor: " + std::to_string(discard_factor));
+            ExitHandler::exit_with_message(ExitHandler::ExitCode::ParsingError,
+                                           "Invalid discard factor: " +
+                                               std::to_string(discard_factor));
           }
           discard_probability = std::min(discard_probability, discard_factor);
         }
