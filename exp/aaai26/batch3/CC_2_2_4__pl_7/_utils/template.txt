@@ -190,7 +190,7 @@ a observes tell_b_b2_4;
 b observes tell_b_b2_4;
 
 
-initially -at_a_2, -at_b_2, at_a_1, -at_a_3, -at_a_4, at_b_1, -at_b_3, -at_b_4, at_b1_1, -at_b1_3, -at_b1_4, at_b2_1, -at_b2_3, -at_b2_4;
+initially -at_a_2, -at_b_2, at_a_1, -at_a_3, -at_a_4, at_b_1, -at_b_3, -at_b_4, at_b1_1, -at_b1_3, -at_b1_4, -at_b2_1, at_b2_3, -at_b2_4;
 initially C([a,b], -at_a_2);
 initially C([a,b], -at_b_2);
 initially C([a,b], at_a_1);
