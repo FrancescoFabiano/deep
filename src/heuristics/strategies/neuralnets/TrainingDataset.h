@@ -152,7 +152,7 @@ private:
 
   // --- Node and search statistics ---
   size_t m_current_nodes = 0;                 ///< Current number of nodes
-  size_t m_threshold_node_generation = 50000; ///< Node generation threshold
+  size_t m_threshold_node_generation = 1000; ///< Node generation threshold
   double m_threshold_node_generation_log =
       std::log(m_threshold_node_generation * 3);
   ///< Log threshold for node generation

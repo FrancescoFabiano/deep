@@ -471,7 +471,9 @@ bool TrainingDataset<StateRepr>::search_space_exploration() {
 
     std::ofstream result_file(m_filepath_csv, std::ofstream::app);
     for (const auto &row: global_dataset) {
-        result_file << row << "\n";
+        if (!row.empty()) {
+            result_file << row << "\n";
+        }
     }
     result_file.close();
 
@@ -527,6 +529,24 @@ int TrainingDataset<StateRepr>::dfs_worker(
     State<StateRepr> &state, const size_t depth, ActionsSet *actions,
     std::vector<std::string> &global_dataset) {
 
+#ifdef DEBUG
+    if (m_current_nodes > 0 && m_threshold_node_generation > 0) {
+        int percent = (m_current_nodes * 100) / m_threshold_node_generation;
+        // To avoid printing multiple times for the same percentage, you can keep track of last printed percent
+        static int last_percent = -1;
+        if (percent != last_percent) {
+            last_percent = percent;
+            auto &os = ArgumentParser::get_instance().get_output_stream();
+            os << "[DEBUG] Dataset Generation Progress: " << percent << "%"
+               << "\tExplored nodes: " << m_current_nodes
+               << "\tCurrent Depth: " << depth
+               << "\tGoals found: " << m_goal_founds << ")"
+               << std::endl;
+        }
+    }
+    #endif
+
+
     if (m_current_nodes >= m_threshold_node_generation) {
         if (state.is_goal()) {
             global_dataset.push_back(format_row(state, depth, 0));
@@ -534,6 +554,7 @@ int TrainingDataset<StateRepr>::dfs_worker(
         }
         return m_failed_state;
     }
+
 
     // If already visited, return memoized score
     if (m_visited_states.count(state)) {
@@ -635,6 +656,13 @@ template<StateRepresentation StateRepr>
 std::string
 TrainingDataset<StateRepr>::format_row(const State<StateRepr> &state,
                                        const size_t depth, const int score) {
+
+    const bool minimized_dataset = true;
+
+    if (minimized_dataset && score >= m_failed_state) {
+        return "";
+    }
+
     std::stringstream ss;
     auto base_filename = print_state_for_dataset(state);
 
