@@ -9,6 +9,9 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include "HelperPrint.h"
+#include <iomanip>  // Make sure this is included at the top of your file
+
 
 // --- Singleton implementation ---
 template <StateRepresentation StateRepr>
@@ -530,20 +533,25 @@ int TrainingDataset<StateRepr>::dfs_worker(
     std::vector<std::string> &global_dataset) {
 
 #ifdef DEBUG
-  if (m_current_nodes > 0 && m_threshold_node_generation > 0) {
-    int percent = (m_current_nodes * 100) / m_threshold_node_generation;
-    // To avoid printing multiple times for the same percentage, you can keep
-    // track of last printed percent
-    static int last_percent = -1;
-    if (percent != last_percent) {
-      last_percent = percent;
-      auto &os = ArgumentParser::get_instance().get_output_stream();
-      os << "[DEBUG] Dataset Generation Progress: " << percent << "%"
-         << "\tExplored nodes: " << m_current_nodes
-         << "\tCurrent Depth: " << depth << "\tGoals found: " << m_goal_founds
-         << ")" << std::endl;
+    if (m_current_nodes > 0 && m_threshold_node_generation > 0) {
+        int percent = (m_current_nodes * 100) / m_threshold_node_generation;
+        static int last_percent = -1;
+        if (percent != last_percent) {
+            last_percent = percent;
+            auto &os = ArgumentParser::get_instance().get_output_stream();
+
+          os << std::left
+             << std::setw(35) << "[DEBUG] Dataset Generation Progress:" << " "
+             << std::setw(5) << (std::to_string(percent) + "%") << " "
+             << std::setw(20) << "Explored nodes:" << " "
+             << std::setw(10) << m_current_nodes << " "
+             << std::setw(15) << "Current Depth:" << " "
+             << std::setw(5) << depth << " "
+             << std::setw(15) << "Goals found:" << " "
+             << std::setw(5) << m_goal_founds
+             << std::endl;
+        }
     }
-  }
 #endif
 
   if (m_current_nodes >= m_threshold_node_generation) {
