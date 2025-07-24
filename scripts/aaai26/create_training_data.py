@@ -11,7 +11,7 @@ def create_models_folder(base_folder, domain_name):
     os.makedirs(models_folder, exist_ok=True)
     return models_folder
 
-def process_file(deep_exe, file_path, target_folder, no_goal):
+def process_file(deep_exe, file_path, target_folder, no_goal, depth, discard_factor):
     file_name = os.path.basename(file_path)
     instance_name = os.path.splitext(file_name)[0]
     output_target = os.path.join(target_folder, instance_name)
@@ -20,13 +20,12 @@ def process_file(deep_exe, file_path, target_folder, no_goal):
         deep_exe,
         file_path,
         "--dataset",
-        "--dataset_depth", "25"
+        "--dataset_depth", str(depth),
+        "--dataset_discard_factor", str(discard_factor)
     ]
 
     if not no_goal:
         command.append("--dataset_merged")
-
-    #print(f"Command is {command}")
 
     try:
         result = subprocess.run(
@@ -63,7 +62,6 @@ def process_file(deep_exe, file_path, target_folder, no_goal):
         old_path_rel = os.path.relpath(cpp_output_folder, project_root).replace("\\", "/")
         new_path_rel = os.path.relpath(output_target, project_root).replace("\\", "/")
 
-        # Update the only CSV file in the folder with relative path
         for f in os.listdir(output_target):
             if f.endswith(".csv"):
                 csv_path = os.path.join(output_target, f)
@@ -74,7 +72,6 @@ def process_file(deep_exe, file_path, target_folder, no_goal):
                     if updated != content:
                         with open(csv_path, "w", encoding="utf-8") as file:
                             file.write(updated)
-                        # print(f"[UPDATED] CSV: {csv_path}")
                 except Exception as e:
                     print(f"[WARNING] Could not update CSV {csv_path}: {e}")
 
@@ -83,8 +80,7 @@ def process_file(deep_exe, file_path, target_folder, no_goal):
     except Exception as e:
         print(f"[ERROR] Unexpected error for {file_name}: {e}")
 
-
-def run_cpp_on_training_files_multithreaded(deep_exe, training_folder, models_folder, no_goal):
+def run_cpp_on_training_files_multithreaded(deep_exe, training_folder, models_folder, no_goal, depth, discard_factor):
     if not os.path.isdir(training_folder):
         raise FileNotFoundError(f"Training folder not found: {training_folder}")
 
@@ -98,13 +94,13 @@ def run_cpp_on_training_files_multithreaded(deep_exe, training_folder, models_fo
     for i, file_path in enumerate(files):
         thread = threading.Thread(
             target=process_file,
-            args=(deep_exe, file_path, models_folder, no_goal)
+            args=(deep_exe, file_path, models_folder, no_goal, depth, discard_factor)
         )
         threads.append((thread, i))
 
     for thread, i in threads:
         thread.start()
-        time.sleep(5)  # delay start to avoid C++ simultaneous folder creation
+        time.sleep(5)
 
     for thread, _ in threads:
         thread.join()
@@ -122,23 +118,17 @@ def main():
     parser.add_argument("domain_name", help="Domain name (folder under base_folder containing 'Training')")
     parser.add_argument("deep_exe", help="Path to the deep C++ executable")
     parser.add_argument("--no_goal", action="store_true", help="Run without the --dataset_merged argument")
-
+    parser.add_argument("--depth", type=int, default=25, help="Depth for dataset generation (default: 25)")
+    parser.add_argument("--discard_factor", dest="discard_factor", type=float, default=0.4, help="Maximum discard factor (default: 0.4)")
 
     args = parser.parse_args()
-
-    #print(">>> Running from project root. Make sure the path structure is correct.")
 
     domain_folder = os.path.join(args.base_folder, args.domain_name)
     training_folder = os.path.join(domain_folder, "Training")
     models_root = os.path.join(args.base_folder, "_models", args.domain_name)
-    #trained_model_file = os.path.join(models_root, "distance_estimator.onnx")
-
-    #if os.path.isfile(trained_model_file):
-    #    print(f"Model already exists in {models_root}. Skipping all files.")
-    #    return
 
     models_folder = create_models_folder(args.base_folder, args.domain_name)
-    run_cpp_on_training_files_multithreaded(args.deep_exe, training_folder, models_folder, args.no_goal)
+    run_cpp_on_training_files_multithreaded(args.deep_exe, training_folder, models_folder, args.no_goal, args.depth, args.discard_factor)
 
 if __name__ == "__main__":
     main()

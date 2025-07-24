@@ -22,6 +22,20 @@ python3 scripts/aaai26/create_all_training_data.py exp/aaai26/batch4 --deep_exe 
 ```
 Replace --deep_exe with the path to your compiled deep binary.
 
+#### Failings
+If the script fails to generate training data for a specific domain, it will skip that domain and continue with the others.
+The generation process involves randomness, so retrying may succeed on a second attempt.
+In case some domains consistently fail to produce training data, you can try adjusting the following options:
+
+- `--depth n`: Sets the maximum depth of the search tree to explore.
+               The default is `25`.
+               Increasing this value improves the chance of generating meaningful training data.
+- `--discard_factor x`: Specifies the maximum discard factor (a float in the interval `(0, 1)`). 
+                        This controls how quickly the dataset generator abandons a subtree to explore another.
+                        The default is `0.4`.
+                        Lowering this value results in deeper and more exhaustive exploration.
+                        Increasing it makes the exploration more "jumpy" and likely to skip over parts of the tree.
+
 ### 2. Train GNN models
 This trains one model per domain using the previously generated training data.
 > This will overwrite existing models in the `_models` folder.
