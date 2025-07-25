@@ -151,7 +151,7 @@ private:
   int m_failed_state = 1000000; ///< Value for the failed exploration
 
   // --- Node and search statistics ---
-  size_t m_current_nodes = 0;                ///< Current number of nodes
+  size_t m_current_nodes = 0;                  ///< Current number of nodes
   size_t m_threshold_node_generation = 100000; ///< Node generation threshold
   double m_threshold_node_generation_log =
       std::log(m_threshold_node_generation * 3);
@@ -285,8 +285,7 @@ private:
    * \param depth The depth.
    * \param score The score.
    */
-  void add_to_dataset(const State<StateRepr> &state, size_t depth,
-                         int score);
+  void add_to_dataset(const State<StateRepr> &state, size_t depth, int score);
 
   /**
    * \brief Print state for dataset.
