@@ -37,6 +37,7 @@ def run_training(training_data_folder, batch_root, no_goal):
         "--folder-raw-data", training_data_folder,
         "--subset-train", *instance_names,
         "--dir-save-model", model_dir,
+        "--dir-save-data", model_dir
     ]
 
     if no_goal:
