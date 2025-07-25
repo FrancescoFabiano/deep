@@ -266,31 +266,26 @@ private:
    * \brief Perform DFS exploration for dataset generation.
    * \param initial_state The initial state.
    * \param actions Set of actions.
-   * \param global_dataset Dataset vector.
    * \return True if successful.
    */
-  bool dfs_exploration(State<StateRepr> &initial_state, ActionsSet *actions,
-                       std::vector<std::string> &global_dataset);
+  bool dfs_exploration(State<StateRepr> &initial_state, ActionsSet *actions);
 
   /**
    * \brief DFS worker for dataset generation.
    * \param state Current state.
    * \param depth Current depth.
    * \param actions Set of actions.
-   * \param global_dataset Dataset vector.
    * \return Score.
    */
-  int dfs_worker(State<StateRepr> &state, size_t depth, ActionsSet *actions,
-                 std::vector<std::string> &global_dataset);
+  int dfs_worker(State<StateRepr> &state, size_t depth, ActionsSet *actions);
 
   /**
-   * \brief Format a row for the dataset.
+   * \brief Format a row for the dataset and insert it to the dataset itself.
    * \param state The state.
    * \param depth The depth.
    * \param score The score.
-   * \return Formatted string.
    */
-  std::string format_row(const State<StateRepr> &state, size_t depth,
+  void add_to_dataset(const State<StateRepr> &state, size_t depth,
                          int score);
 
   /**
