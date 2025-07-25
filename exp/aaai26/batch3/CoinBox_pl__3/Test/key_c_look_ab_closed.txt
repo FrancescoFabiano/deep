@@ -141,7 +141,6 @@ initially has_key_c, looking_a, looking_b, tail, -has_key_a, -has_key_b, -lookin
 initially C([a,b,c], has_key_c);
 initially C([a,b,c], looking_a);
 initially C([a,b,c], looking_b);
-initially C([a,b,c], tail);
 initially C([a,b,c], -has_key_a);
 initially C([a,b,c], -has_key_b);
 initially C([a,b,c], -looking_c);
@@ -150,5 +149,5 @@ initially C([a,b,c], -opened);
 
 %initially C([a,b,c],B(a,tail));
 
-% 3 actions
-goal B(b,tail);
+goal B(a, tail);
+goal -looking_b;

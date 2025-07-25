@@ -136,19 +136,18 @@ b observes shout_tail_c if looking_b;
 %initially C([a,b,c],-B(a,tail) , -B(a,(-tail));
 %initially C([a,b,c],-B(b,tail) , -B(b,(-tail));
 %initially C([a,b,c],-B(c,tail) , -B(c,(-tail));
-initially has_key_b, looking_b, opened, tail, -has_key_a, -has_key_c, -looking_a, -looking_c;
+initially has_key_c, looking_a, opened, tail, -has_key_a, -has_key_b, -looking_b, -looking_c;
 
-initially C([a,b,c], has_key_b);
-initially C([a,b,c], looking_b);
+initially C([a,b,c], has_key_c);
+initially C([a,b,c], looking_a);
 initially C([a,b,c], opened);
-initially C([a,b,c], tail);
 initially C([a,b,c], -has_key_a);
-initially C([a,b,c], -has_key_c);
-initially C([a,b,c], -looking_a);
+initially C([a,b,c], -has_key_b);
+initially C([a,b,c], -looking_b);
 initially C([a,b,c], -looking_c);
 
 
 %initially C([a,b,c],B(a,tail));
 
-% 3 actions
-goal B(b,tail);
+goal B(a, tail);
+goal -looking_b;

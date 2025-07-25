@@ -50,9 +50,11 @@ for key_holder in key_perms:
             # Generate C belief lines
             c_lines = []
             for f in sorted(true_fluents):
-                c_lines.append(f"initially C([a,b,c], {f});")
+                if f != "tail":
+                    c_lines.append(f"initially C([a,b,c], {f});")
             for f in sorted(false_fluents):
-                c_lines.append(f"initially C([a,b,c], -{f});")
+                if f != "tail":
+                    c_lines.append(f"initially C([a,b,c], -{f});")
 
             # Step 1: Replace fluent line
             modified = re.sub(
