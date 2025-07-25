@@ -4,6 +4,7 @@ import subprocess
 import shutil
 import re
 import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import time
 
 def create_models_folder(base_folder, domain_name):
@@ -90,20 +91,17 @@ def run_cpp_on_training_files_multithreaded(deep_exe, training_folder, models_fo
         if os.path.isfile(os.path.join(training_folder, f))
     ]
 
-    threads = []
-    for i, file_path in enumerate(files):
-        thread = threading.Thread(
-            target=process_file,
-            args=(deep_exe, file_path, models_folder, no_goal, depth, discard_factor)
-        )
-        threads.append((thread, i))
+    # Determine number of threads to use
+    max_threads = min(8, max(1, os.cpu_count() - 2))
 
-    for thread, i in threads:
-        thread.start()
-        time.sleep(5)
+    def wrapper(file_path):
+        time.sleep(5)  # Delay start like in original code
+        process_file(deep_exe, file_path, models_folder, no_goal, depth, discard_factor)
 
-    for thread, _ in threads:
-        thread.join()
+    with ThreadPoolExecutor(max_workers=max_threads) as executor:
+        futures = [executor.submit(wrapper, file_path) for file_path in files]
+        for future in as_completed(futures):
+            future.result()  # Raise exceptions if any occurred
 
 def main():
     parser = argparse.ArgumentParser(
