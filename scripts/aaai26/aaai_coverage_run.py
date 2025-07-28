@@ -19,9 +19,7 @@ SEARCH_NAME_MAP = {
     "Breadth First Search": "BFS",
     "Depth First Search": "DFS",
     "Heuristics First Search": "HFS",
-    "Astar": "A*",
-    "A Star": "A*",
-    "AStar": "A*",
+    "A* Search": "A*",
 }
 
 def parse_output(output: str):
