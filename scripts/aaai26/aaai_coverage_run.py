@@ -19,6 +19,7 @@ SEARCH_NAME_MAP = {
     "Breadth First Search": "BFS",
     "Depth First Search": "DFS",
     "Heuristics First Search": "HFS",
+    "A*": "A*",
     "Astar": "A*",
     "A Star": "A*",
     "AStar": "A*",
