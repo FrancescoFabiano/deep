@@ -86,7 +86,7 @@ void ArgumentParser::parse(int argc, char **argv) {
           ExitHandler::ExitCode::ArgParseError,
           "--heuristics can only be used with --search HFS or --search Astar.");
     }
-    if ((m_search_strategy == "HFS" || m_search_strategy == "Astar") &&
+    /*if ((m_search_strategy == "HFS" || m_search_strategy == "Astar") &&
         m_heuristic_opt != "GNN" && app.count("--GNN_model")) {
       ExitHandler::exit_with_message(
           ExitHandler::ExitCode::ArgParseError,
@@ -98,7 +98,7 @@ void ArgumentParser::parse(int argc, char **argv) {
       ExitHandler::exit_with_message(
           ExitHandler::ExitCode::ArgParseError,
           "--GNN_constant_file can only be used with --heuristics GNN.");
-    }
+    }*/
 
     // --- Execution plan checks and action loading ---
     if (m_exec_plan) {
