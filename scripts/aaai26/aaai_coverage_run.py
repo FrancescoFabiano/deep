@@ -276,7 +276,7 @@ def main_all_domains(binary_path, parent_folder, threads, binary_args, search_pr
     all_test_global = []
     domain_results = []
 
-    has_heuristics = "-u GNN" in binary_args or "--heuristics GNN" in binary_args
+    has_heuristics = "-u GNN" in binary_args or "--heuristics GNN" in binary_args or "-p 6" in binary_args or "--portfolio_threads 6" in binary_args
 
     for domain_folder in sorted(Path(parent_folder).iterdir()):
         if not domain_folder.is_dir() or domain_folder.name.startswith('_'):
