@@ -29,7 +29,7 @@ def parse_output(output: str):
     return m.group(1).strip() if m else default
 
   # Change here: greedy + instead of non-greedy +?
-  m = re.search(r"Search used:\s*([A-Za-z ]+)(\([^)]+\))?", output)
+  m = re.search(r"Search used:\s*([A-Za-z \*]+)(\([^)]+\))?", output)
   if m:
     raw_search = m.group(1).strip()
     parens = m.group(2) or ""

@@ -19,7 +19,6 @@ SEARCH_NAME_MAP = {
     "Breadth First Search": "BFS",
     "Depth First Search": "DFS",
     "Heuristics First Search": "HFS",
-    "A*": "A*",
     "Astar": "A*",
     "A Star": "A*",
     "AStar": "A*",
@@ -30,7 +29,7 @@ def parse_output(output: str):
         m = re.search(pat, output)
         return m.group(1).strip() if m else default
 
-    m = re.search(r"Search used:\s*([A-Za-z ]+)(\([^)]+\))?", output)
+    m = re.search(r"Search used:\s*([A-Za-z \*]+)(\([^)]+\))?", output)
     if m:
         raw_search = m.group(1).strip()
         parens = m.group(2) or ""
@@ -385,6 +384,9 @@ def extract_search_heuristics(binary_args: str):
     heuristics_match = re.search(r"(?:-u|--heuristics)\s+(\S+)", binary_args)
 
     search = search_match.group(1) if search_match else "BFS"
+    if not search_match:
+        search = "portfolio" if re.search(r"(?:-p|--portfolio_threads)", binary_args) else "BFS"
+
     heuristics = heuristics_match.group(1) if heuristics_match else ""
     return search, heuristics
 
