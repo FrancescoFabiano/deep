@@ -1,0 +1,21 @@
+\begin{table}[!ht]
+\centering
+\small
+\begin{tabular}{l|ccc|ccc}
+\multirow{2}{*}{\textbf{batch1-Grapevine-Train}} & \multicolumn{3}{c|}{\textbf{Astar\_GNN}} & \multicolumn{3}{c}{\textbf{BFS}} \\
+\cline{2-7}
+& Length & Nodes & Total (ms) & Length & Nodes & Total (ms) \\
+\hline
+Grapevine\_3\_\_pl\_3 & 3 & 19 & 258 & 3 & 31 & 214 \\
+Grapevine\_3\_\_pl\_4 & 6 & 37 & 493 & 4 & 160 & 1291 \\
+Grapevine\_4\_\_pl\_2 & 2 & 3 & 294 & 2 & 7 & 179 \\
+Grapevine\_5\_\_pl\_4 & 7 & 77 & 72068 & 4 & 616 & 99199 \\
+\hline
+\textbf{Avg ± Std} & 4.50 ± 2.38 & 34.00 ± 31.85 & 18278.25 ± 35859.98 & 3.25 ± 0.96 & 203.50 ± 283.09 & 25220.75 ± 49321.53 \\
+\textbf{Avg ± Std***} & 4.50 ± 2.38 & 34.00 ± 31.85 & 18278.25 ± 35859.98 & 3.25 ± 0.96 & 203.50 ± 283.09 & 25220.75 ± 49321.53 \\
+\textbf{IQM ± IQMStd} & 4.50 ± 2.12 & 28.00 ± 12.73 & 393.50 ± 140.71 & 3.67 ± 0.58 & 95.50 ± 91.22 & 752.50 ± 761.55 \\
+\textbf{IQM ± IQMStd***} & 4.50 ± 2.12 & 28.00 ± 12.73 & 393.50 ± 140.71 & 3.67 ± 0.58 & 95.50 ± 91.22 & 752.50 ± 761.55 \\
+\end{tabular}
+\caption{Comparison}
+\label{tab:batch1_Grapevine_comparison_train}
+\end{table}

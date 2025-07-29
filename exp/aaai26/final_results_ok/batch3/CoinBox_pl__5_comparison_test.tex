@@ -1,0 +1,55 @@
+\begin{table}[!ht]
+\centering
+\small
+\begin{tabular}{l|ccc|ccc}
+\multirow{2}{*}{\textbf{batch3-CoinBox\_pl\_\_5-Test}} & \multicolumn{3}{c|}{\textbf{Astar\_GNN}} & \multicolumn{3}{c}{\textbf{BFS}} \\
+\cline{2-7}
+& Length & Nodes & Total (ms) & Length & Nodes & Total (ms) \\
+\hline
+key\_a\_look\_a\_closed & 5 & 6 & 116 & 5 & 101 & 502 \\
+key\_a\_look\_a\_open & 4 & 4 & 89 & 4 & 54 & 308 \\
+key\_a\_look\_ab\_open & 3 & 3 & 70 & 3 & 26 & 176 \\
+key\_a\_look\_abc\_closed & 7 & 84 & 491 & 3 & 34 & 196 \\
+key\_a\_look\_abc\_open & 2 & 2 & 67 & 2 & 8 & 104 \\
+key\_a\_look\_ac\_closed & 6 & 21 & 276 & 4 & 60 & 349 \\
+key\_a\_look\_ac\_open & 3 & 3 & 98 & 3 & 27 & 171 \\
+key\_a\_look\_b\_closed & 5 & 7 & 91 & 5 & 101 & 511 \\
+key\_a\_look\_b\_open & 4 & 4 & 93 & 4 & 62 & 451 \\
+key\_a\_look\_bc\_closed & 8 & 120 & 777 & 4 & 59 & 377 \\
+key\_a\_look\_c\_closed & 6 & 38 & 319 & 5 & 101 & 542 \\
+key\_a\_look\_c\_open & 4 & 46 & 332 & 4 & 61 & 373 \\
+key\_b\_look\_a\_closed & 5 & 7 & 123 & 5 & 100 & 521 \\
+key\_b\_look\_a\_open & 4 & 4 & 111 & 4 & 59 & 295 \\
+key\_b\_look\_ab\_closed & 9 & 72 & 467 & 4 & 60 & 317 \\
+key\_b\_look\_ab\_open & 3 & 3 & 109 & 3 & 27 & 146 \\
+key\_b\_look\_abc\_closed & 8 & 69 & 426 & 3 & 34 & 133 \\
+key\_b\_look\_abc\_open & 2 & 2 & 82 & 2 & 8 & 52 \\
+key\_b\_look\_ac\_closed & 9 & 133 & 680 & 4 & 59 & 234 \\
+key\_b\_look\_ac\_open & 3 & 3 & 86 & 3 & 20 & 90 \\
+key\_b\_look\_b\_open & 4 & 4 & 128 & 4 & 54 & 251 \\
+key\_b\_look\_bc\_closed & 8 & 155 & 758 & 4 & 60 & 250 \\
+key\_b\_look\_bc\_open & 3 & 3 & 78 & 3 & 27 & 100 \\
+key\_b\_look\_c\_closed & 6 & 42 & 243 & 5 & 101 & 431 \\
+key\_b\_look\_c\_open & 4 & 51 & 441 & 4 & 49 & 225 \\
+key\_c\_look\_a\_closed & 5 & 7 & 100 & 5 & 101 & 434 \\
+key\_c\_look\_a\_open & 4 & 4 & 85 & 4 & 57 & 247 \\
+key\_c\_look\_ab\_closed & 7 & 51 & 397 & 4 & 58 & 178 \\
+key\_c\_look\_ab\_open & 3 & 3 & 84 & 3 & 19 & 84 \\
+key\_c\_look\_abc\_closed & 7 & 84 & 571 & 3 & 34 & 105 \\
+key\_c\_look\_abc\_open & 2 & 2 & 87 & 2 & 8 & 46 \\
+key\_c\_look\_ac\_closed & 9 & 31 & 262 & 4 & 61 & 227 \\
+key\_c\_look\_ac\_open & 3 & 3 & 118 & 3 & 27 & 112 \\
+key\_c\_look\_b\_closed & 5 & 6 & 122 & 5 & 101 & 381 \\
+key\_c\_look\_b\_open & 4 & 4 & 107 & 4 & 52 & 200 \\
+key\_c\_look\_bc\_closed & 9 & 34 & 244 & 4 & 61 & 174 \\
+key\_c\_look\_bc\_open & 3 & 3 & 110 & 3 & 27 & 74 \\
+key\_c\_look\_c\_closed & 6 & 84 & 398 & 5 & 101 & 386 \\
+\hline
+\textbf{Avg ± Std} & 5.05 ± 2.17 & 31.63 ± 41.16 & 243.05 ± 205.72 & 3.76 ± 0.88 & 54.18 ± 29.58 & 256.66 ± 145.67 \\
+\textbf{Avg ± Std***} & 5.05 ± 2.17 & 31.63 ± 41.16 & 243.05 ± 205.72 & 3.76 ± 0.88 & 54.18 ± 29.58 & 256.66 ± 145.67 \\
+\textbf{IQM ± IQMStd} & 4.20 ± 1.08 & 11.72 ± 14.19 & 167.28 ± 84.54 & 3.59 ± 0.50 & 47.87 ± 14.09 & 239.83 ± 65.65 \\
+\textbf{IQM ± IQMStd***} & 4.20 ± 1.08 & 11.72 ± 14.19 & 167.28 ± 84.54 & 3.59 ± 0.50 & 47.87 ± 14.09 & 239.83 ± 65.65 \\
+\end{tabular}
+\caption{Comparison}
+\label{tab:batch3_CoinBox_pl__5_comparison_test}
+\end{table}

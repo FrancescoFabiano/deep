@@ -1,0 +1,20 @@
+\begin{table}[!ht]
+\centering
+\small
+\begin{tabular}{l|ccc|ccc}
+\multirow{2}{*}{\textbf{batch4-SCRich-Train}} & \multicolumn{3}{c|}{\textbf{Astar\_GNN}} & \multicolumn{3}{c}{\textbf{BFS}} \\
+\cline{2-7}
+& Length & Nodes & Total (ms) & Length & Nodes & Total (ms) \\
+\hline
+SC\_10\_10\_\_pl\_10 & 10 & 428 & 6048 & 10 & 2667 & 33229 \\
+SC\_10\_10\_\_pl\_6 & 7 & 35 & 802 & 6 & 395 & 4305 \\
+SC\_10\_10\_\_pl\_7 & 7 & 958 & 17793 & 7 & 955 & 10565 \\
+\hline
+\textbf{Avg ± Std} & 8.00 ± 1.73 & 473.67 ± 463.19 & 8214.33 ± 8700.19 & 7.67 ± 2.08 & 1339.00 ± 1183.68 & 16033.00 ± 15217.55 \\
+\textbf{Avg ± Std***} & 8.00 ± 1.73 & 473.67 ± 463.19 & 8214.33 ± 8700.19 & 7.67 ± 2.08 & 1339.00 ± 1183.68 & 16033.00 ± 15217.55 \\
+\textbf{IQM ± IQMStd} & 7.00 ± 0.00 & 473.67 ± 463.19 & 8214.33 ± 8700.19 & 7.67 ± 2.08 & 1339.00 ± 1183.68 & 16033.00 ± 15217.55 \\
+\textbf{IQM ± IQMStd***} & 7.00 ± 0.00 & 473.67 ± 463.19 & 8214.33 ± 8700.19 & 7.67 ± 2.08 & 1339.00 ± 1183.68 & 16033.00 ± 15217.55 \\
+\end{tabular}
+\caption{Comparison}
+\label{tab:batch4_SCRich_comparison_train}
+\end{table}

@@ -1,0 +1,20 @@
+\begin{table}[!ht]
+\centering
+\small
+\begin{tabular}{l|ccc|ccc}
+\multirow{2}{*}{\textbf{batch1-CoinBox-Test}} & \multicolumn{3}{c|}{\textbf{Astar\_GNN}} & \multicolumn{3}{c}{\textbf{BFS}} \\
+\cline{2-7}
+& Length & Nodes & Total (ms) & Length & Nodes & Total (ms) \\
+\hline
+Coin\_in\_the\_Box\_\_pl\_2 & 2 & 2 & 62 & 2 & 2 & 9 \\
+Coin\_in\_the\_Box\_\_pl\_5 & 7 & 16 & 154 & 5 & 101 & 224 \\
+Coin\_in\_the\_Box\_\_pl\_7 & 7 & 453 & 2816 & 7 & 2490 & 6060 \\
+\hline
+\textbf{Avg ± Std} & 5.33 ± 2.89 & 157.00 ± 256.44 & 1010.67 ± 1564.14 & 4.67 ± 2.52 & 864.33 ± 1408.74 & 2097.67 ± 3433.16 \\
+\textbf{Avg ± Std***} & 5.33 ± 2.89 & 157.00 ± 256.44 & 1010.67 ± 1564.14 & 4.67 ± 2.52 & 864.33 ± 1408.74 & 2097.67 ± 3433.16 \\
+\textbf{IQM ± IQMStd} & 7.00 ± 0.00 & 157.00 ± 256.44 & 1010.67 ± 1564.14 & 4.67 ± 2.52 & 864.33 ± 1408.74 & 2097.67 ± 3433.16 \\
+\textbf{IQM ± IQMStd***} & 7.00 ± 0.00 & 157.00 ± 256.44 & 1010.67 ± 1564.14 & 4.67 ± 2.52 & 864.33 ± 1408.74 & 2097.67 ± 3433.16 \\
+\end{tabular}
+\caption{Comparison}
+\label{tab:batch1_CoinBox_comparison_test}
+\end{table}

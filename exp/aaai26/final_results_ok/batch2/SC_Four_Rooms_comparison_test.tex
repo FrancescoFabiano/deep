@@ -1,0 +1,23 @@
+\begin{table}[!ht]
+\centering
+\small
+\begin{tabular}{l|ccc|ccc}
+\multirow{2}{*}{\textbf{batch2-SC\_Four\_Rooms-Test}} & \multicolumn{3}{c|}{\textbf{Astar\_GNN}} & \multicolumn{3}{c}{\textbf{BFS}} \\
+\cline{2-7}
+& Length & Nodes & Total (ms) & Length & Nodes & Total (ms) \\
+\hline
+SC\_4\_1\_\_pl\_3 & 3 & 3 & 54 & 3 & 4 & 4 \\
+SC\_4\_2\_\_pl\_5 & 5 & 8 & 101 & 5 & 21 & 29 \\
+SC\_4\_2\_\_pl\_8 & 8 & 1019 & 2308 & 8 & 306 & 341 \\
+SC\_4\_3\_\_pl\_5 & 5 & 12 & 119 & 5 & 11 & 7 \\
+SC\_4\_3\_\_pl\_8 & 8 & 60 & 192 & 8 & 66 & 31 \\
+SC\_4\_4\_\_pl\_5 & 5 & 12 & 82 & 5 & 11 & 6 \\
+\hline
+\textbf{Avg ± Std} & 5.67 ± 1.97 & 185.67 ± 408.78 & 476.00 ± 898.70 & 5.67 ± 1.97 & 69.83 ± 117.84 & 69.67 ± 133.46 \\
+\textbf{Avg ± Std***} & 5.67 ± 1.97 & 185.67 ± 408.78 & 476.00 ± 898.70 & 5.67 ± 1.97 & 69.83 ± 117.84 & 69.67 ± 133.46 \\
+\textbf{IQM ± IQMStd} & 5.00 ± 0.00 & 12.00 ± 0.00 & 110.00 ± 12.73 & 5.00 ± 0.00 & 14.33 ± 5.77 & 18.00 ± 15.56 \\
+\textbf{IQM ± IQMStd***} & 5.00 ± 0.00 & 12.00 ± 0.00 & 110.00 ± 12.73 & 5.00 ± 0.00 & 14.33 ± 5.77 & 18.00 ± 15.56 \\
+\end{tabular}
+\caption{Comparison}
+\label{tab:batch2_SC_Four_Rooms_comparison_test}
+\end{table}

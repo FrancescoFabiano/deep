@@ -30,7 +30,7 @@ In case some domains consistently fail to produce training data, you can try adj
 - `--depth n`: Sets the maximum depth of the search tree to explore.
                The default is `25`.
                Increasing this value improves the chance of generating meaningful training data.
-- `--discard_factor x`: Specifies the maximum discard factor (a float in the interval `(0, 1)`). 
+- `--discard_factor x`: Specifies the maximum discard factor (a float in the interval `[0, 1)`). 
                         This controls how quickly the dataset generator abandons a subtree to explore another.
                         The default is `0.4`.
                         Lowering this value results in deeper and more exhaustive exploration.
