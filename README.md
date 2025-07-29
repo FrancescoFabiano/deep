@@ -4,6 +4,9 @@
 
 For a more detailed overview, please take a look at the works referenced in the Bibliography section at the end of this README.
 
+## AAAI
+To replicate the experiments please follow the instruction in exp/aaai26 using the provided pre-trained models.
+
 ## Features
 
 - Multi-agent epistemic planning using Dynamic Epistemic Logic (DEL)
