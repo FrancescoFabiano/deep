@@ -1,8 +1,8 @@
 # deep
 
-**deep** (Dynamic Epistemic logic-basEd Planning) is a multi-agent epistemic planner that operates over the full scope of Dynamic Epistemic Logic (DEL), leveraging optimized search algorithms and heuristics. It is designed for scalable planning in multi-agent domains, supporting advanced reasoning over knowledge and belief.
+**deep** (Dynamic Epistemic logic-basEd Planner) is a multi-agent epistemic planner that operates over the full scope of mA*, leveraging optimized search algorithms and heuristics. It is designed for scalable planning in multi-agent domains, supporting advanced reasoning over knowledge and belief.
 
-For a more detailed overview, see the works reference in the Bibliography section at teh end of this README.
+For a more detailed overview, please take a look at the works referenced in the Bibliography section at the end of this README.
 
 ## Features
 
