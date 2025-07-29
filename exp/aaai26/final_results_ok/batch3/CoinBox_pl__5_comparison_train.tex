@@ -1,0 +1,21 @@
+\begin{table}[!ht]
+\centering
+\small
+\begin{tabular}{l|ccc|ccc}
+\multirow{2}{*}{\textbf{batch3-CoinBox\_pl\_\_5-Train}} & \multicolumn{3}{c|}{\textbf{Astar\_GNN}} & \multicolumn{3}{c}{\textbf{BFS}} \\
+\cline{2-7}
+& Length & Nodes & Total (ms) & Length & Nodes & Total (ms) \\
+\hline
+key\_a\_look\_ab\_closed & 6 & 98 & 442 & 4 & 60 & 361 \\
+key\_a\_look\_bc\_open & 3 & 3 & 123 & 3 & 20 & 210 \\
+key\_b\_look\_b\_closed & 5 & 6 & 124 & 5 & 103 & 501 \\
+key\_c\_look\_c\_open & 4 & 33 & 242 & 4 & 55 & 359 \\
+\hline
+\textbf{Avg ± Std} & 4.50 ± 1.29 & 35.00 ± 44.11 & 232.75 ± 150.27 & 4.00 ± 0.82 & 59.50 ± 34.02 & 357.75 ± 118.83 \\
+\textbf{Avg ± Std***} & 4.50 ± 1.29 & 35.00 ± 44.11 & 232.75 ± 150.27 & 4.00 ± 0.82 & 59.50 ± 34.02 & 357.75 ± 118.83 \\
+\textbf{IQM ± IQMStd} & 4.50 ± 0.71 & 19.50 ± 19.09 & 183.00 ± 83.44 & 4.00 ± 0.00 & 57.50 ± 3.54 & 360.00 ± 1.41 \\
+\textbf{IQM ± IQMStd***} & 4.50 ± 0.71 & 19.50 ± 19.09 & 183.00 ± 83.44 & 4.00 ± 0.00 & 57.50 ± 3.54 & 360.00 ± 1.41 \\
+\end{tabular}
+\caption{Comparison}
+\label{tab:batch3_CoinBox_pl__5_comparison_train}
+\end{table}

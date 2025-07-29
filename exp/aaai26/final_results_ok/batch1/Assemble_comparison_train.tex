@@ -1,0 +1,20 @@
+\begin{table}[!ht]
+\centering
+\small
+\begin{tabular}{l|ccc|ccc}
+\multirow{2}{*}{\textbf{batch1-Assemble-Train}} & \multicolumn{3}{c|}{\textbf{Astar\_GNN}} & \multicolumn{3}{c}{\textbf{BFS}} \\
+\cline{2-7}
+& Length & Nodes & Total (ms) & Length & Nodes & Total (ms) \\
+\hline
+Assemble\_B3\_\_pl\_5 & 5 & 14 & 191 & 5 & 14 & 48 \\
+Assemble\_B5\_\_pl\_5 & 5 & 14 & 303 & 5 & 14 & 123 \\
+Assemble\_B7\_\_pl\_5 & 5 & 14 & 4360 & 5 & 14 & 3980 \\
+\hline
+\textbf{Avg ± Std} & 5.00 ± 0.00 & 14.00 ± 0.00 & 1618.00 ± 2375.30 & 5.00 ± 0.00 & 14.00 ± 0.00 & 1383.67 ± 2248.80 \\
+\textbf{Avg ± Std***} & 5.00 ± 0.00 & 14.00 ± 0.00 & 1618.00 ± 2375.30 & 5.00 ± 0.00 & 14.00 ± 0.00 & 1383.67 ± 2248.80 \\
+\textbf{IQM ± IQMStd} & 5.00 ± 0.00 & 14.00 ± 0.00 & 1618.00 ± 2375.30 & 5.00 ± 0.00 & 14.00 ± 0.00 & 1383.67 ± 2248.80 \\
+\textbf{IQM ± IQMStd***} & 5.00 ± 0.00 & 14.00 ± 0.00 & 1618.00 ± 2375.30 & 5.00 ± 0.00 & 14.00 ± 0.00 & 1383.67 ± 2248.80 \\
+\end{tabular}
+\caption{Comparison}
+\label{tab:batch1_Assemble_comparison_train}
+\end{table}
