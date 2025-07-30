@@ -131,8 +131,6 @@ Anonymized
 ## Bibliography
 
 Anonymized
-  *CoRR*, abs/1511.01960.
-
 
 ## License
 
