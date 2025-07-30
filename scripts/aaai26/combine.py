@@ -74,5 +74,5 @@ def get_names(file_res:str="../../exp/aaai26/final_results_ok"):
 # Example usage
 if __name__ == "__main__":
     input_files = get_names()
-    output_file = "../../exp/aaai26/final_results_ok/all_results.tex"
+    output_file = "../../exp/aaai26/reports/all_results.tex"
     combine_tex_files(input_files, output_file)

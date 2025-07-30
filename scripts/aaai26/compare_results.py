@@ -282,4 +282,4 @@ def main(main_dir:str= "exp/aaai26", file_res:str="exp/aaai26/final_results_ok")
 
 
 if __name__ == "__main__":
-    main(main_dir="../../exp/aaai26", file_res="../../exp/aaai26/final_results_ok")
+    main(main_dir="../../exp/aaai26", file_res="../../exp/aaai26/reports")

@@ -175,5 +175,5 @@ def main_plot_scaling(tex_path,
 
 if __name__ == "__main__":
     # Change this to the path to your .tex file
-    tex_path = "../../exp/aaai26/final_results_ok/batch5/CC-CoinBox_comparison_test.tex"
+    tex_path = "../../exp/aaai26/reports/batch5/CC-CoinBox_comparison_test.tex"
     main_plot_scaling(tex_path, n=3)
