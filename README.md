@@ -4,16 +4,15 @@
 
 For a more detailed overview, please take a look at the works referenced in the Bibliography section at the end of this README.
 
-## AAAI
+## AAAI 2026
 To replicate the experiments, please follow the instructions provided in the exp/aaai26 directory, using the included pre-trained models.
 Alternatively, scripts for generating the training data and training the models are also provided.
 Explanations of this procedure are deferred to C++ code comments.
 
 Note that since the repository has been anonymized and compressed into a ZIP archive, Git submodule functionality is not supported.
 Versions of the required external libraries are included within the archive.
-For any issues or conflicts related to these libraries, please refer to: https://github.com/CLIUtils/CLI11.
 
-To build please execute the building script with `nn` argument to activate ONNX support.
+To build please execute the building script with `nn` argument to activate ONNX support and, therefore, GNN-based heuristics.
 
 ## Features
 
