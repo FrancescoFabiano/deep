@@ -132,6 +132,13 @@ public:
    */
   [[nodiscard]] bool get_dataset_merged_both() const noexcept;
 
+
+    /**
+     * \brief Gets the value of the seed to execute experiments.
+     * \return the value of the seed. If no values is set return a negative number that sets the seed to a random value.
+     */
+    [[nodiscard]] int64_t get_dataset_seed() const noexcept;
+
   /**
    * \brief Returns the output stream.
    * \return The log file stream or std::cout if logging is not enabled.
@@ -214,6 +221,8 @@ private:
   bool m_dataset_both = false;
   ///< Flag to indicate if both mapped and hashed node labels should be used in
   ///< dataset generation.
+
+    int64_t m_dataset_seed = -1; ///< Seed for dataset generation (default: -1).
   std::string m_search_strategy = "BFS"; ///< Search strategy (BFS by default).
   std::string m_heuristic_opt =
       "SUBGOALS"; ///< Heuristic type (SUBGOALS by default).

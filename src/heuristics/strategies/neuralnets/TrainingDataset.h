@@ -11,9 +11,6 @@
 /// \brief Random device for seeding the random number generator.
 inline std::random_device rd;
 
-/// \brief Mersenne Twister random number generator, seeded with rd.
-inline std::mt19937 m_gen(rd());
-
 /// \brief Uniform real distribution in the range [0.0, 1.0).
 inline std::uniform_real_distribution<> m_dis(0.0, 1.0);
 
@@ -140,7 +137,11 @@ private:
 
   unsigned long m_file_counter = 0; ///< Counter for dataset files
 
-  // --- Mappings ---
+    /// \brief Mersenne Twister random number generator, seeded with rd.
+    std::mt19937 m_gen;
+    int64_t m_seed = -1; ///< Seed for the random number generator
+
+    // --- Mappings ---
   std::unordered_map<Fluent, size_t>
       m_fluent_to_id; ///< Mapping from fluent to unique ID
   std::unordered_map<Agent, size_t>
