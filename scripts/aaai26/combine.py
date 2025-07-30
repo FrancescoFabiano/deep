@@ -62,7 +62,7 @@ def get_names(file_res:str="../../exp/aaai26/final_results_ok"):
 
             title_test = f"Scalability on {domain} - Test"
             figname_test = f"{file_res}/{batch_n}/{domain}_scalability_comparison_test.pdf"
-            main_plot_scaling(output_file_train, n, title_test, figname_test)
+            main_plot_scaling(output_file_test, n, title_test, figname_test)
 
         label = f"tab:{batch_n}_res"
         caption = f"{batch_n} summary iqm"
