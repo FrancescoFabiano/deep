@@ -53,6 +53,7 @@ Install required tools and libraries:
     cd deep
 
 The `--recurse-submodules` flag ensures that all submodules (like CLI11) are cloned as well.
+> Installation procedure of all the external libraries is deferred to the respective READMEs. The external libraries are found in the `lib/' folder.
 
 ### Build the project
 
