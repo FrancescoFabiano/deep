@@ -1,0 +1,2 @@
+slope = 0.01996
+intercept = 0.001
