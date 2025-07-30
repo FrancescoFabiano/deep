@@ -1,27 +1,29 @@
 \begin{table}[!ht]
 \centering
-\small
+\footnotesize
 \begin{tabular}{l|ccc|ccc}
-\multirow{2}{*}{\textbf{batch1-Grapevine-Test}} & \multicolumn{3}{c|}{\textbf{Astar\_GNN}} & \multicolumn{3}{c}{\textbf{BFS}} \\
+\multirow2{*}{\textbf{Problem}} & \multicolumn{3}{c|}{\textbf{Astar\_GNN}} & \multicolumn{3}{c}{\textbf{BFS}} \\
 \cline{2-7}
 & Length & Nodes & Total (ms) & Length & Nodes & Total (ms) \\
 \hline
-Grapevine\_3\_\_pl\_2 & 2.0 & 4.0 & 107.0 & 2 & 6 & 53 \\
-Grapevine\_3\_\_pl\_5 & - & - & - & 5 & 821 & 4032 \\
-Grapevine\_3\_\_pl\_6 & - & - & - & 6 & 2113 & 8035 \\
-Grapevine\_3\_\_pl\_7 & - & - & - & 7 & 12014 & 38029 \\
-Grapevine\_4\_\_pl\_3 & 6.0 & 340.0 & 14364.0 & 3 & 40 & 1886 \\
-Grapevine\_4\_\_pl\_4 & 7.0 & 200.0 & 23244.0 & 4 & 233 & 4575 \\
-Grapevine\_4\_\_pl\_5 & 6.0 & 90.0 & 18770.0 & 5 & 1445 & 15435 \\
-Grapevine\_4\_\_pl\_6 & 6.0 & 419.0 & 42164.0 & 6 & 4066 & 37224 \\
-Grapevine\_5\_\_pl\_2 & 3.0 & 3.0 & 753.0 & 2 & 8 & 2426 \\
-Grapevine\_5\_\_pl\_3 & 6.0 & 17.0 & 6856.0 & 3 & 71 & 23602 \\
+Grapevine\_3\_\_pl\_2 & 2.0 & 4.0 & 107.0 & 2.0 & 6.0 & 53.0 \\
+Grapevine\_3\_\_pl\_5 & nan & nan & nan & 5.0 & 821.0 & 4032.0 \\
+Grapevine\_3\_\_pl\_6 & nan & nan & nan & 6.0 & 2113.0 & 8035.0 \\
+Grapevine\_3\_\_pl\_7 & nan & nan & nan & 7.0 & 12014.0 & 38029.0 \\
+Grapevine\_4\_\_pl\_3 & 6.0 & 340.0 & 14364.0 & 3.0 & 40.0 & 1886.0 \\
+Grapevine\_4\_\_pl\_4 & 7.0 & 200.0 & 23244.0 & 4.0 & 233.0 & 4575.0 \\
+Grapevine\_4\_\_pl\_5 & 6.0 & 90.0 & 18770.0 & 5.0 & 1445.0 & 15435.0 \\
+Grapevine\_4\_\_pl\_6 & 6.0 & 419.0 & 42164.0 & 6.0 & 4066.0 & 37224.0 \\
+Grapevine\_5\_\_pl\_2 & 3.0 & 3.0 & 753.0 & 2.0 & 8.0 & 2426.0 \\
+Grapevine\_5\_\_pl\_3 & 6.0 & 17.0 & 6856.0 & 3.0 & 71.0 & 23602.0 \\
+Grapevine\_5\_\_pl\_5 & nan & nan & nan & nan & nan & nan \\
+Grapevine\_5\_\_pl\_6 & nan & nan & nan & nan & nan & nan \\
 \hline
-\textbf{Avg ± Std} & 5.14 ± 1.86 & 153.29 ± 170.83 & 15179.71 ± 14783.67 & 4.30 ± 1.77 & 2081.70 ± 3724.12 & 13529.70 ± 14559.42 \\
-\textbf{Avg ± Std***} & 5.14 ± 1.86 & 153.29 ± 170.83 & 15179.71 ± 14783.67 & 4.30 ± 1.77 & 2081.70 ± 3724.12 & 13529.70 ± 14559.42 \\
-\textbf{IQM ± IQMStd} & 6.00 ± 0.00 & 102.33 ± 92.12 & 13330.00 ± 6023.93 & 4.00 ± 1.00 & 642.50 ± 624.55 & 8019.25 ± 5252.13 \\
-\textbf{IQM ± IQMStd***} & 6.00 ± 0.00 & 102.33 ± 92.12 & 13330.00 ± 6023.93 & 4.00 ± 1.00 & 642.50 ± 624.55 & 8019.25 ± 5252.13 \\
+\textbf{Avg ± Std (all)} & 5 ± 2 & 153 ± 171 & 15180 ± 14784 & 4 ± 2 & 2082 ± 3724 & 13530 ± 14559 \\
+\textbf{IQM ± IQRStd (all)} & 6 ± 0 & 102 ± 92 & 13330 ± 6024 & 4 ± 1 & 642 ± 625 & 8019 ± 5252 \\
+\textbf{Avg ± Std (com)} & 5 ± 2 & 153 ± 171 & 15180 ± 14784 & 4 ± 2 & 838 ± 1514 & 12172 ± 13990 \\
+\textbf{IQM ± IQRStd (com)} & 6 ± 0 & 102 ± 92 & 13330 ± 6024 & 3 ± 1 & 115 ± 104 & 7479 ± 6974 \\
 \end{tabular}
-\caption{Comparison}
+\caption{batch1-Grapevine-Test}
 \label{tab:batch1_Grapevine_comparison_test}
 \end{table}

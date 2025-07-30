@@ -1,0 +1,29 @@
+\begin{table}[!ht]
+\centering
+\scriptsize
+\begin{tabular}{l|ccc|ccc|cccc}
+\multirow{2}{*}{\textbf{Problem}} & \multicolumn{3}{c|}{\textbf{Astar\_GNN}} & \multicolumn{3}{c|}{\textbf{BFS}} & \multicolumn{4}{c}{\textbf{batch5-CC-Grapevine-Train}} \\
+\cline{2-11}
+& Length & Nodes & Total (ms) & Length & Nodes & Total (ms) & Length & Nodes & Total (ms) & Search \\
+\hline
+CC\_2\_2\_3\_\_pl\_4 & 4 & 14 & 90 & 4 & 17 & 36 & 4 & 4 & 29 & P-HFS(L-PG) \\
+CC\_2\_2\_3\_\_pl\_6 & 6 & 193 & 1849 & 6 & 284 & 728 & 8 & 13 & 50 & P-HFS(SubGoals) \\
+CC\_2\_2\_4\_\_pl\_5 & 5 & 94 & 3204 & 5 & 171 & 1445 & 5 & 7 & 130 & P-HFS(SubGoals) \\
+CC\_2\_3\_4\_\_pl\_3 & 3 & 19 & 4221 & 3 & 6 & 594 & 3 & 3 & 498 & P-HFS(SubGoals) \\
+CC\_2\_3\_4\_\_pl\_7 & 7 & 3960 & 291045 & 7 & 10180 & 181717 & 9 & 22 & 2036 & P-HFS(SubGoals) \\
+CC\_3\_2\_3\_\_pl\_4 & 4 & 47 & 1233 & 4 & 30 & 107 & 4 & 6 & 58 & P-HFS(SubGoals) \\
+CC\_3\_2\_3\_\_pl\_5 & 5 & 136 & 1607 & 5 & 178 & 809 & 5 & 6 & 44 & P-HFS(SubGoals) \\
+CC\_3\_3\_3\_\_pl\_4 & 4 & 39 & 1946 & 4 & 39 & 290 & 4 & 5 & 180 & P-HFS(SubGoals) \\
+Grapevine\_3\_\_pl\_3 & 3 & 21 & 632 & 3 & 31 & 341 & 3 & 3 & 39 & P-HFS(SubGoals) \\
+Grapevine\_3\_\_pl\_4 & 4 & 113 & 3744 & 4 & 160 & 1495 & 4 & 4 & 38 & P-HFS(SubGoals) \\
+Grapevine\_4\_\_pl\_2 & 2 & 4 & 417 & 2 & 7 & 299 & 2 & 2 & 126 & P-HFS(SubGoals) \\
+Grapevine\_5\_\_pl\_4 & 4 & 430 & 175274 & 4 & 616 & 102997 & 4 & 4 & 625 & P-HFS(SubGoals) \\
+\hline
+\textbf{Avg ± Std (all)} & 4 ± 1 & 422 ± 1120 & 40438 ± 93351 & 4 ± 1 & 977 ± 2904 & 24238 ± 57671 & 5 ± 2 & 7 ± 6 & 321 ± 574 & -- \\
+\textbf{IQM ± IQRStd (all)} & 4 ± 0 & 75 ± 46 & 2264 ± 984 & 4 ± 0 & 102 ± 75 & 703 ± 417 & 4 ± 0 & 5 ± 1 & 98 ± 55 & -- \\
+\textbf{Avg ± Std (com)} & 4 ± 1 & 422 ± 1120 & 40438 ± 93351 & 4 ± 1 & 977 ± 2904 & 24238 ± 57671 & 5 ± 2 & 7 ± 6 & 321 ± 574 & -- \\
+\textbf{IQM ± IQRStd (com)} & 4 ± 0 & 75 ± 46 & 2264 ± 984 & 4 ± 0 & 102 ± 75 & 703 ± 417 & 4 ± 0 & 5 ± 1 & 98 ± 55 & -- \\
+\end{tabular}
+\caption{batch5-CC-Grapevine-Train}
+\label{tab:batch5_CC-Grapevine_comparison_train}
+\end{table}
