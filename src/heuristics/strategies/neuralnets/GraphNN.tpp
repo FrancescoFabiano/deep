@@ -93,6 +93,7 @@ void GraphNN<StateRepr>::initialize_onnx_model() {
   if (ArgumentParser::get_instance().get_verbose()) {
     auto &os = ArgumentParser::get_instance().get_output_stream()
                << "[ONNX] Model loaded: " << m_model_path << std::endl;
+    os << "[ONNX] Model Constant loaded from: " << Configuration::get_instance().get_GNN_constant_path() << std::endl;
 
     // Print model input and output details
     const auto input_names = m_session->GetInputNames();
