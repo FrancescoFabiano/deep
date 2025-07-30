@@ -137,11 +137,11 @@ private:
 
   unsigned long m_file_counter = 0; ///< Counter for dataset files
 
-    /// \brief Mersenne Twister random number generator, seeded with rd.
-    std::mt19937 m_gen;
-    int64_t m_seed = -1; ///< Seed for the random number generator
+  /// \brief Mersenne Twister random number generator, seeded with rd.
+  std::mt19937 m_gen;
+  int64_t m_seed = -1; ///< Seed for the random number generator
 
-    // --- Mappings ---
+  // --- Mappings ---
   std::unordered_map<Fluent, size_t>
       m_fluent_to_id; ///< Mapping from fluent to unique ID
   std::unordered_map<Agent, size_t>

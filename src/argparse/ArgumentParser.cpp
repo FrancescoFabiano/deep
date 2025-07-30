@@ -201,10 +201,12 @@ ArgumentParser::ArgumentParser() : app("deep") {
                    "Set the maximum value for discard factor during dataset "
                    "generation (Must be within 0 and 1, not included).")
       ->default_val("0.4");
-    dataset_group
-    ->add_option("--dataset_seed", m_dataset_seed,
-                 "Set the seed used for value generation. If no seed is provided, or a negative value is given, a random seed will be generated instead, as negative seeds are not accepted.")
-    ->default_val("-1");
+  dataset_group
+      ->add_option("--dataset_seed", m_dataset_seed,
+                   "Set the seed used for value generation. If no seed is "
+                   "provided, or a negative value is given, a random seed will "
+                   "be generated instead, as negative seeds are not accepted.")
+      ->default_val("-1");
 
   // Search group
   auto *search_group = app.add_option_group("Search");
@@ -369,7 +371,7 @@ bool ArgumentParser::get_dataset_merged_both() const noexcept {
 }
 
 int64_t ArgumentParser::get_dataset_seed() const noexcept {
-    return m_dataset_seed;
+  return m_dataset_seed;
 }
 
 const std::string &ArgumentParser::get_heuristic() const noexcept {

@@ -106,8 +106,8 @@ TrainingDataset<StateRepr>::make_unique_folder(const std::string &base_path,
 template <StateRepresentation StateRepr>
 TrainingDataset<StateRepr>::TrainingDataset() {
 
-
-  /// \brief Mersenne Twister random number generator, seeded with rd if no seed provided.
+  /// \brief Mersenne Twister random number generator, seeded with rd if no seed
+  /// provided.
   m_seed = ArgumentParser::get_instance().get_dataset_seed();
   if (m_seed < 0) {
     m_seed = std::random_device{}(); // Use random device if seed is negative
