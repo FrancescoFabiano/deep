@@ -1,10 +1,11 @@
-# Experiment Batch 4: Scalability Testing
+# Experiment Batch 2: Granular Domain Testing
 
-This folder contains the fourth batch of experiments for the project.
+This folder contains the second batch of experiments for the project.
 
-- This batch tests GNN-based heuristics in terms of scalability.
-- We have generated instances with increasing goal length to see if GNN is able to generalize and allow the solver to scale.
-- All models of interest are located in the `_models/{domain}` subfolder.
+- Each domain is split into subdomains to test whether GNN models trained with more or less domain-specific training data perform better.
+- No extra instances are added; the goal is to verify how much training data is needed for effective GNN-based heuristics.
+- For each sub-domain, a dedicated model is trained (with the problem instance in the `Training` subfolder) and then used to solve all instances within that sub-domain.
+- All models of interest are located in the ``_models\{sub-domain_name}`` subfolder.
 - All the results are stored in the `_results` subfolder.
 
 ---
@@ -12,7 +13,6 @@ This folder contains the fourth batch of experiments for the project.
 ## Usage
 
 All commands should be run from the root directory of the repository.
-
 > While Steps 1 and 2 can be run, to emulate the results of the paper, you can skip them and directly run Step 3 since models are already provided in the `_models` folder.
 
 
@@ -21,7 +21,7 @@ All commands should be run from the root directory of the repository.
 This creates training datasets for each domain:
 
 ```console
-python3 scripts/aaai26/create_all_training_data.py exp/aaai26/batch4 --deep_exe cmake-build-release-nn/bin/deep
+python3 scripts/aaai26/create_all_training_data.py exp/aaai26/batch2 --deep_exe cmake-build-release-nn/bin/deep
 ```
 Replace --deep_exe with the path to your compiled deep binary.
 
@@ -31,17 +31,17 @@ The generation process involves randomness, so retrying may succeed on a second 
 In case some domains consistently fail to produce training data, you can try adjusting the following options:
 
 - `--depth n`: Sets the maximum depth of the search tree to explore.
-               The default is `25`.
-               Increasing this value improves the chance of generating meaningful training data.
-- `--discard_factor x`: Specifies the maximum discard factor (a float in the interval `[0, 1)`). 
-                        This controls how quickly the dataset generator abandons a subtree to explore another.
-                        The default is `0.4`.
-                        Lowering this value results in deeper and more exhaustive exploration.
-                        Increasing it makes the exploration more "jumpy" and likely to skip over parts of the tree.
+  The default is `25`.
+  Increasing this value improves the chance of generating meaningful training data.
+- `--discard_factor x`: Specifies the maximum discard factor (a float in the interval `(0, 1)`).
+  This controls how quickly the dataset generator abandons a subtree to explore another.
+  The default is `0.4`.
+  Lowering this value results in deeper and more exhaustive exploration.
+  Increasing it makes the exploration more "jumpy" and likely to skip over parts of the tree.
 
 Example command with adjusted parameters:
 ```console
-python3 scripts/aaai26/create_all_training_data.py exp/aaai26/batch4 --deep_exe cmake-build-release-nn/bin/deep --depth 40 --discard_factor 0.2
+python3 scripts/aaai26/create_all_training_data.py exp/aaai26/batch2 --deep_exe cmake-build-release-nn/bin/deep --depth 40 --discard_factor 0.2
 ```
 
 ### 2. Train GNN models
@@ -50,7 +50,7 @@ This trains one model per domain using the previously generated training data.
 
 
 ```console
-python3 scripts/aaai26/train_models.py exp/aaai26/batch4
+python3 scripts/aaai26/train_models.py exp/aaai26/batch2
 ```
 
 ### 3. Run evaluation and aggregate results
@@ -60,19 +60,19 @@ Run inference using the trained models and aggregate the results into the `_resu
 #### GNN heuristic
 This command runs inference using the GNN heuristic with the appropriate model generated in the previous step.
 ```console
-python3 scripts/aaai26/aaai_coverage_run.py cmake-build-release-nn/bin/deep exp/aaai26/batch4/ --threads 8 --binary_args "-s Astar -u GNN --dataset_merged -c -b" --timeout 600
+python3 scripts/aaai26/aaai_coverage_run.py cmake-build-release-nn/bin/deep exp/aaai26/batch2/ --threads 8 --binary_args "-s Astar -u GNN --dataset_merged -c -b" --timeout 600
 ```
 
 #### Breadth-First Search
 This command runs inference using the BFS heuristic, which is the baseline for comparison.
 ```console
-python3 scripts/aaai26/aaai_coverage_run.py cmake-build-release-nn/bin/deep exp/aaai26/batch4/ --threads 8 --binary_args "-c -b" --timeout 600
+python3 scripts/aaai26/aaai_coverage_run.py cmake-build-release-nn/bin/deep exp/aaai26/batch2/ --threads 8 --binary_args "-c -b" --timeout 600
 ```
 
 ##### Arguments
 The arguments to this script are:
 - the path to the deep executable (`cmake-build-release-nn/bin/deep` in the example)
-- the path to the experiment folder (`exp/aaai26/batch4/` which is this folder)
+- the path to the experiment folder (`exp/aaai26/batch2/` which is this folder)
 - the number of threads to use to speed up the testing (`8` in the example)
 - `--binary_args` option allows you to pass additional arguments to the deep executable, such as specifying the search algorithm and whether to enable GNN heuristics.
 - `--timeout` specifies the maximum time in seconds for each instance to be solved (`600` seconds in the example).

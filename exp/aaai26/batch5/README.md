@@ -15,6 +15,9 @@ This folder contains the fifth batch of experiments for the project.
 
 All commands should be run from the root directory of the repository.
 
+> While Steps 1 and 2 can be run, to emulate the results of the paper, you can skip them and directly run Step 3 since models are already provided in the `_models` folder.
+
+
 ### 1. Generate training data
 
 This creates training datasets for each domain:
