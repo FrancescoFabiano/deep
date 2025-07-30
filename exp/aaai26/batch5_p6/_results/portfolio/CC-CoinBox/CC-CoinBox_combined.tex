@@ -1,0 +1,205 @@
+\documentclass{article}
+\usepackage{booktabs}
+\usepackage[margin=1in]{geometry}
+\begin{document}
+\section*{Results for domain: \texttt{CC-CoinBox}}
+\textbf{Search prefix:} P
+\\[0.5cm]
+\subsection*{Training (Solved 10/10)}
+\begin{tabular}{lcccccccc}
+\toprule
+Problem & Goal & Length & Nodes & Total (ms) & Init (ms) & Search (ms) & Overhead (ms) & Search \\
+\midrule
+CC\_2\_2\_3\_\_pl\_4 & Yes & 4 & 4 & 79 & 5 & 27 & 46 & P-HFS(S-PG) \\
+CC\_2\_2\_3\_\_pl\_6 & Yes & 6 & 6 & 79 & 5 & 62 & 11 & P-HFS(S-PG) \\
+CC\_2\_2\_4\_\_pl\_5 & Yes & 5 & 5 & 188 & 16 & 148 & 23 & P-HFS(S-PG) \\
+CC\_2\_3\_4\_\_pl\_3 & Yes & 3 & 3 & 778 & 192 & 344 & 241 & P-HFS(SubGoals) \\
+CC\_2\_3\_4\_\_pl\_7 & Yes & 9 & 22 & 3258 & 206 & 2834 & 217 & P-HFS(SubGoals) \\
+CC\_3\_2\_3\_\_pl\_4 & Yes & 4 & 6 & 132 & 12 & 83 & 36 & P-HFS(SubGoals) \\
+CC\_3\_2\_3\_\_pl\_5 & Yes & 5 & 6 & 122 & 13 & 69 & 39 & P-HFS(SubGoals) \\
+CC\_3\_3\_3\_\_pl\_4 & Yes & 5 & 5 & 364 & 30 & 202 & 131 & P-HFS(C-PG) \\
+Coin\_in\_the\_Box\_\_pl\_3 & Yes & 3 & 11 & 70 & 9 & 36 & 24 & P-BFS \\
+Coin\_in\_the\_Box\_\_pl\_6 & Yes & 7 & 9 & 715 & 16 & 585 & 113 & P-HFS(S-PG) \\
+\textbf{Averages:} & 10/10 (100\%) & 5.1 & 7.7 & 578.5 & 50.4 & 439 & 88.1 & \\
+\bottomrule
+\end{tabular}
+\\[0.7cm]
+\subsection*{Test (Solved 72/75)}
+\begin{tabular}{lcccccccc}
+\toprule
+Problem & Goal & Length & Nodes & Total (ms) & Init (ms) & Search (ms) & Overhead (ms) & Search \\
+\midrule
+Assemble\_B10\_\_pl\_5 & TO & - & - & - & - & - & - & - \\
+Assemble\_B2\_\_pl\_5 & Yes & 5 & 5 & 140 & 2 & 109 & 28 & P-HFS(C-PG) \\
+Assemble\_B4\_\_pl\_5 & Yes & 5 & 5 & 112 & 2 & 88 & 21 & P-HFS(C-PG) \\
+Assemble\_B6\_\_pl\_5 & Yes & 5 & 10 & 815 & 2 & 531 & 281 & P-HFS(SubGoals) \\
+Assemble\_B8\_\_pl\_5 & Yes & 5 & 10 & 41128 & 3 & 20434 & 20690 & P-HFS(SubGoals) \\
+Assemble\_B9\_\_pl\_5 & Yes & 5 & 10 & 306966 & 11 & 212927 & 94027 & P-HFS(SubGoals) \\
+Assemble\_C\_\_pl\_5 & Yes & 5 & 5 & 122 & 2 & 101 & 18 & P-HFS(C-PG) \\
+CC\_2\_2\_3\_\_pl\_3 & Yes & 4 & 4 & 79 & 17 & 19 & 42 & P-HFS(SubGoals) \\
+CC\_2\_2\_3\_\_pl\_5 & Yes & 5 & 6 & 59 & 8 & 16 & 34 & P-HFS(SubGoals) \\
+CC\_2\_2\_3\_\_pl\_7 & Yes & 9 & 35 & 198 & 8 & 171 & 18 & P-HFS(SubGoals) \\
+CC\_2\_2\_3\_\_pl\_8 & Yes & 9 & 16 & 386 & 18 & 350 & 17 & P-HFS(L-PG) \\
+CC\_2\_2\_4\_\_pl\_3 & Yes & 3 & 3 & 142 & 34 & 65 & 42 & P-HFS(SubGoals) \\
+CC\_2\_2\_4\_\_pl\_4 & Yes & 4 & 4 & 206 & 32 & 145 & 28 & P-HFS(L-PG) \\
+CC\_2\_2\_4\_\_pl\_6 & Yes & 6 & 6 & 393 & 34 & 323 & 35 & P-HFS(S-PG) \\
+CC\_2\_2\_4\_\_pl\_7 & Yes & 7 & 18 & 792 & 34 & 697 & 60 & P-HFS(SubGoals) \\
+CC\_2\_3\_4\_\_pl\_4 & Yes & 4 & 4 & 1343 & 265 & 788 & 289 & P-HFS(S-PG) \\
+CC\_2\_3\_4\_\_pl\_5 & Yes & 5 & 5 & 2304 & 312 & 1769 & 222 & P-HFS(S-PG) \\
+CC\_2\_3\_4\_\_pl\_6 & Yes & 6 & 6 & 1513 & 271 & 1094 & 147 & P-HFS(S-PG) \\
+CC\_3\_2\_3\_\_pl\_3 & Yes & 3 & 3 & 92 & 15 & 19 & 57 & P-HFS(SubGoals) \\
+CC\_3\_2\_3\_\_pl\_6 & Yes & 7 & 8 & 150 & 29 & 95 & 25 & P-HFS(SubGoals) \\
+CC\_3\_2\_3\_\_pl\_7 & Yes & 7 & 13 & 188 & 21 & 145 & 21 & P-HFS(SubGoals) \\
+CC\_3\_3\_3\_\_pl\_3 & Yes & 3 & 3 & 230 & 34 & 133 & 62 & P-HFS(SubGoals) \\
+CC\_3\_3\_3\_\_pl\_5 & Yes & 6 & 8 & 262 & 34 & 181 & 46 & P-HFS(SubGoals) \\
+CC\_3\_3\_3\_\_pl\_6 & Yes & 6 & 8 & 469 & 38 & 372 & 58 & P-HFS(SubGoals) \\
+CC\_3\_3\_3\_\_pl\_7 & Yes & 24 & 303 & 24656 & 33 & 23138 & 1484 & P-HFS(L-PG) \\
+Coin\_in\_the\_Box\_\_pl\_2 & Yes & 2 & 2 & 79 & 19 & 2 & 57 & P-BFS \\
+Coin\_in\_the\_Box\_\_pl\_5 & Yes & 7 & 9 & 90 & 10 & 52 & 27 & P-HFS(SubGoals) \\
+Coin\_in\_the\_Box\_\_pl\_7 & Yes & 8 & 9 & 502 & 11 & 419 & 71 & P-HFS(S-PG) \\
+Grapevine\_3\_\_pl\_2 & Yes & 2 & 2 & 67 & 10 & 16 & 40 & P-HFS(SubGoals) \\
+Grapevine\_3\_\_pl\_5 & Yes & 5 & 6 & 108 & 11 & 68 & 28 & P-HFS(SubGoals) \\
+Grapevine\_3\_\_pl\_6 & Yes & 6 & 7 & 309 & 22 & 232 & 54 & P-HFS(SubGoals) \\
+Grapevine\_3\_\_pl\_7 & Yes & 11 & 26 & 2376 & 23 & 2269 & 83 & P-HFS(S-PG) \\
+Grapevine\_4\_\_pl\_3 & Yes & 3 & 3 & 289 & 42 & 191 & 55 & P-HFS(SubGoals) \\
+Grapevine\_4\_\_pl\_4 & Yes & 4 & 4 & 325 & 40 & 210 & 74 & P-HFS(SubGoals) \\
+Grapevine\_4\_\_pl\_5 & Yes & 6 & 9 & 709 & 39 & 539 & 130 & P-HFS(SubGoals) \\
+Grapevine\_4\_\_pl\_6 & Yes & 6 & 7 & 1376 & 39 & 1198 & 138 & P-HFS(SubGoals) \\
+Grapevine\_5\_\_pl\_2 & Yes & 2 & 2 & 1059 & 58 & 542 & 458 & P-HFS(S-PG) \\
+Grapevine\_5\_\_pl\_3 & Yes & 3 & 3 & 1749 & 58 & 984 & 706 & P-HFS(SubGoals) \\
+Grapevine\_5\_\_pl\_5 & Yes & 5 & 6 & 2385 & 57 & 1807 & 520 & P-HFS(SubGoals) \\
+Grapevine\_5\_\_pl\_6 & Yes & 6 & 7 & 9923 & 82 & 9230 & 610 & P-HFS(S-PG) \\
+SC\_10\_10\_\_pl\_10 & Yes & 10 & 12 & 65 & 18 & 25 & 21 & P-BFS \\
+SC\_10\_10\_\_pl\_17 & Yes & 22 & 22 & 488 & 11 & 462 & 14 & P-HFS(S-PG) \\
+SC\_10\_10\_\_pl\_9 & Yes & 9 & 10 & 71 & 20 & 16 & 34 & P-BFS \\
+SC\_10\_8\_\_pl\_14 & Yes & 15 & 24 & 109 & 9 & 88 & 11 & P-HFS(C-PG) \\
+SC\_10\_8\_\_pl\_9 & TO & - & - & - & - & - & - & - \\
+SC\_4\_1\_\_pl\_5 & Yes & 5 & 11 & 93 & 6 & 11 & 75 & P-BFS \\
+SC\_4\_2\_\_pl\_5 & Yes & 5 & 6 & 134 & 14 & 77 & 42 & P-HFS(S-PG) \\
+SC\_4\_2\_\_pl\_8 & Yes & 8 & 306 & 655 & 13 & 618 & 23 & P-BFS \\
+SC\_4\_3\_\_pl\_6 & Yes & 6 & 21 & 54 & 11 & 22 & 20 & P-BFS \\
+SC\_4\_3\_\_pl\_8 & Yes & 8 & 66 & 77 & 3 & 69 & 4 & P-BFS \\
+SC\_4\_4\_\_pl\_5 & Yes & 5 & 11 & 56 & 2 & 9 & 44 & P-BFS \\
+SC\_8\_10\_\_pl\_12 & Yes & 13 & 13 & 451 & 10 & 425 & 15 & P-HFS(S-PG) \\
+SC\_8\_10\_\_pl\_8 & Yes & 8 & 388 & 1793 & 19 & 1682 & 91 & P-BFS \\
+SC\_8\_10\_\_pl\_9 & Yes & 9 & 1332 & 7776 & 21 & 7058 & 696 & P-BFS \\
+SC\_9\_11\_\_pl\_10 & Yes & 13 & 13 & 115 & 20 & 74 & 20 & P-HFS(C-PG) \\
+SC\_9\_11\_\_pl\_11 & Yes & 14 & 14 & 140 & 21 & 98 & 20 & P-HFS(C-PG) \\
+SC\_9\_11\_\_pl\_4 & Yes & 4 & 4 & 71 & 21 & 9 & 40 & P-HFS(SubGoals) \\
+SC\_9\_11\_\_pl\_5 & Yes & 5 & 10 & 102 & 12 & 23 & 66 & P-BFS \\
+SC\_9\_11\_\_pl\_7 & Yes & 8 & 8 & 77 & 21 & 30 & 25 & P-HFS(SubGoals) \\
+SC\_9\_11\_\_pl\_9 & Yes & 12 & 12 & 118 & 11 & 89 & 17 & P-HFS(SubGoals) \\
+gossip\_3\_3\_3 & Yes & 5 & 5 & 149 & 11 & 102 & 35 & P-HFS(C-PG) \\
+gossip\_3\_3\_6 & Yes & 2 & 3 & 72 & 11 & 40 & 20 & P-HFS(SubGoals) \\
+gossip\_3\_3\_9 & Yes & 6 & 6 & 163 & 2 & 136 & 24 & P-HFS(C-PG) \\
+gossip\_4\_3\_9 & Yes & 9 & 9 & 872 & 12 & 789 & 70 & P-HFS(C-PG) \\
+gossip\_4\_4\_1 & Yes & 2 & 2 & 396 & 14 & 168 & 213 & P-BFS \\
+gossip\_4\_4\_3 & Yes & 10 & 10 & 3964 & 15 & 3432 & 516 & P-HFS(C-PG) \\
+gossip\_4\_4\_7 & Yes & 6 & 6 & 2467 & 16 & 2075 & 375 & P-HFS(C-PG) \\
+gossip\_5\_3\_3 & Yes & 7 & 7 & 908 & 12 & 703 & 192 & P-HFS(C-PG) \\
+gossip\_5\_3\_5 & TO & - & - & - & - & - & - & - \\
+gossip\_5\_3\_7 & Yes & 8 & 8 & 912 & 4 & 753 & 154 & P-HFS(C-PG) \\
+gossip\_5\_4\_3 & Yes & 12 & 12 & 7419 & 17 & 6734 & 667 & P-HFS(C-PG) \\
+gossip\_5\_4\_4 & Yes & 1 & 1 & 236 & 8 & 89 & 138 & P-BFS \\
+gossip\_5\_4\_9 & Yes & 16 & 16 & 12902 & 16 & 11777 & 1108 & P-HFS(C-PG) \\
+gossip\_5\_5\_4 & Yes & 1 & 1 & 586 & 35 & 351 & 199 & P-HFS(SubGoals) \\
+gossip\_5\_5\_8 & Yes & 8 & 8 & 21028 & 26 & 18934 & 2067 & P-HFS(C-PG) \\
+\textbf{Averages:} & 72/75 (96\%) & 6.89 & 41.35 & 6508.47 & 31.14 & 4700.51 & 1775.82 & \\
+\bottomrule
+\end{tabular}
+\\[0.7cm]
+\subsection*{Combined (Solved 82/85)}
+\begin{tabular}{lcccccccc}
+\toprule
+Problem & Goal & Length & Nodes & Total (ms) & Init (ms) & Search (ms) & Overhead (ms) & Search \\
+\midrule
+Assemble\_B10\_\_pl\_5 & TO & - & - & - & - & - & - & - \\
+Assemble\_B2\_\_pl\_5 & Yes & 5 & 5 & 140 & 2 & 109 & 28 & P-HFS(C-PG) \\
+Assemble\_B4\_\_pl\_5 & Yes & 5 & 5 & 112 & 2 & 88 & 21 & P-HFS(C-PG) \\
+Assemble\_B6\_\_pl\_5 & Yes & 5 & 10 & 815 & 2 & 531 & 281 & P-HFS(SubGoals) \\
+Assemble\_B8\_\_pl\_5 & Yes & 5 & 10 & 41128 & 3 & 20434 & 20690 & P-HFS(SubGoals) \\
+Assemble\_B9\_\_pl\_5 & Yes & 5 & 10 & 306966 & 11 & 212927 & 94027 & P-HFS(SubGoals) \\
+Assemble\_C\_\_pl\_5 & Yes & 5 & 5 & 122 & 2 & 101 & 18 & P-HFS(C-PG) \\
+CC\_2\_2\_3\_\_pl\_3 & Yes & 4 & 4 & 79 & 17 & 19 & 42 & P-HFS(SubGoals) \\
+CC\_2\_2\_3\_\_pl\_4 & Yes & 4 & 4 & 79 & 5 & 27 & 46 & P-HFS(S-PG) \\
+CC\_2\_2\_3\_\_pl\_5 & Yes & 5 & 6 & 59 & 8 & 16 & 34 & P-HFS(SubGoals) \\
+CC\_2\_2\_3\_\_pl\_6 & Yes & 6 & 6 & 79 & 5 & 62 & 11 & P-HFS(S-PG) \\
+CC\_2\_2\_3\_\_pl\_7 & Yes & 9 & 35 & 198 & 8 & 171 & 18 & P-HFS(SubGoals) \\
+CC\_2\_2\_3\_\_pl\_8 & Yes & 9 & 16 & 386 & 18 & 350 & 17 & P-HFS(L-PG) \\
+CC\_2\_2\_4\_\_pl\_3 & Yes & 3 & 3 & 142 & 34 & 65 & 42 & P-HFS(SubGoals) \\
+CC\_2\_2\_4\_\_pl\_4 & Yes & 4 & 4 & 206 & 32 & 145 & 28 & P-HFS(L-PG) \\
+CC\_2\_2\_4\_\_pl\_5 & Yes & 5 & 5 & 188 & 16 & 148 & 23 & P-HFS(S-PG) \\
+CC\_2\_2\_4\_\_pl\_6 & Yes & 6 & 6 & 393 & 34 & 323 & 35 & P-HFS(S-PG) \\
+CC\_2\_2\_4\_\_pl\_7 & Yes & 7 & 18 & 792 & 34 & 697 & 60 & P-HFS(SubGoals) \\
+CC\_2\_3\_4\_\_pl\_3 & Yes & 3 & 3 & 778 & 192 & 344 & 241 & P-HFS(SubGoals) \\
+CC\_2\_3\_4\_\_pl\_4 & Yes & 4 & 4 & 1343 & 265 & 788 & 289 & P-HFS(S-PG) \\
+CC\_2\_3\_4\_\_pl\_5 & Yes & 5 & 5 & 2304 & 312 & 1769 & 222 & P-HFS(S-PG) \\
+CC\_2\_3\_4\_\_pl\_6 & Yes & 6 & 6 & 1513 & 271 & 1094 & 147 & P-HFS(S-PG) \\
+CC\_2\_3\_4\_\_pl\_7 & Yes & 9 & 22 & 3258 & 206 & 2834 & 217 & P-HFS(SubGoals) \\
+CC\_3\_2\_3\_\_pl\_3 & Yes & 3 & 3 & 92 & 15 & 19 & 57 & P-HFS(SubGoals) \\
+CC\_3\_2\_3\_\_pl\_4 & Yes & 4 & 6 & 132 & 12 & 83 & 36 & P-HFS(SubGoals) \\
+CC\_3\_2\_3\_\_pl\_5 & Yes & 5 & 6 & 122 & 13 & 69 & 39 & P-HFS(SubGoals) \\
+CC\_3\_2\_3\_\_pl\_6 & Yes & 7 & 8 & 150 & 29 & 95 & 25 & P-HFS(SubGoals) \\
+CC\_3\_2\_3\_\_pl\_7 & Yes & 7 & 13 & 188 & 21 & 145 & 21 & P-HFS(SubGoals) \\
+CC\_3\_3\_3\_\_pl\_3 & Yes & 3 & 3 & 230 & 34 & 133 & 62 & P-HFS(SubGoals) \\
+CC\_3\_3\_3\_\_pl\_4 & Yes & 5 & 5 & 364 & 30 & 202 & 131 & P-HFS(C-PG) \\
+CC\_3\_3\_3\_\_pl\_5 & Yes & 6 & 8 & 262 & 34 & 181 & 46 & P-HFS(SubGoals) \\
+CC\_3\_3\_3\_\_pl\_6 & Yes & 6 & 8 & 469 & 38 & 372 & 58 & P-HFS(SubGoals) \\
+CC\_3\_3\_3\_\_pl\_7 & Yes & 24 & 303 & 24656 & 33 & 23138 & 1484 & P-HFS(L-PG) \\
+Coin\_in\_the\_Box\_\_pl\_2 & Yes & 2 & 2 & 79 & 19 & 2 & 57 & P-BFS \\
+Coin\_in\_the\_Box\_\_pl\_3 & Yes & 3 & 11 & 70 & 9 & 36 & 24 & P-BFS \\
+Coin\_in\_the\_Box\_\_pl\_5 & Yes & 7 & 9 & 90 & 10 & 52 & 27 & P-HFS(SubGoals) \\
+Coin\_in\_the\_Box\_\_pl\_6 & Yes & 7 & 9 & 715 & 16 & 585 & 113 & P-HFS(S-PG) \\
+Coin\_in\_the\_Box\_\_pl\_7 & Yes & 8 & 9 & 502 & 11 & 419 & 71 & P-HFS(S-PG) \\
+Grapevine\_3\_\_pl\_2 & Yes & 2 & 2 & 67 & 10 & 16 & 40 & P-HFS(SubGoals) \\
+Grapevine\_3\_\_pl\_5 & Yes & 5 & 6 & 108 & 11 & 68 & 28 & P-HFS(SubGoals) \\
+Grapevine\_3\_\_pl\_6 & Yes & 6 & 7 & 309 & 22 & 232 & 54 & P-HFS(SubGoals) \\
+Grapevine\_3\_\_pl\_7 & Yes & 11 & 26 & 2376 & 23 & 2269 & 83 & P-HFS(S-PG) \\
+Grapevine\_4\_\_pl\_3 & Yes & 3 & 3 & 289 & 42 & 191 & 55 & P-HFS(SubGoals) \\
+Grapevine\_4\_\_pl\_4 & Yes & 4 & 4 & 325 & 40 & 210 & 74 & P-HFS(SubGoals) \\
+Grapevine\_4\_\_pl\_5 & Yes & 6 & 9 & 709 & 39 & 539 & 130 & P-HFS(SubGoals) \\
+Grapevine\_4\_\_pl\_6 & Yes & 6 & 7 & 1376 & 39 & 1198 & 138 & P-HFS(SubGoals) \\
+Grapevine\_5\_\_pl\_2 & Yes & 2 & 2 & 1059 & 58 & 542 & 458 & P-HFS(S-PG) \\
+Grapevine\_5\_\_pl\_3 & Yes & 3 & 3 & 1749 & 58 & 984 & 706 & P-HFS(SubGoals) \\
+Grapevine\_5\_\_pl\_5 & Yes & 5 & 6 & 2385 & 57 & 1807 & 520 & P-HFS(SubGoals) \\
+Grapevine\_5\_\_pl\_6 & Yes & 6 & 7 & 9923 & 82 & 9230 & 610 & P-HFS(S-PG) \\
+SC\_10\_10\_\_pl\_10 & Yes & 10 & 12 & 65 & 18 & 25 & 21 & P-BFS \\
+SC\_10\_10\_\_pl\_17 & Yes & 22 & 22 & 488 & 11 & 462 & 14 & P-HFS(S-PG) \\
+SC\_10\_10\_\_pl\_9 & Yes & 9 & 10 & 71 & 20 & 16 & 34 & P-BFS \\
+SC\_10\_8\_\_pl\_14 & Yes & 15 & 24 & 109 & 9 & 88 & 11 & P-HFS(C-PG) \\
+SC\_10\_8\_\_pl\_9 & TO & - & - & - & - & - & - & - \\
+SC\_4\_1\_\_pl\_5 & Yes & 5 & 11 & 93 & 6 & 11 & 75 & P-BFS \\
+SC\_4\_2\_\_pl\_5 & Yes & 5 & 6 & 134 & 14 & 77 & 42 & P-HFS(S-PG) \\
+SC\_4\_2\_\_pl\_8 & Yes & 8 & 306 & 655 & 13 & 618 & 23 & P-BFS \\
+SC\_4\_3\_\_pl\_6 & Yes & 6 & 21 & 54 & 11 & 22 & 20 & P-BFS \\
+SC\_4\_3\_\_pl\_8 & Yes & 8 & 66 & 77 & 3 & 69 & 4 & P-BFS \\
+SC\_4\_4\_\_pl\_5 & Yes & 5 & 11 & 56 & 2 & 9 & 44 & P-BFS \\
+SC\_8\_10\_\_pl\_12 & Yes & 13 & 13 & 451 & 10 & 425 & 15 & P-HFS(S-PG) \\
+SC\_8\_10\_\_pl\_8 & Yes & 8 & 388 & 1793 & 19 & 1682 & 91 & P-BFS \\
+SC\_8\_10\_\_pl\_9 & Yes & 9 & 1332 & 7776 & 21 & 7058 & 696 & P-BFS \\
+SC\_9\_11\_\_pl\_10 & Yes & 13 & 13 & 115 & 20 & 74 & 20 & P-HFS(C-PG) \\
+SC\_9\_11\_\_pl\_11 & Yes & 14 & 14 & 140 & 21 & 98 & 20 & P-HFS(C-PG) \\
+SC\_9\_11\_\_pl\_4 & Yes & 4 & 4 & 71 & 21 & 9 & 40 & P-HFS(SubGoals) \\
+SC\_9\_11\_\_pl\_5 & Yes & 5 & 10 & 102 & 12 & 23 & 66 & P-BFS \\
+SC\_9\_11\_\_pl\_7 & Yes & 8 & 8 & 77 & 21 & 30 & 25 & P-HFS(SubGoals) \\
+SC\_9\_11\_\_pl\_9 & Yes & 12 & 12 & 118 & 11 & 89 & 17 & P-HFS(SubGoals) \\
+gossip\_3\_3\_3 & Yes & 5 & 5 & 149 & 11 & 102 & 35 & P-HFS(C-PG) \\
+gossip\_3\_3\_6 & Yes & 2 & 3 & 72 & 11 & 40 & 20 & P-HFS(SubGoals) \\
+gossip\_3\_3\_9 & Yes & 6 & 6 & 163 & 2 & 136 & 24 & P-HFS(C-PG) \\
+gossip\_4\_3\_9 & Yes & 9 & 9 & 872 & 12 & 789 & 70 & P-HFS(C-PG) \\
+gossip\_4\_4\_1 & Yes & 2 & 2 & 396 & 14 & 168 & 213 & P-BFS \\
+gossip\_4\_4\_3 & Yes & 10 & 10 & 3964 & 15 & 3432 & 516 & P-HFS(C-PG) \\
+gossip\_4\_4\_7 & Yes & 6 & 6 & 2467 & 16 & 2075 & 375 & P-HFS(C-PG) \\
+gossip\_5\_3\_3 & Yes & 7 & 7 & 908 & 12 & 703 & 192 & P-HFS(C-PG) \\
+gossip\_5\_3\_5 & TO & - & - & - & - & - & - & - \\
+gossip\_5\_3\_7 & Yes & 8 & 8 & 912 & 4 & 753 & 154 & P-HFS(C-PG) \\
+gossip\_5\_4\_3 & Yes & 12 & 12 & 7419 & 17 & 6734 & 667 & P-HFS(C-PG) \\
+gossip\_5\_4\_4 & Yes & 1 & 1 & 236 & 8 & 89 & 138 & P-BFS \\
+gossip\_5\_4\_9 & Yes & 16 & 16 & 12902 & 16 & 11777 & 1108 & P-HFS(C-PG) \\
+gossip\_5\_5\_4 & Yes & 1 & 1 & 586 & 35 & 351 & 199 & P-HFS(SubGoals) \\
+gossip\_5\_5\_8 & Yes & 8 & 8 & 21028 & 26 & 18934 & 2067 & P-HFS(C-PG) \\
+\textbf{Averages:} & 82/85 (96\%) & 6.67 & 37.24 & 5785.3 & 33.49 & 4180.82 & 1570 & \\
+\bottomrule
+\end{tabular}
+\\[0.7cm]
+\end{document}
