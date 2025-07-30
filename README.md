@@ -127,20 +127,6 @@ Benchmarks are available in the `exp/` directory.
 
 If you use deep in your research, please cite:
 
-```bibtex'
-    @inproceedings{prima_Fabiano24,
-      title = {$\mathcal{{H}}$-{EFP}: Bridging Efficiency in Multi-agent Epistemic Planning with Heuristics.},
-      booktitle = {PRIMA 2024: Principles and Practice of Multi-Agent Systems},
-      year      = {2024},
-      author    = {Fabiano, Francesco and Platt, Theoderic and Son, Tran Cao and Pontelli, Enrico}
-      editor    = {Arisaka, Ryuta and Sanchez-Anguix, Victor and Stein, Sebastian and Aydo{\u{g}}an, Reyhan and van der Torre, Leon and Ito, Takayuki},
-      publisher = {Springer Nature Switzerland},
-      address   = {Cham},
-      pages     = {81--86},
-      doi       = {10.1007/978-3-031-77367-9\_7},
-      isbn      = {978-3-031-77367-9}
-    }
-```
 
 ## Bibliography
 
