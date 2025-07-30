@@ -220,6 +220,7 @@ fi
 # --------------------------
 BUILD_DIR="cmake-build"
 [[ "$BUILD_TYPE" == "Debug" ]] && BUILD_DIR+="-debug"
+[[ "$BUILD_TYPE" == "Release" ]] && BUILD_DIR+="-release"
 [[ "$ENABLE_NN" == "ON" ]] && BUILD_DIR+="-nn"
 
 mkdir -p "$BUILD_DIR"

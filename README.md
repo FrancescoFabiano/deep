@@ -13,6 +13,7 @@ Note that since the repository has been anonymized and compressed into a ZIP arc
 Versions of the required external libraries are included within the archive.
 For any issues or conflicts related to these libraries, please refer to: https://github.com/CLIUtils/CLI11.
 
+To build please execute the building script with `nn` argument to activate ONNX support.
 
 ## Features
 
@@ -22,7 +23,7 @@ For any issues or conflicts related to these libraries, please refer to: https:/
 - Modular and extensible C++ codebase
 - Templated heuristics and flexible state representations
 
-> Note: EPDDL support is planned but not yet integrated. The current version works with the `mA*` language.
+> EPDDL support is planned but not yet integrated. The current version works with the `mA*` language.
 
 ## Requirements
 
@@ -45,7 +46,7 @@ Install required tools and libraries:
 
     sudo apt-get install build-essential cmake bison flex libboost-dev unzip curl
 
-## Build Instructions
+## Installation
 
 ### Clone the repository
 
@@ -61,15 +62,17 @@ Use the build script with `-h` to view all available options:
 
     ./build.sh -h
 
-For example, a simple release build:
+For example, a simple debug build:
 
-    ./build.sh
+    ./build.sh debug
 
-Or a release build with neural networks enabled:
+Or a release build with neural networks enabled (the one used for AAAI testing):
 
     ./build.sh nn
 
-#### CMake Build Options
+For more granular building options, please refer to the next two sections where the building process is explained without using the script.
+Note that the script abstracts away many details, so if you want to use more granular building options, please make sure to follow the installation procedure in `build.sh` to ensure you have all the necessary components.
+##### CMake Build Options
 
 You can customize the build using these options:
 
@@ -83,7 +86,7 @@ Example:
 > CUDA acceleration is supported if available, but **not required or tested**.
 
 
-## Usage
+#### Make
 
 Common `make` targets after building:
 
@@ -95,31 +98,38 @@ Common `make` targets after building:
     make clear       # Clean both build and output files
     make fresh       # Clean everything, including documentation
 
-If built in a different folder from root, for example `cmake-build-release`, run with -C option like this for documentation generation:
+If built in a different folder from root, for example `cmake-build-release-nn`, run with -C option like this for documentation generation:
 
-    make -C cmake-build-release doxygen
+    make -C cmake-build-release-nn doxygen
 
 ## Execution Examples
 
-Assuming the binary is located at `./cmake-build-release/bin/deep`, here are some example commands you can run in your terminal:
+Assuming the binary is located at `./cmake-build-release-nn/bin/deep`, here are some example commands you can run in your terminal:
 
 ```console
 # Use '-h' or '--help' to see all options (this option is automatically activated when wrong arguments are parsed)
-./cmake-build-release/bin/deep -h
+./cmake-build-release-nn/bin/deep -h
 
-# Find a plan for domain.txt
-./cmake-build-release/bin/deep domain.txt
+# Find a plan for exp/example.txt using BFS
+./cmake-build-release-nn/bin/deep exp/example.txt
 
-# Plan using the heuristic 'SUBGOALS' and 'Astar' search
-./cmake-build-release/bin/deep domain.txt -s Astar --heuristic SUBGOALS
+# Plan using the heuristic 'SUBGOALS' and 'Heuristics First Search' search
+./cmake-build-release-nn/bin/deep exp/example.txt -s HFS --heuristics SUBGOALS
+
+# Plan using the 'GNN' heuristic and 'Astar' search with the `--dataset_merged` flag 
+# on the default model. This includes the goal in the e-state representation for GNN.
+./cmake-build-release-nn/bin/deep exp/example.txt -s Astar --heuristics GNN --dataset_merged
+
+# Plan using the 'GNN' heuristic and 'Astar' search with the `--dataset_merged` flag 
+# on the default model. Useful for exmaples and models in exp/batch3
+./cmake-build-release-nn/bin/deep exp/example.txt -s Astar --heuristics GNN
 
 # Execute actions [open_a, peek_a] step by step
-./cmake-build-release/bin/deep domain.txt -e --execute-actions open_a peek_a
+./cmake-build-release-nn/bin/deep exp/example.txt --execute_actions open_a peek_a
 
 # Run 3 planner configurations in parallel (portfolio search)
-./cmake-build-release/bin/deep domain.txt --portfolio_threads 3
+./cmake-build-release-nn/bin/deep exp/example.txt --portfolio_threads 3
 ```
-
 
 
 ## Scripts
