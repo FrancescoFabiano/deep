@@ -32,4 +32,4 @@ jobs:
 
       - name: Run minimal execution and planning check script
         run: |
-          ./utils/push_check/scripts/overall_test.sh cmake-build-nn/bin/deep
+          ./utils/push_check/scripts/overall_test.sh cmake-build-release-nn/bin/deep
