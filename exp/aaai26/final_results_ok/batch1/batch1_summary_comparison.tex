@@ -1,0 +1,24 @@
+\begin{table}[!ht]
+  \small
+  \centering
+  \begin{tabular}{c|cc|cc|cc}
+    \textbf{Domain}
+      & \multicolumn{2}{c|}{\textbf{A*GNN}}
+      & \multicolumn{2}{c|}{\textbf{BFS}}
+      & \multicolumn{2}{c}{\textbf{\% Reduction}} \\
+    \cline{2-7}
+    & Train & Test & Train & Test & Train & Test \\
+    \hline
+
+    Assemble & 14 & 14 & 14 & 14 & 0\% & 0\% \\
+    CC & 30 & 54 & 104 & 614 & 71\% & 91\% \\
+    CoinBox & 118 & 157 & 456 & 864 & 74\% & 81\% \\
+    Grapevine & 28 & 102 & 96 & 115 & 70\% & 11\% \\
+    SC & 22 & 49 & 48 & 112 & 54\% & 56\% \\
+    \hline
+    Average & 42 & 75 & 143 & 343 & 54\% & 48\% \\
+
+  \end{tabular}
+  \caption{batch1 summary iqm}
+  \label{tab:batch1_res}
+\end{table}

@@ -103,6 +103,7 @@ def parse_latex_table_from_text(tex_text, n):
                 except ValueError:
                     continue
         return pd.DataFrame(rows, columns=["Problem", "Nodes_astar", "Nodes_bfs"])
+
 def main_plot_scaling(tex_path,
                       n:int=2,
                       title:str="comparison",

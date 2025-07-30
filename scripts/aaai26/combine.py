@@ -1,5 +1,6 @@
 import os
 
+from scripts.aaai26.generate_summary_tables import generate_latex_table
 from scripts.aaai26.plot_scaling import main_plot_scaling
 
 
@@ -40,9 +41,12 @@ def get_names(file_res:str="../../exp/aaai26/final_results_ok"):
     path_list = []
     for batch_n, list_of_domains in batches.items():
 
+        DOMAIN_TRIPLES = []
         for domain in list_of_domains:
             output_file_train = f"{file_res}/{batch_n}/{domain}_comparison_train.tex"
             output_file_test = f"{file_res}/{batch_n}/{domain}_comparison_test.tex"
+
+            DOMAIN_TRIPLES.append((output_file_train,output_file_test, domain))
 
             path_list.append(output_file_train)
             path_list.append(output_file_test)
@@ -60,10 +64,15 @@ def get_names(file_res:str="../../exp/aaai26/final_results_ok"):
             figname_test = f"{file_res}/{batch_n}/{domain}_scalability_comparison_test.pdf"
             main_plot_scaling(output_file_train, n, title_test, figname_test)
 
+        label = f"tab:{batch_n}_res"
+        caption = f"{batch_n} summary iqm"
+        outputfile = f"{file_res}/{batch_n}/{batch_n}_summary_comparison.tex"
+        generate_latex_table(DOMAIN_TRIPLES, caption, label, outputfile)
+
     return path_list
 
 # Example usage
 if __name__ == "__main__":
     input_files = get_names()
-    output_file = "all_results.tex"
+    output_file = "../../exp/aaai26/final_results_ok/all_results.tex"
     combine_tex_files(input_files, output_file)
