@@ -1,0 +1,31 @@
+\begin{table}[!ht]
+\centering
+\scriptsize
+\begin{tabular}{l|ccc|ccc|cccc}
+\multirow{2}{*}{\textbf{Problem}} & \multicolumn{3}{c|}{\textbf{Astar\_GNN}} & \multicolumn{3}{c|}{\textbf{BFS}} & \multicolumn{4}{c}{\textbf{batch5-CC-CoinBox-Grapevine-Train}} \\
+\cline{2-11}
+& Length & Nodes & Total (ms) & Length & Nodes & Total (ms) & Length & Nodes & Total (ms) & Search \\
+\hline
+CC\_2\_2\_3\_\_pl\_4 & 4 & 14 & 102 & 4 & 17 & 37 & 4 & 4 & 39 & P-HFS(L-PG) \\
+CC\_2\_2\_3\_\_pl\_6 & 6 & 193 & 2344 & 6 & 284 & 700 & 8 & 13 & 35 & P-HFS(SubGoals) \\
+CC\_2\_2\_4\_\_pl\_5 & 5 & 94 & 3546 & 5 & 171 & 1625 & 5 & 7 & 122 & P-HFS(SubGoals) \\
+CC\_2\_3\_4\_\_pl\_3 & 3 & 19 & 5195 & 3 & 6 & 620 & 3 & 3 & 465 & P-HFS(SubGoals) \\
+CC\_2\_3\_4\_\_pl\_7 & 7 & 3960 & 293655 & 7 & 10180 & 183776 & 9 & 22 & 1857 & P-HFS(SubGoals) \\
+CC\_3\_2\_3\_\_pl\_4 & 4 & 47 & 903 & 4 & 30 & 133 & 4 & 6 & 57 & P-HFS(SubGoals) \\
+CC\_3\_2\_3\_\_pl\_5 & 5 & 136 & 1509 & 5 & 178 & 752 & 5 & 6 & 49 & P-HFS(SubGoals) \\
+CC\_3\_3\_3\_\_pl\_4 & 4 & 39 & 1619 & 4 & 39 & 273 & 4 & 5 & 119 & P-HFS(SubGoals) \\
+Coin\_in\_the\_Box\_\_pl\_3 & 3 & 17 & 279 & 3 & 11 & 34 & 3 & 11 & 59 & P-BFS \\
+Coin\_in\_the\_Box\_\_pl\_6 & 6 & 381 & 4425 & 6 & 902 & 2705 & 7 & 9 & 418 & P-HFS(S-PG) \\
+Grapevine\_3\_\_pl\_3 & 3 & 21 & 564 & 3 & 31 & 237 & 3 & 3 & 41 & P-HFS(SubGoals) \\
+Grapevine\_3\_\_pl\_4 & 4 & 113 & 3995 & 4 & 160 & 1491 & 4 & 4 & 38 & P-HFS(SubGoals) \\
+Grapevine\_4\_\_pl\_2 & 2 & 4 & 423 & 2 & 7 & 210 & 2 & 2 & 123 & P-HFS(SubGoals) \\
+Grapevine\_5\_\_pl\_4 & 4 & 430 & 178369 & 4 & 616 & 105614 & 4 & 4 & 550 & P-HFS(SubGoals) \\
+\hline
+\textbf{Avg ± Std (all)} & 4 ± 1 & 391 ± 1036 & 35495 ± 87924 & 4 ± 1 & 902 ± 2683 & 21300 ± 54483 & 5 ± 2 & 7 ± 5 & 284 ± 486 & -- \\
+\textbf{IQM ± IQRStd (all)} & 4 ± 0 & 75 ± 46 & 2319 ± 1222 & 4 ± 0 & 102 ± 75 & 679 ± 454 & 4 ± 0 & 5 ± 1 & 88 ± 37 & -- \\
+\textbf{Avg ± Std (com)} & 4 ± 1 & 391 ± 1036 & 35495 ± 87924 & 4 ± 1 & 902 ± 2683 & 21300 ± 54483 & 5 ± 2 & 7 ± 5 & 284 ± 486 & -- \\
+\textbf{IQM ± IQRStd (com)} & 4 ± 0 & 75 ± 46 & 2319 ± 1222 & 4 ± 0 & 102 ± 75 & 679 ± 454 & 4 ± 0 & 5 ± 1 & 88 ± 37 & -- \\
+\end{tabular}
+\caption{batch5-CC-CoinBox-Grapevine-Train}
+\label{tab:batch5_CC-CoinBox-Grapevine_comparison_train}
+\end{table}

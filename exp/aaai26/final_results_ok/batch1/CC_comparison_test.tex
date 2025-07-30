@@ -1,8 +1,8 @@
 \begin{table}[!ht]
 \centering
-\small
+\footnotesize
 \begin{tabular}{l|ccc|ccc}
-\multirow{2}{*}{\textbf{batch1-CC-Test}} & \multicolumn{3}{c|}{\textbf{Astar\_GNN}} & \multicolumn{3}{c}{\textbf{BFS}} \\
+\multirow2{*}{\textbf{Problem}} & \multicolumn{3}{c|}{\textbf{Astar\_GNN}} & \multicolumn{3}{c}{\textbf{BFS}} \\
 \cline{2-7}
 & Length & Nodes & Total (ms) & Length & Nodes & Total (ms) \\
 \hline
@@ -25,11 +25,11 @@ CC\_3\_3\_3\_\_pl\_5 & 5 & 106 & 3128 & 5 & 538 & 3240 \\
 CC\_3\_3\_3\_\_pl\_6 & 6 & 153 & 7896 & 6 & 1643 & 10112 \\
 CC\_3\_3\_3\_\_pl\_7 & 7 & 6702 & 172922 & 7 & 12143 & 68775 \\
 \hline
-\textbf{Avg ± Std} & 5.94 ± 2.21 & 738.11 ± 1829.07 & 21163.61 ± 44717.31 & 5.28 ± 1.64 & 1572.11 ± 2904.46 & 10795.50 ± 18283.87 \\
-\textbf{Avg ± Std***} & 5.94 ± 2.21 & 738.11 ± 1829.07 & 21163.61 ± 44717.31 & 5.28 ± 1.64 & 1572.11 ± 2904.46 & 10795.50 ± 18283.87 \\
-\textbf{IQM ± IQMStd} & 6.08 ± 1.61 & 53.50 ± 49.13 & 2376.88 ± 2874.25 & 5.22 ± 0.83 & 613.88 ± 543.16 & 3761.50 ± 2892.52 \\
-\textbf{IQM ± IQMStd***} & 6.08 ± 1.61 & 53.50 ± 49.13 & 2376.88 ± 2874.25 & 5.22 ± 0.83 & 613.88 ± 543.16 & 3761.50 ± 2892.52 \\
+\textbf{Avg ± Std (all)} & 6 ± 2 & 738 ± 1829 & 21164 ± 44717 & 5 ± 2 & 1572 ± 2904 & 10796 ± 18284 \\
+\textbf{IQM ± IQRStd (all)} & 6 ± 2 & 54 ± 49 & 2377 ± 2874 & 5 ± 1 & 614 ± 543 & 3762 ± 2893 \\
+\textbf{Avg ± Std (com)} & 6 ± 2 & 738 ± 1829 & 21164 ± 44717 & 5 ± 2 & 1572 ± 2904 & 10796 ± 18284 \\
+\textbf{IQM ± IQRStd (com)} & 6 ± 2 & 54 ± 49 & 2377 ± 2874 & 5 ± 1 & 614 ± 543 & 3762 ± 2893 \\
 \end{tabular}
-\caption{Comparison}
+\caption{batch1-CC-Test}
 \label{tab:batch1_CC_comparison_test}
 \end{table}

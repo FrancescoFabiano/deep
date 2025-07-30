@@ -62,7 +62,7 @@ def extract_table_data(tex_content: str, section_name: str, include_search: bool
 
 
 def safe_stat(mean, std):
-    return f"{mean:.2f} ± --" if np.isnan(std) else f"{mean:.2f} ± {std:.2f}"
+    return f"{round(mean):d} ± --" if np.isnan(std) else f"{round(mean):d} ± {round(std):d}"
 
 
 def compute_stats(df, col):
@@ -84,144 +84,139 @@ def compute_iqm(df, col):
     return safe_stat(iqm_vals.mean(), iqm_vals.std())
 
 
-def get_common_problems(dfs):
+def get_common_solved_problems(dfs):
     """
-    From each DataFrame in `dfs`, drop any row where — in any column
-    except "Problem" and "Search" — there is a '-' character.
-    Then compute and return the intersection of the "Problem" values
-    across all of those filtered DataFrames.
+    Return the set of Problem IDs for which every DataFrame in `dfs`
+    has non-null entries in Length, Nodes, and Total (ms).
     """
-    filtered = []
-    for df in dfs:
-        other_cols = df.columns.difference(["Problem", "Search"])
-        mask_no_dash = ~(
-            df[other_cols]
-            .astype(str)
-            .apply(lambda col: col.str.contains('-', na=False))
-            .any(axis=1)
-        )
-        filtered.append(df[mask_no_dash])
-
-    common = set(filtered[0]["Problem"])
-    for df in filtered[1:]:
-        common &= set(df["Problem"])
+    numeric = ["Length", "Nodes", "Total (ms)"]
+    common = set(dfs[0].dropna(subset=numeric)["Problem"])
+    for df in dfs[1:]:
+        common &= set(df.dropna(subset=numeric)["Problem"])
     return common
 
 
-def merge_and_generate_latex(df_astar, df_bfs, custom_name, output_path,
-                             df_custom: pd.DataFrame = None,
-                             label_tab: str = None, caption: str = "Comparison"):
-    # ① Compute the filtered “common” set of problems (drops rows with '-' in any other col)
+def merge_and_generate_latex(
+        df_astar: pd.DataFrame,
+        df_bfs: pd.DataFrame,
+        custom_name: str,
+        output_path: str,
+        df_custom: pd.DataFrame = None,
+        label_tab: str = None,
+        caption: str = "Comparison"
+):
+    # 1️⃣ build the set of problems solved by all
     if df_custom is not None:
-        common_filtered = get_common_problems([df_astar, df_bfs, df_custom])
+        common_solved = get_common_solved_problems([df_astar, df_bfs, df_custom])
     else:
-        common_filtered = get_common_problems([df_astar, df_bfs])
+        common_solved = get_common_solved_problems([df_astar, df_bfs])
 
-    # ② Merge just for the table body
-    merged = pd.merge(df_astar, df_bfs, on="Problem",
-                      suffixes=(" (Astar_GNN)", " (BFS)"))
+    # 2️⃣ merge just for printing rows
+    merged = pd.merge(
+        df_astar, df_bfs, on="Problem",
+        suffixes=(" (Astar_GNN)", " (BFS)")
+    )
     if df_custom is not None:
-        merged = pd.merge(merged, df_custom, on="Problem",
-                          suffixes=("", f" ({custom_name})"))
+        merged = pd.merge(
+            merged, df_custom, on="Problem",
+            suffixes=("", f" ({custom_name})")
+        )
     merged = merged.sort_values("Problem")
 
-    # ③ Column‐mapping for summary loops
-    algs = ["Astar_GNN", "BFS"] + ([custom_name] if df_custom is not None else [])
-    alg_cols = {
-        "Astar_GNN": ["Length (Astar_GNN)", "Nodes (Astar_GNN)", "Total (ms) (Astar_GNN)"],
-        "BFS":       ["Length (BFS)",       "Nodes (BFS)",       "Total (ms) (BFS)"],
-    }
+    # 3️⃣ which algs we have
+    algs = ["Astar_GNN", "BFS"]
     if df_custom is not None:
-        alg_cols[custom_name] = ["Length", "Nodes", "Total (ms)"]
+        algs.append(custom_name)
 
     with open(output_path, "w") as f:
-        # --- header ---
+        # -- header --
+        f.write(r"\begin{table}[!ht]" + "\n")
+        f.write(r"\centering" + "\n")
+
+
         if df_custom is not None:
-            f.write("\\begin{table}[!ht]\n\\centering\n\\tiny\n")
-            f.write("\\begin{tabular}{l|ccc|ccc|cccc}\n")
+            f.write(r"\scriptsize" + "\n")
+            # Full three-column header
+            f.write(r"\begin{tabular}{l|ccc|ccc|cccc}" + "\n")
             f.write(
-                "\\multirow{2}{*}{\\textbf{" + custom_name.replace("_", r"\_") + "}} & "
-                                                                                 "\\multicolumn{3}{c|}{\\textbf{Astar\\_GNN}} & "
-                                                                                 "\\multicolumn{3}{c|}{\\textbf{BFS}} & "
-                                                                                 "\\multicolumn{4}{c|}{\\textbf{" + "Best p-5".replace("_", r"\_") + "}} \\\\\n"
+                rf"\multirow{{2}}{{*}}{{\textbf{{{"Problem".replace('_', r'\_')}}}}} "
+                r"& \multicolumn{3}{c|}{\textbf{Astar\_GNN}} "
+                r"& \multicolumn{3}{c|}{\textbf{BFS}} "
+                rf"& \multicolumn{{4}}{{c}}{{\textbf{{{custom_name.replace('_', r'\_')}}}}} \\" + "\n"
             )
-            f.write("\\cline{2-11}\n")
+            f.write(r"\cline{2-11}" + "\n")
             f.write(
-                "& Length & Nodes & Total (ms) "
-                "& Length & Nodes & Total (ms) "
-                "& Length & Nodes & Total (ms) & Search \\\\\n"
+                r"& Length & Nodes & Total (ms) "
+                r"& Length & Nodes & Total (ms) "
+                r"& Length & Nodes & Total (ms) & Search \\" + "\n"
             )
         else:
-            f.write("\\begin{table}[!ht]\n\\centering\n\\footnotesize\n")
-            f.write("\\begin{tabular}{l|ccc|ccc}\n")
+            f.write(r"\footnotesize" + "\n")
+            f.write(r"\begin{tabular}{l|ccc|ccc}" + "\n")
             f.write(
-                "\\multirow{2}{*}{\\textbf{" + custom_name.replace("_", r"\_") + "}} & "
-                                                                                 "\\multicolumn{3}{c|}{\\textbf{Astar\\_GNN}} & "
-                                                                                 "\\multicolumn{3}{c}{\\textbf{BFS}} \\\\\n"
+                rf"\multirow{2}{{*}}{{\textbf{{{"Problem".replace('_', r'\_')}}}}} "
+                r"& \multicolumn{3}{c|}{\textbf{Astar\_GNN}} "
+                r"& \multicolumn{3}{c}{\textbf{BFS}} " r"\\" + "\n"
             )
-            f.write("\\cline{2-7}\n")
+            f.write(r"\cline{2-7}" + "\n")
             f.write(
-                "& Length & Nodes & Total (ms) "
-                "& Length & Nodes & Total (ms) \\\\\n"
+                r"& Length & Nodes & Total (ms) "
+                r"& Length & Nodes & Total (ms) " r"\\" + "\n"
             )
-        f.write("\\hline\n")
 
-        # --- data rows ---
+        f.write(r"\hline" + "\n")
+
+        # -- data rows --
         for _, row in merged.iterrows():
-            p = re.sub(r"\\_", "_", row["Problem"]).replace("_", r"\_")
+            prob = re.sub(r"\\_", "_", row["Problem"]).replace("_", r"\_")
+            parts = [
+                row["Length (Astar_GNN)"], row["Nodes (Astar_GNN)"], row["Total (ms) (Astar_GNN)"],
+                row["Length (BFS)"],       row["Nodes (BFS)"],       row["Total (ms) (BFS)"]
+            ]
             if df_custom is not None:
-                search_val = str(row.get("Search", "-")).replace("_", r"\_")
-                vals = [
-                    row["Length (Astar_GNN)"], row["Nodes (Astar_GNN)"], row["Total (ms) (Astar_GNN)"],
-                    row["Length (BFS)"],       row["Nodes (BFS)"],       row["Total (ms) (BFS)"],
-                    row["Length"],             row["Nodes"],             row["Total (ms)"],
-                    search_val
+                parts += [
+                    row["Length"], row["Nodes"], row["Total (ms)"],
+                    str(row.get("Search", "-")).replace("_", r"\_")
                 ]
+                line = prob + " & " + " & ".join(str(x) for x in parts)
             else:
-                vals = [
-                    row["Length (Astar_GNN)"], row["Nodes (Astar_GNN)"], row["Total (ms) (Astar_GNN)"],
-                    row["Length (BFS)"],       row["Nodes (BFS)"],       row["Total (ms) (BFS)"],
-                ]
-            f.write(" & ".join([p] + [str(v) for v in vals]) + " \\\\\n")
+                line = prob + " & " + " & ".join(str(x) for x in parts) + r" \\"
+            f.write(line + "\n")
 
-        f.write("\\hline\n")
+        f.write(r"\hline" + "\n")
 
-        # --- FULL statistics on the raw DataFrames ---
-        for label, func in [("Avg ± Std", compute_stats),
-                            ("IQM ± IQMStd", compute_iqm)]:
-            f.write(f"\\textbf{{{label}}}")
+        # -- FULL stats on raw dfs --
+        for label, func in [("Avg ± Std (all)", compute_stats), ("IQM ± IQRStd (all)", compute_iqm)]:
+            f.write(rf"\textbf{{{label}}}")
             for alg in algs:
-                src_df = {"Astar_GNN": df_astar,
-                          "BFS": df_bfs,
-                          custom_name: df_custom}[alg]
+                src = {"Astar_GNN": df_astar, "BFS": df_bfs, custom_name: df_custom}[alg]
                 for col in ["Length", "Nodes", "Total (ms)"]:
-                    f.write(" & " + func(src_df, col))
+                    f.write(" & " + func(src, col))
                 if alg == custom_name:
                     f.write(" & --")
             f.write(" \\\\\n")
 
-        # --- COMMON statistics on the raw DataFrames (filtered) ---
-        for label, func in [("Avg ± Std (common)", compute_stats),
-                            ("IQM ± IQMStd (common)", compute_iqm)]:
-            f.write(f"\\textbf{{{label}}}")
+        # -- COMMON stats on raw dfs (filtered) --
+        for label, func in [
+            ("Avg ± Std (com)", compute_stats),
+            ("IQM ± IQRStd (com)", compute_iqm)
+        ]:
+            f.write(rf"\textbf{{{label}}}")
             for alg in algs:
-                src_df = {"Astar_GNN": df_astar,
-                          "BFS": df_bfs,
-                          custom_name: df_custom}[alg]
-                # filter by the precomputed common_filtered set
-                df_filt = src_df[src_df["Problem"].isin(common_filtered)]
+                src = {"Astar_GNN": df_astar, "BFS": df_bfs, custom_name: df_custom}[alg]
+                filt = src[src["Problem"].isin(common_solved)].dropna(subset=["Length","Nodes","Total (ms)"])
                 for col in ["Length", "Nodes", "Total (ms)"]:
-                    f.write(" & " + func(df_filt, col))
+                    f.write(" & " + func(filt, col))
                 if alg == custom_name:
                     f.write(" & --")
             f.write(" \\\\\n")
 
-        # --- footer ---
-        f.write("\\end{tabular}\n")
-        f.write(f"\\caption{{{caption}}}\n")
+        # -- footer --
+        f.write(r"\end{tabular}" + "\n")
+        f.write(rf"\caption{{{custom_name.replace("_", "-")}}}" + "\n")
         if label_tab:
-            f.write(f"\\label{{tab:{label_tab}}}\n")
-        f.write("\\end{table}\n")
+            f.write(rf"\label{{tab:{label_tab}}}" + "\n")
+        f.write(r"\end{table}" + "\n")
 
 
 
