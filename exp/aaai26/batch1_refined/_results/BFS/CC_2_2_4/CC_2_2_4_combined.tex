@@ -1,0 +1,45 @@
+\documentclass{article}
+\usepackage{booktabs}
+\usepackage[margin=1in]{geometry}
+\begin{document}
+\section*{Results for domain: \texttt{CC\_2\_2\_4}}
+\textbf{Search prefix:} 
+\\[0.5cm]
+\subsection*{Training (Solved 2/2)}
+\begin{tabular}{lcccccccc}
+\toprule
+Problem & Goal & Length & Nodes & Total (ms) & Init (ms) & Search (ms) & Overhead (ms) & Search \\
+\midrule
+CC\_2\_2\_4\_\_pl\_3 & Yes & 3 & 6 & 128 & 35 & 91 & 1 & BFS \\
+CC\_2\_2\_4\_\_pl\_5 & Yes & 5 & 170 & 2713 & 35 & 2643 & 34 & BFS \\
+\textbf{Averages:} & 2/2 (100\%) & 4 & 88 & 1420.5 & 35 & 1367 & 17.5 & \\
+\bottomrule
+\end{tabular}
+\\[0.7cm]
+\subsection*{Test (Solved 3/3)}
+\begin{tabular}{lcccccccc}
+\toprule
+Problem & Goal & Length & Nodes & Total (ms) & Init (ms) & Search (ms) & Overhead (ms) & Search \\
+\midrule
+CC\_2\_2\_4\_\_pl\_4 & Yes & 4 & 24 & 486 & 35 & 446 & 4 & BFS \\
+CC\_2\_2\_4\_\_pl\_6 & Yes & 6 & 822 & 6518 & 35 & 6311 & 171 & BFS \\
+CC\_2\_2\_4\_\_pl\_7 & Yes & 7 & 4169 & 26838 & 36 & 25208 & 1593 & BFS \\
+\textbf{Averages:} & 3/3 (100\%) & 5.67 & 1671.67 & 11280.67 & 35.33 & 10655 & 589.33 & \\
+\bottomrule
+\end{tabular}
+\\[0.7cm]
+\subsection*{Combined (Solved 5/5)}
+\begin{tabular}{lcccccccc}
+\toprule
+Problem & Goal & Length & Nodes & Total (ms) & Init (ms) & Search (ms) & Overhead (ms) & Search \\
+\midrule
+CC\_2\_2\_4\_\_pl\_3 & Yes & 3 & 6 & 128 & 35 & 91 & 1 & BFS \\
+CC\_2\_2\_4\_\_pl\_4 & Yes & 4 & 24 & 486 & 35 & 446 & 4 & BFS \\
+CC\_2\_2\_4\_\_pl\_5 & Yes & 5 & 170 & 2713 & 35 & 2643 & 34 & BFS \\
+CC\_2\_2\_4\_\_pl\_6 & Yes & 6 & 822 & 6518 & 35 & 6311 & 171 & BFS \\
+CC\_2\_2\_4\_\_pl\_7 & Yes & 7 & 4169 & 26838 & 36 & 25208 & 1593 & BFS \\
+\textbf{Averages:} & 5/5 (100\%) & 5 & 1038.2 & 7336.6 & 35.2 & 6939.8 & 360.6 & \\
+\bottomrule
+\end{tabular}
+\\[0.7cm]
+\end{document}

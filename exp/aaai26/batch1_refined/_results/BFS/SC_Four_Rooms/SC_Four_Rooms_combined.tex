@@ -1,0 +1,53 @@
+\documentclass{article}
+\usepackage{booktabs}
+\usepackage[margin=1in]{geometry}
+\begin{document}
+\section*{Results for domain: \texttt{SC\_Four\_Rooms}}
+\textbf{Search prefix:} 
+\\[0.5cm]
+\subsection*{Training (Solved 3/3)}
+\begin{tabular}{lcccccccc}
+\toprule
+Problem & Goal & Length & Nodes & Total (ms) & Init (ms) & Search (ms) & Overhead (ms) & Search \\
+\midrule
+SC\_4\_1\_\_pl\_5 & Yes & 5 & 11 & 22 & 11 & 10 & 0 & BFS \\
+SC\_4\_2\_\_pl\_7 & Yes & 7 & 136 & 333 & 11 & 318 & 3 & BFS \\
+SC\_4\_3\_\_pl\_6 & Yes & 6 & 21 & 31 & 11 & 18 & 1 & BFS \\
+\textbf{Averages:} & 3/3 (100\%) & 6 & 56 & 128.67 & 11 & 115.33 & 1.33 & \\
+\bottomrule
+\end{tabular}
+\\[0.7cm]
+\subsection*{Test (Solved 6/6)}
+\begin{tabular}{lcccccccc}
+\toprule
+Problem & Goal & Length & Nodes & Total (ms) & Init (ms) & Search (ms) & Overhead (ms) & Search \\
+\midrule
+SC\_4\_1\_\_pl\_3 & Yes & 3 & 4 & 14 & 9 & 3 & 1 & BFS \\
+SC\_4\_2\_\_pl\_5 & Yes & 5 & 22 & 71 & 9 & 56 & 5 & BFS \\
+SC\_4\_2\_\_pl\_8 & Yes & 8 & 318 & 750 & 11 & 732 & 6 & BFS \\
+SC\_4\_3\_\_pl\_5 & Yes & 5 & 11 & 20 & 9 & 9 & 1 & BFS \\
+SC\_4\_3\_\_pl\_8 & Yes & 8 & 66 & 65 & 10 & 54 & 0 & BFS \\
+SC\_4\_4\_\_pl\_5 & Yes & 5 & 11 & 20 & 9 & 9 & 1 & BFS \\
+\textbf{Averages:} & 6/6 (100\%) & 5.67 & 72 & 156.67 & 9.5 & 143.83 & 2.33 & \\
+\bottomrule
+\end{tabular}
+\\[0.7cm]
+\subsection*{Combined (Solved 9/9)}
+\begin{tabular}{lcccccccc}
+\toprule
+Problem & Goal & Length & Nodes & Total (ms) & Init (ms) & Search (ms) & Overhead (ms) & Search \\
+\midrule
+SC\_4\_1\_\_pl\_3 & Yes & 3 & 4 & 14 & 9 & 3 & 1 & BFS \\
+SC\_4\_1\_\_pl\_5 & Yes & 5 & 11 & 22 & 11 & 10 & 0 & BFS \\
+SC\_4\_2\_\_pl\_5 & Yes & 5 & 22 & 71 & 9 & 56 & 5 & BFS \\
+SC\_4\_2\_\_pl\_7 & Yes & 7 & 136 & 333 & 11 & 318 & 3 & BFS \\
+SC\_4\_2\_\_pl\_8 & Yes & 8 & 318 & 750 & 11 & 732 & 6 & BFS \\
+SC\_4\_3\_\_pl\_5 & Yes & 5 & 11 & 20 & 9 & 9 & 1 & BFS \\
+SC\_4\_3\_\_pl\_6 & Yes & 6 & 21 & 31 & 11 & 18 & 1 & BFS \\
+SC\_4\_3\_\_pl\_8 & Yes & 8 & 66 & 65 & 10 & 54 & 0 & BFS \\
+SC\_4\_4\_\_pl\_5 & Yes & 5 & 11 & 20 & 9 & 9 & 1 & BFS \\
+\textbf{Averages:} & 9/9 (100\%) & 5.78 & 66.67 & 147.33 & 10 & 134.33 & 2 & \\
+\bottomrule
+\end{tabular}
+\\[0.7cm]
+\end{document}

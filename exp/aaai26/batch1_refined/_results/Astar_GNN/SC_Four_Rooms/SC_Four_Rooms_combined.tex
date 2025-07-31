@@ -1,0 +1,53 @@
+\documentclass{article}
+\usepackage{booktabs}
+\usepackage[margin=1in]{geometry}
+\begin{document}
+\section*{Results for domain: \texttt{SC\_Four\_Rooms}}
+\textbf{Search prefix:} 
+\\[0.5cm]
+\subsection*{Training (Solved 3/3)}
+\begin{tabular}{lcccccccc}
+\toprule
+Problem & Goal & Length & Nodes & Total (ms) & Init (ms) & Search (ms) & Overhead (ms) & Search \\
+\midrule
+SC\_4\_1\_\_pl\_5 & Yes & 5 & 13 & 218 & 11 & 34 & 172 & A*(GNN) \\
+SC\_4\_2\_\_pl\_7 & Yes & 7 & 149 & 776 & 11 & 591 & 173 & A*(GNN) \\
+SC\_4\_3\_\_pl\_6 & Yes & 6 & 15 & 227 & 11 & 45 & 170 & A*(GNN) \\
+\textbf{Averages:} & 3/3 (100\%) & 6 & 59 & 407 & 11 & 223.33 & 171.67 & \\
+\bottomrule
+\end{tabular}
+\\[0.7cm]
+\subsection*{Test (Solved 6/6)}
+\begin{tabular}{lcccccccc}
+\toprule
+Problem & Goal & Length & Nodes & Total (ms) & Init (ms) & Search (ms) & Overhead (ms) & Search \\
+\midrule
+SC\_4\_1\_\_pl\_3 & Yes & 3 & 3 & 274 & 10 & 43 & 220 & A*(GNN) \\
+SC\_4\_2\_\_pl\_5 & Yes & 5 & 8 & 338 & 11 & 110 & 216 & A*(GNN) \\
+SC\_4\_2\_\_pl\_8 & Yes & 8 & 1383 & 6687 & 12 & 6408 & 266 & A*(GNN) \\
+SC\_4\_3\_\_pl\_5 & Yes & 5 & 12 & 320 & 10 & 90 & 219 & A*(GNN) \\
+SC\_4\_3\_\_pl\_8 & Yes & 8 & 60 & 477 & 10 & 249 & 217 & A*(GNN) \\
+SC\_4\_4\_\_pl\_5 & Yes & 5 & 12 & 274 & 11 & 45 & 217 & A*(GNN) \\
+\textbf{Averages:} & 6/6 (100\%) & 5.67 & 246.33 & 1395 & 10.67 & 1157.5 & 225.83 & \\
+\bottomrule
+\end{tabular}
+\\[0.7cm]
+\subsection*{Combined (Solved 9/9)}
+\begin{tabular}{lcccccccc}
+\toprule
+Problem & Goal & Length & Nodes & Total (ms) & Init (ms) & Search (ms) & Overhead (ms) & Search \\
+\midrule
+SC\_4\_1\_\_pl\_3 & Yes & 3 & 3 & 274 & 10 & 43 & 220 & A*(GNN) \\
+SC\_4\_1\_\_pl\_5 & Yes & 5 & 13 & 218 & 11 & 34 & 172 & A*(GNN) \\
+SC\_4\_2\_\_pl\_5 & Yes & 5 & 8 & 338 & 11 & 110 & 216 & A*(GNN) \\
+SC\_4\_2\_\_pl\_7 & Yes & 7 & 149 & 776 & 11 & 591 & 173 & A*(GNN) \\
+SC\_4\_2\_\_pl\_8 & Yes & 8 & 1383 & 6687 & 12 & 6408 & 266 & A*(GNN) \\
+SC\_4\_3\_\_pl\_5 & Yes & 5 & 12 & 320 & 10 & 90 & 219 & A*(GNN) \\
+SC\_4\_3\_\_pl\_6 & Yes & 6 & 15 & 227 & 11 & 45 & 170 & A*(GNN) \\
+SC\_4\_3\_\_pl\_8 & Yes & 8 & 60 & 477 & 10 & 249 & 217 & A*(GNN) \\
+SC\_4\_4\_\_pl\_5 & Yes & 5 & 12 & 274 & 11 & 45 & 217 & A*(GNN) \\
+\textbf{Averages:} & 9/9 (100\%) & 5.78 & 183.89 & 1065.67 & 10.78 & 846.11 & 207.78 & \\
+\bottomrule
+\end{tabular}
+\\[0.7cm]
+\end{document}

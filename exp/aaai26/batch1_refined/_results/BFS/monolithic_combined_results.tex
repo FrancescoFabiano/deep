@@ -1,0 +1,113 @@
+\documentclass{article}
+\usepackage{booktabs}
+\usepackage[a4paper, landscape, margin=1in]{geometry}
+\begin{document}
+\section*{Monolithic Combined Results (All Domains)}
+\textbf{Search prefix:} 
+\\[0.5cm]
+\subsection*{Training}
+\begin{tabular}{lllcccccccc}
+\toprule
+Mode & Domain & Problem & Goal & Length & Nodes & Total (ms) & Init (ms) & Search (ms) & Overhead (ms) & Search \\
+\midrule
+Training & CC\_2\_2\_4 & CC\_2\_2\_4\_\_pl\_3 & Yes & 3 & 6 & 128 & 35 & 91 & 1 & BFS \\
+Training & CC\_2\_2\_4 & CC\_2\_2\_4\_\_pl\_5 & Yes & 5 & 170 & 2713 & 35 & 2643 & 34 & BFS \\
+Training & CC\_3\_3\_3 & CC\_3\_3\_3\_\_pl\_4 & Yes & 4 & 39 & 579 & 47 & 515 & 16 & BFS \\
+Training & CC\_3\_3\_3 & CC\_3\_3\_3\_\_pl\_5 & Yes & 5 & 538 & 7980 & 47 & 7734 & 198 & BFS \\
+Training & SC\_Multi\_Rooms & SC\_10\_10\_\_pl\_13 & Yes & 13 & 52 & 182 & 17 & 164 & 0 & BFS \\
+Training & SC\_Multi\_Rooms & SC\_10\_8\_\_pl\_14 & Yes & 14 & 51 & 179 & 16 & 159 & 3 & BFS \\
+Training & SC\_Four\_Rooms & SC\_4\_1\_\_pl\_5 & Yes & 5 & 11 & 22 & 11 & 10 & 0 & BFS \\
+Training & SC\_Four\_Rooms & SC\_4\_2\_\_pl\_7 & Yes & 7 & 136 & 333 & 11 & 318 & 3 & BFS \\
+Training & SC\_Four\_Rooms & SC\_4\_3\_\_pl\_6 & Yes & 6 & 21 & 31 & 11 & 18 & 1 & BFS \\
+Training & SC\_Multi\_Rooms & SC\_8\_10\_\_pl\_8 & Yes & 8 & 413 & 1747 & 17 & 1709 & 20 & BFS \\
+Training & SC\_Multi\_Rooms & SC\_9\_11\_\_pl\_5 & Yes & 5 & 10 & 48 & 18 & 28 & 1 & BFS \\
+Training & SC\_Multi\_Rooms & SC\_9\_11\_\_pl\_7 & Yes & 7 & 32 & 122 & 18 & 102 & 1 & BFS \\
+\textbf{Averages:} & & & 12/12 (100\%) & 6.83 & 123.25 & 1172 & 23.58 & 1124.25 & 23.17 & \\
+\bottomrule
+\end{tabular}
+\newpage
+\subsection*{Test}
+\begin{tabular}{lllcccccccc}
+\toprule
+Mode & Domain & Problem & Goal & Length & Nodes & Total (ms) & Init (ms) & Search (ms) & Overhead (ms) & Search \\
+\midrule
+Test & CC\_2\_2\_4 & CC\_2\_2\_4\_\_pl\_4 & Yes & 4 & 24 & 486 & 35 & 446 & 4 & BFS \\
+Test & CC\_2\_2\_4 & CC\_2\_2\_4\_\_pl\_6 & Yes & 6 & 822 & 6518 & 35 & 6311 & 171 & BFS \\
+Test & CC\_2\_2\_4 & CC\_2\_2\_4\_\_pl\_7 & Yes & 7 & 4169 & 26838 & 36 & 25208 & 1593 & BFS \\
+Test & CC\_3\_3\_3 & CC\_3\_3\_3\_\_pl\_3 & Yes & 3 & 8 & 487 & 56 & 416 & 14 & BFS \\
+Test & CC\_3\_3\_3 & CC\_3\_3\_3\_\_pl\_6 & Yes & 6 & 1643 & 20360 & 52 & 19288 & 1019 & BFS \\
+Test & CC\_3\_3\_3 & CC\_3\_3\_3\_\_pl\_7 & Yes & 7 & 12149 & 148826 & 56 & 143786 & 4983 & BFS \\
+Test & SC\_Multi\_Rooms & SC\_10\_10\_\_pl\_10 & Yes & 10 & 12 & 57 & 21 & 31 & 4 & BFS \\
+Test & SC\_Multi\_Rooms & SC\_10\_10\_\_pl\_17 & Yes & 17 & 1075 & 6479 & 27 & 6397 & 54 & BFS \\
+Test & SC\_Multi\_Rooms & SC\_10\_10\_\_pl\_9 & Yes & 9 & 10 & 41 & 21 & 18 & 1 & BFS \\
+Test & SC\_Multi\_Rooms & SC\_10\_8\_\_pl\_10 & Yes & 10 & 10 & 57 & 24 & 23 & 9 & BFS \\
+Test & SC\_Multi\_Rooms & SC\_10\_8\_\_pl\_15 & Yes & 15 & 96 & 449 & 24 & 421 & 3 & BFS \\
+Test & SC\_Multi\_Rooms & SC\_10\_8\_\_pl\_9 & TO & - & - & - & - & - & - & - \\
+Test & SC\_Four\_Rooms & SC\_4\_1\_\_pl\_3 & Yes & 3 & 4 & 14 & 9 & 3 & 1 & BFS \\
+Test & SC\_Four\_Rooms & SC\_4\_2\_\_pl\_5 & Yes & 5 & 22 & 71 & 9 & 56 & 5 & BFS \\
+Test & SC\_Four\_Rooms & SC\_4\_2\_\_pl\_8 & Yes & 8 & 318 & 750 & 11 & 732 & 6 & BFS \\
+Test & SC\_Four\_Rooms & SC\_4\_3\_\_pl\_5 & Yes & 5 & 11 & 20 & 9 & 9 & 1 & BFS \\
+Test & SC\_Four\_Rooms & SC\_4\_3\_\_pl\_8 & Yes & 8 & 66 & 65 & 10 & 54 & 0 & BFS \\
+Test & SC\_Four\_Rooms & SC\_4\_4\_\_pl\_5 & Yes & 5 & 11 & 20 & 9 & 9 & 1 & BFS \\
+Test & SC\_Multi\_Rooms & SC\_8\_10\_\_pl\_12 & Yes & 12 & 23191 & 132057 & 27 & 131373 & 656 & BFS \\
+Test & SC\_Multi\_Rooms & SC\_8\_10\_\_pl\_6 & Yes & 6 & 113 & 679 & 26 & 646 & 6 & BFS \\
+Test & SC\_Multi\_Rooms & SC\_8\_10\_\_pl\_9 & Yes & 9 & 1399 & 8419 & 19 & 8317 & 82 & BFS \\
+Test & SC\_Multi\_Rooms & SC\_9\_11\_\_pl\_10 & Yes & 10 & 355 & 2686 & 26 & 2635 & 24 & BFS \\
+Test & SC\_Multi\_Rooms & SC\_9\_11\_\_pl\_11 & Yes & 11 & 907 & 6422 & 23 & 6343 & 55 & BFS \\
+Test & SC\_Multi\_Rooms & SC\_9\_11\_\_pl\_4 & Yes & 4 & 6 & 42 & 19 & 22 & 0 & BFS \\
+Test & SC\_Multi\_Rooms & SC\_9\_11\_\_pl\_6 & Yes & 6 & 17 & 97 & 25 & 70 & 1 & BFS \\
+Test & SC\_Multi\_Rooms & SC\_9\_11\_\_pl\_8 & Yes & 8 & 65 & 463 & 26 & 432 & 4 & BFS \\
+Test & SC\_Multi\_Rooms & SC\_9\_11\_\_pl\_9 & Yes & 9 & 146 & 1048 & 25 & 1015 & 7 & BFS \\
+\textbf{Averages:} & & & 26/27 (96\%) & 7.81 & 1794.19 & 13978.88 & 25.38 & 13617.73 & 334.77 & \\
+\bottomrule
+\end{tabular}
+\newpage
+\subsection*{Combined (Training + Test)}
+\begin{tabular}{lllcccccccc}
+\toprule
+Mode & Domain & Problem & Goal & Length & Nodes & Total (ms) & Init (ms) & Search (ms) & Overhead (ms) & Search \\
+\midrule
+Test & CC\_2\_2\_4 & CC\_2\_2\_4\_\_pl\_4 & Yes & 4 & 24 & 486 & 35 & 446 & 4 & BFS \\
+Test & CC\_2\_2\_4 & CC\_2\_2\_4\_\_pl\_6 & Yes & 6 & 822 & 6518 & 35 & 6311 & 171 & BFS \\
+Test & CC\_2\_2\_4 & CC\_2\_2\_4\_\_pl\_7 & Yes & 7 & 4169 & 26838 & 36 & 25208 & 1593 & BFS \\
+Test & CC\_3\_3\_3 & CC\_3\_3\_3\_\_pl\_3 & Yes & 3 & 8 & 487 & 56 & 416 & 14 & BFS \\
+Test & CC\_3\_3\_3 & CC\_3\_3\_3\_\_pl\_6 & Yes & 6 & 1643 & 20360 & 52 & 19288 & 1019 & BFS \\
+Test & CC\_3\_3\_3 & CC\_3\_3\_3\_\_pl\_7 & Yes & 7 & 12149 & 148826 & 56 & 143786 & 4983 & BFS \\
+Test & SC\_Multi\_Rooms & SC\_10\_10\_\_pl\_10 & Yes & 10 & 12 & 57 & 21 & 31 & 4 & BFS \\
+Test & SC\_Multi\_Rooms & SC\_10\_10\_\_pl\_17 & Yes & 17 & 1075 & 6479 & 27 & 6397 & 54 & BFS \\
+Test & SC\_Multi\_Rooms & SC\_10\_10\_\_pl\_9 & Yes & 9 & 10 & 41 & 21 & 18 & 1 & BFS \\
+Test & SC\_Multi\_Rooms & SC\_10\_8\_\_pl\_10 & Yes & 10 & 10 & 57 & 24 & 23 & 9 & BFS \\
+Test & SC\_Multi\_Rooms & SC\_10\_8\_\_pl\_15 & Yes & 15 & 96 & 449 & 24 & 421 & 3 & BFS \\
+Test & SC\_Multi\_Rooms & SC\_10\_8\_\_pl\_9 & TO & - & - & - & - & - & - & - \\
+Test & SC\_Four\_Rooms & SC\_4\_1\_\_pl\_3 & Yes & 3 & 4 & 14 & 9 & 3 & 1 & BFS \\
+Test & SC\_Four\_Rooms & SC\_4\_2\_\_pl\_5 & Yes & 5 & 22 & 71 & 9 & 56 & 5 & BFS \\
+Test & SC\_Four\_Rooms & SC\_4\_2\_\_pl\_8 & Yes & 8 & 318 & 750 & 11 & 732 & 6 & BFS \\
+Test & SC\_Four\_Rooms & SC\_4\_3\_\_pl\_5 & Yes & 5 & 11 & 20 & 9 & 9 & 1 & BFS \\
+Test & SC\_Four\_Rooms & SC\_4\_3\_\_pl\_8 & Yes & 8 & 66 & 65 & 10 & 54 & 0 & BFS \\
+Test & SC\_Four\_Rooms & SC\_4\_4\_\_pl\_5 & Yes & 5 & 11 & 20 & 9 & 9 & 1 & BFS \\
+Test & SC\_Multi\_Rooms & SC\_8\_10\_\_pl\_12 & Yes & 12 & 23191 & 132057 & 27 & 131373 & 656 & BFS \\
+Test & SC\_Multi\_Rooms & SC\_8\_10\_\_pl\_6 & Yes & 6 & 113 & 679 & 26 & 646 & 6 & BFS \\
+Test & SC\_Multi\_Rooms & SC\_8\_10\_\_pl\_9 & Yes & 9 & 1399 & 8419 & 19 & 8317 & 82 & BFS \\
+Test & SC\_Multi\_Rooms & SC\_9\_11\_\_pl\_10 & Yes & 10 & 355 & 2686 & 26 & 2635 & 24 & BFS \\
+Test & SC\_Multi\_Rooms & SC\_9\_11\_\_pl\_11 & Yes & 11 & 907 & 6422 & 23 & 6343 & 55 & BFS \\
+Test & SC\_Multi\_Rooms & SC\_9\_11\_\_pl\_4 & Yes & 4 & 6 & 42 & 19 & 22 & 0 & BFS \\
+Test & SC\_Multi\_Rooms & SC\_9\_11\_\_pl\_6 & Yes & 6 & 17 & 97 & 25 & 70 & 1 & BFS \\
+Test & SC\_Multi\_Rooms & SC\_9\_11\_\_pl\_8 & Yes & 8 & 65 & 463 & 26 & 432 & 4 & BFS \\
+Test & SC\_Multi\_Rooms & SC\_9\_11\_\_pl\_9 & Yes & 9 & 146 & 1048 & 25 & 1015 & 7 & BFS \\
+Training & CC\_2\_2\_4 & CC\_2\_2\_4\_\_pl\_3 & Yes & 3 & 6 & 128 & 35 & 91 & 1 & BFS \\
+Training & CC\_2\_2\_4 & CC\_2\_2\_4\_\_pl\_5 & Yes & 5 & 170 & 2713 & 35 & 2643 & 34 & BFS \\
+Training & CC\_3\_3\_3 & CC\_3\_3\_3\_\_pl\_4 & Yes & 4 & 39 & 579 & 47 & 515 & 16 & BFS \\
+Training & CC\_3\_3\_3 & CC\_3\_3\_3\_\_pl\_5 & Yes & 5 & 538 & 7980 & 47 & 7734 & 198 & BFS \\
+Training & SC\_Multi\_Rooms & SC\_10\_10\_\_pl\_13 & Yes & 13 & 52 & 182 & 17 & 164 & 0 & BFS \\
+Training & SC\_Multi\_Rooms & SC\_10\_8\_\_pl\_14 & Yes & 14 & 51 & 179 & 16 & 159 & 3 & BFS \\
+Training & SC\_Four\_Rooms & SC\_4\_1\_\_pl\_5 & Yes & 5 & 11 & 22 & 11 & 10 & 0 & BFS \\
+Training & SC\_Four\_Rooms & SC\_4\_2\_\_pl\_7 & Yes & 7 & 136 & 333 & 11 & 318 & 3 & BFS \\
+Training & SC\_Four\_Rooms & SC\_4\_3\_\_pl\_6 & Yes & 6 & 21 & 31 & 11 & 18 & 1 & BFS \\
+Training & SC\_Multi\_Rooms & SC\_8\_10\_\_pl\_8 & Yes & 8 & 413 & 1747 & 17 & 1709 & 20 & BFS \\
+Training & SC\_Multi\_Rooms & SC\_9\_11\_\_pl\_5 & Yes & 5 & 10 & 48 & 18 & 28 & 1 & BFS \\
+Training & SC\_Multi\_Rooms & SC\_9\_11\_\_pl\_7 & Yes & 7 & 32 & 122 & 18 & 102 & 1 & BFS \\
+\textbf{Averages:} & & & 38/39 (97\%) & 7.5 & 1266.53 & 9934.61 & 24.82 & 9672.42 & 236.37 & \\
+\bottomrule
+\end{tabular}
+\newpage
+\end{document}

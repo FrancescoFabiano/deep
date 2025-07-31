@@ -29,11 +29,11 @@ def combine_tex_files(input_files, output_file):
 def get_names(file_res:str="../../exp/aaai26/final_results_ok"):
     batches = {
         "batch1": ["Assemble", "CC", "CoinBox", "Grapevine", "SC"],
-        "batch2": ["SC_Four_Rooms"],
-        "batch3": ["CC_2_2_4__pl_7", "CC_3_2_3__pl_6", "CoinBox_pl__3", "CoinBox_pl__5"],
-        "batch4":["SCRich"],
-        "batch5": ["All", "CC-CoinBox", "CC-CoinBox-Grapevine", "CC-Grapevine"],
-        "batch5_partial": ["CC-CoinBox", "CC-CoinBox-Grapevine", "CC-Grapevine"],
+        #"batch1_refined": ["CC_2_2_4","CC_3_3_3","SC_Four_Rooms","SC_Multi_Rooms"],
+        "batch2": ["CC_2_2_4__pl_7", "CC_3_2_3__pl_6", "CoinBox_pl__3", "CoinBox_pl__5"],
+        "batch3":["SCRich"],
+        "batch4": ["All", "CC-CoinBox", "CC-CoinBox-Grapevine", "CC-Grapevine"],
+        "batch4_partial": ["CC-CoinBox", "CC-CoinBox-Grapevine", "CC-Grapevine"],
     }
 
     os.makedirs(file_res, exist_ok=True)
