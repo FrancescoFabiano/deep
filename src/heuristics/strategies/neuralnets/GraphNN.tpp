@@ -50,6 +50,9 @@ void GraphNN<StateRepr>::initialize_onnx_model() {
     m_session_options.SetGraphOptimizationLevel(
         GraphOptimizationLevel::ORT_ENABLE_ALL);
 
+    // Add this line to suppress warnings (only errors and above will be shown)
+    m_session_options.SetLogSeverityLevel(3);
+
 #ifdef USE_CUDA
     try {
       OrtCUDAProviderOptions cuda_options;
