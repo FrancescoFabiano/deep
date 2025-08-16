@@ -33,7 +33,7 @@ def run_training(training_data_folder, batch_root, no_goal):
 
 
     cmd = [
-        "python3", "lib/epistemic_rl/__main__.py",
+        "python3", "lib/gnn_handler/__main__.py",
         "--folder-raw-data", training_data_folder,
         "--subset-train", *instance_names,
         "--dir-save-model", model_dir,
