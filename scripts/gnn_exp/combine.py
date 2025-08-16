@@ -1,7 +1,7 @@
 import os
 
-from scripts.aaai26.generate_summary_tables import generate_latex_table
-from scripts.aaai26.plot_scaling import main_plot_scaling
+from scripts.gnn_exp.generate_summary_tables import generate_latex_table
+from scripts.gnn_exp.plot_scaling import main_plot_scaling
 
 
 def combine_tex_files(input_files, output_file):
@@ -26,7 +26,7 @@ def combine_tex_files(input_files, output_file):
         print(f"Combined {len(input_files)} files into '{output_file}'")
 
 
-def get_names(file_res:str="../../exp/aaai26/final_results_ok"):
+def get_names(file_res:str="../../exp/gnn_exp/final_results_ok"):
     batches = {
         "batch1": ["Assemble", "CC", "CoinBox", "Grapevine", "SC"],
         #"batch1_refined": ["CC_2_2_4","CC_3_3_3","SC_Four_Rooms","SC_Multi_Rooms"],
@@ -74,5 +74,5 @@ def get_names(file_res:str="../../exp/aaai26/final_results_ok"):
 # Example usage
 if __name__ == "__main__":
     input_files = get_names()
-    output_file = "../../exp/aaai26/reports/all_results.tex"
+    output_file = "../../exp/gnn_exp/reports/all_results.tex"
     combine_tex_files(input_files, output_file)

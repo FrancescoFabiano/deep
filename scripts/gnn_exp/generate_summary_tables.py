@@ -4,8 +4,8 @@ from textwrap import dedent
 
 # ← EDIT THIS LIST: each tuple is (train_tex, test_tex, DomainName)
 DOMAIN_TRIPLES = [
-    ("../../exp/aaai26/final_results_ok/batch1/Assemble_comparison_train.tex",  "../../exp/aaai26/final_results_ok/batch1/Assemble_comparison_test.tex",  "Assemble"),
-    ("../../exp/aaai26/final_results_ok/batch1/CC_comparison_train.tex",        "../../exp/aaai26/final_results_ok/batch1/CC_comparison_test.tex",        "CC"),
+    ("../../exp/gnn_exp/final_results_ok/batch1/Assemble_comparison_train.tex",  "../../exp/gnn_exp/final_results_ok/batch1/Assemble_comparison_test.tex",  "Assemble"),
+    ("../../exp/gnn_exp/final_results_ok/batch1/CC_comparison_train.tex",        "../../exp/gnn_exp/final_results_ok/batch1/CC_comparison_test.tex",        "CC"),
 ]
 
 # Defaults: you can also change these if you like

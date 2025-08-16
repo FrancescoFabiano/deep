@@ -15,7 +15,7 @@ def main():
     parser = argparse.ArgumentParser(
         description="Run create_training_data.py on all domain folders inside a batch folder."
     )
-    parser.add_argument("batch_path", help="Path to the batch folder (e.g., exp/aaai26/batch1/)")
+    parser.add_argument("batch_path", help="Path to the batch folder (e.g., exp/gnn_exp/batch1/)")
     parser.add_argument("--deep_exe", default="cmake-release-nn/bin/deep", help="Path to the deep C++ executable")
     parser.add_argument("--no_goal", action="store_true", help="Omit --dataset_merged from C++ execution")
     parser.add_argument("--depth", type=int, default=25, help="Depth for dataset generation (default: 25)")
@@ -44,7 +44,7 @@ def main():
 
         cmd = [
             "python3",
-            "scripts/aaai26/create_training_data.py",
+            "scripts/gnn_exp/create_training_data.py",
             batch_path,
             domain_name,
             args.deep_exe,

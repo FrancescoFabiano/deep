@@ -241,7 +241,7 @@ def run_comparison(astar_path, bfs_path, custom_name, output_path, custom_path:s
     else:
         merge_and_generate_latex(df_astar, df_bfs, custom_name, output_path, label_tab=label, caption=f"Comparison {section}")
 
-def main(main_dir:str= "exp/aaai26", file_res:str="exp/aaai26/final_results_ok"):
+def main(main_dir:str= "exp/gnn_exp", file_res:str="exp/gnn_exp/final_results_ok"):
     batches = {
         "batch1": ["Assemble", "CC", "CoinBox", "Grapevine", "SC"],
         #"batch1_refined": ["CC_2_2_4","CC_3_3_3","SC_Four_Rooms","SC_Multi_Rooms"],
@@ -282,4 +282,4 @@ def main(main_dir:str= "exp/aaai26", file_res:str="exp/aaai26/final_results_ok")
 
 
 if __name__ == "__main__":
-    main(main_dir="../../exp/aaai26", file_res="../../exp/aaai26/reports")
+    main(main_dir="../../exp/gnn_exp", file_res="../../exp/gnn_exp/reports")

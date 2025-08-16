@@ -85,7 +85,7 @@ def main():
     )
     parser.add_argument(
         "batch_root",
-        help="Path to batch folder (e.g., exp/aaai26/batch1)"
+        help="Path to batch folder (e.g., exp/gnn_exp/batch1)"
     )
     parser.add_argument("--no_goal", action="store_true", help="Set '--kind-of-data separated' for model training")
 

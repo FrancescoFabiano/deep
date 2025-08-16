@@ -363,7 +363,7 @@ def get_arg_parser():
     p = argparse.ArgumentParser(
         description="Run planner binary on all problem files in domain subfolders, gather results and generate combined LaTeX tables.",
         epilog="""Example usage:
-  python3 aaai_coverage_run.py ./cmake-build-debug-nn/bin/deep exp/aaai26/batch1 \\
+  python3 bulk_coverage_run.py ./cmake-build-debug-nn/bin/deep exp/gnn_exp/batch1 \\
     --threads 2 \\
     --binary_args "-b -c -p 3" \\
     --timeout 600

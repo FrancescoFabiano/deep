@@ -1,10 +1,12 @@
-# Experiment Batch 2: Same Goals, Different Initial States
+# Experiment Batch 4: Knowledge Transfer Benchmarks
 
-This folder contains the third batch of experiments for the project.
+This folder contains the fifth batch of experiments for the project.
 
-- This batch tests GNN-based heuristics against problem with identical goals but varying initial states.
-- For each goal, a dedicated model is trained and then used to solve all instances that share that same goal.
-- All models of interest are located in the `_models/{specific_goal}` subfolder.
+## Overview
+
+- This batch compares GNN-based heuristics to breadth-first search (BFS) on standard epistemic planning benchmarks using models trained on multiple domains.
+- Multiple models are trained (with the problem instance in the `Training` subfolder) to combine multiple domains and then used to solve those, and possibly others, domains.
+- All models of interest are located in the `_models\{domain-set_name}` subfolder.
 - All the results are stored in the `_results` subfolder.
 
 ---
@@ -21,10 +23,9 @@ All commands should be run from the root directory of the repository.
 This creates training datasets for each domain:
 
 ```console
-python3 scripts/aaai26/create_all_training_data.py exp/aaai26/batch2 --deep_exe cmake-build-release-nn/bin/deep --no_goal
+python3 scripts/gnn_exp/create_all_training_data.py exp/gnn_exp/batch4 --deep_exe cmake-build-release-nn/bin/deep
 ```
 Replace --deep_exe with the path to your compiled deep binary.
-The `--no_goal` flag is used to ensure that the training data does not include goal information, as the models are trained on instances with the same goal but different initial states.
 
 #### Failings
 If the script fails to generate training data for a specific domain, it will skip that domain and continue with the others.
@@ -42,7 +43,7 @@ In case some domains consistently fail to produce training data, you can try adj
 
 Example command with adjusted parameters:
 ```console
-python3 scripts/aaai26/create_all_training_data.py exp/aaai26/batch2 --deep_exe cmake-build-release-nn/bin/deep --no_goal --depth 40 --discard_factor 0.2
+python3 scripts/gnn_exp/create_all_training_data.py exp/gnn_exp/batch4 --deep_exe cmake-build-release-nn/bin/deep --depth 40 --discard_factor 0.2
 ```
 
 ### 2. Train GNN models
@@ -51,10 +52,8 @@ This trains one model per domain using the previously generated training data.
 
 
 ```console
-python3 scripts/aaai26/train_models.py exp/aaai26/batch2 --no_goal
+python3 scripts/gnn_exp/train_models.py exp/gnn_exp/batch4
 ```
-The `--no_goal` flag is used to ensure that the training data does not include goal information, as the models are trained on instances with the same goal but different initial states.
-
 
 ### 3. Run evaluation and aggregate results
 Run inference using the trained models and aggregate the results into the `_results` folder.
@@ -63,25 +62,19 @@ Run inference using the trained models and aggregate the results into the `_resu
 #### GNN heuristic
 This command runs inference using the GNN heuristic with the appropriate model generated in the previous step.
 ```console
-python3 scripts/aaai26/aaai_coverage_run.py cmake-build-release-nn/bin/deep exp/aaai26/batch2/ --threads 8 --binary_args "-s Astar -u GNN -c -b" --timeout 600
+python3 scripts/gnn_exp/bulk_coverage_run.py cmake-build-release-nn/bin/deep exp/gnn_exp/batch4/ --threads 8 --binary_args "-s Astar -u GNN --dataset_merged -c -b" --timeout 600
 ```
-> Note that the `--dataset_merged` argument is not used here (in the `--binary_args`), as the models are trained on instances with the same goal but different initial states.
 
 #### Breadth-First Search
 This command runs inference using the BFS heuristic, which is the baseline for comparison.
 ```console
-python3 scripts/aaai26/aaai_coverage_run.py cmake-build-release-nn/bin/deep exp/aaai26/batch2/ --threads 8 --binary_args "-c -b" --timeout 600
+python3 scripts/gnn_exp/bulk_coverage_run.py cmake-build-release-nn/bin/deep exp/gnn_exp/batch4/ --threads 8 --binary_args "-c -b" --timeout 600
 ```
 
 ##### Arguments
 The arguments to this script are:
 - the path to the deep executable (`cmake-build-release-nn/bin/deep` in the example)
-- the path to the experiment folder (`exp/aaai26/batch2/` which is this folder)
+- the path to the experiment folder (`exp/gnn_exp/batch4/` which is this folder)
 - the number of threads to use to speed up the testing (`8` in the example)
 - `--binary_args` option allows you to pass additional arguments to the deep executable, such as specifying the search algorithm and whether to enable GNN heuristics.
 - `--timeout` specifies the maximum time in seconds for each instance to be solved (`600` seconds in the example).
-
-### Advanced Setup
-For more complex scenarios—such as training a single GNN model across multiple domains to improve generalization—we do not provide a dedicated script to avoid clutter.
-However, you can adapt the existing scripts in the `/scripts` folder (in the project root) or create a custom folder structure to achieve this.
-Models trained on merged domains are also included in this folder for convenience.

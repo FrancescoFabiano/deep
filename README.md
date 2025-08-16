@@ -4,16 +4,6 @@
 
 For a more detailed overview, please take a look at the works referenced in the Bibliography section at the end of this README.
 
-## AAAI 2026
-To replicate the experiments, please follow the instructions provided in the exp/aaai26 directory, using the included pre-trained models.
-Alternatively, scripts for generating the training data and training the models are also provided.
-Explanations of this procedure are deferred to C++ code comments.
-
-Note that since the repository has been anonymized and compressed into a ZIP archive, Git submodule functionality is not supported.
-Versions of the required external libraries are included within the archive.
-
-To build please execute the building script with `nn` argument to activate ONNX support and, therefore, GNN-based heuristics.
-
 ## Features
 
 - Multi-agent epistemic planning using Dynamic Epistemic Logic (DEL)
@@ -65,12 +55,15 @@ For example, a simple debug build:
 
     ./build.sh debug
 
-Or a release build with neural networks enabled (the one used for AAAI testing):
+Or a release build with neural networks enabled (the one used for GNN testing):
 
     ./build.sh nn
 
 For more granular building options, please refer to the next two sections where the building process is explained without using the script.
 Note that the script abstracts away many details, so if you want to use more granular building options, please make sure to follow the installation procedure in `build.sh` to ensure you have all the necessary components.
+
+> Note: This script and some dependencies may require execute permissions. Use the `chmod` command or a similar tool to grant the necessary permissions.
+
 ##### CMake Build Options
 
 You can customize the build using these options:
@@ -140,14 +133,91 @@ All scripts contain a `-h` or `--help` option to display usage information.
 
 Benchmarks are available in the `exp/` directory.
 
+### Main References Experiments -- GNN Testing
+To replicate the experiments, please follow the instructions provided in the exp/gnn_exp directory, using the included pre-trained models.
+Alternatively, scripts for generating the training data and training the models are also provided.
+Explanations of this procedure are deferred to C++ code comments.
+
+To build please execute the building script with `nn` argument to activate ONNX support and, therefore, GNN-based heuristics like this:
+
+```console
+./build.sh nn
+```
+
 ## Citation
 
 If you use deep in your research, please cite:
-Anonymized
+
+```bibtex'
+    @inproceedings{prima_Fabiano24,
+      title = {$\mathcal{{H}}$-{EFP}: Bridging Efficiency in Multi-agent Epistemic Planning with Heuristics.},
+      booktitle = {PRIMA 2024: Principles and Practice of Multi-Agent Systems},
+      year      = {2024},
+      author    = {Fabiano, Francesco and Platt, Theoderic and Son, Tran Cao and Pontelli, Enrico}
+      editor    = {Arisaka, Ryuta and Sanchez-Anguix, Victor and Stein, Sebastian and Aydo{\u{g}}an, Reyhan and van der Torre, Leon and Ito, Takayuki},
+      publisher = {Springer Nature Switzerland},
+      address   = {Cham},
+      pages     = {81--86},
+      doi       = {10.1007/978-3-031-77367-9\_7},
+      isbn      = {978-3-031-77367-9}
+    }
+```
 
 ## Bibliography
 
-Anonymized
+#### Strong integration of heuristics
+- Fabiano, F., Platt, T., Son, T. C., & Pontelli, E. (2024).  
+  *𝓗-EFP: Bridging Efficiency in Multi-agent Epistemic Planning with Heuristics.*  
+  In *PRIMA 2024: Principles and Practice of Multi-Agent Systems* (pp. 81–86).  
+  DOI: [10.1007/978-3-031-77367-9_7](https://doi.org/10.1007/978-3-031-77367-9_7)
+
+
+#### EFP 2.0 with updated transition function and multiple e-state representations
+- Fabiano, F., Burigana, A., Dovier, A., & Pontelli, E. (2020).  
+  *EFP 2.0: A Multi-Agent Epistemic Solver with Multiple E-State Representations.*  
+  In *Proceedings of the 30th International Conference on Automated Planning and Scheduling (ICAPS 2020)*, Nancy, France (pp. 101–109).  
+  [Link](https://ojs.aaai.org/index.php/ICAPS/article/view/6650)
+
+
+#### Foundational work on optimizing the code and transition function
+- Burigana, A., Fabiano, F., Dovier, A., & Pontelli, E. (2020).  
+  *Modelling Multi-Agent Epistemic Planning in ASP.*  
+  *Theory and Practice of Logic Programming*, 20(5), 593–608.  
+  DOI: [10.1017/S1471068420000289](https://doi.org/10.1017/S1471068420000289)
+
+
+- Fabiano, F., Riouak, I., Dovier, A., & Pontelli, E. (2019).  
+  *Non-Well-Founded Set Based Multi-Agent Epistemic Action Language.*  
+  In *Proceedings of the 34th Italian Conference on Computational Logic (CILC 2019)*, Trieste, Italy (pp. 242–259).  
+  [Link](https://ceur-ws.org/Vol-2396/paper38.pdf)
+
+
+
+#### EFP version 1.0
+- Le, T., Fabiano, F., Son, T. C., & Pontelli, E. (2018).  
+  *EFP and PG-EFP: Epistemic Forward Search Planners in Multi-Agent Domains.*  
+  In *Proceedings of the 28th International Conference on Automated Planning and Scheduling (ICAPS 2018)*, Delft, Netherlands (pp. 161–170).  
+  [Link](https://aaai.org/ocs/index.php/ICAPS/ICAPS18/paper/view/17733)
+
+
+#### Works on EPDDL (final version to come)
+- Burigana, A. & Fabiano, F. (2022).  
+  *The Epistemic Planning Domain Definition Language (Short Paper).*  
+  In *Proceedings of the 10th Italian Workshop on Planning and Scheduling (IPS 2022)*, Udine, Italy.  
+  [Link](https://ceur-ws.org/Vol-3345/paper5_2497.pdf)
+
+- Fabiano, F., Srivastava, B., Lenchner, J., Horesh, L., Rossi, F., & Ganapini, M. B. (2021).  
+  *E-PDDL: A Standardized Way of Defining Epistemic Planning Problems.*  
+  *CoRR*, abs/2107.08739.  
+  [arXiv](https://arxiv.org/abs/2107.08739)
+
+
+
+#### Work on mA* (language currently used)
+- Baral, C., Gelfond, G., Pontelli, E., & Son, T. C. (2015).  
+  *An action language for multi-agent domains: Foundations.*  
+  *CoRR*, abs/1511.01960.
+
 
 ## License
 
