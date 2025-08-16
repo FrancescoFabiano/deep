@@ -1,0 +1,93 @@
+{\scriptsize
+\begin{longtable}[!ht]{l|ccc|ccc|cccc}
+\centering
+\multirow{2}{*}{\textbf{Instance Name}} & \multicolumn{3}{c|}{\GNNres} & \multicolumn{3}{c|}{\BFSres} & \multicolumn{4}{c}{\HEFP} \\
+\cline{2-11}
+& \planLength & \nodesExp & \solvingTime [ms] & \planLength & \nodesExp & \solvingTime [ms] & \planLength & \nodesExp & \solvingTime [ms] & Heur. \\
+\hline
+Assemble\_B2-pl\_5 & 5 & 14 & 140 & 5 & 14 & 47 & 5 & 5 & 62 & \CPG \\
+Assemble\_B4-pl\_5 & 5 & 14 & 243 & 5 & 14 & 77 & 5 & 10 & 79 & \SUB \\
+Assemble\_B6-pl\_5 & 5 & 14 & 760 & 5 & 14 & 461 & 5 & 10 & 552 & \SUB \\
+Assemble\_B8-pl\_5 & 5 & 14 & 31750 & 5 & 14 & 24112 & 5 & 10 & 32650 & \SUB \\
+Assemble\_B9-pl\_5 & 5 & 14 & 585443 & 5 & 14 & 390542 & 5 & 10 & 255293 & \SUB \\
+Assemble\_B10-pl\_5 & \unsolvedColumn & \unsolvedColumn & \myTO & \unsolvedColumn & \unsolvedColumn & \myTO & \unsolvedColumn & \unsolvedColumn & \myTO & \unsolvedColumn\\
+Assemble\_C-pl\_5 & 5 & 14 & 132 & 5 & 14 & 49 & 5 & 5 & 60 & \CPG \\
+CC\_2\_2\_3-pl\_3 & 3 & 9 & 62 & 3 & 9 & 17 & 4 & 4 & 28 & \SUB \\
+CC\_2\_2\_3-pl\_5 & 5 & 76 & 362 & 5 & 77 & 176 & 5 & 5 & 26 & \CPG \\
+CC\_2\_2\_3-pl\_7 & 7 & 451 & 2245 & 7 & 1052 & 2776 & 9 & 35 & 152 & \SUB \\
+CC\_2\_2\_3-pl\_8 & 8 & 1934 & 11128 & 8 & 2045 & 5186 & 9 & 16 & 236 & \LPG \\
+CC\_2\_2\_4-pl\_3 & 3 & 11 & 182 & 3 & 6 & 60 & 3 & 3 & 88 & \SUB \\
+CC\_2\_2\_4-pl\_4 & 4 & 23 & 378 & 4 & 24 & 232 & 5 & 10 & 125 & \SUB \\
+CC\_2\_2\_4-pl\_6 & 6 & 432 & 4769 & 6 & 824 & 5030 & 9 & 16 & 194 & \SUB \\
+CC\_2\_2\_4-pl\_7 & 7 & 1911 & 21141 & 7 & 4171 & 16361 & 7 & 18 & 419 & \SUB \\
+CC\_2\_3\_4-pl\_4 & 4 & 42 & 8451 & 4 & 29 & 2504 & 4 & 4 & 766 & \SPG \\
+CC\_2\_3\_4-pl\_5 & 5 & 127 & 30013 & 5 & 277 & 18700 & 5 & 5 & 1276 & \SPG \\
+CC\_2\_3\_4-pl\_6 & 6 & 756 & 94259 & 6 & 1644 & 50540 & 6 & 6 & 1082 & \SPG \\
+CC\_3\_2\_3-pl\_3 & 3 & 14 & 123 & 3 & 8 & 49 & 3 & 3 & 47 & \SUB \\
+CC\_3\_2\_3-pl\_6 & 6 & 368 & 4453 & 6 & 471 & 2205 & 7 & 8 & 70 & \SUB \\
+CC\_3\_2\_3-pl\_7 & 7 & 1596 & 25601 & 7 & 3329 & 17005 & 7 & 13 & 158 & \SUB \\
+CC\_3\_3\_3-pl\_3 & 3 & 15 & 699 & 3 & 8 & 180 & 3 & 3 & 143 & \SUB \\
+CC\_3\_3\_3-pl\_5 & 5 & 253 & 6863 & 5 & 538 & 3136 & 6 & 8 & 210 & \SUB \\
+CC\_3\_3\_3-pl\_6 & 6 & 1955 & 52929 & 6 & 1643 & 15139 & 6 & 8 & 190 & \SUB \\
+CC\_3\_3\_3-pl\_7 & 7 & 11769 & 304660 & 7 & 12143 & 86997 & 24 & 303 & 16280 & \LPG \\
+Coin\_Box-pl\_2 & 2 & 2 & 61 & 2 & 2 & 11 & 2 & 2 & 16 & \textbf{BFS} \\
+Coin\_Box-pl\_5 & 5 & 77 & 425 & 5 & 101 & 377 & 7 & 9 & 45 & \SUB \\
+Coin\_Box-pl\_7 & 7 & 1816 & 18684 & 7 & 2490 & 7580 & 8 & 9 & 441 & \SPG \\
+Grapevine\_3-pl\_2 & 2 & 4 & 111 & 2 & 6 & 60 & 2 & 2 & 42 & \SUB \\
+Grapevine\_3-pl\_5 & 5 & 568 & 10866 & 5 & 821 & 4755 & 5 & 6 & 82 & \SUB \\
+Grapevine\_3-pl\_6 & 6 & 1599 & 21958 & 6 & 2113 & 9928 & 6 & 7 & 135 & \SUB \\
+Grapevine\_3-pl\_7 & 7 & 6561 & 92670 & 7 & 12014 & 61716 & 11 & 26 & 1500 & \SPG \\
+Grapevine\_4-pl\_3 & 3 & 13 & 824 & 3 & 40 & 1351 & 3 & 3 & 148 & \SUB \\
+Grapevine\_4-pl\_4 & 4 & 141 & 7062 & 4 & 233 & 5094 & 4 & 4 & 191 & \SUB \\
+Grapevine\_4-pl\_5 & 5 & 434 & 17301 & 5 & 1445 & 16673 & 6 & 9 & 346 & \SUB \\
+Grapevine\_4-pl\_6 & 6 & 6790 & 310258 & 6 & 4066 & 40681 & 6 & 7 & 806 & \SUB \\
+Grapevine\_5-pl\_2 & 2 & 4 & 1344 & 2 & 8 & 1906 & 2 & 2 & 541 & \SUB \\
+Grapevine\_5-pl\_3 & 3 & 27 & 17341 & 3 & 71 & 26331 & 3 & 3 & 1146 & \SUB \\
+Grapevine\_5-pl\_5 & \unsolvedColumn & \unsolvedColumn & \myTO & \unsolvedColumn & \unsolvedColumn & \myTO & 5 & 6 & 1999 & \SUB \\
+Grapevine\_5-pl\_6 & \unsolvedColumn & \unsolvedColumn & \myTO & \unsolvedColumn & \unsolvedColumn & \myTO & 7 & 11 & 5996 & \SUB \\
+SC\_4\_1-pl\_5 & 5 & 17 & 73 & 5 & 11 & 21 & 5 & 11 & 13 & \textbf{BFS} \\
+SC\_4\_2-pl\_5 & 5 & 15 & 215 & 5 & 21 & 49 & 5 & 6 & 37 & \SPG \\
+SC\_4\_2-pl\_8 & 8 & 339 & 2484 & 8 & 306 & 627 & 8 & 306 & 684 & \textbf{BFS} \\
+SC\_4\_3-pl\_6 & 6 & 21 & 162 & 6 & 21 & 19 & 6 & 21 & 22 & \textbf{BFS} \\
+SC\_4\_3-pl\_8 & 8 & 59 & 273 & 8 & 66 & 53 & 8 & 66 & 59 & \textbf{BFS} \\
+SC\_4\_4-pl\_5 & 5 & 17 & 119 & 5 & 11 & 11 & 5 & 11 & 16 & \textbf{BFS} \\
+SC\_8\_10-pl\_8 & 8 & 542 & 4565 & 8 & 388 & 1412 & 8 & 388 & 1267 & \textbf{BFS} \\
+SC\_8\_10-pl\_9 & 9 & 1660 & 20349 & 9 & 1332 & 4478 & 9 & 1332 & 5287 & \textbf{BFS} \\
+SC\_8\_10-pl\_12 & 12 & 18541 & 187834 & 12 & 21604 & 35400 & 13 & 13 & 332 & \SPG \\
+SC\_9\_11-pl\_4 & 4 & 8 & 89 & 4 & 6 & 23 & 4 & 6 & 20 & \textbf{BFS} \\
+SC\_9\_11-pl\_5 & 5 & 11 & 157 & 5 & 10 & 32 & 6 & 6 & 42 & \SUB \\
+SC\_9\_11-pl\_7 & 7 & 41 & 424 & 7 & 32 & 96 & 8 & 8 & 39 & \SUB \\
+SC\_9\_11-pl\_9 & 9 & 238 & 2497 & 9 & 146 & 439 & 12 & 12 & 96 & \SUB \\
+SC\_9\_11-pl\_10 & 10 & 663 & 6789 & 10 & 356 & 1364 & 13 & 13 & 93 & \CPG \\
+SC\_9\_11-pl\_11 & 11 & 1262 & 14034 & 11 & 913 & 2892 & 14 & 14 & 115 & \CPG \\
+SC\_10\_8-pl\_9 & \unsolvedColumn & \unsolvedColumn & \myTO & \unsolvedColumn & \unsolvedColumn & \myTO & \unsolvedColumn & \unsolvedColumn & \myTO & \unsolvedColumn\\
+SC\_10\_8-pl\_14 & 14 & 93 & 544 & 14 & 51 & 127 & 15 & 24 & 85 & \CPG \\
+SC\_10\_10-pl\_9 & 9 & 10 & 151 & 9 & 10 & 35 & 9 & 10 & 41 & \textbf{BFS} \\
+SC\_10\_10-pl\_10 & 10 & 15 & 223 & 10 & 12 & 29 & 10 & 12 & 32 & \textbf{BFS} \\
+SC\_10\_10-pl\_17 & 17 & 946 & 6582 & 17 & 1078 & 3180 & 22 & 22 & 445 & \SPG \\
+gossip\_3\_3\_3 & 4 & 35 & 1257 & 4 & 41 & 170 & 5 & 5 & 58 & \CPG \\
+gossip\_3\_3\_6 & 2 & 3 & 195 & 2 & 4 & 50 & 4 & 4 & 48 & \CPG \\
+gossip\_3\_3\_9 & 6 & 356 & 3296 & 6 & 356 & 479 & 6 & 6 & 90 & \CPG \\
+gossip\_4\_3\_9 & \unsolvedColumn & \unsolvedColumn & \myTO & \unsolvedColumn & \unsolvedColumn & \myTO & 9 & 9 & 307 & \CPG \\
+gossip\_4\_4\_1 & 2 & 2 & 249 & 2 & 2 & 128 & 2 & 2 & 185 & \textbf{BFS} \\
+gossip\_4\_4\_3 & \unsolvedColumn & \unsolvedColumn & \myTO & \unsolvedColumn & \unsolvedColumn & \myTO & 10 & 10 & 1536 & \CPG \\
+gossip\_4\_4\_7 & \unsolvedColumn & \unsolvedColumn & \myTO & \unsolvedColumn & \unsolvedColumn & \myTO & 6 & 6 & 886 & \CPG \\
+gossip\_5\_3\_3 & 4 & 168 & 16236 & 4 & 179 & 2572 & 7 & 7 & 524 & \CPG \\
+gossip\_5\_3\_5 & 0 & 0 & 114 & 0 & 0 & 6 & \unsolvedColumn & \unsolvedColumn & \myTO & \unsolvedColumn\\
+gossip\_5\_3\_7 & \unsolvedColumn & \unsolvedColumn & \myTO & \unsolvedColumn & \unsolvedColumn & \myTO & 8 & 8 & 442 & \CPG \\
+gossip\_5\_4\_3 & \unsolvedColumn & \unsolvedColumn & \myTO & \unsolvedColumn & \unsolvedColumn & \myTO & 12 & 12 & 3565 & \CPG \\
+gossip\_5\_4\_4 & 1 & 1 & 267 & 1 & 1 & 68 & 1 & 1 & 112 & \CPG \\
+gossip\_5\_4\_9 & \unsolvedColumn & \unsolvedColumn & \myTO & \unsolvedColumn & \unsolvedColumn & \myTO & 16 & 16 & 4709 & \CPG \\
+gossip\_5\_5\_4 & 1 & 1 & 731 & 1 & 1 & 172 & 1 & 1 & 332 & \SPG \\
+gossip\_5\_5\_8 & \unsolvedColumn & \unsolvedColumn & \myTO & \unsolvedColumn & \unsolvedColumn & \myTO & 8 & 8 & 9677 & \CPG \\
+\hline
+\myAvg  $\pm$ \myStd \hfill (\allInstances) & 6 $\pm$ 3 & 1014 $\pm$ 2909 & 30556 $\pm$ 92026 & 6 $\pm$ 3 & 1230 $\pm$ 3419 & 13625 $\pm$ 50476 & 7 $\pm$ 4 & 42 $\pm$ 168 & 4928 $\pm$ 30250 & \\
+\IQM $\pm$ \IQR \hfill (\allInstances) & 5 $\pm$ 1 & 133 $\pm$ 162 & 3791 $\pm$ 4395 & 5 $\pm$ 1 & 169 $\pm$ 226 & 1518 $\pm$ 1652 & 6 $\pm$ 1 & 8 $\pm$ 2 & 235 $\pm$ 170 & \\
+\myAvg  $\pm$ \myStd \hfill (\onlyInCommmon) & 6 $\pm$ 3 & 1031 $\pm$ 2930 & 31039 $\pm$ 92684 & 6 $\pm$ 3 & 1250 $\pm$ 3443 & 13841 $\pm$ 50851 & 7 $\pm$ 4 & 46 $\pm$ 179 & 5170 $\pm$ 32344 & \\
+\IQM $\pm$ \IQR \hfill (\onlyInCommmon) & 5 $\pm$ 1 & 133 $\pm$ 162 & 3906 $\pm$ 4419 & 5 $\pm$ 1 & 180 $\pm$ 230 & 1518 $\pm$ 1652 & 6 $\pm$ 1 & 8 $\pm$ 3 & 164 $\pm$ 107 & \\
+\hline
+Solved Instances & \multicolumn{3}{c|}{64/75 ($85.33\%$)} & \multicolumn{3}{c|}{64/75 ($85.33\%$)} & \multicolumn{4}{c}{72/75 ($96.00\%$)} \\
+%\end{tabular}
+\caption{Comparison of execution on all the \textbf{Test} problem instances of all the domains. The model used by \GNNres is \modelMinGR and it has been trained on the instances reported in the previous \textbf{Train} Table.}
+\label{tab:batch4_CC-Grapevine_comparison_test}
+\end{longtable}}

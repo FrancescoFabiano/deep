@@ -2,7 +2,3 @@
 	path = lib/CLI11
 	url = https://github.com/CLIUtils/CLI11.git
 	branch = main
-[submodule "lib/epistemic_rl"]
-	path = lib/epistemic_rl
-	url = https://github.com/Giovannibriglia/epistemic_rl.git
-	branch = master
