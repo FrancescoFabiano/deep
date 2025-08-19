@@ -149,18 +149,15 @@ To build please execute the building script with `nn` argument to activate ONNX 
 If you use deep in your research, please cite:
 
 ```bibtex'
-    @inproceedings{prima_Fabiano24,
-      title = {$\mathcal{{H}}$-{EFP}: Bridging Efficiency in Multi-agent Epistemic Planning with Heuristics.},
-      booktitle = {PRIMA 2024: Principles and Practice of Multi-Agent Systems},
-      year      = {2024},
-      author    = {Fabiano, Francesco and Platt, Theoderic and Son, Tran Cao and Pontelli, Enrico}
-      editor    = {Arisaka, Ryuta and Sanchez-Anguix, Victor and Stein, Sebastian and Aydo{\u{g}}an, Reyhan and van der Torre, Leon and Ito, Takayuki},
-      publisher = {Springer Nature Switzerland},
-      address   = {Cham},
-      pages     = {81--86},
-      doi       = {10.1007/978-3-031-77367-9\_7},
-      isbn      = {978-3-031-77367-9}
-    }
+@misc{briglia2025scaling,
+      title={Scaling Multi-Agent Epistemic Planning through GNN-Derived Heuristics}, 
+      author={Giovanni Briglia and Francesco Fabiano and Stefano Mariani},
+      year={2025},
+      eprint={2508.12840},
+      archivePrefix={arXiv},
+      primaryClass={cs.AI},
+      url={https://arxiv.org/abs/2508.12840}, 
+}
 ```
 
 ## Bibliography
