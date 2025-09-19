@@ -168,8 +168,6 @@ KripkeWorldId KripkeWorldPointer::get_fluent_based_id() const noexcept {
   return 0;
 }
 
-/** \warning This function does a lot of check for overflow, it might impact the
- * performance since it used very often. Check for better solutions*/
 KripkeWorldId KripkeWorldPointer::get_id() const noexcept { return m_id; }
 
 void KripkeWorldPointer::set_id() noexcept {

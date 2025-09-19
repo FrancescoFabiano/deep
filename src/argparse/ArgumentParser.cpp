@@ -203,10 +203,11 @@ ArgumentParser::ArgumentParser() : app("deep") {
       ->default_val("0.4");
   dataset_group
       ->add_option("--dataset_seed", m_dataset_seed,
-                   "Set the seed used for value generation. If no seed is "
-                   "provided, or a negative value is given, a random seed will "
-                   "be generated instead, as negative seeds are not accepted.")
-      ->default_val("-1");
+            "Set the seed used for value generation. "
+            "If no seed is provided, the default (42) is used. "
+            "If a negative value is given, a random seed will be generated instead, "
+            "as negative seeds are not accepted.")
+      ->default_val("42");
 
   // Search group
   auto *search_group = app.add_option_group("Search");

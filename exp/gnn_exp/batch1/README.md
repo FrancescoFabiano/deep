@@ -80,4 +80,4 @@ The arguments to this script are:
 ### Advanced Setup
 For more complex scenarios—such as training a single GNN model across multiple domains to improve generalization—we do not provide a dedicated script to avoid clutter.
 However, you can adapt the existing scripts in the `/scripts` folder (in the project root) or create a custom folder structure to achieve this.
-Models trained on merged domains are also included in  `batch5`.
+Models trained on merged domains are also included in  `batch4`.
