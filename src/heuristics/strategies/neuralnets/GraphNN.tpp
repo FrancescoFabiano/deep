@@ -493,7 +493,7 @@ void GraphNN<StateRepr>::populate_with_goal() {
 
   if (!ArgumentParser::get_instance().get_dataset_separated()) {
     constexpr auto epsilon_id =
-         TrainingDataset<KripkeState>::get_epsilon_node_id_int();
+        TrainingDataset<KripkeState>::get_epsilon_node_id_int();
     constexpr auto goal_parent_id =
         TrainingDataset<KripkeState>::get_goal_parent_id_int();
 
@@ -504,7 +504,7 @@ void GraphNN<StateRepr>::populate_with_goal() {
 #else
 
   constexpr auto epsilon_id =
-        TrainingDataset<KripkeState>::get_epsilon_node_id_int();
+      TrainingDataset<KripkeState>::get_epsilon_node_id_int();
   constexpr auto goal_parent_id =
       TrainingDataset<KripkeState>::get_goal_parent_id_int();
 
@@ -513,9 +513,6 @@ void GraphNN<StateRepr>::populate_with_goal() {
 
 #endif
 
-
-
-
   for (auto it = begin; it != end; ++it) {
     const size_t src = std::stoul((*it)[1]);
     const size_t dst = std::stoul((*it)[2]);
@@ -523,8 +520,6 @@ void GraphNN<StateRepr>::populate_with_goal() {
 
     add_edge(src, dst, label);
   }
-
-
 
 #ifdef DEBUG
 
@@ -540,8 +535,6 @@ void GraphNN<StateRepr>::populate_with_goal() {
   }
 
 #endif
-
-
 
   m_edges_initial_size = m_edge_labels.size();
   m_node_ids_initial_size = m_real_node_ids.size();
@@ -562,8 +555,6 @@ GraphNN<StateRepr>::state_to_tensor_minimal(const KripkeState &kstate) {
 
   const auto m_node_to_symbolic_original = m_node_to_symbolic;
 
-
-
 #ifdef DEBUG
 
   if (!ArgumentParser::get_instance().get_dataset_separated()) {
@@ -583,9 +574,6 @@ GraphNN<StateRepr>::state_to_tensor_minimal(const KripkeState &kstate) {
            TrainingDataset<KripkeState>::get_to_state_edge_id_int());
 
 #endif
-
-
-
 
   const auto &training_dataset = TrainingDataset<KripkeState>::get_instance();
 

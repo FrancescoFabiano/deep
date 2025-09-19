@@ -198,7 +198,7 @@ ArgumentParser::ArgumentParser() : app("deep") {
       ->default_val("10");
 
 #ifdef DEBUG
-    ///\TODO for debug pourpouse we are now tranforming mapped into bitmask
+  ///\TODO for debug pourpouse we are now tranforming mapped into bitmask
   dataset_group->add_flag(
       "--dataset_mapped", m_dataset_mapped,
       "Use mapped (compact) node labels in dataset generation. If not set, "
@@ -219,10 +219,11 @@ ArgumentParser::ArgumentParser() : app("deep") {
       ->default_val("0.4");
   dataset_group
       ->add_option("--dataset_seed", m_dataset_seed,
-            "Set the seed used for value generation. "
-            "If no seed is provided, the default (42) is used. "
-            "If a negative value is given, a random seed will be generated instead, "
-            "as negative seeds are not accepted.")
+                   "Set the seed used for value generation. "
+                   "If no seed is provided, the default (42) is used. "
+                   "If a negative value is given, a random seed will be "
+                   "generated instead, "
+                   "as negative seeds are not accepted.")
       ->default_val("42");
 
   // Search group
