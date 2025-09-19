@@ -717,7 +717,6 @@ std::string TrainingDataset<StateRepr>::print_state_for_dataset(
       std::string(6 - std::to_string(m_file_counter).length(), '0') +
       std::to_string(m_file_counter);
 
-
 #ifdef DEBUG
 
   if (ArgumentParser::get_instance().get_dataset_mapped() ||
@@ -726,36 +725,33 @@ std::string TrainingDataset<StateRepr>::print_state_for_dataset(
         ArgumentParser::get_instance().get_dataset_merged_both()) {
       print_state_for_dataset_internal(
           state, base_filename, OutputPaths::DATASET_NN_DATASET_MAPPED, true);
-        }
+    }
     if (ArgumentParser::get_instance().get_dataset_separated() ||
         ArgumentParser::get_instance().get_dataset_merged_both()) {
       print_state_for_dataset_internal(
           state, base_filename, OutputPaths::DATASET_NN_DATASET_MAPPED, false);
-        }
-      }
+    }
+  }
   if (!ArgumentParser::get_instance().get_dataset_mapped() ||
       ArgumentParser::get_instance().get_dataset_both()) {
     if (!ArgumentParser::get_instance().get_dataset_separated() ||
         ArgumentParser::get_instance().get_dataset_merged_both()) {
       print_state_for_dataset_internal(
           state, base_filename, OutputPaths::DATASET_NN_DATASET_HASHED, true);
-        }
+    }
     if (ArgumentParser::get_instance().get_dataset_separated() ||
         ArgumentParser::get_instance().get_dataset_merged_both()) {
       print_state_for_dataset_internal(
           state, base_filename, OutputPaths::DATASET_NN_DATASET_HASHED, false);
-        }
-      }
+    }
+  }
 
 #else
 
   print_state_for_dataset_internal(
-            state, base_filename, OutputPaths::DATASET_NN_DATASET_HASHED, true);
+      state, base_filename, OutputPaths::DATASET_NN_DATASET_HASHED, true);
 
 #endif
-
-
-
 
   return base_filename;
 }

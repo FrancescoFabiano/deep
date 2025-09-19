@@ -212,8 +212,8 @@ private:
       0.4; ///< Maximum discard factor for dataset generation.
 
   bool m_dataset_mapped = false;
-  bool m_dataset_separated = false; ///< Flag to indicate if dataset entry point is
-                                 ///< the couple goal,state.
+  bool m_dataset_separated = false; ///< Flag to indicate if dataset entry point
+                                    ///< is the couple goal,state.
   bool m_dataset_merged_both =
       false; ///< Flag to indicate if both merged entry points are used.
   ///< Flag for using mapped (compact) node labels in dataset generation. If

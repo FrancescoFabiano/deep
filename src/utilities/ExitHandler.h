@@ -143,10 +143,13 @@ public:
     GNNTensorTranslationError = 894, ///< Error indicating that the translation
                                      ///< from state to Tensor did not work
     GNNModelLoadError = 895,         ///< Error loading the GNN model.
-    GNNBitmaskLengthError     = 896, ///< Error indicating that the bitmask length required
-           ///< exceeds the maximum allowed length defined by MAX_FLUENT_NUMBER.
-    GNNBitmaskRepetitionError = 897, ///< Error indicating that the repetition number
-                ///< exceeds the maximum value that can be represented with MAX_REPETITION_BITS bits.
+    GNNBitmaskLengthError =
+        896, ///< Error indicating that the bitmask length required
+    ///< exceeds the maximum allowed length defined by MAX_FLUENT_NUMBER.
+    GNNBitmaskRepetitionError =
+        897, ///< Error indicating that the repetition number
+             ///< exceeds the maximum value that can be represented with
+             ///< MAX_REPETITION_BITS bits.
 
     // --- State/Action Related (900-919) ---
     StateActionNotExecutableError =

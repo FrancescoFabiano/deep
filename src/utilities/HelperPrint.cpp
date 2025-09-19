@@ -513,15 +513,13 @@ void HelperPrint::print_dot_format(const KripkeState &kstate,
 }
 
 void HelperPrint::print_dataset_format(const KripkeState &kstate,
-                                       std::ofstream &ofs, [[maybe_unused]] const bool use_hash,
+                                       std::ofstream &ofs,
+                                       [[maybe_unused]] const bool use_hash,
                                        [[maybe_unused]] const bool is_merged) {
-
 
   const auto training_dataset = &TrainingDataset<KripkeState>::get_instance();
 
-
 #ifdef DEBUG
-
 
   std::unordered_map<KripkeWorldId, std::string> world_map;
   /*\TODO: MAPPED VERSION, OVERWRITTEN BY BITMASK FOR TESTING FOR NOW
@@ -536,27 +534,31 @@ void HelperPrint::print_dataset_format(const KripkeState &kstate,
       */
 
 #ifdef DEBUG
-  if (pw.get_fluent_set().size() >= MAX_FLUENT_NUMBER)
-  {
-    ExitHandler::exit_with_message(
-       ExitHandler::ExitCode::GNNBitmaskLengthError,
-       "The number of fluents in the world exceeds the maximum allowed. "
-       "Increase MAX_NUM_FLUENTS in define.h, and ensure that all training data "
-       "uses the same padding value. Verify that this value is consistently passed "
-       "to the GNN during training and correctly applied during inference.");
-  }
+      if (pw.get_fluent_set().size() >= MAX_FLUENT_NUMBER) {
+        ExitHandler::exit_with_message(
+            ExitHandler::ExitCode::GNNBitmaskLengthError,
+            "The number of fluents in the world exceeds the maximum allowed. "
+            "Increase MAX_NUM_FLUENTS in define.h, and ensure that all "
+            "training data "
+            "uses the same padding value. Verify that this value is "
+            "consistently passed "
+            "to the GNN during training and correctly applied during "
+            "inference.");
+      }
 
-
-      //std::cout << "[DEBUG] repetition is " << pw.get_repetition() << " and MAX_REPETITION is " << MAX_REPETITION << std::endl;
+      // std::cout << "[DEBUG] repetition is " << pw.get_repetition() << " and
+      // MAX_REPETITION is " << MAX_REPETITION << std::endl;
 
       if (pw.get_repetition() >= MAX_REPETITION) {
         ExitHandler::exit_with_message(
-           ExitHandler::ExitCode::GNNBitmaskRepetitionError,
+            ExitHandler::ExitCode::GNNBitmaskRepetitionError,
             "The repetition number exceeds the maximum allowed. "
-            "Increase MAX_REPETITION_BITS in define.h, and ensure that all training data "
-            "uses the same value. Verify that this value is consistently passed "
-            "to the GNN during training and correctly applied during inference."
-        );
+            "Increase MAX_REPETITION_BITS in define.h, and ensure that all "
+            "training data "
+            "uses the same value. Verify that this value is consistently "
+            "passed "
+            "to the GNN during training and correctly applied during "
+            "inference.");
       }
 #endif
 
@@ -564,27 +566,25 @@ void HelperPrint::print_dataset_format(const KripkeState &kstate,
       std::string bitmask(MAX_FLUENT_NUMBER, '0');
       size_t idx = 0;
 
-      for (Fluent fluent : pw.get_fluent_set())
-      {
-        if (!FormulaHelper::is_negated(fluent))
-        {
-          if (idx < bitmask.size())
-          {
+      for (Fluent fluent : pw.get_fluent_set()) {
+        if (!FormulaHelper::is_negated(fluent)) {
+          if (idx < bitmask.size()) {
             bitmask[idx] = '1';
-          }
-          else
-          {
+          } else {
             ExitHandler::exit_with_message(
-       ExitHandler::ExitCode::GNNBitmaskLengthError,
-       "The number of fluents in the world exceeds the maximum allowed. "
-       "Increase MAX_NUM_FLUENTS in define.h, and ensure that all training data "
-       "uses the same padding value. Verify that this value is consistently passed "
-       "to the GNN during training and correctly applied during inference.");
+                ExitHandler::ExitCode::GNNBitmaskLengthError,
+                "The number of fluents in the world exceeds the maximum "
+                "allowed. "
+                "Increase MAX_NUM_FLUENTS in define.h, and ensure that all "
+                "training data "
+                "uses the same padding value. Verify that this value is "
+                "consistently passed "
+                "to the GNN during training and correctly applied during "
+                "inference.");
           }
         }
         idx++;
       }
-
 
       // Convert repetition into binary string padded to x bits
       std::string repetition_bits(MAX_REPETITION_BITS, '0');
@@ -690,7 +690,6 @@ void HelperPrint::print_dataset_format(const KripkeState &kstate,
 
 #else
 
-
   ofs << "digraph G {" << std::endl;
 
   // Pointed world
@@ -702,20 +701,17 @@ void HelperPrint::print_dataset_format(const KripkeState &kstate,
 
   // In here we print the initial node, the connection to it and the whole goal
   // subgraph
-    ofs << "  " << TrainingDataset<KripkeState>::get_epsilon_node_id_string()
-        << " -> " << TrainingDataset<KripkeState>::get_goal_parent_id_string()
-        << " [label=\""
-        << TrainingDataset<KripkeState>::get_to_goal_edge_id_string() << "\"];"
-        << std::endl;
-    ofs << training_dataset->get_goal_string();
+  ofs << "  " << TrainingDataset<KripkeState>::get_epsilon_node_id_string()
+      << " -> " << TrainingDataset<KripkeState>::get_goal_parent_id_string()
+      << " [label=\""
+      << TrainingDataset<KripkeState>::get_to_goal_edge_id_string() << "\"];"
+      << std::endl;
+  ofs << training_dataset->get_goal_string();
 
-    ofs << "  " << TrainingDataset<KripkeState>::get_epsilon_node_id_string()
-        << " -> "
-        << std::to_string(pointed_hash)
-        << " [label=\""
-        << TrainingDataset<KripkeState>::get_to_state_edge_id_string() << "\"];"
-        << std::endl;
-
+  ofs << "  " << TrainingDataset<KripkeState>::get_epsilon_node_id_string()
+      << " -> " << std::to_string(pointed_hash) << " [label=\""
+      << TrainingDataset<KripkeState>::get_to_state_edge_id_string() << "\"];"
+      << std::endl;
 
   // Print nodes Removed to minimize the size of the dataset
   /*for (const auto& [hash, id] : world_map) {
@@ -735,8 +731,7 @@ void HelperPrint::print_dataset_format(const KripkeState &kstate,
         auto to_hash = to_pw.get_id();
         // edge_map[{from_hash, to_hash}].insert(ag);
 
-        auto from_label =
-            std::to_string(from_hash);
+        auto from_label = std::to_string(from_hash);
         auto to_label = std::to_string(to_hash);
         ofs << "  " << from_label << " -> " << to_label << " [label=\""
             << training_dataset->get_unique_a_id_from_map(ag) << "\"];"
@@ -745,12 +740,9 @@ void HelperPrint::print_dataset_format(const KripkeState &kstate,
     }
   }
 
-
 #endif
 
   ofs << "}" << std::endl;
-
-
 }
 
 std::vector<std::string>

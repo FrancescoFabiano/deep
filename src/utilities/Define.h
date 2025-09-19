@@ -53,10 +53,19 @@ using StringSetsSet = std::set<StringsSet>; ///< Formula in DNF (not grounded).
 /// \name Domain Related
 ///@{
 
-static constexpr auto MAX_FLUENT_NUMBER   = 32;  ///< Maximum length of the bitmask, and therefore the maximum number of fluents in the domain experiments. These constants are introduced to allow bitmask representation for GNNs, and are only checked if GNN is used.
-static constexpr auto MAX_REPETITION_BITS = 16;  ///< Maximum number of bits usable to represent the repetition number. These constants are introduced to allow bitmask representation for GNNs, and are only checked if GNN is used.
-constexpr auto MAX_REPETITION = (1ULL << MAX_REPETITION_BITS) - 1; ///< Maximum repetition number that can be represented with MAX_REPETITION_BITS bits.
-
+static constexpr auto MAX_FLUENT_NUMBER =
+    32; ///< Maximum length of the bitmask, and therefore the maximum number of
+        ///< fluents in the domain experiments. These constants are introduced
+        ///< to allow bitmask representation for GNNs, and are only checked if
+        ///< GNN is used.
+static constexpr auto MAX_REPETITION_BITS =
+    16; ///< Maximum number of bits usable to represent the repetition number.
+        ///< These constants are introduced to allow bitmask representation for
+        ///< GNNs, and are only checked if GNN is used.
+constexpr auto MAX_REPETITION =
+    (1ULL << MAX_REPETITION_BITS) -
+    1; ///< Maximum repetition number that can be represented with
+       ///< MAX_REPETITION_BITS bits.
 
 using Fluent =
     boost::dynamic_bitset<>;         ///< Unique id representation of a fluent.
