@@ -186,6 +186,7 @@ ArgumentParser::ArgumentParser() : app("deep") {
       ->default_val("10");
 
 #ifdef DEBUG
+    ///\TODO for debug pourpouse we are now tranforming mapped into bitmask
   dataset_group->add_flag(
       "--dataset_mapped", m_dataset_mapped,
       "Use mapped (compact) node labels in dataset generation. If not set, "

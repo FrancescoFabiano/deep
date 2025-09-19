@@ -524,12 +524,81 @@ void HelperPrint::print_dataset_format(const KripkeState &kstate,
 
 
   std::unordered_map<KripkeWorldId, std::string> world_map;
+  /*\TODO: MAPPED VERSION, OVERWRITTEN BY BITMASK FOR TESTING FOR NOW
   int world_counter = training_dataset->get_shift_state_ids();
+     */
 
   // Assign compact IDs
   for (const auto &pw : kstate.get_worlds()) {
     if (const auto hash = pw.get_id(); !world_map.contains(hash)) {
+      /*\TODO: MAPPED VERSION, OVERWRITTEN BY BITMASK FOR TESTING FOR NOW
       world_map[hash] = std::to_string(world_counter++);
+      */
+
+#ifdef DEBUG
+  if (pw.get_fluent_set().size() >= MAX_FLUENT_NUMBER)
+  {
+    ExitHandler::exit_with_message(
+       ExitHandler::ExitCode::GNNBitmaskLengthError,
+       "The number of fluents in the world exceeds the maximum allowed. "
+       "Increase MAX_NUM_FLUENTS in define.h, and ensure that all training data "
+       "uses the same padding value. Verify that this value is consistently passed "
+       "to the GNN during training and correctly applied during inference.");
+  }
+
+
+      //std::cout << "[DEBUG] repetition is " << pw.get_repetition() << " and MAX_REPETITION is " << MAX_REPETITION << std::endl;
+
+      if (pw.get_repetition() >= MAX_REPETITION) {
+        ExitHandler::exit_with_message(
+           ExitHandler::ExitCode::GNNBitmaskRepetitionError,
+            "The repetition number exceeds the maximum allowed. "
+            "Increase MAX_REPETITION_BITS in define.h, and ensure that all training data "
+            "uses the same value. Verify that this value is consistently passed "
+            "to the GNN during training and correctly applied during inference."
+        );
+      }
+#endif
+
+      // Preallocate bitmask of length max_size_fluent filled with '0'
+      std::string bitmask(MAX_FLUENT_NUMBER, '0');
+      size_t idx = 0;
+
+      for (Fluent fluent : pw.get_fluent_set())
+      {
+        if (!FormulaHelper::is_negated(fluent))
+        {
+          if (idx < bitmask.size())
+          {
+            bitmask[idx] = '1';
+          }
+          else
+          {
+            ExitHandler::exit_with_message(
+       ExitHandler::ExitCode::GNNBitmaskLengthError,
+       "The number of fluents in the world exceeds the maximum allowed. "
+       "Increase MAX_NUM_FLUENTS in define.h, and ensure that all training data "
+       "uses the same padding value. Verify that this value is consistently passed "
+       "to the GNN during training and correctly applied during inference.");
+          }
+        }
+        idx++;
+      }
+
+
+      // Convert repetition into binary string padded to x bits
+      std::string repetition_bits(MAX_REPETITION_BITS, '0');
+      for (int i = 0; i < MAX_REPETITION_BITS; ++i) {
+        // Fill from right to left (LSB → last position)
+        if (pw.get_repetition() & (1 << i)) {
+          repetition_bits[MAX_REPETITION_BITS - 1 - i] = '1';
+        }
+      }
+
+      // Prepend repetition bits to fluent bitmask
+      std::string final_bitmask = repetition_bits + bitmask;
+
+      world_map[hash] = final_bitmask;
     }
   }
 
@@ -618,7 +687,6 @@ void HelperPrint::print_dataset_format(const KripkeState &kstate,
           << std::endl;
     }
   }*/
-
 
 #else
 
