@@ -61,8 +61,7 @@ void ArgumentParser::parse(int argc, char **argv) {
 
     // --- Dataset mode consistency check ---
     if (!m_dataset_mode &&
-        (app.count("--dataset_depth") || app.count("--dataset_mapped") ||
-         app.count("--dataset_both"))) {
+        app.count("--dataset_depth")) {
       ExitHandler::exit_with_message(
           ExitHandler::ExitCode::ArgParseError,
           "Dataset-related options (--dataset_depth, --dataset_mapped, "
@@ -70,6 +69,19 @@ void ArgumentParser::parse(int argc, char **argv) {
           "were set but --dataset mode is not enabled. Please use --dataset to "
           "activate dataset mode.");
     }
+
+#ifdef DEBUG
+      if (!m_dataset_mode &&
+    app.count("--dataset_mapped") ||
+     app.count("--dataset_both"))) {
+          ExitHandler::exit_with_message(
+              ExitHandler::ExitCode::ArgParseError,
+              "Dataset-related options (--dataset_depth, --dataset_mapped, "
+              "--dataset_both) "
+              "were set but --dataset mode is not enabled. Please use --dataset to "
+              "activate dataset mode.");
+     }
+#endif
 
     // --- Bisimulation consistency check ---
     if (!m_bisimulation && app.count("--bisimulation_type")) {
