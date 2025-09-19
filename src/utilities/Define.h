@@ -59,7 +59,7 @@ static constexpr auto MAX_FLUENT_NUMBER =
         ///< to allow bitmask representation for GNNs, and are only checked if
         ///< GNN is used.
 static constexpr auto MAX_REPETITION_BITS =
-    16; ///< Maximum number of bits usable to represent the repetition number.
+    12; ///< Maximum number of bits usable to represent the repetition number.
         ///< These constants are introduced to allow bitmask representation for
         ///< GNNs, and are only checked if GNN is used.
 constexpr auto MAX_REPETITION =

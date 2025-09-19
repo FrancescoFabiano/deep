@@ -72,7 +72,7 @@ void ArgumentParser::parse(int argc, char **argv) {
 
 #ifdef DEBUG
       if (!m_dataset_mode &&
-    app.count("--dataset_mapped") ||
+    (app.count("--dataset_mapped") ||
      app.count("--dataset_both"))) {
           ExitHandler::exit_with_message(
               ExitHandler::ExitCode::ArgParseError,
