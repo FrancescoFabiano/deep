@@ -273,7 +273,7 @@ void GraphNN<StateRepr>::compare_predictions(const State<StateRepr> &state,
 
   state.print_dataset_format(
       ofs, !ArgumentParser::get_instance().get_dataset_mapped(),
-      ArgumentParser::get_instance().get_dataset_merged());
+      ArgumentParser::get_instance().get_dataset_separated());
 
   const std::string output_file = "prediction_results.out";
   const std::string shell_script = "lib/RL/run_check.sh";
@@ -364,7 +364,7 @@ GraphNN<StateRepr>::get_score_python(const State<StateRepr> &state) {
   }
   state.print_dataset_format(
       ofs, !ArgumentParser::get_instance().get_dataset_mapped(),
-      ArgumentParser::get_instance().get_dataset_merged());
+      ArgumentParser::get_instance().get_dataset_separated());
 
   // Run the external Python script for NN inference
   std::string command = "./lib/RL/run_prediction.sh " + m_checking_file_path +
@@ -489,15 +489,32 @@ void GraphNN<StateRepr>::populate_with_goal() {
                                    goal_graph_string.end(), pattern);
   const std::sregex_iterator end;
 
-  if (ArgumentParser::get_instance().get_dataset_merged()) {
+#ifdef DEBUG
+
+  if (!ArgumentParser::get_instance().get_dataset_separated()) {
     constexpr auto epsilon_id =
-        TrainingDataset<KripkeState>::get_epsilon_node_id_int();
+         TrainingDataset<KripkeState>::get_epsilon_node_id_int();
     constexpr auto goal_parent_id =
         TrainingDataset<KripkeState>::get_goal_parent_id_int();
 
     add_edge(epsilon_id, goal_parent_id,
              TrainingDataset<KripkeState>::get_to_goal_edge_id_int());
   }
+
+#else
+
+  constexpr auto epsilon_id =
+        TrainingDataset<KripkeState>::get_epsilon_node_id_int();
+  constexpr auto goal_parent_id =
+      TrainingDataset<KripkeState>::get_goal_parent_id_int();
+
+  add_edge(epsilon_id, goal_parent_id,
+           TrainingDataset<KripkeState>::get_to_goal_edge_id_int());
+
+#endif
+
+
+
 
   for (auto it = begin; it != end; ++it) {
     const size_t src = std::stoul((*it)[1]);
@@ -507,7 +524,11 @@ void GraphNN<StateRepr>::populate_with_goal() {
     add_edge(src, dst, label);
   }
 
-  if (!ArgumentParser::get_instance().get_dataset_merged()) {
+
+
+#ifdef DEBUG
+
+  if (ArgumentParser::get_instance().get_dataset_separated()) {
     fill_graph_tensor(m_goal_graph_tensor);
 
     m_edge_dst.clear();
@@ -517,6 +538,10 @@ void GraphNN<StateRepr>::populate_with_goal() {
     m_node_to_symbolic.clear();
     m_symbolic_id = 0;
   }
+
+#endif
+
+
 
   m_edges_initial_size = m_edge_labels.size();
   m_node_ids_initial_size = m_real_node_ids.size();
@@ -537,13 +562,30 @@ GraphNN<StateRepr>::state_to_tensor_minimal(const KripkeState &kstate) {
 
   const auto m_node_to_symbolic_original = m_node_to_symbolic;
 
-  if (ArgumentParser::get_instance().get_dataset_merged()) {
+
+
+#ifdef DEBUG
+
+  if (!ArgumentParser::get_instance().get_dataset_separated()) {
     const auto state_parent_id = kstate.get_pointed().get_id();
 
     add_edge(TrainingDataset<KripkeState>::get_epsilon_node_id_int(),
              state_parent_id,
              TrainingDataset<KripkeState>::get_to_state_edge_id_int());
   }
+
+#else
+
+  const auto state_parent_id = kstate.get_pointed().get_id();
+
+  add_edge(TrainingDataset<KripkeState>::get_epsilon_node_id_int(),
+           state_parent_id,
+           TrainingDataset<KripkeState>::get_to_state_edge_id_int());
+
+#endif
+
+
+
 
   const auto &training_dataset = TrainingDataset<KripkeState>::get_instance();
 
@@ -598,13 +640,13 @@ bool GraphNN<StateRepr>::check_tensor_against_dot(
   }
   state.print_dataset_format(
       ofs_orig, !ArgumentParser::get_instance().get_dataset_mapped(),
-      ArgumentParser::get_instance().get_dataset_merged());
+      !ArgumentParser::get_instance().get_dataset_separated());
   ofs_orig.close();
 
   // Prepare modified path string
   bool ret =
       write_and_compare_tensor_to_dot(m_checking_file_path, state_tensor);
-  if (!ArgumentParser::get_instance().get_dataset_merged() && ret) {
+  if (!ArgumentParser::get_instance().get_dataset_separated() && ret) {
     ret = write_and_compare_tensor_to_dot(m_goal_file_path,
                                           m_goal_graph_tensor) &&
           ret;

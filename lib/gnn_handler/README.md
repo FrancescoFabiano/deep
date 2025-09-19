@@ -26,7 +26,7 @@ trees. Each search space is modeled as a set of Kripke structures.
 Before creating the dataloader and building the model, training data has to be generated.
 An example of data generation is:
 ```console
-../../cmake-build-release-nn/bin/deep ../../exp/example.txt --dataset --dataset_merged
+../../cmake-build-release-nn/bin/deep ../../exp/example.txt --dataset
 ```
 
 ### Launch

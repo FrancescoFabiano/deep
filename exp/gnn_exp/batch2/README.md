@@ -63,9 +63,9 @@ Run inference using the trained models and aggregate the results into the `_resu
 #### GNN heuristic
 This command runs inference using the GNN heuristic with the appropriate model generated in the previous step.
 ```console
-python3 scripts/gnn_exp/bulk_coverage_run.py cmake-build-release-nn/bin/deep exp/gnn_exp/batch2/ --threads 8 --binary_args "-s Astar -u GNN -c -b" --timeout 600
+python3 scripts/gnn_exp/bulk_coverage_run.py cmake-build-release-nn/bin/deep exp/gnn_exp/batch2/ --threads 8 --binary_args "-s Astar -u GNN -c -b --dataset_separated" --timeout 600
 ```
-> Note that the `--dataset_merged` argument is not used here (in the `--binary_args`), as the models are trained on instances with the same goal but different initial states.
+> Note that the `--dataset_separated` argument is used here (in the `--binary_args`), as the models are trained on instances with the same goal but different initial states.
 
 #### Breadth-First Search
 This command runs inference using the BFS heuristic, which is the baseline for comparison.

@@ -25,8 +25,8 @@ def process_file(deep_exe, file_path, target_folder, no_goal, depth, discard_fac
         "--dataset_discard_factor", str(discard_factor)
     ]
 
-    if not no_goal:
-        command.append("--dataset_merged")
+    if no_goal:
+        command.append("--dataset_separated")
 
     try:
         result = subprocess.run(
@@ -115,7 +115,7 @@ def main():
     parser.add_argument("base_folder", help="Root folder containing the <domain_name>/Training and _models/ folders")
     parser.add_argument("domain_name", help="Domain name (folder under base_folder containing 'Training')")
     parser.add_argument("deep_exe", help="Path to the deep C++ executable")
-    parser.add_argument("--no_goal", action="store_true", help="Run without the --dataset_merged argument")
+    parser.add_argument("--no_goal", action="store_true", help="Run with the --dataset_separated argument")
     parser.add_argument("--depth", type=int, default=25, help="Depth for dataset generation (default: 25)")
     parser.add_argument("--discard_factor", dest="discard_factor", type=float, default=0.4, help="Maximum discard factor (default: 0.4)")
 

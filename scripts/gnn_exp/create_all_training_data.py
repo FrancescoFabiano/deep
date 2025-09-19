@@ -17,7 +17,7 @@ def main():
     )
     parser.add_argument("batch_path", help="Path to the batch folder (e.g., exp/gnn_exp/batch1/)")
     parser.add_argument("--deep_exe", default="cmake-release-nn/bin/deep", help="Path to the deep C++ executable")
-    parser.add_argument("--no_goal", action="store_true", help="Omit --dataset_merged from C++ execution")
+    parser.add_argument("--no_goal", action="store_true", help="Add --dataset_separated from C++ execution")
     parser.add_argument("--depth", type=int, default=25, help="Depth for dataset generation (default: 25)")
     parser.add_argument("--discard_factor", dest="discard_factor", type=float, default=0.4, help="Maximum discard factor (default: 0.4)")
 

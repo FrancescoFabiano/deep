@@ -121,10 +121,10 @@ public:
 
   /**
    * \brief Gets the flag indicating if dataset entry point is the couple
-   * goal,state. \return true if dataset entry point is the couple goal,state,
-   * false otherwise.
+   * goal,state. \return false if dataset entry point is the couple goal,state,
+   * true otherwise.
    */
-  [[nodiscard]] bool get_dataset_merged() const noexcept;
+  [[nodiscard]] bool get_dataset_separated() const noexcept;
 
   /**
    * \brief Gets the flag indicating if both merged entry points are used.
@@ -212,7 +212,7 @@ private:
       0.4; ///< Maximum discard factor for dataset generation.
 
   bool m_dataset_mapped = false;
-  bool m_dataset_merged = false; ///< Flag to indicate if dataset entry point is
+  bool m_dataset_separated = false; ///< Flag to indicate if dataset entry point is
                                  ///< the couple goal,state.
   bool m_dataset_merged_both =
       false; ///< Flag to indicate if both merged entry points are used.

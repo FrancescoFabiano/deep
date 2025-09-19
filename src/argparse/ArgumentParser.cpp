@@ -184,6 +184,8 @@ ArgumentParser::ArgumentParser() : app("deep") {
           "--dataset_depth", m_dataset_depth,
           "Set the maximum depth for dataset generation (default: 10).")
       ->default_val("10");
+
+#ifdef DEBUG
   dataset_group->add_flag(
       "--dataset_mapped", m_dataset_mapped,
       "Use mapped (compact) node labels in dataset generation. If not set, "
@@ -191,11 +193,12 @@ ArgumentParser::ArgumentParser() : app("deep") {
   dataset_group->add_flag(
       "--dataset_both", m_dataset_both,
       "Generate both mapped and hashed node labels in the dataset.");
-  dataset_group->add_flag("--dataset_merged", m_dataset_merged,
-                          "Enable merged dataset generation mode.");
+  dataset_group->add_flag("--dataset_separated", m_dataset_separated,
+                          "Enable non-merged dataset generation mode.");
   dataset_group->add_flag(
       "--dataset_merged_both", m_dataset_merged_both,
       "Enable both merged and non-merged dataset generation.");
+#endif
   dataset_group
       ->add_option("--dataset_discard_factor", m_dataset_discard_factor,
                    "Set the maximum value for discard factor during dataset "
@@ -363,8 +366,8 @@ bool ArgumentParser::get_dataset_both() const noexcept {
   return m_dataset_both;
 }
 
-bool ArgumentParser::get_dataset_merged() const noexcept {
-  return m_dataset_merged;
+bool ArgumentParser::get_dataset_separated() const noexcept {
+  return m_dataset_separated;
 }
 
 bool ArgumentParser::get_dataset_merged_both() const noexcept {

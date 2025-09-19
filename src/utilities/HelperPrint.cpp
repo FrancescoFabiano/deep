@@ -513,10 +513,17 @@ void HelperPrint::print_dot_format(const KripkeState &kstate,
 }
 
 void HelperPrint::print_dataset_format(const KripkeState &kstate,
-                                       std::ofstream &ofs, const bool use_hash,
-                                       const bool is_merged) {
-  std::unordered_map<KripkeWorldId, std::string> world_map;
+                                       std::ofstream &ofs, [[maybe_unused]] const bool use_hash,
+                                       [[maybe_unused]] const bool is_merged) {
+
+
   const auto training_dataset = &TrainingDataset<KripkeState>::get_instance();
+
+
+#ifdef DEBUG
+
+
+  std::unordered_map<KripkeWorldId, std::string> world_map;
   int world_counter = training_dataset->get_shift_state_ids();
 
   // Assign compact IDs
@@ -612,7 +619,70 @@ void HelperPrint::print_dataset_format(const KripkeState &kstate,
     }
   }*/
 
+
+#else
+
+
+  ofs << "digraph G {" << std::endl;
+
+  // Pointed world
+  const auto pointed_hash = kstate.get_pointed().get_id();
+
+  /// For now, we do not adjust if we use hash. The overlap should be minimal
+  /// and not relevant If it becomes relevant, simply add the shift to the hash
+  /// (checking for overflow)
+
+  // In here we print the initial node, the connection to it and the whole goal
+  // subgraph
+    ofs << "  " << TrainingDataset<KripkeState>::get_epsilon_node_id_string()
+        << " -> " << TrainingDataset<KripkeState>::get_goal_parent_id_string()
+        << " [label=\""
+        << TrainingDataset<KripkeState>::get_to_goal_edge_id_string() << "\"];"
+        << std::endl;
+    ofs << training_dataset->get_goal_string();
+
+    ofs << "  " << TrainingDataset<KripkeState>::get_epsilon_node_id_string()
+        << " -> "
+        << std::to_string(pointed_hash)
+        << " [label=\""
+        << TrainingDataset<KripkeState>::get_to_state_edge_id_string() << "\"];"
+        << std::endl;
+
+
+  // Print nodes Removed to minimize the size of the dataset
+  /*for (const auto& [hash, id] : world_map) {
+      ofs << (use_hash ? std::to_string(hash) : id) << ";" << std::endl;
+  }*/
+
+  // ofs << (use_hash ? std::to_string(pointed_hash) : world_map[pointed_hash])
+  //     << " [shape=doublecircle];" << std::endl;
+
+  // Edges
+  // std::map<std::pair<KripkeWorldId, KripkeWorldId>, std::set<Agent>>
+  // edge_map;
+  for (const auto &[from_pw, from_map] : kstate.get_beliefs()) {
+    auto from_hash = from_pw.get_id();
+    for (const auto &[ag, to_set] : from_map) {
+      for (const auto &to_pw : to_set) {
+        auto to_hash = to_pw.get_id();
+        // edge_map[{from_hash, to_hash}].insert(ag);
+
+        auto from_label =
+            std::to_string(from_hash);
+        auto to_label = std::to_string(to_hash);
+        ofs << "  " << from_label << " -> " << to_label << " [label=\""
+            << training_dataset->get_unique_a_id_from_map(ag) << "\"];"
+            << std::endl;
+      }
+    }
+  }
+
+
+#endif
+
   ofs << "}" << std::endl;
+
+
 }
 
 std::vector<std::string>

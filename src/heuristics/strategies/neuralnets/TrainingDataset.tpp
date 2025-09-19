@@ -133,14 +133,14 @@ TrainingDataset<StateRepr>::TrainingDataset() {
       std::filesystem::create_directories(m_training_raw_files_folder);
       if (ArgumentParser::get_instance().get_dataset_mapped() ||
           ArgumentParser::get_instance().get_dataset_both()) {
-        if (ArgumentParser::get_instance().get_dataset_merged() ||
+        if (!ArgumentParser::get_instance().get_dataset_separated() ||
             ArgumentParser::get_instance().get_dataset_merged_both()) {
           std::filesystem::create_directories(
               m_training_raw_files_folder +
               std::string(OutputPaths::DATASET_NN_DATASET_MAPPED) + "/" +
               std::string(OutputPaths::DATASET_NN_DATASET_MERGED) + "/");
         }
-        if (!ArgumentParser::get_instance().get_dataset_merged() ||
+        if (ArgumentParser::get_instance().get_dataset_separated() ||
             ArgumentParser::get_instance().get_dataset_merged_both()) {
           std::filesystem::create_directories(
               m_training_raw_files_folder +
@@ -150,14 +150,14 @@ TrainingDataset<StateRepr>::TrainingDataset() {
       }
       if (!ArgumentParser::get_instance().get_dataset_mapped() ||
           ArgumentParser::get_instance().get_dataset_both()) {
-        if (ArgumentParser::get_instance().get_dataset_merged() ||
+        if (!ArgumentParser::get_instance().get_dataset_separated() ||
             ArgumentParser::get_instance().get_dataset_merged_both()) {
           std::filesystem::create_directories(
               m_training_raw_files_folder +
               std::string(OutputPaths::DATASET_NN_DATASET_HASHED) + "/" +
               std::string(OutputPaths::DATASET_NN_DATASET_MERGED) + "/");
         }
-        if (!ArgumentParser::get_instance().get_dataset_merged() ||
+        if (ArgumentParser::get_instance().get_dataset_separated() ||
             ArgumentParser::get_instance().get_dataset_merged_both()) {
           std::filesystem::create_directories(
               m_training_raw_files_folder +
@@ -198,7 +198,7 @@ TrainingDataset<StateRepr>::TrainingDataset() {
   // This stores the goal tree in a string for efficient printing
   generate_goal_tree_subgraph();
 
-  if (ArgumentParser::get_instance().get_dataset_merged() ||
+  if (!ArgumentParser::get_instance().get_dataset_separated() ||
       ArgumentParser::get_instance().get_dataset_merged_both()) {
     print_goal_tree(); // Only needed if we do not use the goal and state merged
                        // together
@@ -689,12 +689,12 @@ void TrainingDataset<StateRepr>::add_to_dataset(const State<StateRepr> &state,
     filename_emap = "NOT CALCULATED";
     filename_emap_merged = "NOT CALCULATED";
   }
-  if (ArgumentParser::get_instance().get_dataset_merged() &&
+  if (!ArgumentParser::get_instance().get_dataset_separated() &&
       !ArgumentParser::get_instance().get_dataset_merged_both()) {
     filename_hash = "NOT CALCULATED";
     filename_emap = "NOT CALCULATED";
   }
-  if (!ArgumentParser::get_instance().get_dataset_merged() &&
+  if (ArgumentParser::get_instance().get_dataset_separated() &&
       !ArgumentParser::get_instance().get_dataset_merged_both()) {
     filename_hash_merged = "NOT CALCULATED";
     filename_emap_merged = "NOT CALCULATED";
@@ -717,32 +717,45 @@ std::string TrainingDataset<StateRepr>::print_state_for_dataset(
       std::string(6 - std::to_string(m_file_counter).length(), '0') +
       std::to_string(m_file_counter);
 
+
+#ifdef DEBUG
+
   if (ArgumentParser::get_instance().get_dataset_mapped() ||
       ArgumentParser::get_instance().get_dataset_both()) {
-    if (ArgumentParser::get_instance().get_dataset_merged() ||
+    if (!ArgumentParser::get_instance().get_dataset_separated() ||
         ArgumentParser::get_instance().get_dataset_merged_both()) {
       print_state_for_dataset_internal(
           state, base_filename, OutputPaths::DATASET_NN_DATASET_MAPPED, true);
-    }
-    if (!ArgumentParser::get_instance().get_dataset_merged() ||
+        }
+    if (ArgumentParser::get_instance().get_dataset_separated() ||
         ArgumentParser::get_instance().get_dataset_merged_both()) {
       print_state_for_dataset_internal(
           state, base_filename, OutputPaths::DATASET_NN_DATASET_MAPPED, false);
-    }
-  }
+        }
+      }
   if (!ArgumentParser::get_instance().get_dataset_mapped() ||
       ArgumentParser::get_instance().get_dataset_both()) {
-    if (ArgumentParser::get_instance().get_dataset_merged() ||
+    if (!ArgumentParser::get_instance().get_dataset_separated() ||
         ArgumentParser::get_instance().get_dataset_merged_both()) {
       print_state_for_dataset_internal(
           state, base_filename, OutputPaths::DATASET_NN_DATASET_HASHED, true);
-    }
-    if (!ArgumentParser::get_instance().get_dataset_merged() ||
+        }
+    if (ArgumentParser::get_instance().get_dataset_separated() ||
         ArgumentParser::get_instance().get_dataset_merged_both()) {
       print_state_for_dataset_internal(
           state, base_filename, OutputPaths::DATASET_NN_DATASET_HASHED, false);
-    }
-  }
+        }
+      }
+
+#else
+
+  print_state_for_dataset_internal(
+            state, base_filename, OutputPaths::DATASET_NN_DATASET_HASHED, true);
+
+#endif
+
+
+
 
   return base_filename;
 }

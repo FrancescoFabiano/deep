@@ -108,12 +108,8 @@ Assuming the binary is located at `./cmake-build-release-nn/bin/deep`, here are 
 # Plan using the heuristic 'SUBGOALS' and 'Heuristics First Search' search
 ./cmake-build-release-nn/bin/deep exp/example.txt -s HFS --heuristics SUBGOALS
 
-# Plan using the 'GNN' heuristic and 'Astar' search with the `--dataset_merged` flag 
+# Plan using the 'GNN' heuristic and 'Astar' search
 # on the default model. This includes the goal in the e-state representation for GNN.
-./cmake-build-release-nn/bin/deep exp/example.txt -s Astar --heuristics GNN --dataset_merged
-
-# Plan using the 'GNN' heuristic and 'Astar' search with the `--dataset_merged` flag 
-# on the default model. Useful for exmaples and models in exp/batch2
 ./cmake-build-release-nn/bin/deep exp/example.txt -s Astar --heuristics GNN
 
 # Execute actions [open_a, peek_a] step by step
