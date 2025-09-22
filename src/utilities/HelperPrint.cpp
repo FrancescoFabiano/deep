@@ -513,33 +513,11 @@ void HelperPrint::print_dot_format(const KripkeState &kstate,
   ofs << "}" << std::endl;
 }
 
-void HelperPrint::print_dataset_format(const KripkeState &kstate,
-                                       std::ofstream &ofs) {
-  const auto training_dataset = &TrainingDataset<KripkeState>::get_instance();
 
-  const bool is_merged =
-      !ArgumentParser::get_instance().get_dataset_separated();
-  std::unordered_map<KripkeWorldId, std::string> world_map;
+std::string HelperPrint::kworld_to_bitmask(const KripkeWorldPointer &to_convert, bool is_merged) {
 
-  const auto dataset_type = ArgumentParser::get_instance().get_dataset_type();
-
-  int world_counter = training_dataset->get_shift_state_ids();
-
-  // Assign compact IDs
-  for (const auto &pw : kstate.get_worlds()) {
-    if (const auto hash = pw.get_id(); !world_map.contains(hash)) {
-      switch (dataset_type) {
-      case DatasetType::HASHED: {
-        world_map[hash] = std::to_string(hash);
-        break;
-      }
-      case DatasetType::MAPPED: {
-        world_map[hash] = std::to_string(world_counter++);
-        break;
-      }
-      case DatasetType::BITMASK: {
 #ifdef DEBUG
-        if (pw.get_fluent_set().size() >= MAX_FLUENT_NUMBER) {
+        if (to_convert.get_fluent_set().size() >= MAX_FLUENT_NUMBER) {
           ExitHandler::exit_with_message(
               ExitHandler::ExitCode::GNNBitmaskLengthError,
               "The number of fluents in the world exceeds the maximum allowed. "
@@ -554,7 +532,7 @@ void HelperPrint::print_dataset_format(const KripkeState &kstate,
         // std::cout << "[DEBUG] repetition is " << pw.get_repetition() << " and
         // MAX_REPETITION is " << MAX_REPETITION << std::endl;
 
-        if (pw.get_repetition() >= MAX_REPETITION) {
+        if (to_convert.get_repetition() >= MAX_REPETITION) {
           ExitHandler::exit_with_message(
               ExitHandler::ExitCode::GNNBitmaskRepetitionError,
               "The repetition number exceeds the maximum allowed. "
@@ -571,7 +549,7 @@ void HelperPrint::print_dataset_format(const KripkeState &kstate,
         std::string bitmask(MAX_FLUENT_NUMBER, '0');
         size_t idx = 0;
 
-        for (Fluent fluent : pw.get_fluent_set()) {
+        for (Fluent fluent : to_convert.get_fluent_set()) {
           if (!FormulaHelper::is_negated(fluent)) {
             if (idx < bitmask.size()) {
               bitmask[idx] = '1';
@@ -595,7 +573,7 @@ void HelperPrint::print_dataset_format(const KripkeState &kstate,
         std::string repetition_bits(MAX_REPETITION_BITS, '0');
         for (size_t i = 0; i < MAX_REPETITION_BITS; ++i) {
           // Fill from right to left (LSB → last position)
-          if (pw.get_repetition() & (1 << i)) {
+          if (to_convert.get_repetition() & (1 << i)) {
             repetition_bits[MAX_REPETITION_BITS - 1 - i] = '1';
           }
         }
@@ -603,11 +581,38 @@ void HelperPrint::print_dataset_format(const KripkeState &kstate,
         std::string final_bitmask = repetition_bits + bitmask;
         // Prepend repetition bits to fluent bitmask
         if (is_merged) {
-          final_bitmask = std::string(GOAL_ENCODING_BITS, '0') + final_bitmask;
+          final_bitmask = final_bitmask + std::string(GOAL_ENCODING_BITS, '0');
         }
 
-        world_map[hash] = final_bitmask;
+  return final_bitmask;
+}
 
+void HelperPrint::print_dataset_format(const KripkeState &kstate,
+                                       std::ofstream &ofs) {
+  const auto training_dataset = &TrainingDataset<KripkeState>::get_instance();
+
+  const bool is_merged =
+      !ArgumentParser::get_instance().get_dataset_separated();
+  std::unordered_map<KripkeWorldId, std::string> world_map;
+
+  const auto dataset_type = ArgumentParser::get_instance().get_dataset_type();
+
+  int world_counter = training_dataset->get_shift_state_ids();
+
+  // Assign IDs
+  for (const auto &pw : kstate.get_worlds()) {
+    if (const auto hash = pw.get_id(); !world_map.contains(hash)) {
+      switch (dataset_type) {
+      case DatasetType::HASHED: {
+        world_map[hash] = std::to_string(hash);
+        break;
+      }
+      case DatasetType::MAPPED: {
+        world_map[hash] = std::to_string(world_counter++);
+        break;
+      }
+      case DatasetType::BITMASK: {
+        world_map[hash] = kworld_to_bitmask(pw,is_merged);
         break;
       }
       default: {

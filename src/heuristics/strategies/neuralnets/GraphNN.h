@@ -16,7 +16,8 @@
  * - edge_dst: 1D array of symbolic destination node IDs for each edge.
  * - edge_attrs: 1D array of edge attributes or labels, aligned with edges.
  * - real_node_ids: 1D array mapping symbolic node IDs to their corresponding
- * real or hashed node IDs.
+ * - real_node_ids_bitmask: multiDim array mapping symbolic node IDs to their corresponding
+ * BITMASK IDs.
  *
  * All arrays are designed for compatibility with ONNX Runtime and GNN models
  * exported to ONNX format.
@@ -39,6 +40,10 @@ struct GraphTensor {
   std::vector<uint64_t> real_node_ids;
   ///< [num_nodes, 1] Mapping from symbolic
   ///< node IDs to real/hashed node IDs.
+    ///< aligned with edge_ids.
+
+      std::vector<std::vector<bool>> real_node_ids_bitmask;
+///< Special Case: BITMASK nodes have BITMASKS as real IDs (lists of 0-1)
 };
 
 /**
@@ -126,6 +131,9 @@ private:
   std::vector<size_t> m_real_node_ids;
   ///< Vector storing real node IDs in symbolic order.
   ///< (Assume that the position is meaningful)
+   std::vector<std::vector<bool>> m_real_node_ids_bitmask;
+    ///< Vector storing bitmask IDs in symbolic order.
+    ///< (Assume that the position is meaningful)
   std::vector<int64_t> m_edge_src;
   ///< Source node IDs for each edge. (Assume
   ///< that the position is meaningful)
@@ -283,9 +291,23 @@ private:
    * vector, and increments the m_symbolic_id counter.
    *
    * \param node The real node ID to assign or retrieve a symbolic ID for.
+    * \param kworld the info of the kstate to encode the bitmask.
    * \return The symbolic ID corresponding to the node.
    */
-  [[nodiscard]] size_t get_symbolic_id(size_t node);
+  [[nodiscard]] size_t get_symbolic_id(size_t node, const KripkeWorldPointer& kworld);
+    /**
+ * \brief Returns the symbolic ID for a node, assigning a new one if it does
+ * not exist.
+ *
+ * If the given node is already present in the m_node_to_symbolic map, returns
+ * its symbolic ID. Otherwise, assigns the next available symbolic ID to the
+ * node, updates the map, appends the real node ID to the m_real_node_ids
+ * vector, and increments the m_symbolic_id counter.
+ *
+ * \param node The real node ID to assign or retrieve a symbolic ID for.
+ * \return The symbolic ID corresponding to the node.
+ */
+    [[nodiscard]] size_t get_symbolic_id(size_t node);
 
   /**
    * \brief Adds an edge to the graph representation while also adding the
@@ -299,11 +321,48 @@ private:
    *
    *
    * \param src The source node ID (real).
+   * \param src_kworld The KripkeWorldPointer associated with the source node.
    * \param dst The destination node ID (real).
+   * \param dst_kworld The KripkeWorldPointer associated with the destination node.
    * \param label The label or attribute associated with the edge.
    */
-  void add_edge(int64_t src, int64_t dst, int64_t label);
+  void add_edge(int64_t src, const KripkeWorldPointer& src_kworld, int64_t dst, const KripkeWorldPointer& dst_kworld, int64_t label);
 
+
+    /**
+ * \brief Adds an edge to the graph representation while also adding the
+ * symbolic ids of the two vertices.
+ *
+ * Appends a new edge to the internal edge lists, specifying the source node,
+ * destination node, and edge label. The order of insertion is meaningful and
+ * should be consistent with the symbolic node IDs.
+ *
+ * To get the symbolic ids it uses the function \ref get_symbolic_id.
+ *
+ *
+ * \param src The source node ID (real).
+ * \param dst The destination node ID (real).
+ * \param dst_kworld The KripkeWorldPointer associated with the destination node.
+ * \param label The label or attribute associated with the edge.
+ */
+    void add_edge(int64_t src, int64_t dst, const KripkeWorldPointer& dst_kworld, int64_t label);
+
+    /**
+ * \brief Adds an edge to the graph representation while also adding the
+ * symbolic ids of the two vertices.
+ *
+ * Appends a new edge to the internal edge lists, specifying the source node,
+ * destination node, and edge label. The order of insertion is meaningful and
+ * should be consistent with the symbolic node IDs.
+ *
+ * To get the symbolic ids it uses the function \ref get_symbolic_id.
+ *
+ *
+ * \param src The source node ID (real).
+ * \param dst The destination node ID (real).
+ * \param label The label or attribute associated with the edge.
+ */
+  void add_edge(int64_t src, int64_t dst, int64_t label);
   /**
    * \brief Parses the constant used for normalization in prediction results.
    *

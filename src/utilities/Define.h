@@ -73,6 +73,8 @@ static constexpr size_t GOAL_ENCODING_BITS =
 ///< These constants are introduced to allow bitmask representation for
 ///< GNNs, and are only checked if GNN is used.
 
+inline constexpr std::size_t BITMASK_DIM = MAX_REPETITION_BITS+ MAX_FLUENT_NUMBER + GOAL_ENCODING_BITS;
+
 ///@}
 
 /// \name Domain Related

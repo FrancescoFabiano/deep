@@ -129,6 +129,16 @@ public:
    */
   void print_dot_format(const KripkeState &kstate, std::ofstream &ofs) const;
 
+
+    /**
+ * \brief Transform a KripkeWorldPointer (a world) into the bitmask format for GNN.
+ * \param to_convert The KripkeWorldPointer to convert.
+ * \param is_merged True if the world is from a merged state (with goal encoding).
+ * \return The binary string (bitmask) representation.
+ * file.
+ */
+  static std::string kworld_to_bitmask(const KripkeWorldPointer& to_convert, bool is_merged);
+
   /**
    * \brief Print a KripkeState in format for training the GNN.
    * \param kstate The KripkeState to print.

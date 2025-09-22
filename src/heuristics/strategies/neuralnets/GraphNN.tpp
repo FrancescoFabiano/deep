@@ -400,13 +400,90 @@ GraphNN<StateRepr>::get_score_python(const State<StateRepr> &state) {
 }*/
 
 template <StateRepresentation StateRepr>
-size_t GraphNN<StateRepr>::get_symbolic_id(const size_t node) {
+size_t GraphNN<StateRepr>::get_symbolic_id(const size_t node, const KripkeWorldPointer & kworld) {
+
+  //Since we pass the kworld, we are sure this is a state node and not a goal node
+
   if (!m_node_to_symbolic.contains(node)) {
     m_node_to_symbolic[node] = m_symbolic_id++;
-    m_real_node_ids.push_back(node);
+
+    //Not converting to bitmask if:
+    // 1. Not bitmask dataset
+    if (ArgumentParser::get_instance().get_dataset_type() != DatasetType::BITMASK)
+    {
+      m_real_node_ids.push_back(node);
+    }
+    else
+    {
+       //Converting from kworld id
+       const std::string bitmask_str = HelperPrint::kworld_to_bitmask(kworld, !ArgumentParser::get_instance().get_dataset_separated());
+       std::vector<bool> bitmask;
+       bitmask.reserve(bitmask_str.size());
+       for (char c : bitmask_str) {
+         if (c == '0')      bitmask.push_back(false);
+         else if (c == '1') bitmask.push_back(true);
+         else               ExitHandler::exit_with_message(ExitHandler::ExitCode::GNNBitmaskGOALError,
+                                                "Invalid character in bitmask string.");
+       }
+       m_real_node_ids_bitmask.push_back(bitmask);
+    }
   }
   return m_node_to_symbolic[node];
 }
+
+template <StateRepresentation StateRepr>
+size_t GraphNN<StateRepr>::get_symbolic_id(const size_t node) {
+
+  //Since we do not pass information on the kworld, this is a goal node
+
+  if (!m_node_to_symbolic.contains(node)) {
+    m_node_to_symbolic[node] = m_symbolic_id++;
+
+    //Not converting to bitmask if:
+    // 1. Not bitmask dataset
+    // 2. Bitmask dataset but separated. This happens if we are doing bitmask but the goal is printed out separately in normal mode.
+    if (ArgumentParser::get_instance().get_dataset_type() != DatasetType::BITMASK ||
+      (ArgumentParser::get_instance().get_dataset_type() == DatasetType::BITMASK && ArgumentParser::get_instance().
+        get_dataset_separated()))
+    {
+      m_real_node_ids.push_back(node);
+    }
+    else
+      {
+        //Converting from goal id -- We just go from integer to binary
+        size_t to_convert = node;
+        std::vector<bool> bitmask(BITMASK_DIM, false);          // [0] = MSB, [bits-1] = LSB
+        for (std::size_t i = 0; i < BITMASK_DIM; ++i) {
+          bitmask[BITMASK_DIM - 1 - i] = static_cast<bool>(to_convert & 1ULL);
+          to_convert >>= 1ULL;
+        }
+        m_real_node_ids_bitmask.push_back(bitmask);
+      
+    }
+  }
+  return m_node_to_symbolic[node];
+}
+
+
+template <StateRepresentation StateRepr>
+void GraphNN<StateRepr>::add_edge(const int64_t src, const KripkeWorldPointer& src_kworld, const int64_t dst, const KripkeWorldPointer& dst_kworld,
+                                  const int64_t label) {
+
+  // Both src and dst have kworld information because they are states kwords and not goal nodes
+  m_edge_src.push_back(get_symbolic_id(src,src_kworld));
+  m_edge_dst.push_back(get_symbolic_id(dst,dst_kworld));
+  m_edge_labels.push_back(label);
+}
+
+template <StateRepresentation StateRepr>
+void GraphNN<StateRepr>::add_edge(const int64_t src, const int64_t dst, const KripkeWorldPointer& dst_kworld,
+                                  const int64_t label) {
+  // Only dst has kworld information because it is a state kword and not a goal node
+  m_edge_src.push_back(get_symbolic_id(src));
+  m_edge_dst.push_back(get_symbolic_id(dst,dst_kworld));
+  m_edge_labels.push_back(label);
+}
+
 
 template <StateRepresentation StateRepr>
 void GraphNN<StateRepr>::add_edge(const int64_t src, const int64_t dst,
@@ -415,6 +492,7 @@ void GraphNN<StateRepr>::add_edge(const int64_t src, const int64_t dst,
   m_edge_dst.push_back(get_symbolic_id(dst));
   m_edge_labels.push_back(label);
 }
+
 
 template <StateRepresentation StateRepr>
 void GraphNN<StateRepr>::parse_constant_for_normalization() {
@@ -482,14 +560,21 @@ void GraphNN<StateRepr>::parse_constant_for_normalization() {
 
 template <StateRepresentation StateRepr>
 void GraphNN<StateRepr>::populate_with_goal() {
-  auto const goal_graph_string =
-      TrainingDataset<StateRepr>::get_instance().get_goal_string();
+  std::string goal_graph_string;
+
+  if (ArgumentParser::get_instance().get_dataset_type() == DatasetType::BITMASK) {
+    goal_graph_string =
+        TrainingDataset<StateRepr>::get_instance().get_goal_forced_string();
+  }
+  else
+  {goal_graph_string =
+      TrainingDataset<StateRepr>::get_instance().get_goal_string();}
+
+
   const std::regex pattern(R"((\d+)\s*->\s*(\d+)\s*\[label=\"(\d+)\"\];)");
   const std::sregex_iterator begin(goal_graph_string.begin(),
                                    goal_graph_string.end(), pattern);
   const std::sregex_iterator end;
-
-#ifdef DEBUG
 
   if (!ArgumentParser::get_instance().get_dataset_separated()) {
     constexpr auto epsilon_id =
@@ -497,31 +582,18 @@ void GraphNN<StateRepr>::populate_with_goal() {
     constexpr auto goal_parent_id =
         TrainingDataset<KripkeState>::get_goal_parent_id_int();
 
-    add_edge(epsilon_id, goal_parent_id,
-             TrainingDataset<KripkeState>::get_to_goal_edge_id_int());
+    add_edge(epsilon_id, 
+             goal_parent_id,  TrainingDataset<KripkeState>::get_to_goal_edge_id_int());
   }
 
-#else
-
-  constexpr auto epsilon_id =
-      TrainingDataset<KripkeState>::get_epsilon_node_id_int();
-  constexpr auto goal_parent_id =
-      TrainingDataset<KripkeState>::get_goal_parent_id_int();
-
-  add_edge(epsilon_id, goal_parent_id,
-           TrainingDataset<KripkeState>::get_to_goal_edge_id_int());
-
-#endif
 
   for (auto it = begin; it != end; ++it) {
     const size_t src = std::stoul((*it)[1]);
     const size_t dst = std::stoul((*it)[2]);
     const size_t label = std::stoul((*it)[3]);
 
-    add_edge(src, dst, label);
+    add_edge(src,  dst,  label);
   }
-
-#ifdef DEBUG
 
   if (ArgumentParser::get_instance().get_dataset_separated()) {
     fill_graph_tensor(m_goal_graph_tensor);
@@ -534,8 +606,6 @@ void GraphNN<StateRepr>::populate_with_goal() {
     m_symbolic_id = 0;
   }
 
-#endif
-
   m_edges_initial_size = m_edge_labels.size();
   m_node_ids_initial_size = m_real_node_ids.size();
   m_starting_symbolic_id = m_symbolic_id;
@@ -544,46 +614,54 @@ void GraphNN<StateRepr>::populate_with_goal() {
 template <StateRepresentation StateRepr>
 GraphTensor
 GraphNN<StateRepr>::state_to_tensor_minimal(const KripkeState &kstate) {
-#ifdef DEBUG
-  switch (ArgumentParser::get_instance().get_dataset_type()) {
-  case DatasetType::HASHED:
-    break;
-  case DatasetType::BITMASK:
-  case DatasetType::MAPPED:
-  default:
-    ExitHandler::exit_with_message(
-        ExitHandler::ExitCode::GNNMappedNotSupportedError,
-        "We do not support the mapped version with the inference in C++ "
-        "(useless, hashing should be better).");
-  }
-
-#endif
 
   const auto m_node_to_symbolic_original = m_node_to_symbolic;
 
-#ifdef DEBUG
-
-  if (!ArgumentParser::get_instance().get_dataset_separated()) {
-    const auto state_parent_id = kstate.get_pointed().get_id();
-
-    add_edge(TrainingDataset<KripkeState>::get_epsilon_node_id_int(),
-             state_parent_id,
-             TrainingDataset<KripkeState>::get_to_state_edge_id_int());
-  }
-
-#else
-
-  const auto state_parent_id = kstate.get_pointed().get_id();
-
-  add_edge(TrainingDataset<KripkeState>::get_epsilon_node_id_int(),
-           state_parent_id,
-           TrainingDataset<KripkeState>::get_to_state_edge_id_int());
-
-#endif
 
   const auto &training_dataset = TrainingDataset<KripkeState>::get_instance();
+  const bool is_merged =
+      !ArgumentParser::get_instance().get_dataset_separated();
 
-  for (const auto &[from_pw, from_map] : kstate.get_beliefs()) {
+  std::unordered_map<KripkeWorldId, std::string> world_map;
+  const auto dataset_type = ArgumentParser::get_instance().get_dataset_type();
+  int world_counter = training_dataset.get_shift_state_ids();
+
+
+  if (is_merged) {
+    const auto state_parent = kstate.get_pointed();
+    const auto state_parent_id = state_parent.get_id();
+
+    add_edge(TrainingDataset<KripkeState>::get_epsilon_node_id_int(),
+             
+             state_parent_id,state_parent, TrainingDataset<KripkeState>::get_to_state_edge_id_int());
+  }
+
+  /*// Assign IDs
+  for (const auto &pw : kstate.get_worlds()) {
+    if (const auto hash = pw.get_id(); !world_map.contains(hash)) {
+      switch (dataset_type) {
+      case DatasetType::HASHED: {
+          world_map[hash] = std::to_string(hash);
+          break;
+      }
+      case DatasetType::MAPPED: {
+          world_map[hash] = std::to_string(world_counter++);
+          break;
+      }
+      case DatasetType::BITMASK: {
+          world_map[hash] = HelperPrint::kworld_to_bitmask(pw,is_merged);
+          break;
+      }
+      default: {
+          ExitHandler::exit_with_message(ExitHandler::ExitCode::ArgParseError,
+                                         "Invalid Dataset Type specified");
+      }
+      }
+    }
+  }*/
+
+  for (const auto &[from_pw, from_map] : kstate.get_beliefs())
+  {
     const size_t src = from_pw.get_id();
 
     for (const auto &[agent, to_set] : from_map) {
@@ -593,7 +671,7 @@ GraphNN<StateRepr>::state_to_tensor_minimal(const KripkeState &kstate) {
       for (const auto &to_pw : to_set) {
         const size_t dst = to_pw.get_id();
 
-        add_edge(src, dst, label);
+        add_edge(src, from_pw, dst, to_pw, label);
       }
     }
   }
@@ -620,6 +698,7 @@ void GraphNN<StateRepr>::fill_graph_tensor(GraphTensor &tensor) const {
   tensor.edge_dst = m_edge_dst;
   tensor.edge_attrs = m_edge_labels;
   tensor.real_node_ids = m_real_node_ids;
+  tensor.real_node_ids_bitmask = m_real_node_ids_bitmask;
 }
 
 template <StateRepresentation StateRepr>

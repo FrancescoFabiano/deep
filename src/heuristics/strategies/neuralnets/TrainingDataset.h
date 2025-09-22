@@ -93,6 +93,10 @@ public:
   /// \return The dot string.
   constexpr const std::string &get_goal_string() const;
 
+    /// \brief Gets the goal dot string with non-binary ids forced for BITMASK representation.
+    /// \return The dot string.
+    constexpr const std::string &get_goal_forced_string() const;
+
   /**
    * \brief Gets the goal file path.
    * \return The goal file path.
@@ -149,6 +153,9 @@ private:
   std::string m_goal_string;
   ///< String representation of the goal tree for
   ///< efficient printing
+    std::string m_goal_forced_string;
+    ///< String representation of the goal tree for
+    ///< efficient printing without binary ids in case of bitmask for efficiency
   int m_failed_state = 1000000; ///< Value for the failed exploration
 
   // --- Node and search statistics ---
@@ -241,9 +248,11 @@ private:
 
   /**
    * \brief Generate the goal tree subgraph to store in m_goal_string (efficient
-   * for printing). \return String representation of the goal tree subgraph.
+   * for printing).
+    * \param force_non_binary_ids If true, forces the creation of another goal where the ids are not bitmask for faster management during tensor conversion
+   * \return String representation of the goal tree subgraph.
    */
-  void generate_goal_tree_subgraph();
+  void generate_goal_tree_subgraph(bool force_non_binary_ids);
 
   /**
    * \brief Print the goal subtree.
@@ -252,10 +261,11 @@ private:
    * \param next_id Next node ID.
    * \param parent_node Parent node name.
    * \param os Output stream.
+   * \param force_non_binary_ids If true, forces the creation of another goal where the ids are not bitmask for faster management during tensor conversion
    */
   void generate_goal_subtree(const BeliefFormula &to_print, size_t goal_counter,
                              size_t &next_id, const std::string &parent_node,
-                             std::ostream &os);
+                             std::ostream &os, bool force_non_binary_ids);
 
   /**
    * \brief Explore the search space.
@@ -333,13 +343,15 @@ private:
 
   /// \brief Converts an integer to a binary string.
   /// \param value Integer value.
+  /// \param force_non_binary_ids If true, forces the creation of another goal where the ids are not bitmask for faster management during tensor conversion
   /// \return Binary string of length bit_width.
-  static std::string to_binary_string(size_t value);
+  static std::string to_binary_string(bool force_non_binary_ids, size_t value);
 
   /// \brief Converts an integer (as string) to a binary string.
   /// \param str_value Integer value expressed as a string.
+  /// /// \param force_non_binary_ids If true, forces the creation of another goal where the ids are not bitmask for faster management during tensor conversion
   /// \return Binary string of length bit_width.
-  static std::string to_binary_string(const std::string &str_value);
+  static std::string to_binary_string(bool force_non_binary_ids, const std::string &str_value);
 
   /// \brief Updates all string IDs with GOAL_ENCODING_BITS-bit binary
   /// representations.
