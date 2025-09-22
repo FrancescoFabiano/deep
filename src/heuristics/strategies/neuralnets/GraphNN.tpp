@@ -450,9 +450,7 @@ size_t GraphNN<StateRepr>::get_symbolic_id(const size_t node) {
     //  but the goal is printed out separately in normal mode.
     if (ArgumentParser::get_instance().get_dataset_type() !=
             DatasetType::BITMASK ||
-        (ArgumentParser::get_instance().get_dataset_type() ==
-             DatasetType::BITMASK &&
-         ArgumentParser::get_instance().get_dataset_separated())) {
+        ArgumentParser::get_instance().get_dataset_separated()) {
       m_real_node_ids.push_back(node);
     } else {
       // Converting from goal id -- We just go from integer to binary
@@ -628,7 +626,7 @@ GraphNN<StateRepr>::state_to_tensor_minimal(const KripkeState &kstate) {
   const bool is_merged =
       !ArgumentParser::get_instance().get_dataset_separated();
 
-  std::unordered_map<KripkeWorldId, std::string> world_map;
+  std::unordered_map<KripkeWorldId, KripkeWorldId> world_map;
   const auto dataset_type = ArgumentParser::get_instance().get_dataset_type();
   int world_counter = training_dataset.get_shift_state_ids();
 
@@ -642,20 +640,17 @@ GraphNN<StateRepr>::state_to_tensor_minimal(const KripkeState &kstate) {
              TrainingDataset<KripkeState>::get_to_state_edge_id_int());
   }
 
-  /*// Assign IDs
+  // Assign IDs ///\todo remove this for efficiency. The hash can be used directly
   for (const auto &pw : kstate.get_worlds()) {
     if (const auto hash = pw.get_id(); !world_map.contains(hash)) {
       switch (dataset_type) {
-      case DatasetType::HASHED: {
-          world_map[hash] = std::to_string(hash);
+      case DatasetType::HASHED:
+          case DatasetType::BITMASK: {
+          world_map[hash] = hash;
           break;
       }
       case DatasetType::MAPPED: {
-          world_map[hash] = std::to_string(world_counter++);
-          break;
-      }
-      case DatasetType::BITMASK: {
-          world_map[hash] = HelperPrint::kworld_to_bitmask(pw,is_merged);
+          world_map[hash] = world_counter++;
           break;
       }
       default: {
@@ -664,17 +659,17 @@ GraphNN<StateRepr>::state_to_tensor_minimal(const KripkeState &kstate) {
       }
       }
     }
-  }*/
+  }
 
   for (const auto &[from_pw, from_map] : kstate.get_beliefs()) {
-    const size_t src = from_pw.get_id();
+    const size_t src = world_map[from_pw.get_id()];
 
     for (const auto &[agent, to_set] : from_map) {
       const auto label = static_cast<int64_t>(
           training_dataset.get_unique_a_id_from_map(agent));
 
       for (const auto &to_pw : to_set) {
-        const size_t dst = to_pw.get_id();
+        const size_t dst = world_map[to_pw.get_id()];
 
         add_edge(src, from_pw, dst, to_pw, label);
       }
