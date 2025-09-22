@@ -76,8 +76,8 @@ TrainingDataset<StateRepr>::get_goal_string() const {
 }
 
 template <StateRepresentation StateRepr>
-constexpr const std::string& TrainingDataset<StateRepr>::get_goal_forced_string() const
-{
+constexpr const std::string &
+TrainingDataset<StateRepr>::get_goal_forced_string() const {
   return m_goal_forced_string;
 }
 
@@ -139,9 +139,13 @@ std::string TrainingDataset<StateRepr>::create_complete_path() const {
 
 template <StateRepresentation StateRepr>
 std::string
-TrainingDataset<StateRepr>::to_binary_string(const bool force_non_binary_ids,const std::string &str_value) {
+TrainingDataset<StateRepr>::to_binary_string(const bool force_non_binary_ids,
+                                             const std::string &str_value) {
 
-  if (ArgumentParser::get_instance().get_dataset_type() != DatasetType::BITMASK || ArgumentParser::get_instance().get_dataset_separated() || force_non_binary_ids) {
+  if (ArgumentParser::get_instance().get_dataset_type() !=
+          DatasetType::BITMASK ||
+      ArgumentParser::get_instance().get_dataset_separated() ||
+      force_non_binary_ids) {
     return str_value;
   }
 
@@ -151,15 +155,21 @@ TrainingDataset<StateRepr>::to_binary_string(const bool force_non_binary_ids,con
   } catch (const std::exception &e) {
     ExitHandler::exit_with_message(
         ExitHandler::ExitCode::GNNBitmaskGOALError,
-        "Wrong integer conversion for ID in the goal encoding. Exception:" + std::string(e.what()));
+        "Wrong integer conversion for ID in the goal encoding. Exception:" +
+            std::string(e.what()));
   }
-  return to_binary_string(force_non_binary_ids,value);
+  return to_binary_string(force_non_binary_ids, value);
 }
 
 template <StateRepresentation StateRepr>
-std::string TrainingDataset<StateRepr>::to_binary_string(const bool force_non_binary_ids, const size_t value) {
+std::string
+TrainingDataset<StateRepr>::to_binary_string(const bool force_non_binary_ids,
+                                             const size_t value) {
 
-  if (ArgumentParser::get_instance().get_dataset_type() != DatasetType::BITMASK || ArgumentParser::get_instance().get_dataset_separated() || force_non_binary_ids) {
+  if (ArgumentParser::get_instance().get_dataset_type() !=
+          DatasetType::BITMASK ||
+      ArgumentParser::get_instance().get_dataset_separated() ||
+      force_non_binary_ids) {
     return std::to_string(value);
   }
 
@@ -192,10 +202,10 @@ std::string TrainingDataset<StateRepr>::to_binary_string(const bool force_non_bi
 
 template <StateRepresentation StateRepr>
 void TrainingDataset<StateRepr>::update_binary_ids() {
-  m_to_goal_edge_id = to_binary_string(false,m_to_goal_edge_id);
-  m_to_state_edge_id = to_binary_string(false,m_to_state_edge_id);
-  m_epsilon_node_id = to_binary_string(false,m_epsilon_node_id);
-  m_goal_parent_id = to_binary_string(false,m_goal_parent_id);
+  m_to_goal_edge_id = to_binary_string(false, m_to_goal_edge_id);
+  m_to_state_edge_id = to_binary_string(false, m_to_state_edge_id);
+  m_epsilon_node_id = to_binary_string(false, m_epsilon_node_id);
+  m_goal_parent_id = to_binary_string(false, m_goal_parent_id);
 }
 
 template <StateRepresentation StateRepr>
@@ -256,8 +266,9 @@ TrainingDataset<StateRepr>::TrainingDataset() {
   populate_fluent_ids(m_shift_state_ids);
   m_shift_state_ids += static_cast<int>(m_fluent_to_id.size()) + 1;
 
-
-  if(ArgumentParser::get_instance().get_dataset_type() == DatasetType::BITMASK && !ArgumentParser::get_instance().get_dataset_separated()){
+  if (ArgumentParser::get_instance().get_dataset_type() ==
+          DatasetType::BITMASK &&
+      !ArgumentParser::get_instance().get_dataset_separated()) {
     const size_t original_shift_id = m_shift_state_ids;
     generate_goal_tree_subgraph(true);
     m_shift_state_ids = original_shift_id;
@@ -316,7 +327,8 @@ void TrainingDataset<StateRepr>::print_goal_tree() const {
 }
 
 template <StateRepresentation StateRepr>
-void TrainingDataset<StateRepr>::generate_goal_tree_subgraph(const bool force_non_binary_ids) {
+void TrainingDataset<StateRepr>::generate_goal_tree_subgraph(
+    const bool force_non_binary_ids) {
   std::stringstream string_goals_graph;
   const auto goal_list = Domain::get_instance().get_goal_description();
   size_t goal_counter = m_to_state_edge_id_int + 1;
@@ -333,12 +345,9 @@ void TrainingDataset<StateRepr>::generate_goal_tree_subgraph(const bool force_no
   m_shift_state_ids += +1;
   // The final value of shits so that state, when mapped starts from the latest
   // node generated for the goals + 1
-  if (force_non_binary_ids)
-  {
+  if (force_non_binary_ids) {
     m_goal_forced_string = string_goals_graph.str();
-  }
-  else
-  {
+  } else {
     m_goal_string = string_goals_graph.str();
   }
 }
@@ -395,7 +404,8 @@ void TrainingDataset<StateRepr>::populate_agent_ids(const size_t start_id) {
 template <StateRepresentation StateRepr>
 void TrainingDataset<StateRepr>::generate_goal_subtree(
     const BeliefFormula &to_print, const size_t goal_counter, size_t &next_id,
-    const std::string &parent_node, std::ostream &os, const bool force_non_binary_ids) {
+    const std::string &parent_node, std::ostream &os,
+    const bool force_non_binary_ids) {
   size_t current_node_id = ++next_id;
   std::string node_name;
 
@@ -408,9 +418,9 @@ void TrainingDataset<StateRepr>::generate_goal_subtree(
       current_node_id = ++next_id;
       // ofs << "  " << node_name << " [label=\"" << current_node_id <<
       // "\"];\n";
-      os << "  " << to_binary_string(force_non_binary_ids,parent_node) << " -> "
-         << to_binary_string(force_non_binary_ids,node_name) << " [label=\"" << goal_counter
-         << "\"];\n";
+      os << "  " << to_binary_string(force_non_binary_ids, parent_node)
+         << " -> " << to_binary_string(force_non_binary_ids, node_name)
+         << " [label=\"" << goal_counter << "\"];\n";
       m_parent_node = node_name;
     }
 
@@ -423,9 +433,9 @@ void TrainingDataset<StateRepr>::generate_goal_subtree(
         current_node_id = ++next_id;
         // ofs << "  " << node_name << " [label=\"" << current_node_id <<
         // "\"];\n";
-        os << "  " << to_binary_string(force_non_binary_ids,m_parent_node) << " -> "
-           << to_binary_string(force_non_binary_ids,node_name) << " [label=\"" << goal_counter
-           << "\"];\n";
+        os << "  " << to_binary_string(force_non_binary_ids, m_parent_node)
+           << " -> " << to_binary_string(force_non_binary_ids, node_name)
+           << " [label=\"" << goal_counter << "\"];\n";
         m_m_parent_node = node_name;
       }
 
@@ -433,9 +443,11 @@ void TrainingDataset<StateRepr>::generate_goal_subtree(
         // REMOVE LETTERS ofs << "  " << m_m_parent_node << " -> F" <<
         // get_unique_f_id_from_map(fl) << " [label=\"" << goal_counter <<
         // "\"];\n";
-        os << "  " << to_binary_string(force_non_binary_ids,m_m_parent_node) << " -> "
-           << to_binary_string(force_non_binary_ids,get_unique_f_id_from_map(fl)) << " [label=\""
-           << goal_counter << "\"];\n";
+        os << "  " << to_binary_string(force_non_binary_ids, m_m_parent_node)
+           << " -> "
+           << to_binary_string(force_non_binary_ids,
+                               get_unique_f_id_from_map(fl))
+           << " [label=\"" << goal_counter << "\"];\n";
       }
     }
     break;
@@ -445,24 +457,26 @@ void TrainingDataset<StateRepr>::generate_goal_subtree(
     // REMOVE LETTERS node_name = "B" + std::to_string(current_node_id);
     node_name = std::to_string(current_node_id);
     // ofs << "  " << node_name << " [label=\"" << current_node_id << "\"];\n";
-    os << "  " << to_binary_string(force_non_binary_ids,parent_node) << " -> "
-       << to_binary_string(force_non_binary_ids,node_name) << " [label=\"" << goal_counter
-       << "\"];\n";
+    os << "  " << to_binary_string(force_non_binary_ids, parent_node) << " -> "
+       << to_binary_string(force_non_binary_ids, node_name) << " [label=\""
+       << goal_counter << "\"];\n";
     // REMOVE LETTERS ofs << "  " << node_name << " -> A" <<
     // get_unique_a_id_from_map(to_print.get_agent()) << " [label=\"" <<
     // goal_counter << "\"];\n"; REMOVE LETTERS ofs << "  A" <<
     // get_unique_a_id_from_map(to_print.get_agent()) << " -> " << node_name <<
     // " [label=\"" << goal_counter << "\"];\n";
-    os << "  " << to_binary_string(force_non_binary_ids,node_name) << " -> "
-       << to_binary_string(force_non_binary_ids,get_unique_a_id_from_map(to_print.get_agent()))
+    os << "  " << to_binary_string(force_non_binary_ids, node_name) << " -> "
+       << to_binary_string(force_non_binary_ids,
+                           get_unique_a_id_from_map(to_print.get_agent()))
        << " [label=\"" << goal_counter << "\"];\n";
     os << "  "
-       << to_binary_string(force_non_binary_ids,get_unique_a_id_from_map(to_print.get_agent()))
-       << " -> " << to_binary_string(force_non_binary_ids,node_name) << " [label=\"" << goal_counter
-       << "\"];\n";
+       << to_binary_string(force_non_binary_ids,
+                           get_unique_a_id_from_map(to_print.get_agent()))
+       << " -> " << to_binary_string(force_non_binary_ids, node_name)
+       << " [label=\"" << goal_counter << "\"];\n";
 
     generate_goal_subtree(to_print.get_bf1(), goal_counter, next_id, node_name,
-                          os,force_non_binary_ids);
+                          os, force_non_binary_ids);
     break;
   }
 
@@ -470,25 +484,26 @@ void TrainingDataset<StateRepr>::generate_goal_subtree(
     // REMOVE LETTERS node_name = "C" + std::to_string(current_node_id);
     node_name = std::to_string(current_node_id);
     // ofs << "  " << node_name << " [label=\"" << current_node_id << "\"];\n";
-    os << "  " << to_binary_string(force_non_binary_ids,parent_node) << " -> "
-       << to_binary_string(force_non_binary_ids,node_name) << " [label=\"" << goal_counter
-       << "\"];\n";
+    os << "  " << to_binary_string(force_non_binary_ids, parent_node) << " -> "
+       << to_binary_string(force_non_binary_ids, node_name) << " [label=\""
+       << goal_counter << "\"];\n";
 
     for (const auto &ag : to_print.get_group_agents()) {
       // REMOVE LETTERS ofs << "  " << node_name << " -> A" <<
       // get_unique_a_id_from_map(ag) << " [label=\"" << goal_counter <<
       // "\"];\n"; REMOVE LETTERS ofs << "  A" << get_unique_a_id_from_map(ag)
       // << " -> " << node_name << " [label=\"" << goal_counter << "\"];\n";
-      os << "  " << to_binary_string(force_non_binary_ids,node_name) << " -> "
-         << to_binary_string(force_non_binary_ids,get_unique_a_id_from_map(ag)) << " [label=\""
-         << goal_counter << "\"];\n";
-      os << "  " << to_binary_string(force_non_binary_ids,get_unique_a_id_from_map(ag)) << " -> "
-         << to_binary_string(force_non_binary_ids,node_name) << " [label=\"" << goal_counter
-         << "\"];\n";
+      os << "  " << to_binary_string(force_non_binary_ids, node_name) << " -> "
+         << to_binary_string(force_non_binary_ids, get_unique_a_id_from_map(ag))
+         << " [label=\"" << goal_counter << "\"];\n";
+      os << "  "
+         << to_binary_string(force_non_binary_ids, get_unique_a_id_from_map(ag))
+         << " -> " << to_binary_string(force_non_binary_ids, node_name)
+         << " [label=\"" << goal_counter << "\"];\n";
     }
 
     generate_goal_subtree(to_print.get_bf1(), goal_counter, next_id, node_name,
-                          os,force_non_binary_ids);
+                          os, force_non_binary_ids);
     break;
   }
 
@@ -511,15 +526,15 @@ void TrainingDataset<StateRepr>::generate_goal_subtree(
     // REMOVE LETTERS node_name = node_name + std::to_string(current_node_id);
     node_name = std::to_string(current_node_id);
     // ofs << "  " << node_name << " [label=\"" << current_node_id << "\"];\n";
-    os << "  " << to_binary_string(force_non_binary_ids,parent_node) << " -> "
-       << to_binary_string(force_non_binary_ids,node_name) << " [label=\"" << goal_counter
-       << "\"];\n";
+    os << "  " << to_binary_string(force_non_binary_ids, parent_node) << " -> "
+       << to_binary_string(force_non_binary_ids, node_name) << " [label=\""
+       << goal_counter << "\"];\n";
     generate_goal_subtree(to_print.get_bf1(), goal_counter, next_id, node_name,
-                          os,force_non_binary_ids);
+                          os, force_non_binary_ids);
 
     if (!to_print.is_bf2_null()) {
       generate_goal_subtree(to_print.get_bf2(), goal_counter, next_id,
-                            node_name, os,force_non_binary_ids);
+                            node_name, os, force_non_binary_ids);
     }
 
     break;
