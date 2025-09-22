@@ -7,11 +7,16 @@
 
 ///////////////////////////////////Data types needed for various iniziatilazions
 enum class DatasetType {
-    MAPPED,   ///< Each node's information is converted into an integer via mapping. The mapping is created by assigning 1 to the first unique ID, 2 to the second, and so on.
-    HASHED,   ///< Each node's information is converted into an integer using standard hashing.
-    BITMASK,  ///< The information is fully preserved and represented as a bitmask encoding the status of various fluents.
-    ///< Additional bits are included for repetition. If "m_dataset_separated" is false, the goal is also translated into a bitmask,
-    ///< with its extra information placed at the beginning of the bitmask.
+  MAPPED, ///< Each node's information is converted into an integer via mapping.
+          ///< The mapping is created by assigning 1 to the first unique ID, 2
+          ///< to the second, and so on.
+  HASHED, ///< Each node's information is converted into an integer using
+          ///< standard hashing.
+  BITMASK, ///< The information is fully preserved and represented as a bitmask
+           ///< encoding the status of various fluents.
+  ///< Additional bits are included for repetition. If "m_dataset_separated" is
+  ///< false, the goal is also translated into a bitmask, with its extra
+  ///< information placed at the beginning of the bitmask.
 };
 /////////////////////////////////////////////////////////////////////////////////
 
@@ -115,7 +120,6 @@ public:
    */
   [[nodiscard]] bool get_log_enabled() const noexcept;
 
-
   /**
    * \brief Return the type of encoding used for the information in states.
    * \return the DatasetType used to encode the labels in the GNN states.
@@ -208,8 +212,11 @@ private:
   double m_dataset_discard_factor =
       0.4; ///< Maximum discard factor for dataset generation.
 
-  std::string m_dataset_type_string = "HASHED"; ///< Dataset node label type (HASHED by default) in string format.
-  DatasetType m_dataset_type = DatasetType::HASHED; ///< Dataset node label type (HASHED by default).
+  std::string m_dataset_type_string =
+      "HASHED"; ///< Dataset node label type (HASHED by default) in string
+                ///< format.
+  DatasetType m_dataset_type =
+      DatasetType::HASHED; ///< Dataset node label type (HASHED by default).
 
   bool m_dataset_separated = false; ///< Flag to indicate if dataset entry point
                                     ///< is the couple goal,state.
@@ -293,11 +300,10 @@ private:
    */
   [[nodiscard]] bool get_check_visited() const noexcept;
 
-    /**
-     * \brief Sets the DatasetType from the input string.
-     */
-    void set_dataset_type() noexcept;
-
+  /**
+   * \brief Sets the DatasetType from the input string.
+   */
+  void set_dataset_type() noexcept;
 
   friend class Configuration;
 };

@@ -150,8 +150,8 @@ public:
         897, ///< Error indicating that the repetition number
              ///< exceeds the maximum value that can be represented with
              ///< MAX_REPETITION_BITS bits.
-      GNNBitmaskGOALError =
-          897, ///< Error indicating that the GOAL encoding is not working.
+    GNNBitmaskGOALError =
+        897, ///< Error indicating that the GOAL encoding is not working.
 
     // --- State/Action Related (900-919) ---
     StateActionNotExecutableError =

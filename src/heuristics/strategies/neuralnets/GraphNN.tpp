@@ -545,8 +545,7 @@ template <StateRepresentation StateRepr>
 GraphTensor
 GraphNN<StateRepr>::state_to_tensor_minimal(const KripkeState &kstate) {
 #ifdef DEBUG
-  switch (ArgumentParser::get_instance().get_dataset_type())
-  {
+  switch (ArgumentParser::get_instance().get_dataset_type()) {
   case DatasetType::HASHED:
     break;
   case DatasetType::BITMASK:
@@ -633,8 +632,7 @@ bool GraphNN<StateRepr>::check_tensor_against_dot(
         ExitHandler::ExitCode::GNNFileError,
         "Failed to open file for NN state checking: " + m_checking_file_path);
   }
-  state.print_dataset_format(
-      ofs_orig);
+  state.print_dataset_format(ofs_orig);
   ofs_orig.close();
 
   // Prepare modified path string

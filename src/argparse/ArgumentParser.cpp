@@ -60,11 +60,11 @@ void ArgumentParser::parse(int argc, char **argv) {
     }
 
     // --- Dataset mode consistency check ---
-    if (!m_dataset_mode && (app.count("--dataset_depth") ||
-                            app.count("--dataset_type") ||
-                            app.count("--dataset_separated") ||
-                            app.count("--dataset_discard_factor") ||
-                            app.count("--dataset_seed"))) {
+    if (!m_dataset_mode &&
+        (app.count("--dataset_depth") || app.count("--dataset_type") ||
+         app.count("--dataset_separated") ||
+         app.count("--dataset_discard_factor") ||
+         app.count("--dataset_seed"))) {
       ExitHandler::exit_with_message(
           ExitHandler::ExitCode::ArgParseError,
           "Dataset-related options (--dataset_depth, --dataset_type, "
@@ -189,14 +189,16 @@ ArgumentParser::ArgumentParser() : app("deep") {
       ->add_option(
           "--dataset_depth", m_dataset_depth,
           "Set the maximum depth for dataset generation (default: 10).")
-    ->default_val("10");
-  dataset_group->add_option(
-  "--dataset_type", m_dataset_type_string,
-  "Specifies how node labels are represented in dataset generation. "
-  "Options: MAPPED (compact integer mapping), HASHED (standard hashing), "
-  "or BITMASK (bitmask representation of fluents and goals).")
-  ->check(CLI::IsMember({"MAPPED", "HASHED", "BITMASK"}))
-  ->default_val("HASHED");
+      ->default_val("10");
+  dataset_group
+      ->add_option(
+          "--dataset_type", m_dataset_type_string,
+          "Specifies how node labels are represented in dataset generation. "
+          "Options: MAPPED (compact integer mapping), HASHED (standard "
+          "hashing), "
+          "or BITMASK (bitmask representation of fluents and goals).")
+      ->check(CLI::IsMember({"MAPPED", "HASHED", "BITMASK"}))
+      ->default_val("HASHED");
   dataset_group->add_flag("--dataset_separated", m_dataset_separated,
                           "Enable non-merged dataset generation mode.");
   dataset_group
@@ -371,13 +373,12 @@ void ArgumentParser::set_dataset_type() noexcept {
   else if (value == "HASHED")
     m_dataset_type = DatasetType::HASHED;
   else if (value == "BITMASK")
-    m_dataset_type =  DatasetType::BITMASK;
-  else
-  {
+    m_dataset_type = DatasetType::BITMASK;
+  else {
     ExitHandler::exit_with_message(
         ExitHandler::ExitCode::ArgParseError,
         "Invalid dataset type: " + m_dataset_type_string +
-                              ". Expected one of: MAPPED, HASHED, BITMASK." +
+            ". Expected one of: MAPPED, HASHED, BITMASK." +
             std::string(ExitHandler::arg_parse_suggestion));
   }
 }
@@ -426,8 +427,7 @@ bool ArgumentParser::get_results_info() const noexcept {
 
 bool ArgumentParser::get_log_enabled() const noexcept { return m_log_enabled; }
 
-DatasetType ArgumentParser::get_dataset_type() const noexcept
-{
+DatasetType ArgumentParser::get_dataset_type() const noexcept {
   return m_dataset_type;
 }
 

@@ -31,8 +31,8 @@ struct OutputPaths {
       "map"; ///< The suffix for the NN dataset mapped file.
   static constexpr auto DATASET_NN_DATASET_HASHED =
       "hash"; ///< The suffix for the NN dataset hashed file.
-    static constexpr auto DATASET_NN_DATASET_BITMASK =
-    "mask"; ///< The suffix for the NN dataset bitmask file.
+  static constexpr auto DATASET_NN_DATASET_BITMASK =
+      "mask"; ///< The suffix for the NN dataset bitmask file.
   static constexpr auto DATASET_NN_DATASET_MERGED =
       "merged"; ///< The suffix for the NN dataset hashed file.
   static constexpr auto DATASET_NN_DATASET_SEPARATED =
@@ -52,7 +52,6 @@ using StringsSet =
 using StringSetsSet = std::set<StringsSet>; ///< Formula in DNF (not grounded).
 ///@}
 
-
 /// \name Dataset for GNN Related
 ///@{
 static constexpr size_t MAX_FLUENT_NUMBER =
@@ -69,18 +68,15 @@ constexpr size_t MAX_REPETITION =
     1; ///< Maximum repetition number that can be represented with
 ///< MAX_REPETITION_BITS bits.
 static constexpr size_t GOAL_ENCODING_BITS =
-    16; ///< Number of bits usable to represent the information in the goal which will be prepended to the node representation.
+    16; ///< Number of bits usable to represent the information in the goal
+        ///< which will be prepended to the node representation.
 ///< These constants are introduced to allow bitmask representation for
 ///< GNNs, and are only checked if GNN is used.
 
-
 ///@}
-
 
 /// \name Domain Related
 ///@{
-
-
 
 using Fluent =
     boost::dynamic_bitset<>;         ///< Unique id representation of a fluent.

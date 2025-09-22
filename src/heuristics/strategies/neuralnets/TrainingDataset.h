@@ -319,31 +319,31 @@ private:
   static std::string make_unique_folder(const std::string &base_path,
                                         const std::string &domain_name);
 
-    /**
-     * @brief Retrieves the output path corresponding to the current dataset type.
-     *
-     * This function inspects the dataset type provided by the ArgumentParser
-     * singleton and returns the appropriate output path constant from OutputPaths.
-     * If the dataset type is invalid, the function will terminate the program
-     * with an error message via ExitHandler.
-     *
-     * @return std::string Path associated with the selected dataset type.
-     */
+  /**
+   * @brief Retrieves the output path corresponding to the current dataset type.
+   *
+   * This function inspects the dataset type provided by the ArgumentParser
+   * singleton and returns the appropriate output path constant from
+   * OutputPaths. If the dataset type is invalid, the function will terminate
+   * the program with an error message via ExitHandler.
+   *
+   * @return std::string Path associated with the selected dataset type.
+   */
   std::string create_complete_path() const;
 
+  /// \brief Converts an integer to a binary string.
+  /// \param value Integer value.
+  /// \return Binary string of length bit_width.
+  static std::string to_binary_string(size_t value);
 
-    /// \brief Converts an integer to a binary string.
-    /// \param value Integer value.
-    /// \return Binary string of length bit_width.
-    static std::string to_binary_string(size_t value);
+  /// \brief Converts an integer (as string) to a binary string.
+  /// \param str_value Integer value expressed as a string.
+  /// \return Binary string of length bit_width.
+  static std::string to_binary_string(const std::string &str_value);
 
-    /// \brief Converts an integer (as string) to a binary string.
-    /// \param str_value Integer value expressed as a string.
-    /// \return Binary string of length bit_width.
-    static std::string to_binary_string(const std::string& str_value);
-
-    /// \brief Updates all string IDs with GOAL_ENCODING_BITS-bit binary representations.
-    void update_binary_ids();
+  /// \brief Updates all string IDs with GOAL_ENCODING_BITS-bit binary
+  /// representations.
+  void update_binary_ids();
 };
 
 #include "TrainingDataset.tpp"
