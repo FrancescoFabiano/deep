@@ -55,19 +55,19 @@ public:
 
   /// \brief Gets the to-goal edge ID as string.
   /// \return The to-goal edge ID.
-  static constexpr const std::string &get_to_goal_edge_id_string();
+  const std::string &get_to_goal_edge_id_string();
 
   /// \brief Gets the to-state edge ID as string.
   /// \return The to-state edge ID.
-  static constexpr const std::string &get_to_state_edge_id_string();
+  const std::string &get_to_state_edge_id_string();
 
   /// \brief Gets the epsilon node ID as string.
   /// \return The epsilon node ID.
-  static constexpr const std::string &get_epsilon_node_id_string();
+  const std::string &get_epsilon_node_id_string();
 
   /// \brief Gets the goal parent ID as string.
   /// \return The goal parent ID.
-  static constexpr const std::string &get_goal_parent_id_string();
+  const std::string &get_goal_parent_id_string();
 
   /// \brief Gets the to-goal edge ID as int.
   /// \return The to-goal edge ID.
@@ -172,21 +172,21 @@ private:
   /// \brief Integer edge ID for goal connection in merged graph.
   static constexpr int m_to_goal_edge_id_int = 2;
   /// \brief String edge ID for goal connection in merged graph.
-  inline static const std::string m_to_goal_edge_id = "2";
+  std::string m_to_goal_edge_id = "2";
   /// \brief Integer edge ID for state connection in merged graph.
   static constexpr int m_to_state_edge_id_int = 3;
   /// \brief String edge ID for state connection in merged graph.
-  inline static const std::string m_to_state_edge_id = "3";
+  std::string m_to_state_edge_id = "3";
   /// \brief Integer node ID that connects the two sub-graphs (goal and state)
   /// in the merged graph.
   static constexpr int m_epsilon_node_id_int = 0;
   /// \brief String node ID that connects the two sub-graphs (goal and state) in
   /// the merged graph.
-  inline static const std::string m_epsilon_node_id = "0";
+  std::string m_epsilon_node_id = "0";
   /// \brief Integer node ID that is the initial parent of the goal graph.
   static constexpr int m_goal_parent_id_int = 1;
   /// \brief String node ID that is the initial parent of the goal graph.
-  inline static const std::string m_goal_parent_id = "1";
+  std::string m_goal_parent_id = "1";
   int m_shift_state_ids = 0;
   ///< Used to shift the ids of the state (especially when mapped) so that there
   ///< is no overlap between the goal and the state (only the agents ID are
@@ -330,6 +330,20 @@ private:
      * @return std::string Path associated with the selected dataset type.
      */
   std::string create_complete_path() const;
+
+
+    /// \brief Converts an integer to a binary string.
+    /// \param value Integer value.
+    /// \return Binary string of length bit_width.
+    static std::string to_binary_string(size_t value);
+
+    /// \brief Converts an integer (as string) to a binary string.
+    /// \param str_value Integer value expressed as a string.
+    /// \return Binary string of length bit_width.
+    static std::string to_binary_string(const std::string& str_value);
+
+    /// \brief Updates all string IDs with GOAL_ENCODING_BITS-bit binary representations.
+    void update_binary_ids();
 };
 
 #include "TrainingDataset.tpp"

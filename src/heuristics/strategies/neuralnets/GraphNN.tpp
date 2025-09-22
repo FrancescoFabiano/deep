@@ -545,12 +545,19 @@ template <StateRepresentation StateRepr>
 GraphTensor
 GraphNN<StateRepr>::state_to_tensor_minimal(const KripkeState &kstate) {
 #ifdef DEBUG
-  if (ArgumentParser::get_instance().get_dataset_mapped()) {
+  switch (ArgumentParser::get_instance().get_dataset_type())
+  {
+  case DatasetType::HASHED:
+    break;
+  case DatasetType::BITMASK:
+  case DatasetType::MAPPED:
+  default:
     ExitHandler::exit_with_message(
         ExitHandler::ExitCode::GNNMappedNotSupportedError,
         "We do not support the mapped version with the inference in C++ "
         "(useless, hashing should be better).");
   }
+
 #endif
 
   const auto m_node_to_symbolic_original = m_node_to_symbolic;
@@ -627,8 +634,7 @@ bool GraphNN<StateRepr>::check_tensor_against_dot(
         "Failed to open file for NN state checking: " + m_checking_file_path);
   }
   state.print_dataset_format(
-      ofs_orig, !ArgumentParser::get_instance().get_dataset_mapped(),
-      !ArgumentParser::get_instance().get_dataset_separated());
+      ofs_orig);
   ofs_orig.close();
 
   // Prepare modified path string

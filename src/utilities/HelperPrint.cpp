@@ -675,7 +675,7 @@ void HelperPrint::print_dataset_format(const KripkeState& kstate,
 
                     // Convert repetition into binary string padded to x bits
                     std::string repetition_bits(MAX_REPETITION_BITS, '0');
-                    for (int i = 0; i < MAX_REPETITION_BITS; ++i)
+                    for (size_t i = 0; i < MAX_REPETITION_BITS; ++i)
                     {
                         // Fill from right to left (LSB → last position)
                         if (pw.get_repetition() & (1 << i))
@@ -720,18 +720,18 @@ void HelperPrint::print_dataset_format(const KripkeState& kstate,
     // subgraph
     if (is_merged)
     {
-        ofs << "  " << TrainingDataset<KripkeState>::get_epsilon_node_id_string()
-            << " -> " << TrainingDataset<KripkeState>::get_goal_parent_id_string()
+        ofs << "  " << training_dataset->get_epsilon_node_id_string()
+            << " -> " << training_dataset->get_goal_parent_id_string()
             << " [label=\""
-            << TrainingDataset<KripkeState>::get_to_goal_edge_id_string() << "\"];"
+            << training_dataset->get_to_goal_edge_id_string() << "\"];"
             << std::endl;
         ofs << training_dataset->get_goal_string();
 
-        ofs << "  " << TrainingDataset<KripkeState>::get_epsilon_node_id_string()
+        ofs << "  " << training_dataset->get_epsilon_node_id_string()
             << " -> "
             << world_map[pointed_hash]
             << " [label=\""
-            << TrainingDataset<KripkeState>::get_to_state_edge_id_string() << "\"];"
+            << training_dataset->get_to_state_edge_id_string() << "\"];"
             << std::endl;
     }
 

@@ -5,7 +5,15 @@
 #include <string>
 #include <vector>
 
-#include "Define.h"
+///////////////////////////////////Data types needed for various iniziatilazions
+enum class DatasetType {
+    MAPPED,   ///< Each node's information is converted into an integer via mapping. The mapping is created by assigning 1 to the first unique ID, 2 to the second, and so on.
+    HASHED,   ///< Each node's information is converted into an integer using standard hashing.
+    BITMASK,  ///< The information is fully preserved and represented as a bitmask encoding the status of various fluents.
+    ///< Additional bits are included for repetition. If "m_dataset_separated" is false, the goal is also translated into a bitmask,
+    ///< with its extra information placed at the beginning of the bitmask.
+};
+/////////////////////////////////////////////////////////////////////////////////
 
 /**
  * \class ArgumentParser

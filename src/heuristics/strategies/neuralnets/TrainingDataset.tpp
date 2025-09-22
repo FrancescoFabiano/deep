@@ -33,28 +33,28 @@ const std::string& TrainingDataset<StateRepr>::get_folder() const
 }
 
 template <StateRepresentation StateRepr>
-constexpr const std::string&
+const std::string&
 TrainingDataset<StateRepr>::get_to_goal_edge_id_string()
 {
     return m_to_goal_edge_id;
 }
 
 template <StateRepresentation StateRepr>
-constexpr const std::string&
+const std::string&
 TrainingDataset<StateRepr>::get_to_state_edge_id_string()
 {
     return m_to_state_edge_id;
 }
 
 template <StateRepresentation StateRepr>
-constexpr const std::string&
+const std::string&
 TrainingDataset<StateRepr>::get_epsilon_node_id_string()
 {
     return m_epsilon_node_id;
 }
 
 template <StateRepresentation StateRepr>
-constexpr const std::string&
+const std::string&
 TrainingDataset<StateRepr>::get_goal_parent_id_string()
 {
     return m_goal_parent_id;
@@ -165,6 +165,70 @@ TrainingDataset<StateRepr>::create_complete_path() const
     }
 }
 
+
+template <StateRepresentation StateRepr>
+std::string TrainingDataset<StateRepr>::to_binary_string(const std::string& str_value) {
+
+    if (ArgumentParser::get_instance().get_dataset_type() != DatasetType::BITMASK) {
+        return str_value;
+    }
+
+    int value{};
+    try {
+        value = std::stoi(str_value);
+    } catch (const std::exception& e) {
+        ExitHandler::exit_with_message(
+                            ExitHandler::ExitCode::GNNBitmaskGOALError,
+                            "Wrong integer conversion for ID in the goal encoding.");
+    }
+    return to_binary_string(value);
+}
+
+
+template <StateRepresentation StateRepr>
+std::string TrainingDataset<StateRepr>::to_binary_string(size_t value) {
+
+    if (ArgumentParser::get_instance().get_dataset_type() != DatasetType::BITMASK) {
+        return std::to_string(value);
+    }
+
+
+    // Check if the value fits in the given number of bits
+    unsigned int uvalue = static_cast<unsigned int>(value);
+    if (uvalue >= (1u << GOAL_ENCODING_BITS)) {
+        ExitHandler::exit_with_message(
+                            ExitHandler::ExitCode::GNNBitmaskGOALError,
+                            "The number of bits is not enough to encode all the goal information. "
+                            "Increase GOAL_ENCODING_BITS in define.h, and ensure that all "
+                            "training data "
+                            "uses the same padding values. Verify that this value is "
+                            "consistently passed "
+                            "to the GNN during training and correctly applied during "
+                            "inference.");
+    }
+
+    auto bit_width = GOAL_ENCODING_BITS;
+    if (!ArgumentParser::get_instance().get_dataset_separated()) {
+        bit_width += MAX_REPETITION_BITS + MAX_FLUENT_NUMBER;
+    }
+
+    std::string binary(bit_width, '0');
+    for (size_t i = 0; i < bit_width; ++i) {
+        binary[bit_width - 1 - i] = (uvalue & 1) ? '1' : '0';
+        uvalue >>= 1;
+    }
+    return binary;
+}
+
+template <StateRepresentation StateRepr>
+void TrainingDataset<StateRepr>::update_binary_ids() {
+    m_to_goal_edge_id  = to_binary_string(m_to_goal_edge_id);
+    m_to_state_edge_id = to_binary_string(m_to_state_edge_id);
+    m_epsilon_node_id  = to_binary_string(m_epsilon_node_id);
+    m_goal_parent_id   = to_binary_string(m_goal_parent_id);
+}
+
+
 template <StateRepresentation StateRepr>
 TrainingDataset<StateRepr>::TrainingDataset()
 {
@@ -234,6 +298,7 @@ TrainingDataset<StateRepr>::TrainingDataset()
     populate_fluent_ids(m_shift_state_ids);
     m_shift_state_ids += static_cast<int>(m_fluent_to_id.size()) + 1;
 
+    update_binary_ids();
     // This stores the goal tree in a string for efficient printing
     generate_goal_tree_subgraph();
 
@@ -395,7 +460,7 @@ void TrainingDataset<StateRepr>::generate_goal_subtree(
                 current_node_id = ++next_id;
                 // ofs << "  " << node_name << " [label=\"" << current_node_id <<
                 // "\"];\n";
-                os << "  " << parent_node << " -> " << node_name << " [label=\""
+                os << "  " << to_binary_string(parent_node) << " -> " << to_binary_string(node_name) << " [label=\""
                     << goal_counter << "\"];\n";
                 m_parent_node = node_name;
             }
@@ -411,7 +476,7 @@ void TrainingDataset<StateRepr>::generate_goal_subtree(
                     current_node_id = ++next_id;
                     // ofs << "  " << node_name << " [label=\"" << current_node_id <<
                     // "\"];\n";
-                    os << "  " << m_parent_node << " -> " << node_name << " [label=\""
+                    os << "  " << to_binary_string(m_parent_node) << " -> " << to_binary_string(node_name) << " [label=\""
                         << goal_counter << "\"];\n";
                     m_m_parent_node = node_name;
                 }
@@ -421,7 +486,7 @@ void TrainingDataset<StateRepr>::generate_goal_subtree(
                     // REMOVE LETTERS ofs << "  " << m_m_parent_node << " -> F" <<
                     // get_unique_f_id_from_map(fl) << " [label=\"" << goal_counter <<
                     // "\"];\n";
-                    os << "  " << m_m_parent_node << " -> " << get_unique_f_id_from_map(fl)
+                    os << "  " << to_binary_string(m_m_parent_node) << " -> " << to_binary_string(get_unique_f_id_from_map(fl))
                         << " [label=\"" << goal_counter << "\"];\n";
                 }
             }
@@ -433,18 +498,18 @@ void TrainingDataset<StateRepr>::generate_goal_subtree(
             // REMOVE LETTERS node_name = "B" + std::to_string(current_node_id);
             node_name = std::to_string(current_node_id);
             // ofs << "  " << node_name << " [label=\"" << current_node_id << "\"];\n";
-            os << "  " << parent_node << " -> " << node_name << " [label=\""
+            os << "  " << to_binary_string(parent_node) << " -> " << to_binary_string(node_name) << " [label=\""
                 << goal_counter << "\"];\n";
             // REMOVE LETTERS ofs << "  " << node_name << " -> A" <<
             // get_unique_a_id_from_map(to_print.get_agent()) << " [label=\"" <<
             // goal_counter << "\"];\n"; REMOVE LETTERS ofs << "  A" <<
             // get_unique_a_id_from_map(to_print.get_agent()) << " -> " << node_name <<
             // " [label=\"" << goal_counter << "\"];\n";
-            os << "  " << node_name << " -> "
-                << get_unique_a_id_from_map(to_print.get_agent()) << " [label=\""
+            os << "  " << to_binary_string(node_name) << " -> "
+                << to_binary_string(get_unique_a_id_from_map(to_print.get_agent())) << " [label=\""
                 << goal_counter << "\"];\n";
-            os << "  " << get_unique_a_id_from_map(to_print.get_agent()) << " -> "
-                << node_name << " [label=\"" << goal_counter << "\"];\n";
+            os << "  " << to_binary_string(get_unique_a_id_from_map(to_print.get_agent())) << " -> "
+                << to_binary_string(node_name) << " [label=\"" << goal_counter << "\"];\n";
 
             generate_goal_subtree(to_print.get_bf1(), goal_counter, next_id, node_name,
                                   os);
@@ -456,7 +521,7 @@ void TrainingDataset<StateRepr>::generate_goal_subtree(
             // REMOVE LETTERS node_name = "C" + std::to_string(current_node_id);
             node_name = std::to_string(current_node_id);
             // ofs << "  " << node_name << " [label=\"" << current_node_id << "\"];\n";
-            os << "  " << parent_node << " -> " << node_name << " [label=\""
+            os << "  " << to_binary_string(parent_node) << " -> " << to_binary_string(node_name) << " [label=\""
                 << goal_counter << "\"];\n";
 
             for (const auto& ag : to_print.get_group_agents())
@@ -465,9 +530,9 @@ void TrainingDataset<StateRepr>::generate_goal_subtree(
                 // get_unique_a_id_from_map(ag) << " [label=\"" << goal_counter <<
                 // "\"];\n"; REMOVE LETTERS ofs << "  A" << get_unique_a_id_from_map(ag)
                 // << " -> " << node_name << " [label=\"" << goal_counter << "\"];\n";
-                os << "  " << node_name << " -> " << get_unique_a_id_from_map(ag)
+                os << "  " << to_binary_string(node_name) << " -> " << to_binary_string(get_unique_a_id_from_map(ag))
                     << " [label=\"" << goal_counter << "\"];\n";
-                os << "  " << get_unique_a_id_from_map(ag) << " -> " << node_name
+                os << "  " << to_binary_string(get_unique_a_id_from_map(ag)) << " -> " << to_binary_string(node_name)
                     << " [label=\"" << goal_counter << "\"];\n";
             }
 
@@ -499,7 +564,7 @@ void TrainingDataset<StateRepr>::generate_goal_subtree(
             // REMOVE LETTERS node_name = node_name + std::to_string(current_node_id);
             node_name = std::to_string(current_node_id);
             // ofs << "  " << node_name << " [label=\"" << current_node_id << "\"];\n";
-            os << "  " << parent_node << " -> " << node_name << " [label=\""
+            os << "  " << to_binary_string(parent_node) << " -> " << to_binary_string(node_name) << " [label=\""
                 << goal_counter << "\"];\n";
             generate_goal_subtree(to_print.get_bf1(), goal_counter, next_id, node_name,
                                   os);
