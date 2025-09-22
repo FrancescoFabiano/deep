@@ -31,6 +31,8 @@ struct OutputPaths {
       "map"; ///< The suffix for the NN dataset mapped file.
   static constexpr auto DATASET_NN_DATASET_HASHED =
       "hash"; ///< The suffix for the NN dataset hashed file.
+    static constexpr auto DATASET_NN_DATASET_BITMASK =
+    "mask"; ///< The suffix for the NN dataset bitmask file.
   static constexpr auto DATASET_NN_DATASET_MERGED =
       "merged"; ///< The suffix for the NN dataset hashed file.
   static constexpr auto DATASET_NN_DATASET_SEPARATED =
@@ -50,22 +52,44 @@ using StringsSet =
 using StringSetsSet = std::set<StringsSet>; ///< Formula in DNF (not grounded).
 ///@}
 
-/// \name Domain Related
-///@{
 
+/// \name Dataset for GNN Related
+///@{
 static constexpr auto MAX_FLUENT_NUMBER =
     32; ///< Maximum length of the bitmask, and therefore the maximum number of
-        ///< fluents in the domain experiments. These constants are introduced
-        ///< to allow bitmask representation for GNNs, and are only checked if
-        ///< GNN is used.
+///< fluents in the domain experiments. These constants are introduced
+///< to allow bitmask representation for GNNs, and are only checked if
+///< GNN is used.
 static constexpr auto MAX_REPETITION_BITS =
-    12; ///< Maximum number of bits usable to represent the repetition number.
-        ///< These constants are introduced to allow bitmask representation for
-        ///< GNNs, and are only checked if GNN is used.
+    16; ///< Maximum number of bits usable to represent the repetition number.
+///< These constants are introduced to allow bitmask representation for
+///< GNNs, and are only checked if GNN is used.
 constexpr auto MAX_REPETITION =
     (1ULL << MAX_REPETITION_BITS) -
     1; ///< Maximum repetition number that can be represented with
-       ///< MAX_REPETITION_BITS bits.
+///< MAX_REPETITION_BITS bits.
+static constexpr auto GOAL_ENCODING_BITS =
+    16; ///< Number of bits usable to represent the information in the goal which will be prepended to the node representation.
+///< These constants are introduced to allow bitmask representation for
+///< GNNs, and are only checked if GNN is used.
+
+
+enum class DatasetType {
+    MAPPED,   ///< Each node's information is converted into an integer via mapping. The mapping is created by assigning 1 to the first unique ID, 2 to the second, and so on.
+    HASHED,   ///< Each node's information is converted into an integer using standard hashing.
+    BITMASK,  ///< The information is fully preserved and represented as a bitmask encoding the status of various fluents.
+    ///< Additional bits are included for repetition. If "m_dataset_separated" is false, the goal is also translated into a bitmask,
+    ///< with its extra information placed at the beginning of the bitmask.
+};
+
+
+///@}
+
+
+/// \name Domain Related
+///@{
+
+
 
 using Fluent =
     boost::dynamic_bitset<>;         ///< Unique id representation of a fluent.

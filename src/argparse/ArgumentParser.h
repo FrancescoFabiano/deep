@@ -5,6 +5,8 @@
 #include <string>
 #include <vector>
 
+#include "Define.h"
+
 /**
  * \class ArgumentParser
  * \brief Singleton class to parse and access command-line arguments using
@@ -105,19 +107,12 @@ public:
    */
   [[nodiscard]] bool get_log_enabled() const noexcept;
 
-  /**
-   * \brief Checks if mapped (compact) node labels are used in dataset
-   * generation. \return true if mapped node labels are used, false if hashed
-   * node labels are used.
-   */
-  [[nodiscard]] bool get_dataset_mapped() const noexcept;
 
   /**
-   * \brief Checks if both mapped and hashed node labels should be used in
-   * dataset generation. \return true if both mapped and hashed node labels are
-   * used, false otherwise.
+   * \brief Return the type of encoding used for the information in states.
+   * \return the DatasetType used to encode the labels in the GNN states.
    */
-  [[nodiscard]] bool get_dataset_both() const noexcept;
+  [[nodiscard]] DatasetType get_dataset_type() const noexcept;
 
   /**
    * \brief Gets the flag indicating if dataset entry point is the couple
@@ -125,12 +120,6 @@ public:
    * true otherwise.
    */
   [[nodiscard]] bool get_dataset_separated() const noexcept;
-
-  /**
-   * \brief Gets the flag indicating if both merged entry points are used.
-   * \return true if both merged entry points are used, false otherwise.
-   */
-  [[nodiscard]] bool get_dataset_merged_both() const noexcept;
 
   /**
    * \brief Gets the value of the seed to execute experiments.
@@ -211,16 +200,11 @@ private:
   double m_dataset_discard_factor =
       0.4; ///< Maximum discard factor for dataset generation.
 
-  bool m_dataset_mapped = false;
+  std::string m_dataset_type_string = "HASHED"; ///< Dataset node label type (HASHED by default) in string format.
+  DatasetType m_dataset_type = DatasetType::HASHED; ///< Dataset node label type (HASHED by default).
+
   bool m_dataset_separated = false; ///< Flag to indicate if dataset entry point
                                     ///< is the couple goal,state.
-  bool m_dataset_merged_both =
-      false; ///< Flag to indicate if both merged entry points are used.
-  ///< Flag for using mapped (compact) node labels in dataset generation. If
-  ///< false we use hashed node labels.
-  bool m_dataset_both = false;
-  ///< Flag to indicate if both mapped and hashed node labels should be used in
-  ///< dataset generation.
 
   int64_t m_dataset_seed = -1; ///< Seed for dataset generation (default: -1).
   std::string m_search_strategy = "BFS"; ///< Search strategy (BFS by default).
@@ -300,6 +284,12 @@ private:
    * \return true if visited state checking is enabled, false otherwise.
    */
   [[nodiscard]] bool get_check_visited() const noexcept;
+
+    /**
+     * \brief Sets the DatasetType from the input string.
+     */
+    void set_dataset_type() noexcept;
+
 
   friend class Configuration;
 };

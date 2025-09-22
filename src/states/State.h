@@ -36,8 +36,7 @@ concept StateRepresentation =
     requires(StateRepr rep, const Fluent &f, const FluentsSet &fs,
              const FluentFormula &ff, const BeliefFormula &bf,
              const FormulaeList &fl, const Action &act, std::ofstream &ofs,
-             const StateRepr &other, const bool use_hash,
-             const bool is_merged) {
+             const StateRepr &other) {
       /**
        * @name Entailment Methods for logical entailment evaluation
        */
@@ -72,7 +71,7 @@ concept StateRepresentation =
       ///@{
       { std::as_const(rep).print() };
       { std::as_const(rep).print_dot_format(ofs) };
-      { std::as_const(rep).print_dataset_format(ofs, use_hash, is_merged) };
+      { std::as_const(rep).print_dataset_format(ofs) };
       ///@}
 
       /**
@@ -289,12 +288,10 @@ public:
 
   /** \brief Function that prints the information of *this* for the generation
    * of the dataset used to train the GNN. \param ofs The output stream to print
-   * to. \param use_hash Flag to indicate whether to use hash IDs or adjusted
-   * IDs (needed because sometime both is set) \param is_merged Flag to indicate
+   * to.
    * if each dataset entry is merged <goal,state> or not.
    */
-  void print_dataset_format(std::ofstream &ofs, const bool use_hash,
-                            const bool is_merged) const;
+  void print_dataset_format(std::ofstream &ofs) const;
 
 private:
   /** \brief The type of state m_representation.

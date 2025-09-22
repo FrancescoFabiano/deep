@@ -60,26 +60,22 @@ void ArgumentParser::parse(int argc, char **argv) {
     }
 
     // --- Dataset mode consistency check ---
-    if (!m_dataset_mode && app.count("--dataset_depth")) {
+    if (!m_dataset_mode && (app.count("--dataset_depth") ||
+                            app.count("--dataset_type") ||
+                            app.count("--dataset_separated") ||
+                            app.count("--dataset_discard_factor") ||
+                            app.count("--dataset_seed"))) {
       ExitHandler::exit_with_message(
           ExitHandler::ExitCode::ArgParseError,
-          "Dataset-related options (--dataset_depth, --dataset_mapped, "
-          "--dataset_both) "
+          "Dataset-related options (--dataset_depth, --dataset_type, "
+          "--dataset_separated, etc.) "
           "were set but --dataset mode is not enabled. Please use --dataset to "
           "activate dataset mode.");
     }
 
-#ifdef DEBUG
-    if (!m_dataset_mode &&
-        (app.count("--dataset_mapped") || app.count("--dataset_both"))) {
-      ExitHandler::exit_with_message(
-          ExitHandler::ExitCode::ArgParseError,
-          "Dataset-related options (--dataset_depth, --dataset_mapped, "
-          "--dataset_both) "
-          "were set but --dataset mode is not enabled. Please use --dataset to "
-          "activate dataset mode.");
+    if (m_dataset_mode && app.count("--dataset_type")) {
+      set_dataset_type();
     }
-#endif
 
     // --- Bisimulation consistency check ---
     if (!m_bisimulation && app.count("--bisimulation_type")) {
@@ -193,23 +189,16 @@ ArgumentParser::ArgumentParser() : app("deep") {
       ->add_option(
           "--dataset_depth", m_dataset_depth,
           "Set the maximum depth for dataset generation (default: 10).")
-      ->default_val("10");
-
-#ifdef DEBUG
-  ///\TODO for debug pourpouse we are now tranforming mapped into bitmask
-  dataset_group->add_flag(
-      "--dataset_mapped", m_dataset_mapped,
-      "Use mapped (compact) node labels in dataset generation. If not set, "
-      "hashed node labels are used.");
-  dataset_group->add_flag(
-      "--dataset_both", m_dataset_both,
-      "Generate both mapped and hashed node labels in the dataset.");
+    ->default_val("10");
+  dataset_group->add_option(
+  "--dataset_type", m_dataset_type_string,
+  "Specifies how node labels are represented in dataset generation. "
+  "Options: MAPPED (compact integer mapping), HASHED (standard hashing), "
+  "or BITMASK (bitmask representation of fluents and goals).")
+  ->check(CLI::IsMember({"MAPPED", "HASHED", "BITMASK"}))
+  ->default_val("HASHED");
   dataset_group->add_flag("--dataset_separated", m_dataset_separated,
                           "Enable non-merged dataset generation mode.");
-  dataset_group->add_flag(
-      "--dataset_merged_both", m_dataset_merged_both,
-      "Enable both merged and non-merged dataset generation.");
-#endif
   dataset_group
       ->add_option("--dataset_discard_factor", m_dataset_discard_factor,
                    "Set the maximum value for discard factor during dataset "
@@ -370,20 +359,31 @@ double ArgumentParser::get_dataset_discard_factor() const noexcept {
   return m_dataset_discard_factor;
 }
 
-bool ArgumentParser::get_dataset_mapped() const noexcept {
-  return m_dataset_mapped;
-}
+void ArgumentParser::set_dataset_type() noexcept {
+  // convert to uppercase for case-insensitive comparison
+  std::string value = m_dataset_type_string;
 
-bool ArgumentParser::get_dataset_both() const noexcept {
-  return m_dataset_both;
+  std::ranges::transform(value, value.begin(),
+                         [](const unsigned char c) { return std::toupper(c); });
+
+  if (value == "MAPPED")
+    m_dataset_type = DatasetType::MAPPED;
+  else if (value == "HASHED")
+    m_dataset_type = DatasetType::HASHED;
+  else if (value == "BITMASK")
+    m_dataset_type =  DatasetType::BITMASK;
+  else
+  {
+    ExitHandler::exit_with_message(
+        ExitHandler::ExitCode::ArgParseError,
+        "Invalid dataset type: " + m_dataset_type_string +
+                              ". Expected one of: MAPPED, HASHED, BITMASK." +
+            std::string(ExitHandler::arg_parse_suggestion));
+  }
 }
 
 bool ArgumentParser::get_dataset_separated() const noexcept {
   return m_dataset_separated;
-}
-
-bool ArgumentParser::get_dataset_merged_both() const noexcept {
-  return m_dataset_merged_both;
 }
 
 int64_t ArgumentParser::get_dataset_seed() const noexcept {
@@ -425,6 +425,11 @@ bool ArgumentParser::get_results_info() const noexcept {
 }
 
 bool ArgumentParser::get_log_enabled() const noexcept { return m_log_enabled; }
+
+DatasetType ArgumentParser::get_dataset_type() const noexcept
+{
+  return m_dataset_type;
+}
 
 std::ostream &ArgumentParser::get_output_stream() const {
   return *m_output_stream;

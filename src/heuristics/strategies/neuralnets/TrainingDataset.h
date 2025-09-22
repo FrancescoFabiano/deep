@@ -296,27 +296,11 @@ private:
   std::string print_state_for_dataset(const State<StateRepr> &state);
 
   /**
-   * \brief Internal print for dataset.
-   * \param state The state.
-   * \param base_filename Base filename.
-   * \param type Type string.
-   * \param merged Used to indicate if we want a single merged graph that
-   * contains both the goal and the state.
-   */
-  void print_state_for_dataset_internal(const State<StateRepr> &state,
-                                        const std::string &base_filename,
-                                        const std::string &type,
-                                        bool merged) const;
-
-  /**
    * \brief Format a name for dataset files.
    * \param base_filename Base filename.
-   * \param type Type string.
-   * \param merged Used to indicate if we want a single merged graph that
-   * contains both the goal and the state. \return Formatted name.
+   * \return Formatted name.
    */
-  std::string format_name(const std::string &base_filename,
-                          const std::string &type, bool merged) const;
+  std::string format_name(const std::string &base_filename) const;
 
   /**
    * @brief Generates a unique folder path by appending an incrementing number
@@ -334,6 +318,18 @@ private:
    */
   static std::string make_unique_folder(const std::string &base_path,
                                         const std::string &domain_name);
+
+    /**
+     * @brief Retrieves the output path corresponding to the current dataset type.
+     *
+     * This function inspects the dataset type provided by the ArgumentParser
+     * singleton and returns the appropriate output path constant from OutputPaths.
+     * If the dataset type is invalid, the function will terminate the program
+     * with an error message via ExitHandler.
+     *
+     * @return std::string Path associated with the selected dataset type.
+     */
+  std::string create_complete_path() const;
 };
 
 #include "TrainingDataset.tpp"
