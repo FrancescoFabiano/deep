@@ -162,8 +162,8 @@ template <StateRepresentation StateRepr>
           << std::endl;
     }
 
-    //std::cout << "[DEBUG] REMOVE THIS" << std::endl;
-    //return 1; // Skip actual inference for debug mode
+    // std::cout << "[DEBUG] REMOVE THIS" << std::endl;
+    // return 1; // Skip actual inference for debug mode
 
     // compare_predictions(state, run_inference(state_tensor));
   }
@@ -638,8 +638,8 @@ void GraphNN<StateRepr>::populate_with_goal() {
     constexpr auto goal_parent_id =
         TrainingDataset<KripkeState>::get_goal_parent_id_int();
 
-    add_edge(epsilon_id,
-             goal_parent_id, TrainingDataset<KripkeState>::get_to_goal_edge_id_int());
+    add_edge(epsilon_id, goal_parent_id,
+             TrainingDataset<KripkeState>::get_to_goal_edge_id_int());
   } else {
     ExitHandler::exit_with_message(
         ExitHandler::ExitCode::GNNTensorTranslationError,
@@ -749,8 +749,9 @@ GraphNN<StateRepr>::state_to_tensor_minimal(const KripkeState &kstate) {
                       m_edge_labels.end());
   m_real_node_ids.erase(m_real_node_ids.begin() + m_node_ids_initial_size,
                         m_real_node_ids.end());
-  m_real_node_ids_bitmask.erase(m_real_node_ids_bitmask.begin() + m_real_node_ids_bitmask_initial_size,
-                      m_real_node_ids_bitmask.end());
+  m_real_node_ids_bitmask.erase(m_real_node_ids_bitmask.begin() +
+                                    m_real_node_ids_bitmask_initial_size,
+                                m_real_node_ids_bitmask.end());
   m_node_to_symbolic = m_node_to_symbolic_original;
   m_symbolic_id = m_starting_symbolic_id;
 
