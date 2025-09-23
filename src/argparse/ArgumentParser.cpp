@@ -60,10 +60,9 @@ void ArgumentParser::parse(int argc, char **argv) {
     }
 
     // --- Dataset mode consistency check ---
-    if (!m_dataset_mode &&
-        (app.count("--dataset_depth") ||
-         app.count("--dataset_discard_factor") ||
-         app.count("--dataset_seed"))) {
+    if (!m_dataset_mode && (app.count("--dataset_depth") ||
+                            app.count("--dataset_discard_factor") ||
+                            app.count("--dataset_seed"))) {
       ExitHandler::exit_with_message(
           ExitHandler::ExitCode::ArgParseError,
           "Dataset-related options (--dataset_depth, --dataset_discard_factor, "

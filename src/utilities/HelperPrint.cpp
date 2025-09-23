@@ -513,8 +513,9 @@ void HelperPrint::print_dot_format(const KripkeState &kstate,
   ofs << "}" << std::endl;
 }
 
-std::string HelperPrint::kworld_to_bitmask(const KripkeWorldPointer &to_convert,
-                                           const bool is_merged, const std::vector<Fluent> & ordered_positive_fluents) {
+std::string HelperPrint::kworld_to_bitmask(
+    const KripkeWorldPointer &to_convert, const bool is_merged,
+    const std::vector<Fluent> &ordered_positive_fluents) {
 
 #ifdef DEBUG
   if (to_convert.get_fluent_set().size() >= MAX_FLUENT_NUMBER) {
@@ -549,9 +550,7 @@ std::string HelperPrint::kworld_to_bitmask(const KripkeWorldPointer &to_convert,
   std::string bitmask(MAX_FLUENT_NUMBER, '0');
   size_t idx = 0;
 
-
   const auto fluent_set = to_convert.get_fluent_set();
-
 
   for (Fluent current_fluent : ordered_positive_fluents) {
     if (fluent_set.contains(current_fluent)) {
@@ -604,7 +603,8 @@ void HelperPrint::print_dataset_format(const KripkeState &kstate,
 
   int world_counter = training_dataset->get_shift_state_ids();
   const auto ordered_positive_fluents =
-      Domain::get_instance().get_positive_fluents(); // Contains also the negative
+      Domain::get_instance()
+          .get_positive_fluents(); // Contains also the negative
 
   // Assign IDs
   for (const auto &pw : kstate.get_worlds()) {
@@ -619,7 +619,8 @@ void HelperPrint::print_dataset_format(const KripkeState &kstate,
         break;
       }
       case DatasetType::BITMASK: {
-        world_map[hash] = kworld_to_bitmask(pw, is_merged,ordered_positive_fluents);
+        world_map[hash] =
+            kworld_to_bitmask(pw, is_merged, ordered_positive_fluents);
         break;
       }
       default: {

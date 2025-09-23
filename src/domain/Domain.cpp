@@ -56,8 +56,9 @@ Domain &Domain::get_instance() {
 
 const FluentsSet &Domain::get_fluents() const noexcept { return m_fluents; }
 
-const std::vector<Fluent> &Domain::get_positive_fluents() const noexcept { return m_positive_fluents; }
-
+const std::vector<Fluent> &Domain::get_positive_fluents() const noexcept {
+  return m_positive_fluents;
+}
 
 unsigned int Domain::get_fluent_number() const noexcept {
   return static_cast<unsigned int>(m_fluents.size() / 2);

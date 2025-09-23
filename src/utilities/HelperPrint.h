@@ -133,11 +133,12 @@ public:
    * \brief Transform a KripkeWorldPointer (a world) into the bitmask format for
    * GNN. \param to_convert The KripkeWorldPointer to convert. \param is_merged
    * True if the world is from a merged state (with goal encoding).
-   *  \param ordered_positive_fluents Fluents in ordered fashion (only the positive version) \return The
-   * binary string (bitmask) representation. file.
+   *  \param ordered_positive_fluents Fluents in ordered fashion (only the
+   * positive version) \return The binary string (bitmask) representation. file.
    */
-  static std::string kworld_to_bitmask(const KripkeWorldPointer& to_convert,
-                                       bool is_merged, const std::vector<Fluent>& ordered_positive_fluents);
+  static std::string
+  kworld_to_bitmask(const KripkeWorldPointer &to_convert, bool is_merged,
+                    const std::vector<Fluent> &ordered_positive_fluents);
 
   /**
    * \brief Print a KripkeState in format for training the GNN.

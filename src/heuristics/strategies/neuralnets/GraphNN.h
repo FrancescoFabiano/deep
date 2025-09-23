@@ -16,8 +16,8 @@
  * - edge_dst: 1D array of symbolic destination node IDs for each edge.
  * - edge_attrs: 1D array of edge attributes or labels, aligned with edges.
  * - real_node_ids: 1D array mapping symbolic node IDs to their corresponding
- * - real_node_ids_bitmask: flatten multiDim array mapping symbolic node IDs to their
- * corresponding BITMASK IDs.
+ * - real_node_ids_bitmask: flatten multiDim array mapping symbolic node IDs to
+ * their corresponding BITMASK IDs.
  *
  * All arrays are designed for compatibility with ONNX Runtime and GNN models
  * exported to ONNX format.
@@ -42,8 +42,9 @@ struct GraphTensor {
   ///< node IDs to real/hashed node IDs.
   ///< aligned with edge_ids.
 
-    std::vector<uint8_t> real_node_ids_bitmask;
-  ///< Special Case: BITMASK nodes have BITMASKS as real IDs (lists of 0-1) flattened in a single vector (use uint for easier conversion)
+  std::vector<uint8_t> real_node_ids_bitmask;
+  ///< Special Case: BITMASK nodes have BITMASKS as real IDs (lists of 0-1)
+  ///< flattened in a single vector (use uint for easier conversion)
 };
 
 /**
@@ -131,12 +132,12 @@ private:
   std::vector<size_t> m_real_node_ids;
   ///< Vector storing real node IDs in symbolic order.
   ///< (Assume that the position is meaningful)
-   std::vector<uint8_t>  m_real_node_ids_bitmask;
+  std::vector<uint8_t> m_real_node_ids_bitmask;
   ///< Vector storing bitmask IDs in symbolic order.
   ///< (Assume that the position is meaningful)
 
-    size_t m_bitmask_size = 0; ///< Size of the bitmask (in bits) if using
-                               ///< bitmask representation for nodes
+  size_t m_bitmask_size = 0; ///< Size of the bitmask (in bits) if using
+                             ///< bitmask representation for nodes
 
   std::vector<int64_t> m_edge_src;
   ///< Source node IDs for each edge. (Assume
@@ -222,11 +223,13 @@ private:
    * \param origin_filename The path to the original states that DOT file.
    * \param state_tensor The GraphTensor containing the graph data to be
    * written.
-   * \param is_goal Check if the comparison is for a goal-only tensor (needed for bitmask)
+   * \param is_goal Check if the comparison is for a goal-only tensor (needed
+   * for bitmask)
    */
   [[nodiscard]] bool
-  write_and_compare_tensor_to_dot(const std::string& origin_filename,
-                                  const GraphTensor& state_tensor, bool is_goal) const;
+  write_and_compare_tensor_to_dot(const std::string &origin_filename,
+                                  const GraphTensor &state_tensor,
+                                  bool is_goal) const;
 
   /**
    * \brief Populates the given GraphTensor with the current graph data.

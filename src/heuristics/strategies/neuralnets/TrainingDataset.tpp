@@ -792,7 +792,6 @@ std::string TrainingDataset<StateRepr>::print_state_for_dataset(
 template <StateRepresentation StateRepr>
 std::string TrainingDataset<StateRepr>::format_name(
     const std::string &base_filename) const {
-  std::string result_filename =
-      create_complete_path() + base_filename + ".dot";
+  std::string result_filename = create_complete_path() + base_filename + ".dot";
   return result_filename;
 }
