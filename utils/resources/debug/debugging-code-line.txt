@@ -1,1 +1,10 @@
-exp/gnn_exp/batch1/CC/Test/CC_2_2_3__pl_3.txt -v --dataset_type BITMASK -s Astar -u GNN
+exp/gnn_exp/batch1/CC/Test/CC_2_2_3__pl_3.txt
+-v
+--dataset_type
+BITMASK
+-s
+Astar
+-u
+GNN
+--GNN_model
+utils/resources/debug/onnx_test/distance_estimator.onnx
