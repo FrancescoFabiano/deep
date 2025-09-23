@@ -155,6 +155,9 @@ private:
   size_t m_node_ids_initial_size =
       0; ///< Initial size for the node IDs vector (to remove the new inserted
          ///< nodes while processing the heuristics)
+    size_t m_real_node_ids_bitmask_initial_size =
+        0; ///< Initial size for the node IDs vector with bitmask config (to remove the new inserted
+    ///< nodes while processing the heuristics)
   size_t m_starting_symbolic_id =
       0; ///< Initial symbolic ID (to remove the new inserted nodes while
          ///< processing the heuristics)
@@ -330,31 +333,9 @@ private:
    *
    *
    * \param src The source node ID (real).
-   * \param src_kworld The KripkeWorldPointer associated with the source node.
-   * \param dst The destination node ID (real).
-   * \param dst_kworld The KripkeWorldPointer associated with the destination
-   * node. \param label The label or attribute associated with the edge.
+   * \param dst The destination node ID (real). \param label The label or attribute associated with the edge.
    */
-  void add_edge(int64_t src, const KripkeWorldPointer &src_kworld, int64_t dst,
-                const KripkeWorldPointer &dst_kworld, int64_t label);
-
-  /**
-   * \brief Adds an edge to the graph representation while also adding the
-   * symbolic ids of the two vertices.
-   *
-   * Appends a new edge to the internal edge lists, specifying the source node,
-   * destination node, and edge label. The order of insertion is meaningful and
-   * should be consistent with the symbolic node IDs.
-   *
-   * To get the symbolic ids it uses the function \ref get_symbolic_id.
-   *
-   *
-   * \param src The source node ID (real).
-   * \param dst The destination node ID (real).
-   * \param dst_kworld The KripkeWorldPointer associated with the destination
-   * node. \param label The label or attribute associated with the edge.
-   */
-  void add_edge(int64_t src, int64_t dst, const KripkeWorldPointer &dst_kworld,
+  void add_edge(size_t src, size_t dst,
                 int64_t label);
 
   /**
@@ -370,9 +351,30 @@ private:
    *
    * \param src The source node ID (real).
    * \param dst The destination node ID (real).
+   * \param dst_kworld The KripkeWorldPointer associated with the destination
+   * node. \param label The label or attribute associated with the edge.
+   */
+  void add_edge(size_t src, size_t dst, const KripkeWorldPointer& dst_kworld,
+                int64_t label);
+
+  /**
+   * \brief Adds an edge to the graph representation while also adding the
+   * symbolic ids of the two vertices.
+   *
+   * Appends a new edge to the internal edge lists, specifying the source node,
+   * destination node, and edge label. The order of insertion is meaningful and
+   * should be consistent with the symbolic node IDs.
+   *
+   * To get the symbolic ids it uses the function \ref get_symbolic_id.
+   *
+   *
+   * \param src The source node ID (real).
+   * \param src_kworld
+   * \param dst The destination node ID (real).
+   * \param dst_kworld
    * \param label The label or attribute associated with the edge.
    */
-  void add_edge(int64_t src, int64_t dst, int64_t label);
+  void add_edge(size_t src, const KripkeWorldPointer& src_kworld, size_t dst, const KripkeWorldPointer& dst_kworld, int64_t label);
   /**
    * \brief Parses the constant used for normalization in prediction results.
    *

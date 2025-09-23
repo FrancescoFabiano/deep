@@ -162,7 +162,8 @@ template <StateRepresentation StateRepr>
           << std::endl;
     }
 
-    return 1; // Skip actual inference for debug mode
+    //std::cout << "[DEBUG] REMOVE THIS" << std::endl;
+    //return 1; // Skip actual inference for debug mode
 
     // compare_predictions(state, run_inference(state_tensor));
   }
@@ -475,7 +476,6 @@ size_t GraphNN<StateRepr>::get_symbolic_id(const size_t node,
               "Invalid character in bitmask string.");
         }
       }
-      std::cout << "[DEBUG] For debugger" << std::endl;
     }
   }
   return m_node_to_symbolic[node];
@@ -518,9 +518,9 @@ size_t GraphNN<StateRepr>::get_symbolic_id(const size_t node) {
 }
 
 template <StateRepresentation StateRepr>
-void GraphNN<StateRepr>::add_edge(const int64_t src,
+void GraphNN<StateRepr>::add_edge(const size_t src,
                                   const KripkeWorldPointer &src_kworld,
-                                  const int64_t dst,
+                                  const size_t dst,
                                   const KripkeWorldPointer &dst_kworld,
                                   const int64_t label) {
 
@@ -532,7 +532,7 @@ void GraphNN<StateRepr>::add_edge(const int64_t src,
 }
 
 template <StateRepresentation StateRepr>
-void GraphNN<StateRepr>::add_edge(const int64_t src, const int64_t dst,
+void GraphNN<StateRepr>::add_edge(const size_t src, const size_t dst,
                                   const KripkeWorldPointer &dst_kworld,
                                   const int64_t label) {
   // Only dst has kworld information because it is a state kworld and not a goal
@@ -543,7 +543,7 @@ void GraphNN<StateRepr>::add_edge(const int64_t src, const int64_t dst,
 }
 
 template <StateRepresentation StateRepr>
-void GraphNN<StateRepr>::add_edge(const int64_t src, const int64_t dst,
+void GraphNN<StateRepr>::add_edge(const size_t src, const size_t dst,
                                   const int64_t label) {
   m_edge_src.push_back(get_symbolic_id(src));
   m_edge_dst.push_back(get_symbolic_id(dst));
@@ -638,8 +638,8 @@ void GraphNN<StateRepr>::populate_with_goal() {
     constexpr auto goal_parent_id =
         TrainingDataset<KripkeState>::get_goal_parent_id_int();
 
-    add_edge(epsilon_id, goal_parent_id,
-             TrainingDataset<KripkeState>::get_to_goal_edge_id_int());
+    add_edge(epsilon_id,
+             goal_parent_id, TrainingDataset<KripkeState>::get_to_goal_edge_id_int());
   } else {
     ExitHandler::exit_with_message(
         ExitHandler::ExitCode::GNNTensorTranslationError,
@@ -661,6 +661,7 @@ void GraphNN<StateRepr>::populate_with_goal() {
     m_edge_src.clear();
     m_edge_labels.clear();
     m_real_node_ids.clear();
+    m_real_node_ids_bitmask.clear();
     m_node_to_symbolic.clear();
     m_symbolic_id = 0;
 
@@ -671,6 +672,7 @@ void GraphNN<StateRepr>::populate_with_goal() {
 
   m_edges_initial_size = m_edge_labels.size();
   m_node_ids_initial_size = m_real_node_ids.size();
+  m_real_node_ids_bitmask_initial_size = m_real_node_ids_bitmask.size();
   m_starting_symbolic_id = m_symbolic_id;
 }
 
@@ -693,7 +695,6 @@ GraphNN<StateRepr>::state_to_tensor_minimal(const KripkeState &kstate) {
     const auto state_parent_id = state_parent.get_id();
 
     add_edge(TrainingDataset<KripkeState>::get_epsilon_node_id_int(),
-
              state_parent_id, state_parent,
              TrainingDataset<KripkeState>::get_to_state_edge_id_int());
   } else {
@@ -708,10 +709,9 @@ GraphNN<StateRepr>::state_to_tensor_minimal(const KripkeState &kstate) {
     if (const auto hash = pw.get_id(); !world_map.contains(hash)) {
       switch (dataset_type) {
       case DatasetType::HASHED:
-      case DatasetType::BITMASK: {
+      case DatasetType::BITMASK:
         world_map[hash] = hash;
         break;
-      }
       case DatasetType::MAPPED: {
         world_map[hash] = world_counter++;
         break;
@@ -749,6 +749,8 @@ GraphNN<StateRepr>::state_to_tensor_minimal(const KripkeState &kstate) {
                       m_edge_labels.end());
   m_real_node_ids.erase(m_real_node_ids.begin() + m_node_ids_initial_size,
                         m_real_node_ids.end());
+  m_real_node_ids_bitmask.erase(m_real_node_ids_bitmask.begin() + m_real_node_ids_bitmask_initial_size,
+                      m_real_node_ids_bitmask.end());
   m_node_to_symbolic = m_node_to_symbolic_original;
   m_symbolic_id = m_starting_symbolic_id;
 
