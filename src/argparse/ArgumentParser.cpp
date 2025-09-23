@@ -61,19 +61,18 @@ void ArgumentParser::parse(int argc, char **argv) {
 
     // --- Dataset mode consistency check ---
     if (!m_dataset_mode &&
-        (app.count("--dataset_depth") || app.count("--dataset_type") ||
-         app.count("--dataset_separated") ||
+        (app.count("--dataset_depth") ||
          app.count("--dataset_discard_factor") ||
          app.count("--dataset_seed"))) {
       ExitHandler::exit_with_message(
           ExitHandler::ExitCode::ArgParseError,
-          "Dataset-related options (--dataset_depth, --dataset_type, "
-          "--dataset_separated, etc.) "
+          "Dataset-related options (--dataset_depth, --dataset_discard_factor, "
+          "--dataset_seed) "
           "were set but --dataset mode is not enabled. Please use --dataset to "
           "activate dataset mode.");
     }
 
-    if (m_dataset_mode && app.count("--dataset_type")) {
+    if (app.count("--dataset_type")) {
       set_dataset_type();
     }
 

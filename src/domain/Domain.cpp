@@ -56,6 +56,9 @@ Domain &Domain::get_instance() {
 
 const FluentsSet &Domain::get_fluents() const noexcept { return m_fluents; }
 
+const std::vector<Fluent> &Domain::get_positive_fluents() const noexcept { return m_positive_fluents; }
+
+
 unsigned int Domain::get_fluent_number() const noexcept {
   return static_cast<unsigned int>(m_fluents.size() / 2);
 }
@@ -149,10 +152,11 @@ void Domain::build_fluents(Grounder &grounder) {
 
     domain_fluent_map.insert({fluent_name, fluent_real});
     m_fluents.insert(fluent_real);
+    m_positive_fluents.push_back(fluent_real);
 
     Fluent fluent_negate_real(bit_size, i);
     // fluent_negate_real.set(fluent_negate_real.size() - 1, false); Do nothing
-    // since it is already false by deafult
+    // since it is already false by default
     domain_fluent_map.insert(
         {NEGATION_SYMBOL + fluent_name, fluent_negate_real});
     m_fluents.insert(fluent_negate_real);

@@ -202,8 +202,6 @@ TrainingDataset<StateRepr>::to_binary_string(const bool force_non_binary_ids,
 
 template <StateRepresentation StateRepr>
 void TrainingDataset<StateRepr>::update_binary_ids() {
-  m_to_goal_edge_id = to_binary_string(false, m_to_goal_edge_id);
-  m_to_state_edge_id = to_binary_string(false, m_to_state_edge_id);
   m_epsilon_node_id = to_binary_string(false, m_epsilon_node_id);
   m_goal_parent_id = to_binary_string(false, m_goal_parent_id);
 }
@@ -299,7 +297,7 @@ bool TrainingDataset<StateRepr>::generate_dataset() {
                                    "Error opening file: " + m_filepath_csv);
     std::exit(static_cast<int>(ExitHandler::ExitCode::ExitForCompiler));
   }
-  result << "File Path Hash,Depth,Distance From Goal,Goal" << std::endl;
+  result << "File Path,Depth,Distance From Goal,Goal" << std::endl;
   result.close();
 
   return search_space_exploration();
@@ -795,6 +793,6 @@ template <StateRepresentation StateRepr>
 std::string TrainingDataset<StateRepr>::format_name(
     const std::string &base_filename) const {
   std::string result_filename =
-      create_complete_path() + "/" + base_filename + ".dot";
+      create_complete_path() + base_filename + ".dot";
   return result_filename;
 }

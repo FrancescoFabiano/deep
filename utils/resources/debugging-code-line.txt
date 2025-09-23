@@ -1,0 +1,1 @@
+exp/gnn_exp/batch1/CC/Test/CC_2_2_3__pl_3.txt -v --dataset_type BITMASK -s Astar -u GNN

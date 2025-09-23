@@ -38,6 +38,8 @@ public:
 
   /** \brief Getter of the field \ref m_fluents. */
   [[nodiscard]] const FluentsSet &get_fluents() const noexcept;
+    /** \brief Getter of the field \ref m_positive_fluents. (Useful for bitmask) */
+    [[nodiscard]] const std::vector<Fluent> &get_positive_fluents() const noexcept;
   /** \brief Function that returns the number of Fluent in the domain. */
   [[nodiscard]] unsigned int get_fluent_number() const noexcept;
   /** \brief Function that returns the size of the fluent set (which also
@@ -69,7 +71,8 @@ private:
   // the information.
   FluentsSet m_fluents; ///< Set containing all the (grounded) Fluent of
                         ///< the domain.
-  ActionsSet m_actions; ///< Set containing all the Action (with effects,
+    std::vector<Fluent> m_positive_fluents; ///< Vector containing all the (grounded) POSITIVE Fluent of the domain ordered (useful for bitmask)
+      ActionsSet m_actions; ///< Set containing all the Action (with effects,
                         ///< conditions, obs etc.) of the domain.
   AgentsSet
       m_agents; ///< Set containing all the (grounded) Agent of the domain.

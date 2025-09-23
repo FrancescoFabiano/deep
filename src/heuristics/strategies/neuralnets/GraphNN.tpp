@@ -162,7 +162,9 @@ template <StateRepresentation StateRepr>
           << std::endl;
     }
 
-    // compare_predictions(state, run_inference(state_tensor));
+    return 1; // Skip actual inference for debug mode
+
+   // compare_predictions(state, run_inference(state_tensor));
   }
 #endif
 
@@ -183,20 +185,58 @@ float GraphNN<StateRepr>::run_inference(const GraphTensor &tensor) const {
                                    "[ONNX] Model not loaded before inference.");
   }
 
+  if (ArgumentParser::get_instance().get_dataset_separated()) {
+    ExitHandler::exit_with_message(
+        ExitHandler::ExitCode::GNNTensorTranslationError,
+        "Separated dataset type not supported for GNN inference.");
+  }
+
   auto &session = *m_session;
   const auto &memory_info = *m_memory_info;
 
   const size_t num_edges = tensor.edge_src.size();
   const size_t num_nodes = tensor.real_node_ids.size();
 
-  // Construct real_node_ids tensor: shape [num_nodes, 1]
-  std::vector<float> real_node_ids_float(tensor.real_node_ids.begin(),
-                                         tensor.real_node_ids.end());
-  const std::array<int64_t, 1> node_ids_shape{
+
+  const auto dataset_type = ArgumentParser::get_instance().get_dataset_type();
+  const bool is_bitmask = (dataset_type == DatasetType::BITMASK);
+
+  Ort::Value real_node_ids_tensor;
+  Ort::Value real_node_ids_bitmask_tensor;
+
+  if (is_bitmask)
+  {
+    // Shape [num_nodes, bitmask_size]
+    const std::array<int64_t, 2> bitmask_shape{
+      static_cast<int64_t>(num_nodes),
+      static_cast<int64_t>(m_bitmask_size)
+  };
+
+    // ONNX wants a non-const pointer even though it doesn't mutate it.
+    uint8_t* bitmask_ptr =
+        const_cast<uint8_t*>(tensor.real_node_ids_bitmask.data());
+
+    real_node_ids_bitmask_tensor =
+        Ort::Value::CreateTensor<uint8_t>(
+            memory_info,
+            bitmask_ptr, //0010-0110-0100 ---- 25365238276482764872
+            tensor.real_node_ids_bitmask.size(), // [12,1]
+            bitmask_shape.data(), // shape[3,4] ---- [3,1]
+            bitmask_shape.size()); // [2,1]
+  }
+  else
+  {
+    // Construct real_node_ids tensor: shape [num_nodes, 1]
+    std::vector<float> real_node_ids_float(tensor.real_node_ids.begin(),
+                                           tensor.real_node_ids.end());
+    const std::array<int64_t, 1> node_ids_shape{
       static_cast<int64_t>(real_node_ids_float.size())};
-  Ort::Value real_node_ids_tensor = Ort::Value::CreateTensor<float>(
-      memory_info, real_node_ids_float.data(), real_node_ids_float.size(),
-      node_ids_shape.data(), node_ids_shape.size());
+    real_node_ids_tensor = Ort::Value::CreateTensor<float>(
+        memory_info, real_node_ids_float.data(), real_node_ids_float.size(),
+        node_ids_shape.data(), node_ids_shape.size());
+  }
+
+
 
   // Construct edge_index tensor: shape [2, num_edges]
   std::vector<int64_t> edge_index_data(2 * num_edges);
@@ -232,7 +272,13 @@ float GraphNN<StateRepr>::run_inference(const GraphTensor &tensor) const {
   // Prepare input tensors
   // Prepare input tensors
   std::vector<Ort::Value> input_tensors;
-  input_tensors.emplace_back(std::move(real_node_ids_tensor));
+  if (is_bitmask)
+  {
+    input_tensors.emplace_back(std::move(real_node_ids_bitmask_tensor));
+  }
+  else{
+    input_tensors.emplace_back(std::move(real_node_ids_tensor));
+  }
   input_tensors.emplace_back(std::move(edge_index_tensor));
   input_tensors.emplace_back(std::move(edge_attr_tensor));
   input_tensors.emplace_back(std::move(state_batch_tensor));
@@ -415,22 +461,32 @@ size_t GraphNN<StateRepr>::get_symbolic_id(const size_t node,
         DatasetType::BITMASK) {
       m_real_node_ids.push_back(node);
     } else {
-      // Converting from kworld id
+      // Convert from kworld id
       const std::string bitmask_str = HelperPrint::kworld_to_bitmask(
-          kworld, !ArgumentParser::get_instance().get_dataset_separated());
-      std::vector<bool> bitmask;
-      bitmask.reserve(bitmask_str.size());
-      for (char c : bitmask_str) {
-        if (c == '0')
-          bitmask.push_back(false);
-        else if (c == '1')
-          bitmask.push_back(true);
-        else
+          kworld,
+          !ArgumentParser::get_instance().get_dataset_separated(),
+          Domain::get_instance().get_positive_fluents());
+
+      if (m_bitmask_size == 0)
+        { m_bitmask_size = bitmask_str.size();}
+
+      // Append new row into flattened storage
+      const size_t start = m_real_node_ids_bitmask.size();
+      m_real_node_ids_bitmask.resize(start + m_bitmask_size);
+
+      for (size_t j = 0; j < m_bitmask_size; ++j) {
+        char c = bitmask_str[j];
+        if (c == '0') {
+          m_real_node_ids_bitmask[start + j] = 0;
+        } else if (c == '1') {
+          m_real_node_ids_bitmask[start + j] = 1;
+        } else {
           ExitHandler::exit_with_message(
               ExitHandler::ExitCode::GNNBitmaskGOALError,
               "Invalid character in bitmask string.");
+        }
       }
-      m_real_node_ids_bitmask.push_back(bitmask);
+      std::cout << "[DEBUG] For debugger" << std::endl;
     }
   }
   return m_node_to_symbolic[node];
@@ -453,15 +509,17 @@ size_t GraphNN<StateRepr>::get_symbolic_id(const size_t node) {
         ArgumentParser::get_instance().get_dataset_separated()) {
       m_real_node_ids.push_back(node);
     } else {
-      // Converting from goal id -- We just go from integer to binary
-      size_t to_convert = node;
-      std::vector<bool> bitmask(BITMASK_DIM,
-                                false); // [0] = MSB, [bits-1] = LSB
-      for (std::size_t i = 0; i < BITMASK_DIM; ++i) {
-        bitmask[BITMASK_DIM - 1 - i] = static_cast<bool>(to_convert & 1ULL);
-        to_convert >>= 1ULL;
+      const size_t start = m_real_node_ids_bitmask.size();
+      m_real_node_ids_bitmask.resize(start + BITMASK_DIM);
+
+      // [0] = MSB, [BITMASK_DIM-1] = LSB
+      // Fill from LSB upward in the integer while placing into MSB..LSB positions
+      uint64_t val = static_cast<uint64_t>(node);
+      for (size_t i = 0; i < BITMASK_DIM; ++i) {
+        // Take bit i (LSB-first), store at position (BITMASK_DIM-1 - i) to get MSB-first layout
+        m_real_node_ids_bitmask[start + (BITMASK_DIM - 1 - i)] = static_cast<uint8_t>(val & 1ULL);
+        val >>= 1ULL;
       }
-      m_real_node_ids_bitmask.push_back(bitmask);
     }
   }
   return m_node_to_symbolic[node];
@@ -474,7 +532,7 @@ void GraphNN<StateRepr>::add_edge(const int64_t src,
                                   const KripkeWorldPointer &dst_kworld,
                                   const int64_t label) {
 
-  // Both src and dst have kworld information because they are states kwords and
+  // Both src and dst have kworld information because they are states kworlds and
   // not goal nodes
   m_edge_src.push_back(get_symbolic_id(src, src_kworld));
   m_edge_dst.push_back(get_symbolic_id(dst, dst_kworld));
@@ -485,7 +543,7 @@ template <StateRepresentation StateRepr>
 void GraphNN<StateRepr>::add_edge(const int64_t src, const int64_t dst,
                                   const KripkeWorldPointer &dst_kworld,
                                   const int64_t label) {
-  // Only dst has kworld information because it is a state kword and not a goal
+  // Only dst has kworld information because it is a state kworld and not a goal
   // node
   m_edge_src.push_back(get_symbolic_id(src));
   m_edge_dst.push_back(get_symbolic_id(dst, dst_kworld));
@@ -591,6 +649,12 @@ void GraphNN<StateRepr>::populate_with_goal() {
     add_edge(epsilon_id, goal_parent_id,
              TrainingDataset<KripkeState>::get_to_goal_edge_id_int());
   }
+  else
+  {
+    ExitHandler::exit_with_message(
+        ExitHandler::ExitCode::GNNTensorTranslationError,
+        "Separated dataset type not supported for GNN inference.");
+  }
 
   for (auto it = begin; it != end; ++it) {
     const size_t src = std::stoul((*it)[1]);
@@ -609,6 +673,11 @@ void GraphNN<StateRepr>::populate_with_goal() {
     m_real_node_ids.clear();
     m_node_to_symbolic.clear();
     m_symbolic_id = 0;
+
+
+    ExitHandler::exit_with_message(
+        ExitHandler::ExitCode::GNNTensorTranslationError,
+        "Separated dataset type not supported for GNN inference.");
   }
 
   m_edges_initial_size = m_edge_labels.size();
@@ -638,6 +707,12 @@ GraphNN<StateRepr>::state_to_tensor_minimal(const KripkeState &kstate) {
 
              state_parent_id, state_parent,
              TrainingDataset<KripkeState>::get_to_state_edge_id_int());
+  }
+  else
+  {
+    ExitHandler::exit_with_message(
+        ExitHandler::ExitCode::GNNTensorTranslationError,
+        "Separated dataset type not supported for GNN inference.");
   }
 
   // Assign IDs ///\todo remove this for efficiency. The hash can be used directly
@@ -716,10 +791,10 @@ bool GraphNN<StateRepr>::check_tensor_against_dot(
 
   // Prepare modified path string
   bool ret =
-      write_and_compare_tensor_to_dot(m_checking_file_path, state_tensor);
-  if (!ArgumentParser::get_instance().get_dataset_separated() && ret) {
+      write_and_compare_tensor_to_dot(m_checking_file_path, state_tensor, false);
+  if (ArgumentParser::get_instance().get_dataset_separated() && ret) {
     ret = write_and_compare_tensor_to_dot(m_goal_file_path,
-                                          m_goal_graph_tensor) &&
+                                          m_goal_graph_tensor, true) &&
           ret;
   }
 
@@ -728,7 +803,8 @@ bool GraphNN<StateRepr>::check_tensor_against_dot(
 
 template <StateRepresentation StateRepr>
 bool GraphNN<StateRepr>::write_and_compare_tensor_to_dot(
-    const std::string &origin_filename, const GraphTensor &state_tensor) {
+    const std::string &origin_filename, const GraphTensor &state_tensor, bool is_goal) const
+{
   // Prepare modified path string
   std::string modified_path = origin_filename; // copy original
 
@@ -752,6 +828,7 @@ bool GraphNN<StateRepr>::write_and_compare_tensor_to_dot(
   auto edge_src = state_tensor.edge_src;
   auto edge_dst = state_tensor.edge_dst;
   auto real_node_ids = state_tensor.real_node_ids;
+  auto real_node_ids_bitmask = state_tensor.real_node_ids_bitmask;
 
   const auto num_edges = edge_src.size();
   if (num_edges != edge_dst.size()) {
@@ -766,12 +843,31 @@ bool GraphNN<StateRepr>::write_and_compare_tensor_to_dot(
     int64_t src_symbolic = edge_src[e];
     int64_t dst_symbolic = edge_dst[e];
 
-    uint64_t src = real_node_ids[src_symbolic];
-    uint64_t dst = real_node_ids[dst_symbolic];
-
     int64_t attr = edge_attrs[e];
+    std::string src_str, dst_str;
 
-    ofs << "  " << src << " -> " << dst << " [label=\"" << std::to_string(attr)
+    if (ArgumentParser::get_instance().get_dataset_type() == DatasetType::BITMASK && !is_goal)
+    {
+      src_str = "";
+      dst_str = "";
+      size_t iteration = 0;
+      while (iteration < m_bitmask_size)
+      {
+        src_str += std::to_string(real_node_ids_bitmask[src_symbolic * m_bitmask_size + iteration]);
+        dst_str += std::to_string(real_node_ids_bitmask[dst_symbolic * m_bitmask_size + iteration]);
+        ++iteration;
+      }
+    }
+    else
+    {
+      uint64_t src = real_node_ids[src_symbolic];
+      uint64_t dst = real_node_ids[dst_symbolic];
+      src_str = std::to_string(src);
+      dst_str = std::to_string(dst);
+    }
+
+
+    ofs << "  " << src_str << " -> " << dst_str << " [label=\"" << std::to_string(attr)
         << "\"]" << ";\n";
   }
 

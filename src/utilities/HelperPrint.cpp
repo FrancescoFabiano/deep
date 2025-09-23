@@ -514,7 +514,7 @@ void HelperPrint::print_dot_format(const KripkeState &kstate,
 }
 
 std::string HelperPrint::kworld_to_bitmask(const KripkeWorldPointer &to_convert,
-                                           bool is_merged) {
+                                           const bool is_merged, const std::vector<Fluent> & ordered_positive_fluents) {
 
 #ifdef DEBUG
   if (to_convert.get_fluent_set().size() >= MAX_FLUENT_NUMBER) {
@@ -549,8 +549,12 @@ std::string HelperPrint::kworld_to_bitmask(const KripkeWorldPointer &to_convert,
   std::string bitmask(MAX_FLUENT_NUMBER, '0');
   size_t idx = 0;
 
-  for (Fluent fluent : to_convert.get_fluent_set()) {
-    if (!FormulaHelper::is_negated(fluent)) {
+
+  const auto fluent_set = to_convert.get_fluent_set();
+
+
+  for (Fluent current_fluent : ordered_positive_fluents) {
+    if (fluent_set.contains(current_fluent)) {
       if (idx < bitmask.size()) {
         bitmask[idx] = '1';
       } else {
@@ -570,10 +574,11 @@ std::string HelperPrint::kworld_to_bitmask(const KripkeWorldPointer &to_convert,
   }
 
   // Convert repetition into binary string padded to x bits
+  const auto rep = to_convert.get_repetition();
   std::string repetition_bits(MAX_REPETITION_BITS, '0');
   for (size_t i = 0; i < MAX_REPETITION_BITS; ++i) {
     // Fill from right to left (LSB → last position)
-    if (to_convert.get_repetition() & (1 << i)) {
+    if (rep & (1 << i)) {
       repetition_bits[MAX_REPETITION_BITS - 1 - i] = '1';
     }
   }
@@ -598,6 +603,8 @@ void HelperPrint::print_dataset_format(const KripkeState &kstate,
   const auto dataset_type = ArgumentParser::get_instance().get_dataset_type();
 
   int world_counter = training_dataset->get_shift_state_ids();
+  const auto ordered_positive_fluents =
+      Domain::get_instance().get_positive_fluents(); // Contains also the negative
 
   // Assign IDs
   for (const auto &pw : kstate.get_worlds()) {
@@ -612,7 +619,7 @@ void HelperPrint::print_dataset_format(const KripkeState &kstate,
         break;
       }
       case DatasetType::BITMASK: {
-        world_map[hash] = kworld_to_bitmask(pw, is_merged);
+        world_map[hash] = kworld_to_bitmask(pw, is_merged,ordered_positive_fluents);
         break;
       }
       default: {
