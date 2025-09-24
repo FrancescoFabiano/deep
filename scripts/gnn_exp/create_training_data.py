@@ -91,54 +91,57 @@ def process_file_with_retries(deep_exe, file_path, target_folder, no_goal, depth
         try:
             exit_code, output = run_cpp_once(deep_exe, file_path, no_goal, depth, discard_factor, seed)
         except Exception as e:
-            # Unexpected error invoking the binary (not a normal exit code) – treat as failure of this attempt
             exit_code, output = -999, f"Python exception while invoking C++: {e}"
 
         # Always save a log per attempt
         log_path = save_attempt_log(logs_dir, instance_name, seed, output)
 
-        if exit_code == 3:
-            print(f"[ERROR] No goals found in file {file_name} (seed {seed}). Not retrying this instance.")
+        if exit_code in (0, 2):
+            # Success
+            match = re.search(r'Dataset stored in (.+?) folder\.', output or "")
+            if not match:
+                print(f"[WARNING] Could not find output folder in C++ output for {file_name} (seed {seed}).")
+                return  # Stop – don’t retry for missing folder
+            cpp_output_folder = match.group(1).strip()
+            try:
+                postprocess_and_move_output(cpp_output_folder, output_target)
+                print(f"[SUCCESS] {file_name} with seed {seed} → {output_target}")
+                return
+            except Exception as e:
+                print(f"[WARNING] Moving/patching failed for {file_name} (seed {seed}): {e}.")
+                return  # Stop – don’t retry for patching failure
+
+        elif exit_code == 3:
+            # Retry with the next seed
+            print(f"[RETRY] No goals found in {file_name} (seed {seed}), trying next seed...")
+            if attempt_idx < len(seeds):
+                continue
+            else:
+                # All seeds exhausted → record as no goals
+                write_failed_record(failed_root, {
+                    "instance": instance_name,
+                    "file": file_path,
+                    "reason": "no_goals_all_seeds",
+                    "seeds_tried": list(seeds),
+                    "time_utc": datetime.utcnow().isoformat() + "Z",
+                })
+                print(f"[FAILED AFTER RETRIES] {file_name} → no goals with all seeds {seeds}.")
+                return
+
+        else:
+            # Any other failure: don’t retry
+            print(f"[FAILURE] {file_name} (seed {seed}) exit {exit_code}. See log: {log_path}")
             write_failed_record(failed_root, {
                 "instance": instance_name,
                 "file": file_path,
-                "reason": "no_goals",
-                "exit_code": exit_code,
+                "reason": f"failure_exit_{exit_code}",
                 "seed": seed,
                 "attempt": attempt_idx,
                 "log_path": log_path,
                 "time_utc": datetime.utcnow().isoformat() + "Z",
             })
-            return  # Do not retry on 'no goals'
+            return
 
-        if exit_code in (0, 2):
-            # Find the produced folder path in the C++ output
-            match = re.search(r'Dataset stored in (.+?) folder\.', output or "")
-            if not match:
-                print(f"[WARNING] Could not find output folder in C++ output for {file_name} (seed {seed}). Trying next seed.")
-                # Keep trying next seeds
-            else:
-                cpp_output_folder = match.group(1).strip()
-                try:
-                    postprocess_and_move_output(cpp_output_folder, output_target)
-                    print(f"[SUCCESS] {file_name} with seed {seed} → {output_target}")
-                    return
-                except Exception as e:
-                    print(f"[WARNING] Moving/patching failed for {file_name} (seed {seed}): {e}. Trying next seed.")
-            # If we got here, we’ll fall through to try next seed
-        else:
-            print(f"[FAILURE] {file_name} (seed {seed}) exit {exit_code}. See log: {log_path}")
-            # Try next seed
-
-    # If all seeds exhausted, record final failure
-    print(f"[FAILED AFTER RETRIES] {file_name} failed with all seeds {seeds}.")
-    write_failed_record(failed_root, {
-        "instance": instance_name,
-        "file": file_path,
-        "reason": "exhausted_seeds",
-        "seeds_tried": list(seeds),
-        "time_utc": datetime.utcnow().isoformat() + "Z",
-    })
 
 def run_cpp_on_training_files_multithreaded(deep_exe, training_folder, models_folder, no_goal, depth, discard_factor, seeds, failed_root, logs_dir):
     if not os.path.isdir(training_folder):
