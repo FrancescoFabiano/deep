@@ -1,5 +1,15 @@
+BATCH GENERATION:
 exp/gnn_exp/batch1/CC/Test/CC_2_2_3__pl_3.txt
--v
+--dataset
+--dataset_depth 10
+--dataset_discard_factor 0.4
+--dataset_seed 42
+--dataset_type
+BITMASK
+
+
+EXECUTION:
+exp/gnn_exp/batch1/CC/Test/CC_2_2_3__pl_3.txt
 --dataset_type
 BITMASK
 -s
