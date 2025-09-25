@@ -201,12 +201,9 @@ float GraphNN<StateRepr>::run_inference(const GraphTensor &tensor) const {
   const size_t num_edges = tensor.edge_src.size();
   size_t num_nodes;
 
-  if (is_bitmask)
-  {
+  if (is_bitmask) {
     num_nodes = tensor.real_node_ids_bitmask.size() / m_bitmask_size;
-  }
-  else
-  {
+  } else {
     num_nodes = tensor.real_node_ids.size();
   }
   Ort::Value real_node_ids_tensor;
@@ -222,11 +219,8 @@ float GraphNN<StateRepr>::run_inference(const GraphTensor &tensor) const {
         const_cast<uint8_t *>(tensor.real_node_ids_bitmask.data());
 
     real_node_ids_bitmask_tensor = Ort::Value::CreateTensor<uint8_t>(
-        memory_info,
-        bitmask_ptr,
-        tensor.real_node_ids_bitmask.size(),
-        bitmask_shape.data(),
-        bitmask_shape.size());
+        memory_info, bitmask_ptr, tensor.real_node_ids_bitmask.size(),
+        bitmask_shape.data(), bitmask_shape.size());
   } else {
     // Construct real_node_ids tensor: shape [num_nodes, 1]
     std::vector<float> real_node_ids_float(tensor.real_node_ids.begin(),
