@@ -1,4 +1,4 @@
-subset_train = ['CC_2_2_3__pl_3_4']
+subset_train = ['CC_2_2_3__pl_3_5']
 model_name = distance_estimator
 normalization_constants_name = C
 folder_raw_data = out/NN/Training
@@ -6,7 +6,7 @@ unreachable_state_value = 1000000
 test_size = 0.2
 max_percentage_per_class = 0.5
 dir_save_data = data
-dir_save_model = models
+dir_save_model = model_prova
 experiment_name = 
 n_train_epochs = 500
 batch_size = 1024
