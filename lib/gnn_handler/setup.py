@@ -4,7 +4,7 @@ from setuptools import find_packages, setup
 
 
 def get_version():
-    """Gets the gnn_handler version."""
+    """Gets the epistemic_rl version."""
     path = CWD / "src" / "__init__.py"
     content = path.read_text()
 
@@ -18,7 +18,7 @@ CWD = pathlib.Path(__file__).absolute().parent
 
 
 setup(
-    name="gnn_handler",
+    name="epistemic_rl",
     version="0.1.0",
     description="Epistemic Reinforcement Learning",
     long_description=open("README.md").read(),

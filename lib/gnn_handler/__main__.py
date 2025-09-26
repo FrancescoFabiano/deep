@@ -3,13 +3,18 @@ import os
 
 import torch
 
-from src.preprocessing import GraphDataPipeline
+from src.preprocessing import (
+    GraphDataPipeline,
+)
 from src.utils import (
     get_dataloaders,
     prepare_samples,
     print_values,
     seed_everything,
     select_model,
+    KEYWORD_MAPPED,
+    KEYWORD_HASHED,
+    KEYWORD_BITMASK,
 )
 
 
@@ -114,13 +119,11 @@ def parse_args():
         default=False,
         help="Inference with pytorch and onnx model on example samples",
     )
-
     parser.add_argument(
-        "--kind-of-ordering",
-        type=str,
-        choices=["hash", "map"],
-        default="hash",
-        help="Ordering strategy to consider",
+        "--dataset_type",
+        choices=[KEYWORD_MAPPED, KEYWORD_HASHED, KEYWORD_BITMASK],
+        default=KEYWORD_HASHED,
+        help="Specifies how node labels are represented in dataset generation. Options: MAPPED (compact integer mapping), HASHED (standard hashing), or BITMASK (bitmask representation of fluents and goals).",
     )
     parser.add_argument(
         "--kind-of-data",
@@ -129,7 +132,6 @@ def parse_args():
         default="merged",
         help="Data split type to use",
     )
-
     parser.add_argument(
         "--use-goal",
         type=str2bool,
@@ -162,7 +164,7 @@ def main(args):
     list_subset_train = args.subset_train
     if_build_data = args.build_data
     if_train = args.train
-    kind_of_ordering = args.kind_of_ordering
+    dataset_type = args.kind_of_ordering
     kind_of_data = args.kind_of_data
     use_goal = args.use_goal
     use_depth = args.use_depth
@@ -189,7 +191,7 @@ def main(args):
     path_data = path_save_data
     if experiment_name != "":
         path_data += "/" + experiment_name
-    # /{kind_of_ordering}_{kind_of_data}"
+    # /{dataset_type}_{kind_of_data}"
     # path_save_data += "_goal" if use_goal else "_no_goal"
     # path_save_data += "_depth" if use_depth else "_no_depth"
     os.makedirs(path_data, exist_ok=True)
@@ -197,14 +199,14 @@ def main(args):
 
     print("\n************************************************")
     print(
-        f"subset_train: {list_subset_train} | {kind_of_ordering} | {kind_of_data} | Use goal: {use_goal} | Use depth: {use_depth} | Model name: {model_name} | Train: {if_train} | Build Data: {if_build_data}",
+        f"subset_train: {list_subset_train} | {dataset_type} | {kind_of_data} | Use goal: {use_goal} | Use depth: {use_depth} | Model name: {model_name} | Train: {if_train} | Build Data: {if_build_data}",
     )
 
     if if_build_data:
         pipe = GraphDataPipeline(
             folder_data=folder_raw_data,
             list_subset_train=list_subset_train,
-            kind_of_ordering=kind_of_ordering,
+            dataset_type=dataset_type,
             kind_of_data=kind_of_data,
             unreachable_state_value=unreachable_state_value,
             max_percentage_per_class=max_percentage_per_class,
@@ -249,7 +251,9 @@ def main(args):
         path_model += "/" + experiment_name
 
     # instantiate
-    m = select_model(model_name, use_goal, use_depth)
+    m = select_model(
+        model_name, use_goal, use_depth, bitmask=dataset_type == KEYWORD_BITMASK
+    )
 
     # train
     if if_train:
@@ -280,9 +284,7 @@ def main(args):
     m.to_onnx(onnx_model_path, use_goal, use_depth)
 
     if if_try_example:
-        example_state_to_predict = (
-            f"./examples/{kind_of_ordering}_{kind_of_data}_state.dot"
-        )
+        example_state_to_predict = f"./examples/{dataset_type}_{kind_of_data}_state.dot"
         example_goal = "./examples/goal_tree.dot"
         example_depth = 5
 
@@ -290,6 +292,7 @@ def main(args):
             example_state_to_predict,
             depth=example_depth if use_depth else None,
             goal_dot=example_goal if use_goal else None,
+            bitmask=dataset_type == KEYWORD_BITMASK,
         )
 
         print("PyTorch output: ", out)

@@ -14,3 +14,4 @@ pydot==3.0.4
 onnx
 onnxscript
 scikit-learn
+onnxruntime
