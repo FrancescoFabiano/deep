@@ -37,7 +37,8 @@ Replace --deep_exe with the path to your compiled deep binary.
 If the script fails to generate training data for a specific domain, it
 will skip that domain and continue with the others. The generation
 process involves randomness, so retrying may succeed on a second
-attempt. If some domains consistently fail to produce training data, you
+attempt (the first 12 attempts are seeded).
+If some domains consistently fail to produce training data, you
 can try adjusting the following options:
 
 -   `--depth n`: Sets the maximum depth of the search tree to explore.
