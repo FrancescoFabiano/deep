@@ -212,6 +212,52 @@ If you use deep in your research, please cite:
   *CoRR*, abs/1511.01960.
 
 
+## Known Issues
+
+- [ ] When running long action lists without bisimulation, a `NULL` world is generated in the state.
+
+  ### Steps to Reproduce
+  1. Run the following action list:  
+     left_b, b_check_1, right_a, b_check_1, a_check_3, tell_b_b1_1, a_check_3, a_check_3, b_check_1, a_check_3
+
+  2. On this file:  
+     exp/gnn_exp/batch1/CC/Test/CC_2_2_3__pl_3.txt
+
+  3. Using the command:
+
+     ```console
+     ./cmake-build-debug/bin/deep exp/gnn_exp/batch1/CC/Test/CC_2_2_3__pl_3.txt \
+       -v \
+       -e \
+       --execute_actions \
+       left_b, \
+       b_check_1, \
+       right_a, \
+       b_check_1, \
+       a_check_3, \
+       tell_b_b1_1, \
+       a_check_3, \
+       a_check_3, \
+       b_check_1, \
+       a_check_3
+     ```
+
+  ### Expected Behavior
+  - The state should remain valid throughout execution.
+  - No `NULL` world should be generated.
+
+  ### Actual Behavior
+  - A `NULL` world is generated in the state during execution.
+
+  ### Additional Notes
+  - Make sure to comment out the `return true` after a goal is found in order to print the final state.
+
+  ### Environment
+  - **Binary:** ./cmake-build-debug/bin/deep
+  - **Dataset/File:** exp/gnn_exp/batch1/CC/Test/CC_2_2_3__pl_3.txt
+  - **Execution Mode:** --execute_actions
+  - **Platform:** Ubuntu 22.04
+
 ## License
 
 This project is licensed under the GNU General Public License v3.0 – see the LICENSE file for details.

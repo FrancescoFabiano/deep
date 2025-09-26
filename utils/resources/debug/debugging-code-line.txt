@@ -7,7 +7,6 @@ exp/gnn_exp/batch1/CC/Test/CC_2_2_3__pl_3.txt
 --dataset_type
 BITMASK
 
-
 EXECUTION:
 exp/gnn_exp/batch1/CC/Test/CC_2_2_3__pl_3.txt
 --dataset_type

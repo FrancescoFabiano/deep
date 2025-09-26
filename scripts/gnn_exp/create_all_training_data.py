@@ -20,7 +20,13 @@ def main():
     parser.add_argument("--no_goal", action="store_true", help="Add --dataset_separated from C++ execution")
     parser.add_argument("--depth", type=int, default=25, help="Depth for dataset generation (default: 25)")
     parser.add_argument("--discard_factor", dest="discard_factor", type=float, default=0.4, help="Maximum discard factor (default: 0.4)")
-
+    parser.add_argument(
+        "--seeds",
+        type=str,
+        default="42,1337,2024,23,31,47,59,73,89,101,137,149",
+        help="Comma/space-separated list of seeds to try on failure (order respected). Default: 42,1337,2024,23,31,47,59,73,89,101,137,149"
+    )
+    parser.add_argument("--dataset_type", choices=["MAPPED", "HASHED", "BITMASK"], default="HASHED", help="Specifies how node labels are represented in dataset generation. Options: MAPPED (compact integer mapping), HASHED (standard hashing), or BITMASK (bitmask representation of fluents and goals).")
 
     args = parser.parse_args()
     batch_path = os.path.abspath(args.batch_path)
@@ -49,7 +55,9 @@ def main():
             domain_name,
             args.deep_exe,
             "--depth", str(args.depth),
-            "--discard_factor", str(args.discard_factor)
+            "--discard_factor", str(args.discard_factor),
+            "--seeds", str(args.seeds),
+            "--dataset_type", str(args.dataset_type),
         ]
 
         if args.no_goal:

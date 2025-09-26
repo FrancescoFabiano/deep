@@ -29,23 +29,32 @@ def write_failed_record(failed_root, record):
         with open(path, "a", encoding="utf-8") as f:
             f.write(json.dumps(record, ensure_ascii=False) + "\n")
 
+def _safe_instance_name(name: str) -> str:
+    return re.sub(r"[^a-zA-Z0-9._-]", "_", name)
+
 def save_attempt_log(logs_dir, instance_name, seed, output):
-    safe_instance = re.sub(r"[^a-zA-Z0-9._-]", "_", instance_name)
+    """
+    Save an attempt log (stdout/stderr merged) into the global logs_dir.
+    Returns the absolute path to the log file.
+    """
+    safe_instance = _safe_instance_name(instance_name)
     log_path = os.path.join(logs_dir, f"{safe_instance}__seed_{seed}.log")
     with LOG_LOCK:
         with open(log_path, "w", encoding="utf-8") as f:
             f.write(output or "")
-    return log_path
+    return os.path.abspath(log_path)
 
-def run_cpp_once(deep_exe, file_path, no_goal, depth, discard_factor, seed):
+def run_cpp_once(deep_exe, file_path, no_goal, depth, discard_factor, seed, dataset_type):
     """Run the C++ tool once with a given seed. Returns (exit_code, output_string)."""
     command = [
         deep_exe,
         file_path,
+        "-b",       #Bisimulation mode
         "--dataset",
         "--dataset_depth", str(depth),
         "--dataset_discard_factor", str(discard_factor),
         "--dataset_seed", str(seed),
+        "--dataset_type", str(dataset_type),
     ]
     if no_goal:
         command.append("--dataset_separated")
@@ -82,29 +91,93 @@ def postprocess_and_move_output(cpp_output_folder, output_target):
             except Exception as e:
                 print(f"[WARNING] Could not update CSV {csv_path}: {e}")
 
-def process_file_with_retries(deep_exe, file_path, target_folder, no_goal, depth, discard_factor, seeds, failed_root, logs_dir):
+def _write_dataset_summary_logs(dataset_dir, instance_name, success_seed, failed_attempts, attempt_logs):
+    """
+    Create per-dataset logs:
+      - <dataset>/logs/  (move attempt logs here)
+      - <dataset>/dataset_log.json (summary with success + failed)
+      - <dataset>/SEEDS.txt (quick summary)
+    """
+    os.makedirs(dataset_dir, exist_ok=True)
+    per_dataset_logs_dir = os.path.join(dataset_dir, "logs")
+    os.makedirs(per_dataset_logs_dir, exist_ok=True)
+
+    moved_logs = []
+    for lp in attempt_logs:
+        if not lp:
+            continue
+        try:
+            # Keep same filename, move/copy into per-dataset logs
+            dst = os.path.join(per_dataset_logs_dir, os.path.basename(lp))
+            # Move if source exists and not already in place
+            if os.path.abspath(lp) != os.path.abspath(dst) and os.path.exists(lp):
+                shutil.move(lp, dst)
+            moved_logs.append(dst)
+        except Exception as e:
+            print(f"[WARNING] Could not move log {lp} to dataset logs: {e}")
+
+    # JSON summary
+    summary = {
+        "instance": instance_name,
+        "success_seed": success_seed,
+        "failed_seeds": failed_attempts,
+        "attempt_logs": moved_logs,
+#        "time_utc": datetime.utcnow().isoformat() + "Z",
+    }
+    summary_json = os.path.join(dataset_dir, "dataset_log.json")
+    with LOG_LOCK:
+        with open(summary_json, "w", encoding="utf-8") as f:
+            json.dump(summary, f, ensure_ascii=False, indent=2)
+
+    # Quick text summary
+    seeds_txt = os.path.join(dataset_dir, "SEEDS.txt")
+    with LOG_LOCK:
+        with open(seeds_txt, "w", encoding="utf-8") as f:
+            f.write(f"Instance: {instance_name}\n")
+            f.write(f"SUCCESS SEED: {success_seed}\n")
+            if failed_attempts:
+                f.write("FAILED SEEDS:\n")
+                for s in failed_attempts:
+                    f.write(f"  - {s}\n")
+            else:
+                f.write("FAILED SEEDS: (none)\n")
+
+def process_file_with_retries(deep_exe, file_path, target_folder, no_goal, depth, discard_factor, seeds, dataset_type, failed_root, global_logs_dir):
     file_name = os.path.basename(file_path)
     instance_name = os.path.splitext(file_name)[0]
     output_target = os.path.join(target_folder, instance_name)
 
+    failed_seeds = []
+    attempt_log_paths = []
+
     for attempt_idx, seed in enumerate(seeds, start=1):
         try:
-            exit_code, output = run_cpp_once(deep_exe, file_path, no_goal, depth, discard_factor, seed)
+            exit_code, output = run_cpp_once(deep_exe, file_path, no_goal, depth, discard_factor, seed, dataset_type)
         except Exception as e:
             exit_code, output = -999, f"Python exception while invoking C++: {e}"
 
-        # Always save a log per attempt
-        log_path = save_attempt_log(logs_dir, instance_name, seed, output)
+        # Always save a log per attempt (global, then later moved into the dataset folder on success)
+        log_path = save_attempt_log(global_logs_dir, instance_name, seed, output)
+        attempt_log_paths.append(log_path)
 
         if exit_code in (0, 2):
-            # Success
+            # Success – find where the tool wrote its output
             match = re.search(r'Dataset stored in (.+?) folder\.', output or "")
             if not match:
                 print(f"[WARNING] Could not find output folder in C++ output for {file_name} (seed {seed}).")
                 return  # Stop – don’t retry for missing folder
+
             cpp_output_folder = match.group(1).strip()
             try:
                 postprocess_and_move_output(cpp_output_folder, output_target)
+                # Now that the dataset is in its final folder, create per-dataset logs + summary and move attempt logs into it
+                _write_dataset_summary_logs(
+                    dataset_dir=output_target,
+                    instance_name=instance_name,
+                    success_seed=seed,
+                    failed_attempts=failed_seeds,
+                    attempt_logs=attempt_log_paths
+                )
                 print(f"[SUCCESS] {file_name} with seed {seed} → {output_target}")
                 return
             except Exception as e:
@@ -114,6 +187,7 @@ def process_file_with_retries(deep_exe, file_path, target_folder, no_goal, depth
         elif exit_code == 3:
             # Retry with the next seed
             print(f"[RETRY] No goals found in {file_name} (seed {seed}), trying next seed...")
+            failed_seeds.append(seed)
             if attempt_idx < len(seeds):
                 continue
             else:
@@ -123,7 +197,7 @@ def process_file_with_retries(deep_exe, file_path, target_folder, no_goal, depth
                     "file": file_path,
                     "reason": "no_goals_all_seeds",
                     "seeds_tried": list(seeds),
-                    "time_utc": datetime.utcnow().isoformat() + "Z",
+#                    "time_utc": datetime.utcnow().isoformat() + "Z",
                 })
                 print(f"[FAILED AFTER RETRIES] {file_name} → no goals with all seeds {seeds}.")
                 return
@@ -138,12 +212,11 @@ def process_file_with_retries(deep_exe, file_path, target_folder, no_goal, depth
                 "seed": seed,
                 "attempt": attempt_idx,
                 "log_path": log_path,
-                "time_utc": datetime.utcnow().isoformat() + "Z",
+ #               "time_utc": datetime.utcnow().isoformat() + "Z",
             })
             return
 
-
-def run_cpp_on_training_files_multithreaded(deep_exe, training_folder, models_folder, no_goal, depth, discard_factor, seeds, failed_root, logs_dir):
+def run_cpp_on_training_files_multithreaded(deep_exe, training_folder, models_folder, no_goal, depth, discard_factor, seeds, dataset_type, failed_root, logs_dir):
     if not os.path.isdir(training_folder):
         raise FileNotFoundError(f"Training folder not found: {training_folder}")
 
@@ -159,7 +232,7 @@ def run_cpp_on_training_files_multithreaded(deep_exe, training_folder, models_fo
     def wrapper(file_path):
         time.sleep(5)  # Delay start like in original code
         process_file_with_retries(
-            deep_exe, file_path, models_folder, no_goal, depth, discard_factor, seeds, failed_root, logs_dir
+            deep_exe, file_path, models_folder, no_goal, depth, discard_factor, seeds, dataset_type, failed_root, logs_dir
         )
 
     with ThreadPoolExecutor(max_workers=max_threads) as executor:
@@ -182,6 +255,7 @@ def main():
             "Run deep executable on all files in <base_folder>/<domain_name>/Training and "
             "store results in <base_folder>/_models/<domain_name>/training_data/.\n"
             "On failure, retry each problem with alternative seeds and record failures.\n"
+            "Also, for every successfully saved dataset, write per-dataset logs and a seed summary inside the dataset folder.\n"
             "IMPORTANT: Run from the root of the project folder."
         ),
         formatter_class=argparse.RawTextHelpFormatter
@@ -196,8 +270,10 @@ def main():
         "--seeds",
         type=str,
         default="42,1337,2024,23,31,47,59,73,89,101,137,149",
-        help="Comma/space-separated list of seeds to try on failure (order respected). Default: 42,1337,2024"
+        help="Comma/space-separated list of seeds to try on failure (order respected). Default: 42,1337,2024,23,31,47,59,73,89,101,137,149"
     )
+    parser.add_argument("--dataset_type", choices=["MAPPED", "HASHED", "BITMASK"], default="HASHED", help="Specifies how node labels are represented in dataset generation. Options: MAPPED (compact integer mapping), HASHED (standard hashing), or BITMASK (bitmask representation of fluents and goals).")
+
 
     args = parser.parse_args()
 
@@ -209,10 +285,11 @@ def main():
     seeds = parse_seeds(args.seeds)
 
     print(f"[INFO] Using seeds: {seeds}")
-    print(f"[INFO] Failed attempts and logs will be stored in: {failed_root}")
+    print(f"[INFO] Failed attempts and global attempt logs will be stored in: {failed_root}")
+    print(f"[INFO] On success, per-dataset logs and seed summaries will be placed inside each dataset folder.")
 
     run_cpp_on_training_files_multithreaded(
-        args.deep_exe, training_folder, models_folder, args.no_goal, args.depth, args.discard_factor, seeds, failed_root, logs_dir
+        args.deep_exe, training_folder, models_folder, args.no_goal, args.depth, args.discard_factor, seeds, args.dataset_type, failed_root, logs_dir
     )
 
 if __name__ == "__main__":
