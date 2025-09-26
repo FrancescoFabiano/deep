@@ -79,6 +79,17 @@ data.\
 python3 scripts/gnn_exp/train_models.py exp/gnn_exp/batch1
 ```
 
+Similarly, if you generated the training data with a specific representation, you must use the same representation (`--dataset_type`) when training the model.
+The available options are: `["MAPPED", "HASHED", "BITMASK"]` (default: `HASHED`).
+
+To maintain consistency, always pass the same `--dataset_type` value used during data generation to the `binary_args` in the execution phase.
+
+Example command with a different dataset type:
+
+```console
+python3 scripts/gnn_exp/train_models.py exp/gnn_exp/batch1 --dataset_type BITMASK
+```
+
 ### 3. Run evaluation and aggregate results
 
 Run inference using the trained models and aggregate the results into
