@@ -56,7 +56,7 @@ private:
    * \param[in] kstate The KripkeState to use for reachability.
    * \return True if fixed point reached, false otherwise.
    */
-  [[nodiscard]] static bool get_E_reachable_worlds_recursive(
+  static bool get_E_reachable_worlds_recursive(
       const AgentsSet &ags, const KripkeWorldPointersSet &worlds,
       KripkeWorldPointersSet &reached, const KripkeState &kstate);
 

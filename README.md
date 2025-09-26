@@ -241,6 +241,11 @@ If you use deep in your research, please cite:
        b_check_1, \
        a_check_3
      ```
+  ### What is going on
+  - The issue is that when we copy worlds for oblivious agents, we only consider the worlds directly reachable by those oblivious agents. In reality, we should consider all worlds reachable through any chain that contains an oblivious agent. This is necessary because if a non-oblivious agent believes something different, the perspective of the oblivious agent must still be maintained.
+  - This is currently patched but not fully corrected. The error lies in the function `maintain_oblivious_believed_worlds` in `KripkeState.cpp`.
+  - The temporary patch (manually adding a world if not previously found, but without copying its entire beliefs) is applied in `add_world_beliefs` in the same `KripkeState.cpp`.
+
 
   ### Expected Behavior
   - The state should remain valid throughout execution.

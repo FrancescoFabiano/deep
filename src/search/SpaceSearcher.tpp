@@ -320,7 +320,7 @@ bool SpaceSearcher<StateRepr, Strategy>::validate_plan(
     bool found_action = false;
     for (const auto &action : Domain::get_instance().get_actions()) {
       if (action.get_name() == action_name) {
-        found_action = true;
+          found_action = true;
         if (current.is_executable(action)) {
           ++m_expanded_nodes;
           current = current.compute_successor(action);

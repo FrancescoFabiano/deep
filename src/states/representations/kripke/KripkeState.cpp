@@ -20,6 +20,9 @@
 #include "KripkeEntailmentHelper.h"
 #include "KripkeReachabilityHelper.h"
 #include "KripkeState.h"
+
+#include <ranges>
+
 #include "KripkeStorage.h"
 #include "SetHelper.h"
 #include "utilities/ExitHandler.h"
@@ -137,7 +140,7 @@ void KripkeState::add_world(const KripkeWorld &to_add) {
 }
 
 KripkeWorldPointer KripkeState::add_rep_world(const KripkeWorld &to_add,
-                                              unsigned short repetition,
+                                              const unsigned short repetition,
                                               bool &is_new) {
   KripkeWorldPointer tmp = KripkeStorage::get_instance().add_world(to_add);
   tmp.set_repetition(repetition);
@@ -158,6 +161,7 @@ KripkeWorldPointer KripkeState::add_rep_world(const KripkeWorld &to_add) {
 
 void KripkeState::add_edge(const KripkeWorldPointer &from,
                            const KripkeWorldPointer &to, const Agent &ag) {
+
   auto from_beliefs = m_beliefs.find(from);
   if (from_beliefs != m_beliefs.end()) {
     auto &beliefs_map = from_beliefs->second;
@@ -177,6 +181,15 @@ void KripkeState::add_edge(const KripkeWorldPointer &from,
 void KripkeState::add_world_beliefs(const KripkeWorldPointer &world,
                                     const KripkeWorldPointersMap &beliefs) {
   m_beliefs[world] = beliefs;
+  /**TEMPORARY PATCH**/
+  for (const auto &to_add : beliefs | std::views::values) {
+    for (const auto &pw : to_add) {
+      bool is_new = false;
+      add_rep_world(KripkeWorld(pw.get_fluent_set()), pw.get_repetition(),is_new);
+    }
+  }
+  /**END TEMPORARY PATCH**/
+
 }
 
 void KripkeState::build_initial() {
@@ -345,18 +358,23 @@ KripkeState KripkeState::compute_successor(const Action &act) const {
 void KripkeState::maintain_oblivious_believed_worlds(
     KripkeState &ret, const AgentsSet &oblivious_obs_agents) const {
   if (!oblivious_obs_agents.empty()) {
-    auto tmp_world_set = KripkeReachabilityHelper::get_E_reachable_worlds(
+    const auto tmp_world_set = KripkeReachabilityHelper::get_E_reachable_worlds(
         oblivious_obs_agents, get_pointed(), *this);
     KripkeWorldPointersSet world_oblivious;
-    for (const auto &agent : Domain::get_instance().get_agents()) {
+    /*for (const auto &agent : Domain::get_instance().get_agents()) {
       for (const auto &wo_ob : tmp_world_set) {
         SetHelper::sum_set<KripkeWorldPointer>(
             world_oblivious, KripkeReachabilityHelper::get_B_reachable_worlds(
                                  agent, wo_ob, *this));
       }
-    }
+    }*/
+    KripkeReachabilityHelper::get_E_reachable_worlds_recursive(
+                                 Domain::get_instance().get_agents(), tmp_world_set, world_oblivious, *this);
+
+
+
     SetHelper::sum_set<KripkeWorldPointer>(world_oblivious, tmp_world_set);
-    ret.set_max_depth(get_max_depth() + 1);
+    //ret.set_max_depth(get_max_depth() + 1);
     ret.set_worlds(world_oblivious);
 
     for (const auto &wo_ob : world_oblivious) {

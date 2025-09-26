@@ -61,8 +61,7 @@ Similarly, if you want to generate training data with a different
 representation, you can use the `--dataset_type` option with one of the
 following choices: `["MAPPED", "HASHED", "BITMASK"]` (default is
 `HASHED`).\
-To ensure consistency during inference, pass the same `--dataset_type`
-argument to the `binary_args` in the execution phase.
+To ensure consistency during inference and training, use the same `dataset_type` in the training and execution phases (as illustrated in Steps 2 and 3).
 
 Example command with a different dataset type:
 
@@ -82,8 +81,6 @@ python3 scripts/gnn_exp/train_models.py exp/gnn_exp/batch1
 
 Similarly, if you generated the training data with a specific representation, you must use the same representation (`--dataset_type`) when training the model.
 The available options are: `["MAPPED", "HASHED", "BITMASK"]` (default: `HASHED`).
-
-To maintain consistency, always pass the same `--dataset_type` value used during data generation to the `binary_args` in the execution phase.
 
 Example command with a different dataset type:
 

@@ -347,8 +347,9 @@ void HelperPrint::print_dot_format(const KripkeState &kstate,
   ofs << "\n\trankdir=BT;" << std::endl;
 
   ofs << "\n\t//WORLDS List:" << std::endl;
-  std::map<FluentsSet, int> map_world_to_index;
+  std::map<KripkeWorldId, size_t> map_world_to_index;
   std::map<unsigned short, char> map_rep_to_name;
+  map_rep_to_name.clear();
   char found_rep =
       static_cast<char>(Domain::get_instance().get_agents().size() + 'A');
   int found_fs = 0;
@@ -357,7 +358,7 @@ void HelperPrint::print_dot_format(const KripkeState &kstate,
     ofs << "\tnode [shape = "
         << ((world_ptr == pointed) ? "doublecircle" : "circle") << "] ";
 
-    const auto &tmp_fs = world_ptr.get_fluent_set();
+    const auto &tmp_fs = world_ptr.get_fluent_based_id();
     if (!map_world_to_index.contains(tmp_fs)) {
       map_world_to_index[tmp_fs] = found_fs++;
     }
@@ -368,7 +369,7 @@ void HelperPrint::print_dot_format(const KripkeState &kstate,
     ofs << "\"" << map_rep_to_name[tmp_unsh] << "_"
         << map_world_to_index[tmp_fs] << "\";";
     ofs << "// (";
-    auto strings_set = m_grounder.deground_fluent(tmp_fs);
+    auto strings_set = m_grounder.deground_fluent(world_ptr.get_fluent_set());
     bool print_first = false;
     for (const auto &str : strings_set) {
       if (print_first)
@@ -391,7 +392,7 @@ void HelperPrint::print_dot_format(const KripkeState &kstate,
     ofs << "\t{rank = same; ";
     for (const auto &world_ptr : set) {
       ofs << "\"" << map_rep_to_name[world_ptr.get_repetition()] << "_"
-          << map_world_to_index[world_ptr.get_fluent_set()] << "\"; ";
+          << map_world_to_index[world_ptr.get_fluent_based_id()] << "\"; ";
     }
     ofs << "}\n";
   }
@@ -405,10 +406,10 @@ void HelperPrint::print_dot_format(const KripkeState &kstate,
     for (const auto &[ag, to_set] : from_map) {
       for (const auto &to : to_set) {
         std::string from_str =
-            "_" + std::to_string(map_world_to_index[from.get_fluent_set()]);
+            "_" + std::to_string(map_world_to_index[from.get_fluent_based_id()]);
         from_str.insert(0, 1, map_rep_to_name[from.get_repetition()]);
         std::string to_str =
-            "_" + std::to_string(map_world_to_index[to.get_fluent_set()]);
+            "_" + std::to_string(map_world_to_index[to.get_fluent_based_id()]);
         to_str.insert(0, 1, map_rep_to_name[to.get_repetition()]);
         edges[{from_str, to_str}].insert(m_grounder.deground_agent(ag));
       }
@@ -483,7 +484,7 @@ void HelperPrint::print_dot_format(const KripkeState &kstate,
     auto temp_fs = world_ptr.get_fluent_set();
     std::vector<std::pair<std::string, bool>> sorted_fluents;
     ofs << "\t\t<tr><td>" << map_rep_to_name[world_ptr.get_repetition()] << "_"
-        << map_world_to_index[temp_fs] << "</td> <td>";
+        << map_world_to_index[world_ptr.get_fluent_based_id()] << "</td> <td>";
     for (const auto &tmp_f : temp_fs) {
       bool is_neg = FormulaHelper::is_negated(tmp_f);
       std::string key = m_grounder.deground_fluent(tmp_f);
