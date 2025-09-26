@@ -22,8 +22,13 @@ from torch_geometric.utils import from_networkx
 from src.model import BaseModel
 from src.models.distance_estimator import (
     DistanceEstimator,
-    OnnxDistanceEstimatorWrapper,
+    OnnxDistanceEstimatorWrapperBits,
+    OnnxDistanceEstimatorWrapperIds,
 )
+
+KEYWORD_MAPPED = "MAPPED"
+KEYWORD_HASHED = "HASHED"
+KEYWORD_BITMASK = "BITMASK"
 
 
 class PrecomputedGraphDataset(Dataset):
@@ -137,7 +142,9 @@ def diagnose_data(data):
         print(f"Edge {i}: {src} -> {tgt} | Label: {label}")
 
 
-def _nx_to_pyg(G: nx.DiGraph, plot: bool = False, diagnose: bool = False) -> Data:
+def _nx_to_pyg(
+    G: nx.DiGraph, plot: bool = False, diagnose: bool = False, bitmask: bool = False
+) -> Data:
     for n, data in G.nodes(data=True):
         data["shape"] = {"circle": 0, "doublecircle": 1}.get(
             data.get("shape", "circle"), 0
@@ -157,9 +164,69 @@ def _nx_to_pyg(G: nx.DiGraph, plot: bool = False, diagnose: bool = False) -> Dat
     data.edge_index = data.edge_index.long()
     data.edge_attr = edge_labels
 
-    # 2) Node IDs → float tensor
-    raw_ids = [int(n) for n in G.nodes()]
-    data.node_names = torch.tensor(raw_ids, dtype=torch.float)
+    if bitmask:
+        # Preserve the same node order that from_networkx() used
+        nodes = list(G.nodes())
+
+        # Convert each node label into a list of bits
+        def to_bits(n: object, bit_len: int | None) -> list[int]:
+            if isinstance(n, str):
+                s = n.strip()
+                if not set(s) <= {"0", "1"}:
+                    raise ValueError(f"Node '{n}' is not a 0/1 bitstring.")
+                if bit_len is not None and len(s) != bit_len:
+                    raise ValueError(
+                        f"Inconsistent bit length for '{n}': {len(s)} vs {bit_len}."
+                    )
+                return [int(ch) for ch in s]
+            elif isinstance(n, (list, tuple)):
+                bits = [int(b) for b in n]
+                if not set(bits) <= {0, 1}:
+                    raise ValueError(f"Node '{n}' contains non-binary values.")
+                if bit_len is not None and len(bits) != bit_len:
+                    raise ValueError(f"Inconsistent bit length for '{n}'.")
+                return bits
+            elif isinstance(n, int):
+                # If nodes are integers, require a fixed length via G.graph['bit_len']
+                if bit_len is None:
+                    raise ValueError(
+                        "bit_len must be provided in G.graph['bit_len'] for int node labels."
+                    )
+                return [int(ch) for ch in format(n, f"0{bit_len}b")]
+            else:
+                raise TypeError(f"Unsupported node label type: {type(n)}")
+
+        # Infer fixed length: prefer explicit G.graph['bit_len']; otherwise from first string/sequence
+        explicit_len = G.graph.get("bit_len", None)
+        first = nodes[0]
+        inferred_len = len(first) if isinstance(first, (str, list, tuple)) else None
+        BIT_LEN = explicit_len if explicit_len is not None else inferred_len
+        if BIT_LEN is None:
+            raise ValueError(
+                "Cannot infer bit length. Set G.graph['bit_len'] or use string/sequence bit labels."
+            )
+
+        bit_rows = [
+            to_bits(n, BIT_LEN) for n in nodes
+        ]  # List[List[int]] shape [N, BIT_LEN]
+
+        # Store as compact boolean tensor [N, BIT_LEN]
+        data.node_bits = torch.tensor(bit_rows, dtype=torch.bool)
+
+        # (Optional) also keep an integer hash/id for convenience: [N]
+        weights = 2 ** torch.arange(BIT_LEN - 1, -1, -1)  # msb…lsb
+        data.node_bitint = (data.node_bits.to(torch.int64) * weights).sum(dim=1)
+
+        # (Optional) keep the original labels for reference (as a python list)
+        data.node_labels = nodes
+
+        # (Optional) if you still want a float tensor like the non-bitmask branch:
+        data.node_names = data.node_bitint.to(torch.float32)
+
+    else:
+        # 2) Node IDs → float tensor
+        raw_ids = [int(n) for n in G.nodes()]
+        data.node_names = torch.tensor(raw_ids, dtype=torch.float)
 
     # 3) Clean up unused fields if you like
     # del data.edge_label, data.edge_type, data.x
@@ -175,13 +242,15 @@ def preprocess_sample(
     depth: int | None = None,
     target: int | None = None,
     goal_path: Optional[str] = None,
+    bitmask: bool = False,
     if_plot_graph: bool = False,
     if_diagnose: bool = False,
 ) -> Dict[str, Any]:
     Gs = _load_dot(Path(state_path))
     if if_plot_graph:
         plot_graph(Gs)
-    ds = _nx_to_pyg(Gs)
+    # print("Gs.nodes = ", Gs.nodes())
+    ds = _nx_to_pyg(Gs, bitmask=bitmask)
     assert ds.edge_index.size(1) == ds.edge_attr.size(
         0
     ), f"Mismatch: {ds.edge_index.size(1)} edges vs {ds.edge_attr.size(0)} attrs"
@@ -191,7 +260,7 @@ def preprocess_sample(
     ds.name = Path(state_path).stem
 
     sample = {"state_graph": ds}
-
+    # print("ds: ", ds)
     if depth is not None:
         sample["depth"] = torch.tensor([depth])
 
@@ -202,7 +271,7 @@ def preprocess_sample(
         Gg = _load_dot(Path(goal_path))
         if if_plot_graph:
             plot_graph(Gg)
-        dg = _nx_to_pyg(Gg)
+        dg = _nx_to_pyg(Gg, bitmask=bitmask)
         assert dg.edge_index.size(1) == dg.edge_attr.size(
             0
         ), f"Mismatch: {dg.edge_index.size(1)} edges vs {dg.edge_attr.size(0)} attrs"
@@ -332,7 +401,11 @@ class DistanceEstimatorModel(BaseModel):
         return preds.cpu()
 
     def predict_single(
-        self, state_dot: str, depth: int | None = None, goal_dot: str | None = None
+        self,
+        state_dot: str,
+        depth: int | None = None,
+        goal_dot: str | None = None,
+        bitmask: bool = False,
     ):
         """
         Wraps the preprocessing and returns a dict with:
@@ -344,6 +417,7 @@ class DistanceEstimatorModel(BaseModel):
             depth=depth,
             target=None,
             goal_path=goal_dot,
+            bitmask=bitmask,
         )
         batch = graph_collate_fn([sample])
         # 2) predict
@@ -351,7 +425,12 @@ class DistanceEstimatorModel(BaseModel):
         return pred
 
     def _get_onnx_wrapper(self):
-        return OnnxDistanceEstimatorWrapper
+        core = self.model
+        return (
+            OnnxDistanceEstimatorWrapperBits
+            if getattr(core, "bit_input", None) is not None
+            else OnnxDistanceEstimatorWrapperIds
+        )
 
     def try_onnx(
         self,
@@ -376,6 +455,127 @@ class DistanceEstimatorModel(BaseModel):
         ort_sess = ort.InferenceSession(str(onnx_path))
         distance = ort_sess.run(["distance"], feed)[0]  # → np.ndarray  shape [B]
         return distance
+
+    def to_onnx(
+        self, onnx_path: str | Path, with_goal: bool = False, with_depth: bool = False
+    ) -> None:
+        Wrapper = self._get_onnx_wrapper()
+
+        onnx_path = Path(onnx_path)
+
+        Ns, Es = 3, 4
+        Ng, Eg = 2, 3  # dummy goal sizes
+        input_names, dummy_inputs, dynamic_axes = [], [], {}
+
+        if getattr(self.model, "bit_input", None) is None:
+            # IDs path — first input: float32 [Ns]
+            input_names += [
+                "state_node_ids",
+                "state_edge_index",
+                "state_edge_attr",
+                "state_batch",
+            ]
+            dummy_inputs += [
+                torch.arange(Ns, dtype=torch.float32),  # [Ns]
+                torch.zeros((2, Es), dtype=torch.int64),  # [2, Es]
+                torch.zeros((Es, 1), dtype=torch.float32),  # [Es, 1]
+                torch.zeros(Ns, dtype=torch.int64),  # [Ns]
+            ]
+            dynamic_axes.update(
+                {
+                    "state_node_ids": {0: "Ns"},
+                    "state_edge_index": {1: "Es"},
+                    "state_edge_attr": {0: "Es"},
+                    "state_batch": {0: "Ns"},
+                }
+            )
+            if with_goal:
+                input_names += [
+                    "goal_node_ids",
+                    "goal_edge_index",
+                    "goal_edge_attr",
+                    "goal_batch",
+                ]
+                dummy_inputs += [
+                    torch.arange(Ng, dtype=torch.float32),  # [Ng]
+                    torch.zeros((2, Eg), dtype=torch.int64),  # [2, Eg]
+                    torch.zeros((Eg, 1), dtype=torch.float32),  # [Eg, 1]
+                    torch.zeros(Ng, dtype=torch.int64),  # [Ng]
+                ]
+                dynamic_axes.update(
+                    {
+                        "goal_node_ids": {0: "Ng"},
+                        "goal_edge_index": {1: "Eg"},
+                        "goal_edge_attr": {0: "Eg"},
+                        "goal_batch": {0: "Ng"},
+                    }
+                )
+        else:
+            # Bitmask path — first input: uint8 [Ns, bit_len]
+            bit_len = int(self.model.bit_input)  # must match C++ m_bitmask_size
+            input_names += [
+                "state_node_bits",
+                "state_edge_index",
+                "state_edge_attr",
+                "state_batch",
+            ]
+            dummy_inputs += [
+                torch.zeros((Ns, bit_len), dtype=torch.uint8),  # [Ns, bit_len]
+                torch.zeros((2, Es), dtype=torch.int64),  # [2, Es]
+                torch.zeros((Es, 1), dtype=torch.float32),  # [Es, 1]
+                torch.zeros(Ns, dtype=torch.int64),  # [Ns]
+            ]
+            dynamic_axes.update(
+                {
+                    "state_node_bits": {0: "Ns"},  # feature dim static
+                    "state_edge_index": {1: "Es"},
+                    "state_edge_attr": {0: "Es"},
+                    "state_batch": {0: "Ns"},
+                }
+            )
+            if with_goal:
+                input_names += [
+                    "goal_node_bits",
+                    "goal_edge_index",
+                    "goal_edge_attr",
+                    "goal_batch",
+                ]
+                dummy_inputs += [
+                    torch.zeros((Ng, bit_len), dtype=torch.uint8),  # [Ng, bit_len]
+                    torch.zeros((2, Eg), dtype=torch.int64),  # [2, Eg]
+                    torch.zeros((Eg, 1), dtype=torch.float32),  # [Eg, 1]
+                    torch.zeros(Ng, dtype=torch.int64),  # [Ng]
+                ]
+                dynamic_axes.update(
+                    {
+                        "goal_node_bits": {0: "Ng"},
+                        "goal_edge_index": {1: "Eg"},
+                        "goal_edge_attr": {0: "Eg"},
+                        "goal_batch": {0: "Ng"},
+                    }
+                )
+
+        # depth (orthogonal to goal)
+        if with_depth:
+            input_names.append("depth")
+            dummy_inputs.append(torch.zeros(1, dtype=torch.float32))  # B=1 for tracing
+            dynamic_axes["depth"] = {
+                0: "B"
+            }  # aligns with number of graphs in the batch
+
+        dynamic_axes["distance"] = {0: "B"}
+
+        wrapper = Wrapper(self.model).eval()
+        torch.onnx.export(
+            wrapper.cpu(),
+            tuple(dummy_inputs),
+            onnx_path.as_posix(),
+            opset_version=18,
+            input_names=input_names,
+            output_names=["distance"],
+            dynamic_axes=dynamic_axes,
+            do_constant_folding=False,
+        )
 
 
 def preprocess_for_onnx(
@@ -484,11 +684,15 @@ def select_model(
     model_name: str = "distance_estimator",
     use_goal: bool = True,
     use_depth: bool = True,
+    bitmask: bool = False,
 ):
 
     if model_name == "distance_estimator":
         model = DistanceEstimatorModel(
-            DistanceEstimator, use_goal=use_goal, use_depth=use_depth
+            DistanceEstimator,
+            use_goal=use_goal,
+            use_depth=use_depth,
+            bit_input=64 if bitmask else None,
         )
         return model
     else:

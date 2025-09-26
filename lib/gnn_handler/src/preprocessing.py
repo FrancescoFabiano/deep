@@ -11,11 +11,10 @@ from tqdm import tqdm
 
 from src.utils import preprocess_sample
 
+from lib.gnn_handler.src.utils import KEYWORD_BITMASK
+
 COL_NAMES_CSV = [
-    "Path Hash",
-    "Path Hash Merged",
-    "Path Mapped",
-    "Path Mapped Merged",
+    "File Path",
     "Depth",
     "Distance From Goal",
     "Goal",
@@ -28,7 +27,7 @@ class GraphDataPipeline:
         self,
         folder_data: str,
         list_subset_train: List,
-        kind_of_ordering: str,
+        dataset_type: str,
         kind_of_data: str,
         unreachable_state_value: int,
         max_percentage_per_class: float = 0.2,
@@ -40,7 +39,7 @@ class GraphDataPipeline:
     ):
         self.folder_data = Path(folder_data)
         self.list_subset_train = list_subset_train
-        self.ordering = kind_of_ordering
+        self.dataset_type = dataset_type
         self.data_kind = kind_of_data
         self.test_size = test_size
         self.use_goal = use_goal
@@ -73,12 +72,6 @@ class GraphDataPipeline:
         df["Distance From Goal"] = pd.to_numeric(
             df["Distance From Goal"], errors="coerce"
         )
-
-        # determine which path column to keep
-        key = f"Path {'Hash' if self.ordering == 'hash' else 'Mapped'}"
-        key += " Merged" if self.data_kind == "merged" else ""
-        df = df[["Depth", "Distance From Goal", key, "Goal"]]
-        df = df.rename(columns={key: "Path State"})
         return df
 
     def _my_train_test_split(self, df: pd.DataFrame, stratify_col="Distance From Goal"):
@@ -157,6 +150,7 @@ class GraphDataPipeline:
 
     def _build_df(self):
         train_frames, test_frames = [], []
+
         for prob_dir in self._get_all_items(self.folder_data):
             if len(self.list_subset_train) > 0:
                 if os.path.basename(prob_dir) not in self.list_subset_train:
@@ -194,10 +188,11 @@ class GraphDataPipeline:
 
             for _, row in tqdm(df.iterrows(), total=len(df), desc=desc):
                 sample = preprocess_sample(
-                    row["Path State"],
+                    row["File Path"],
                     int(row["Depth"]) if self.use_depth else None,
                     int(row["Distance From Goal"]),
                     row["Goal"] if self.use_goal else None,
+                    bitmask=self.dataset_type == KEYWORD_BITMASK,
                 )
                 s[i].append(sample)
 
@@ -206,7 +201,7 @@ class GraphDataPipeline:
         payload = {
             "params": {
                 "folder_data": str(self.folder_data),
-                "ordering": self.ordering,
+                "ordering": self.dataset_type,
                 "data_kind": self.data_kind,
                 "max_percentage_per_class": self.max_percentage_per_class,
                 "use_goal": self.use_goal,

@@ -6,11 +6,9 @@ trees. Each search space is modeled as a set of Kripke structures.
 ## 1. Installation
 1. Create a new python virtual environment (with 'python > 3.10'):
    ```
-   python3 -m venv .venv
+   python -m venv .venv
    source .venv/bin/activate
    ```
-   > The use of a virtual environment to keep dependencies isolated, is not mandatory, but helps avoid contaminating the global Python environment.
-   > If you create one, be sure to activate it before using any of this repository’s functionality.
 2. Install requirements:
    ```
    pip install -r requirements.txt
@@ -19,20 +17,20 @@ trees. Each search space is modeled as a set of Kripke structures.
    ```
    python setup.py install
    ```
+4. Enable pre‑commit hooks
+   ```
+   pre-commit install
+   ```
+5. Run all hooks against existing files
+   ```
+   pre-commit run --all-files
+   ```
 
 ## 2. Usage
 
-### Training Data Generation
-Before creating the dataloader and building the model, training data has to be generated.
-An example of data generation is:
-```console
-../../cmake-build-release-nn/bin/deep ../../exp/example.txt --dataset
-```
-
-### Launch
 Launch `__main__.py` and customize your process with the available argparse options:
 
-```console
+```bash
 python __main__.py [OPTIONS]
 ```
 
@@ -109,7 +107,7 @@ Each of these accepts `true` or `false` (case-insensitive):
 
 ### Feature Options
 
-* `--kind-of-ordering <hash|map>`
+* `--dataset_type <hash|map|bitmask>`
   Strategy for ordering your state representations.
   **Default:** `hash`
 * `--kind-of-data <merged|separated>`
@@ -122,11 +120,12 @@ Each of these accepts `true` or `false` (case-insensitive):
 
 Build data and train with goal and depth features enabled:
 
-```console
+```bash
 python __main__.py \
   --build-data true \
   --train true \
   --use-goal true \
   --use-depth true \
   --n-train-epochs 300 \
+  --batch-size 1024
 ```
