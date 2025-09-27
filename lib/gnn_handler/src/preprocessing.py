@@ -9,9 +9,7 @@ import torch
 from sklearn.model_selection import train_test_split
 from tqdm import tqdm
 
-from src.utils import preprocess_sample
-
-from lib.gnn_handler.src.utils import KEYWORD_BITMASK
+from src.utils import preprocess_sample, KEYWORD_BITMASK
 
 COL_NAMES_CSV = [
     "File Path",

@@ -164,7 +164,7 @@ def main(args):
     list_subset_train = args.subset_train
     if_build_data = args.build_data
     if_train = args.train
-    dataset_type = args.kind_of_ordering
+    dataset_type = args.dataset_type
     kind_of_data = args.kind_of_data
     use_goal = args.use_goal
     use_depth = args.use_depth
