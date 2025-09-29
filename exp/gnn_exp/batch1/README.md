@@ -17,8 +17,8 @@ This folder contains the first batch of experiments for the project.
 
 ## Usage
 
-All commands should be run from the root directory of the repository. \>
-While Steps 1 and 2 can be run, to emulate the results of the paper, you
+All commands should be run from the root directory of the repository.
+> While Steps 1 and 2 can be run, to emulate the results of the paper, you
 can skip them and directly run Step 3 since models are already provided
 in the `_models` folder.
 
@@ -61,7 +61,9 @@ Similarly, if you want to generate training data with a different
 representation, you can use the `--dataset_type` option with one of the
 following choices: `["MAPPED", "HASHED", "BITMASK"]` (default is
 `HASHED`).\
-To ensure consistency during inference and training, use the same `dataset_type` in the training and execution phases (as illustrated in Steps 2 and 3).
+To ensure consistency during inference and training, use the
+same `dataset_type` in the training and execution phases
+(as illustrated in Steps 2 and 3).
 
 Example command with a different dataset type:
 
@@ -72,14 +74,15 @@ python3 scripts/gnn_exp/create_all_training_data.py exp/gnn_exp/batch1 --deep_ex
 ### 2. Train GNN models
 
 This trains one model per domain using the previously generated training
-data.\
-\> This will overwrite existing models in the `_models` folder.
+data.
+> This will overwrite existing models in the `_models` folder.
 
 ``` console
 python3 scripts/gnn_exp/train_models.py exp/gnn_exp/batch1
 ```
 
-Similarly, if you generated the training data with a specific representation, you must use the same representation (`--dataset_type`) when training the model.
+If you generated the training data with a specific representation, you must
+use the same representation (`--dataset_type`) when training the model.\
 The available options are: `["MAPPED", "HASHED", "BITMASK"]` (default: `HASHED`).
 
 Example command with a different dataset type:
@@ -119,14 +122,18 @@ python3 scripts/gnn_exp/bulk_coverage_run.py cmake-build-release-nn/bin/deep exp
 
 ##### Arguments
 
-The arguments to this script are: - the path to the deep executable
-(`cmake-build-release-nn/bin/deep` in the example) - the path to the
-experiment folder (`exp/gnn_exp/batch1/` which is this folder) - the
-number of threads to use to speed up the testing (`8` in the example) -
-`--binary_args` option allows you to pass additional arguments to the
-deep executable, such as specifying the search algorithm and whether to
-enable GNN heuristics. - `--timeout` specifies the maximum time in
-seconds for each instance to be solved (`600` seconds in the example).
+The arguments to this script are:
+- the path to the deep executable (`cmake-build-release-nn/bin/deep` in
+  the example)
+- the path to the experiment folder (`exp/gnn_exp/batch1/` which
+  is this folder)
+- the number of threads to use to speed up the testing (`8` in the
+  example)
+- `--binary_args` option allows you to pass additional arguments to the
+  deep executable, such as specifying the search algorithm and whether
+  to enable GNN heuristics.
+- `--timeout` specifies the maximum time in
+  seconds for each instance to be solved (`600` seconds in the example).
 
 ### Advanced Setup
 
