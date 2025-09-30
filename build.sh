@@ -118,11 +118,15 @@ fi
 HAS_GPU="unknown"
 HAS_CUDA="false"
 
-if command -v lspci &>/dev/null; then
+# Prefer nvidia-smi (most reliable in modern setups)
+if command -v nvidia-smi &>/dev/null; then
+    if nvidia-smi -L &>/dev/null; then
+        HAS_GPU="true"
+    fi
+# Fallback to lspci if nvidia-smi is missing
+elif command -v lspci &>/dev/null; then
     if lspci | grep -i nvidia &>/dev/null; then
         HAS_GPU="true"
-    else
-        HAS_GPU="false"
     fi
 fi
 

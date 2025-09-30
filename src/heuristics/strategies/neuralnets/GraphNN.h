@@ -164,7 +164,7 @@ private:
          ///< processing the heuristics)
 
   ///// --- ONNX Runtime inference components ---
-  Ort::Env m_env{ORT_LOGGING_LEVEL_WARNING,
+  Ort::Env m_env{ORT_LOGGING_LEVEL_ERROR,
                  "GraphNNEnv"}; ///< ONNX Runtime environment for GNN inference.
   Ort::SessionOptions m_session_options; ///< ONNX Runtime session options.
   std::unique_ptr<Ort::Session>
