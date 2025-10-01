@@ -1,4 +1,4 @@
-subset_train = ['CC_2_2_3__pl_3_5']
+subset_train = ['CC_2_2_3__pl_3_7']
 model_name = distance_estimator
 normalization_constants_name = C
 folder_raw_data = out/NN/Training
