@@ -216,13 +216,11 @@ public:
    */
   static bool consistent(const FluentsSet &to_check);
 
-
- /**
-  * \brief Check if two Kripke states are bisimilar (entail the same set of formulae). Fails if they are not.
-  * \param[in] first The first state to check.
-  * \param[in] second The second state to check.
+  /**
+   * \brief Check if two Kripke states are bisimilar (entail the same set of
+   * formulae). Fails if they are not. \param[in] first The first state to
+   * check. \param[in] second The second state to check.
    */
- static void checkSameKState(const KripkeState& first, const KripkeState& second);
-
-
+  static void checkSameKState(const KripkeState &first,
+                              const KripkeState &second);
 };

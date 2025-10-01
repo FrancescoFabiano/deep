@@ -782,7 +782,6 @@ std::string TrainingDataset<StateRepr>::print_state_for_dataset(
       std::string(6 - std::to_string(m_file_counter).length(), '0') +
       std::to_string(m_file_counter);
 
-
   std::ofstream out(format_name(base_filename));
   state.print_dataset_format(out);
   out.close();

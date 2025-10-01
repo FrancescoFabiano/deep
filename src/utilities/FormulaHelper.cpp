@@ -306,9 +306,8 @@ bool FormulaHelper::consistent(const FluentsSet &to_check) {
   return true;
 }
 
-
-void FormulaHelper::checkSameKState(const KripkeState& first, const KripkeState& second)
-{
+void FormulaHelper::checkSameKState(const KripkeState &first,
+                                    const KripkeState &second) {
 
   bool are_bisimilar = true;
 

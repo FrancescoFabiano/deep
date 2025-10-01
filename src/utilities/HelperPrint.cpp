@@ -406,7 +406,8 @@ void HelperPrint::print_dot_format(const KripkeState &kstate,
     for (const auto &[ag, to_set] : from_map) {
       for (const auto &to : to_set) {
         std::string from_str =
-            "_" + std::to_string(map_world_to_index[from.get_fluent_based_id()]);
+            "_" +
+            std::to_string(map_world_to_index[from.get_fluent_based_id()]);
         from_str.insert(0, 1, map_rep_to_name[from.get_repetition()]);
         std::string to_str =
             "_" + std::to_string(map_world_to_index[to.get_fluent_based_id()]);

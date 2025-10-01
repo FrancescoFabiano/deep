@@ -321,7 +321,7 @@ bool SpaceSearcher<StateRepr, Strategy>::validate_plan(
     bool found_action = false;
     for (const auto &action : Domain::get_instance().get_actions()) {
       if (action.get_name() == action_name) {
-          found_action = true;
+        found_action = true;
         if (current.is_executable(action)) {
           ++m_expanded_nodes;
           current = current.compute_successor(action);
@@ -449,7 +449,7 @@ template <StateRepresentation StateRepr, SearchStrategy<StateRepr> Strategy>
 void SpaceSearcher<StateRepr, Strategy>::check_bisimulation_equivalence(
     const State<StateRepr> &state) const {
 
-  if (!ArgumentParser::get_instance().get_verbose()){
+  if (!ArgumentParser::get_instance().get_verbose()) {
     return;
   }
 
@@ -458,6 +458,6 @@ void SpaceSearcher<StateRepr, Strategy>::check_bisimulation_equivalence(
   auto &os = ArgumentParser::get_instance().get_output_stream();
 
   os << "[BISIMULATION]";
-  FormulaHelper::checkSameKState(state.get_representation(), temp.get_representation());
-
+  FormulaHelper::checkSameKState(state.get_representation(),
+                                 temp.get_representation());
 }

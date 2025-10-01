@@ -50,21 +50,21 @@ void GraphNN<StateRepr>::initialize_onnx_model() {
     m_session_options.SetGraphOptimizationLevel(
         GraphOptimizationLevel::ORT_ENABLE_ALL);
 
-/*#ifdef _WIN32
-    // Windows way
-    _putenv_s("ORT_CUDA_USE_CUDNN", "0");
-    _putenv_s("CUDA_LAUNCH_BLOCKING", "1");  // optional, forces sync errors
-#else
-    // Linux / WSL / macOS way
-    setenv("ORT_CUDA_USE_CUDNN", "0", 1);
-    setenv("CUDA_LAUNCH_BLOCKING", "1", 1);  // optional
-#endif*/
+    /*#ifdef _WIN32
+        // Windows way
+        _putenv_s("ORT_CUDA_USE_CUDNN", "0");
+        _putenv_s("CUDA_LAUNCH_BLOCKING", "1");  // optional, forces sync errors
+    #else
+        // Linux / WSL / macOS way
+        setenv("ORT_CUDA_USE_CUDNN", "0", 1);
+        setenv("CUDA_LAUNCH_BLOCKING", "1", 1);  // optional
+    #endif*/
 
-    // Add this line to show warnings (2) to complete verbose (0) (only errors and above will be shown)
+    // Add this line to show warnings (2) to complete verbose (0) (only errors
+    // and above will be shown)
     if (ArgumentParser::get_instance().get_verbose()) {
       m_session_options.SetLogSeverityLevel(0);
     }
-
 
 #ifdef USE_CUDA
     try {
