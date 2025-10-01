@@ -60,7 +60,7 @@ static constexpr size_t MAX_FLUENT_NUMBER =
 ///< to allow bitmask representation for GNNs, and are only checked if
 ///< GNN is used.
 static constexpr size_t MAX_REPETITION_BITS =
-    16; ///< Maximum number of bits usable to represent the repetition number.
+    22; ///< Maximum number of bits usable to represent the repetition number.
 ///< These constants are introduced to allow bitmask representation for
 ///< GNNs, and are only checked if GNN is used.
 constexpr size_t MAX_REPETITION =
@@ -68,7 +68,7 @@ constexpr size_t MAX_REPETITION =
     1; ///< Maximum repetition number that can be represented with
 ///< MAX_REPETITION_BITS bits.
 static constexpr size_t GOAL_ENCODING_BITS =
-    16; ///< Number of bits usable to represent the information in the goal
+    10; ///< Number of bits usable to represent the information in the goal
         ///< which will be prepended to the node representation.
 ///< These constants are introduced to allow bitmask representation for
 ///< GNNs, and are only checked if GNN is used.

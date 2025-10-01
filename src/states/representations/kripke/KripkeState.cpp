@@ -22,6 +22,7 @@
 #include "KripkeState.h"
 
 #include <ranges>
+#include <unordered_set>
 
 #include "KripkeStorage.h"
 #include "SetHelper.h"
@@ -336,23 +337,127 @@ void KripkeState::remove_initial_edge_bf(const BeliefFormula &to_check) {
   }
 }
 
+
+void KripkeState::compact_repetitions()
+{
+  // 1) Collect unique labels
+  if (get_max_depth() < 255)
+    return;
+
+  std::vector<unsigned short> uniq;
+  uniq.reserve(m_worlds.size());
+  {
+    std::unordered_set<unsigned short> seen;
+    for (const auto& w : m_worlds) {
+      auto curr_repetition = w.get_repetition();
+      if (seen.insert(curr_repetition).second) uniq.push_back(curr_repetition);
+    }
+  }
+
+  // 2) Sort and build mapping old -> rank [0..(#unique-1)]
+  std::ranges::sort(uniq);
+  std::unordered_map<unsigned short, unsigned short> remap;
+  remap.reserve(uniq.size());
+  for (unsigned short i = 0; i < static_cast<unsigned short>(uniq.size()); ++i) {
+    remap.emplace(uniq[i], i);
+  }
+
+  // 3) Rewrite labels (copy-and-replace)
+
+  // Keep the old pointed world to remap it to its new instance afterward
+  auto pointed_old = m_pointed;
+
+  // Worlds (set) — rebuild a new set and also track old->new object mapping
+  KripkeWorldPointersSet updated_w(m_worlds.key_comp(), m_worlds.get_allocator());
+
+  using WorldKeyComp = KripkeWorldPointersSet::key_compare;
+  std::map<KripkeWorldPointer, KripkeWorldPointer, WorldKeyComp> old_to_new(m_worlds.key_comp());
+
+  for (const auto& w : m_worlds) {
+    auto w2 = w; // copy the element
+    // remap repetition (present by construction because uniq came from m_worlds)
+    if (auto itRem = remap.find(w.get_repetition()); itRem != remap.end()) {
+      w2.set_repetition(itRem->second);
+    }
+    auto [it, inserted] = updated_w.insert(std::move(w2));
+    (void)inserted;
+    old_to_new.emplace(w, *it); // remember correspondence old -> new
+  }
+
+  // Replace worlds
+  m_worlds = std::move(updated_w);
+
+  // Pointed world — prefer to bind to the new instance if it existed in m_worlds
+  if (auto it = old_to_new.find(pointed_old); it != old_to_new.end()) {
+    m_pointed = it->second;
+  } else {
+    // Fallback: just remap its repetition if it wasn't among m_worlds
+    if (auto itRem = remap.find(m_pointed.get_repetition()); itRem != remap.end()) {
+      m_pointed.set_repetition(itRem->second);
+    }
+  }
+
+  // Edges — Transitive map (copy-and-replace)
+  KripkeWorldPointersTransitiveMap updated_t(m_beliefs.key_comp(), m_beliefs.get_allocator());
+
+  // Helper to obtain the new world corresponding to an old one.
+  auto map_world = [&](const KripkeWorldPointer& oldW) -> KripkeWorldPointer {
+    if (auto it = old_to_new.find(oldW); it != old_to_new.end()) {
+      return it->second; // exact mapped instance from updated_w
+    }
+    // If not found (edge references a world not in m_worlds), clone & remap label
+    auto clone = oldW;
+    if (auto itRem = remap.find(clone.get_repetition()); itRem != remap.end()) {
+      clone.set_repetition(itRem->second);
+    }
+    return clone;
+  };
+
+  for (const auto& [src, agentMap] : m_beliefs) {
+    KripkeWorldPointer newSrc = map_world(src);
+    auto& newAgentMap = updated_t[newSrc]; // creates Agent -> Set
+
+    for (const auto& [agent, dstSet] : agentMap) {
+      auto& newDstSet = newAgentMap[agent]; // creates Set<KripkeWorldPointer>
+      for (const auto& dst : dstSet) {
+        newDstSet.insert(map_world(dst));
+      }
+    }
+  }
+
+  // Replace transitive map
+  m_beliefs = std::move(updated_t);
+
+  // Max Depth
+  set_max_depth(static_cast<unsigned int>(uniq.size()));
+}
+
+
 // --- Transition/Execution ---
 
 KripkeState KripkeState::compute_successor(const Action &act) const {
+
+  KripkeState ret;
   switch (act.get_type()) {
   case PropositionType::ONTIC:
-    return execute_ontic(act);
+    ret = execute_ontic(act);
+    break;
   case PropositionType::SENSING:
-    return execute_sensing(act);
+    ret = execute_sensing(act);
+    break;
   case PropositionType::ANNOUNCEMENT:
-    return execute_announcement(act);
+    ret = execute_announcement(act);
+    break;
   default:
     ExitHandler::exit_with_message(
         ExitHandler::ExitCode::ActionTypeConflict,
         "Error: Executing an action with undefined type: " + act.get_name());
   }
-  // Jut To please the compiler
-  exit(static_cast<int>(ExitHandler::ExitCode::ExitForCompiler));
+
+  ret.compact_repetitions();
+
+  return ret;
+
 }
 
 void KripkeState::maintain_oblivious_believed_worlds(
@@ -447,6 +552,8 @@ KripkeState KripkeState::execute_ontic(const Action &act) const {
   KripkeWorldPointer new_pointed = execute_ontic_helper(
       act, ret, get_pointed(), calculated, oblivious_obs_agents);
   ret.set_pointed(new_pointed);
+
+
 
   return ret;
 }
