@@ -20,6 +20,7 @@
 #include <thread>
 
 #include "Configuration.h"
+#include "FormulaHelper.h"
 #include "HelperPrint.h"
 
 template <StateRepresentation StateRepr, SearchStrategy<StateRepr> Strategy>
@@ -447,81 +448,16 @@ void SpaceSearcher<StateRepr, Strategy>::print_dot_for_execute_plan(
 template <StateRepresentation StateRepr, SearchStrategy<StateRepr> Strategy>
 void SpaceSearcher<StateRepr, Strategy>::check_bisimulation_equivalence(
     const State<StateRepr> &state) const {
-  if (!ArgumentParser::get_instance().get_verbose())
-    return;
 
-  bool are_bisimilar = true;
+  if (!ArgumentParser::get_instance().get_verbose()){
+    return;
+  }
+
   State<StateRepr> temp = state;
   temp.contract_with_bisimulation();
   auto &os = ArgumentParser::get_instance().get_output_stream();
 
-  // ReSharper disable once CppDFAConstantConditions
-  if (temp == state) {
-    // If the state is already bisimilar, no need to check further
-    return;
-  }
-  // ReSharper disable once CppDFAUnreachableCode
-  os << "[DEBUG] Checking bisimulation equivalence for possibly different "
-        "states.";
+  os << "[BISIMULATION]";
+  FormulaHelper::checkSameKState(state.get_representation(), temp.get_representation());
 
-  std::string fail_case;
-
-  auto &domain_instance = Domain::get_instance();
-  auto to_check1 =
-      domain_instance.get_initial_description().get_initial_conditions();
-  if (state.entails(to_check1) != temp.entails(to_check1)) {
-    are_bisimilar = false;
-    fail_case = "initial_conditions";
-  }
-
-  auto to_check2 = domain_instance.get_initial_description().get_ff_forS5();
-  // ReSharper disable once CppDFAUnreachableCode
-  // ReSharper disable once CppDFAUnreachableCode
-  if (!to_check2.empty() &&
-      (state.entails(to_check2) != temp.entails(to_check2))) {
-    are_bisimilar = false;
-    fail_case = "ff_forS5";
-  }
-
-  auto to_check3 = domain_instance.get_goal_description();
-  if (state.entails(to_check3) != temp.entails(to_check3)) {
-    are_bisimilar = false;
-    fail_case = "goal_description";
-  }
-
-  for (const auto &tmp_action : domain_instance.get_actions()) {
-    for (auto condition : tmp_action.get_effects() | std::views::values) {
-      if (state.entails(condition) != temp.entails(condition)) {
-        are_bisimilar = false;
-        fail_case = "action_effects of action " + tmp_action.get_name();
-      }
-    }
-    auto to_check5 = tmp_action.get_executability();
-    if (state.entails(to_check5) != temp.entails(to_check5)) {
-      are_bisimilar = false;
-      fail_case = "action_executability of action  " + tmp_action.get_name();
-    }
-    for (auto condition :
-         tmp_action.get_fully_observants() | std::views::values) {
-      if (state.entails(condition) != temp.entails(condition)) {
-        are_bisimilar = false;
-        fail_case = "Full Observability of action " + tmp_action.get_name();
-      }
-    }
-    for (auto condition :
-         tmp_action.get_partially_observants() | std::views::values) {
-      if (state.entails(condition) != temp.entails(condition)) {
-        are_bisimilar = false;
-        fail_case = "Full Observability of action " + tmp_action.get_name();
-      }
-    }
-  }
-
-  if (!are_bisimilar) {
-    ExitHandler::exit_with_message(
-        ExitHandler::ExitCode::SearchBisimulationError,
-        "Bisimulation reduction failed: there is some discrepancy in " +
-            fail_case + ". Use debugger to investigate.");
-  }
-  os << " All good:)" << std::endl;
 }

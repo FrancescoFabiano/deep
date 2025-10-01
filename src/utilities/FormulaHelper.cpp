@@ -1,10 +1,13 @@
 #include "FormulaHelper.h"
 #include <cmath>
+#include <ranges>
 
+#include "ArgumentParser.h"
 #include "Domain.h"
 #include "ExitHandler.h"
 #include "HelperPrint.h"
 #include "KripkeEntailmentHelper.h"
+#include "State.h"
 #include "states/representations/kripke/KripkeState.h"
 
 /**
@@ -301,4 +304,83 @@ bool FormulaHelper::consistent(const FluentsSet &to_check) {
     }
   }
   return true;
+}
+
+
+void FormulaHelper::checkSameKState(const KripkeState& first, const KripkeState& second)
+{
+
+  bool are_bisimilar = true;
+
+  auto &os = ArgumentParser::get_instance().get_output_stream();
+
+  // ReSharper disable once CppDFAConstantConditions
+  if (second == first) {
+    // If the state is already bisimilar, no need to check further
+    return;
+  }
+  // ReSharper disable once CppDFAUnreachableCode
+  os << "[DEBUG] Checking equivalence for possibly different "
+        "states.";
+
+  std::string fail_case;
+
+  auto &domain_instance = Domain::get_instance();
+  auto to_check1 =
+      domain_instance.get_initial_description().get_initial_conditions();
+  if (first.entails(to_check1) != second.entails(to_check1)) {
+    are_bisimilar = false;
+    fail_case = "initial_conditions";
+  }
+
+  auto to_check2 = domain_instance.get_initial_description().get_ff_forS5();
+  // ReSharper disable once CppDFAUnreachableCode
+  // ReSharper disable once CppDFAUnreachableCode
+  if (!to_check2.empty() &&
+      (first.entails(to_check2) != second.entails(to_check2))) {
+    are_bisimilar = false;
+    fail_case = "ff_forS5";
+  }
+
+  auto to_check3 = domain_instance.get_goal_description();
+  if (first.entails(to_check3) != second.entails(to_check3)) {
+    are_bisimilar = false;
+    fail_case = "goal_description";
+  }
+
+  for (const auto &tmp_action : domain_instance.get_actions()) {
+    for (auto condition : tmp_action.get_effects() | std::views::values) {
+      if (first.entails(condition) != second.entails(condition)) {
+        are_bisimilar = false;
+        fail_case = "action_effects of action " + tmp_action.get_name();
+      }
+    }
+    auto to_check5 = tmp_action.get_executability();
+    if (first.entails(to_check5) != second.entails(to_check5)) {
+      are_bisimilar = false;
+      fail_case = "action_executability of action  " + tmp_action.get_name();
+    }
+    for (auto condition :
+         tmp_action.get_fully_observants() | std::views::values) {
+      if (first.entails(condition) != second.entails(condition)) {
+        are_bisimilar = false;
+        fail_case = "Full Observability of action " + tmp_action.get_name();
+      }
+    }
+    for (auto condition :
+         tmp_action.get_partially_observants() | std::views::values) {
+      if (first.entails(condition) != second.entails(condition)) {
+        are_bisimilar = false;
+        fail_case = "Full Observability of action " + tmp_action.get_name();
+      }
+    }
+  }
+
+  if (!are_bisimilar) {
+    ExitHandler::exit_with_message(
+        ExitHandler::ExitCode::SearchBisimulationError,
+        "Bisimulation reduction failed: there is some discrepancy in " +
+            fail_case + ". Use debugger to investigate.");
+  }
+  os << " All good:)" << std::endl;
 }

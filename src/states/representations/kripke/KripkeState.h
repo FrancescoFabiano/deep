@@ -93,6 +93,13 @@ public:
    */
   [[nodiscard]] bool operator<(const KripkeState &to_compare) const;
 
+    /** \brief Equal operator.
+     *  \param[in] to_compare The KripkeState to compare.
+     *  \return True if this is less than to_compare, false otherwise.
+     */
+    bool operator==(const KripkeState& to_compare) const;
+
+
   /// \name Needed for State<T>
   ///@{
   /** \brief Build the initial Kripke structure (choose method internally).
