@@ -86,8 +86,12 @@ def main():
     parser.add_argument(
         "--skip_train", action="store_true", help="Skip Step 2 (Train GNN models)"
     )
-    parser.add_argument("--timeout", default="600", help="Timeout")
+    parser.add_argument(
+        "--skip_inference", action="store_true", help="Skip Step 3 (Inference steps)"
+    )
     parser.add_argument("--ablation", action="store_true", help="Run ablation study")
+    parser.add_argument("--timeout", default="600", help="Timeout")
+    parser.add_argument("--threads", default=8, help="Number of threads")
 
     args = parser.parse_args()
 
@@ -114,63 +118,64 @@ def main():
     else:
         print("\n⏭ Skipping Step 2 (Train GNN models)")
 
-    # Always run: GNN with A* search
-    jobs = [
-        {
-            "name": "step3a_gnn_astar",
-            "threads": 8,
-            "binary_args": _base_args(
-                args.dataset_type, with_search="Astar", with_upstream="GNN"
-            ),
-        }
-    ]
-
-    if args.ablation:
-        # Ablation: GNN with HFS search
-        jobs.append(
+    if not args.skip_inference:
+        # Always run: GNN with A* search
+        jobs = [
             {
-                "name": "step3e_gnn_hfs",
-                "threads": 8,
+                "name": "step3a_gnn_astar",
+                "threads": args.threads,
                 "binary_args": _base_args(
-                    args.dataset_type, with_search="HFS", with_upstream="GNN"
+                    args.dataset_type, with_search="Astar", with_upstream="GNN"
                 ),
             }
-        )
-    else:
-        # BFS (no -s/-u), HEFS and FULL parallel variants (with -p)
-        jobs.extend(
-            [
-                {
-                    "name": "step3b_bfs",
-                    "threads": 8,
-                    "binary_args": _base_args(args.dataset_type),
-                },
-                {
-                    "name": "step3c_hefs",
-                    "threads": 1,
-                    "binary_args": _base_args(args.dataset_type, extra="-p 5"),
-                },
-                {
-                    "name": "step3d_full_parallel",
-                    "threads": 1,
-                    "binary_args": _base_args(args.dataset_type, extra="-p 6"),
-                },
-            ]
-        )
+        ]
 
-    # ---- execute --------------------------------------------------------------
+        if args.ablation:
+            # Ablation: GNN with HFS search
+            jobs.append(
+                {
+                    "name": "step3e_gnn_hfs",
+                    "threads": args.threads,
+                    "binary_args": _base_args(
+                        args.dataset_type, with_search="HFS", with_upstream="GNN"
+                    ),
+                }
+            )
+        else:
+            # BFS (no -s/-u), HEFS and FULL parallel variants (with -p)
+            jobs.extend(
+                [
+                    {
+                        "name": "step3b_bfs",
+                        "threads": args.threads,
+                        "binary_args": _base_args(args.dataset_type),
+                    },
+                    {
+                        "name": "step3c_hefs",
+                        "threads": 1,
+                        "binary_args": _base_args(args.dataset_type, extra="-p 5"),
+                    },
+                    {
+                        "name": "step3d_full_parallel",
+                        "threads": 1,
+                        "binary_args": _base_args(args.dataset_type, extra="-p 6"),
+                    },
+                ]
+            )
 
-    for j in jobs:
-        cmd = _bulk_cmd(
-            deep_exe,
-            exp_dir,
-            threads=j["threads"],
-            binary_args=j["binary_args"],
-            timeout=timeout,
-        )
-        run_cmd(cmd, cwd=repo_root)
+        # ---- execute --------------------------------------------------------------
 
-    print("\n✅ Done. Results aggregated into the `_results` folder.")
+        for j in jobs:
+            cmd = _bulk_cmd(
+                deep_exe,
+                exp_dir,
+                threads=j["threads"],
+                binary_args=j["binary_args"],
+                timeout=timeout,
+            )
+            run_cmd(cmd, cwd=repo_root)
+
+        print("\n✅ Done. Results aggregated into the `_results` folder.")
 
 
 # TODO: ablation: SOLO 3a 3e per ogni dataset_type / 100k generazione
