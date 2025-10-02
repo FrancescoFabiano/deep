@@ -76,10 +76,15 @@ static constexpr size_t GOAL_ENCODING_BITS =
 inline constexpr std::size_t BITMASK_DIM =
     MAX_REPETITION_BITS + MAX_FLUENT_NUMBER + GOAL_ENCODING_BITS;
 
-inline int digits_ushort = static_cast<int>(floor(log10((double) USHRT_MAX))) + 1;
-inline unsigned int REP_LIMIT_BITMASK = static_cast<unsigned int>(pow(10, MAX_REPETITION_BITS - 1)) - 1;
-inline unsigned int REP_LIMIT_USHORT = static_cast<unsigned int>(pow(10, digits_ushort - 2)) - 1;
-inline unsigned int LIMIT_REP = (REP_LIMIT_BITMASK < REP_LIMIT_USHORT) ? REP_LIMIT_BITMASK : REP_LIMIT_USHORT;
+inline int digits_ushort =
+    static_cast<int>(floor(log10((double)USHRT_MAX))) + 1;
+inline unsigned int REP_LIMIT_BITMASK =
+    static_cast<unsigned int>(pow(10, MAX_REPETITION_BITS - 1)) - 1;
+inline unsigned int REP_LIMIT_USHORT =
+    static_cast<unsigned int>(pow(10, digits_ushort - 2)) - 1;
+inline unsigned int LIMIT_REP = (REP_LIMIT_BITMASK < REP_LIMIT_USHORT)
+                                    ? REP_LIMIT_BITMASK
+                                    : REP_LIMIT_USHORT;
 inline unsigned int USAGE_REP = 0;
 
 ///@}
