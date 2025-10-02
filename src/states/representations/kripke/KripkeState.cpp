@@ -189,9 +189,9 @@ void KripkeState::add_world_beliefs(const KripkeWorldPointer &world,
   /**TEMPORARY PATCH**/
   for (const auto &to_add : beliefs | std::views::values) {
     for (const auto &pw : to_add) {
-      bool is_new = false;
-      add_rep_world(KripkeWorld(pw.get_fluent_set()), pw.get_repetition(),
-                    is_new);
+      m_worlds.insert(pw);
+     // bool is_new = false;
+    //  add_rep_world(KripkeWorld(pw.get_fluent_set()), pw.get_repetition(), is_new);
     }
   }
   /**END TEMPORARY PATCH**/
