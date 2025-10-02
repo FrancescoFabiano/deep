@@ -29,7 +29,7 @@ All commands should be run from the root directory of the repository.
 > If skipping data and model generation, make sure to place the correct model (identified by the subfolder it is stored in) in the `_models/{domain_name}` folder so that inference can locate it.
 
 ```console
-python3 scripts/gnn_exp/run_batch.py     --bin cmake-build-release-nn/bin/deep     --exp_dir exp/gnn_exp/batch_ablation     --dataset_type "BITMASK"     --ablation
+python3 scripts/gnn_exp/run_batch.py --bin cmake-build-release-nn/bin/deep --exp_dir exp/gnn_exp/batch_ablation --dataset_type "BITMASK" --ablation
 ```
 
 Replace `--bin` with the path to your compiled `deep` binary.
