@@ -17,3 +17,14 @@ Astar
 GNN
 --GNN_model
 utils/resources/debug/onnx_test/distance_estimator.onnx
+
+
+exp/gnn_exp/batch_ablation/Grapevine/Training/Grapevine_5__pl_4.txt
+--dataset
+--dataset_seed
+42
+--dataset_type
+BITMASK
+--dataset_depth
+25
+-b

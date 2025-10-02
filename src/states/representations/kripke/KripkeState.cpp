@@ -343,7 +343,7 @@ void KripkeState::remove_initial_edge_bf(const BeliefFormula &to_check) {
 
 void KripkeState::compact_repetitions() {
   // 1) Collect unique labels
-  if (get_max_depth() < 255)
+  if (get_max_depth() < LIMIT_REP)
     return;
 
   KripkeState old;
