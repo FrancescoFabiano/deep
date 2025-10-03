@@ -1,10 +1,12 @@
-# Experiment Batch 2: Same Goals, Different Initial States
+# Experiment Batch 2: Knowledge Transfer Benchmarks
 
 This folder contains the second batch of experiments for the project.
 
-- This batch tests GNN-based heuristics against problem with identical goals but varying initial states.
-- For each goal, a dedicated model is trained and then used to solve all instances that share that same goal.
-- All models of interest are located in the `_models/{specific_goal}` subfolder.
+## Overview
+
+- This batch compares GNN-based heuristics to breadth-first search (BFS) on standard epistemic planning benchmarks using models trained on multiple domains.
+- Multiple models are trained (with the problem instance in the `Training` subfolder) to combine multiple domains and then used to solve those, and possibly others, domains.
+- All models of interest are located in the `_models\{domain-set_name}` subfolder.
 - All the results are stored in the `_results` subfolder.
 
 ------------------------------------------------------------------------
@@ -21,14 +23,10 @@ in the `_models` folder.
 This creates training datasets for each domain:
 
 ``` console
-python3 scripts/gnn_exp/create_all_training_data.py exp/gnn_exp/batch2 --deep_exe cmake-build-release-nn/bin/deep --no_goal
+python3 scripts/gnn_exp/create_all_training_data.py exp/gnn_exp/batch2 --deep_exe cmake-build-release-nn/bin/deep
 ```
 
 Replace --deep_exe with the path to your compiled deep binary.
-The `--no_goal` flag is used to ensure that the training data does
-not include goal information, as the models are trained on instances
-with the same goal but different initial states.
-
 
 #### Failures and Alternative Representations
 
@@ -52,7 +50,7 @@ can try adjusting the following options:
 Example command with adjusted parameters:
 
 ``` console
-python3 scripts/gnn_exp/create_all_training_data.py exp/gnn_exp/batch2 --deep_exe cmake-build-release-nn/bin/deep --no_goal --depth 40 --discard_factor 0.2
+python3 scripts/gnn_exp/create_all_training_data.py exp/gnn_exp/batch2 --deep_exe cmake-build-release-nn/bin/deep --depth 40 --discard_factor 0.2
 ```
 
 Similarly, if you want to generate training data with a different
@@ -66,7 +64,7 @@ same `dataset_type` in the training and execution phases
 Example command with a different dataset type:
 
 ``` console
-python3 scripts/gnn_exp/create_all_training_data.py exp/gnn_exp/batch2 --deep_exe cmake-build-release-nn/bin/deep --no_goal --dataset_type BITMASK
+python3 scripts/gnn_exp/create_all_training_data.py exp/gnn_exp/batch2 --deep_exe cmake-build-release-nn/bin/deep --dataset_type BITMASK
 ```
 
 ### 2. Train GNN models
@@ -76,11 +74,8 @@ data.
 > This will overwrite existing models in the `_models` folder.
 
 ``` console
-python3 scripts/gnn_exp/train_models.py exp/gnn_exp/batch2 --no_goal
+python3 scripts/gnn_exp/train_models.py exp/gnn_exp/batch2
 ```
-The `--no_goal` flag is used to ensure that the training data does not
-include goal information, as the models are trained on instances with
-the same goal but different initial states.
 
 If you generated the training data with a specific representation, you must
 use the same representation (`--dataset_type`) when training the model.\
@@ -89,7 +84,7 @@ The available options are: `["MAPPED", "HASHED", "BITMASK"]` (default: `HASHED`)
 Example command with a different dataset type:
 
 ```console
-python3 scripts/gnn_exp/train_models.py exp/gnn_exp/batch2 --no_goal --dataset_type BITMASK
+python3 scripts/gnn_exp/train_models.py exp/gnn_exp/batch2 --dataset_type BITMASK
 ```
 
 ### 3. Run evaluation and aggregate results
@@ -103,14 +98,13 @@ This command runs inference using the GNN heuristic with the appropriate
 model generated in the previous step.
 
 ``` console
-python3 scripts/gnn_exp/bulk_coverage_run.py cmake-build-release-nn/bin/deep exp/gnn_exp/batch2/ --threads 8 --binary_args "-s Astar -u GNN -c -b --dataset_separated" --timeout 600
+python3 scripts/gnn_exp/bulk_coverage_run.py cmake-build-release-nn/bin/deep exp/gnn_exp/batch2/ --threads 8 --binary_args "-s Astar -u GNN -c -b" --timeout 600
 ```
-> Note that the `--dataset_separated` argument is used here (in the `--binary_args`), as the models are trained on instances with the same goal but different initial states.
 
 Example with changed dataset type:
 
 ``` console
-python3 scripts/gnn_exp/bulk_coverage_run.py cmake-build-release-nn/bin/deep exp/gnn_exp/batch2/ --threads 8 --binary_args "-s Astar -u GNN -c -b --dataset_type BITMASK --dataset_separated" --timeout 600
+python3 scripts/gnn_exp/bulk_coverage_run.py cmake-build-release-nn/bin/deep exp/gnn_exp/batch2/ --threads 8 --binary_args "-s Astar -u GNN -c -b --dataset_type BITMASK" --timeout 600
 ```
 
 #### Breadth-First Search
@@ -136,12 +130,3 @@ The arguments to this script are:
   to enable GNN heuristics.
 - `--timeout` specifies the maximum time in
   seconds for each instance to be solved (`600` seconds in the example).
-
-### Advanced Setup
-
-For more complex scenarios---such as training a single GNN model across
-multiple domains to improve generalization---we do not provide a
-dedicated script to avoid clutter.\
-However, you can adapt the existing scripts in the `/scripts` folder (in
-the project root) or create a custom folder structure to achieve this.\
-Models trained on merged domains are also included in `batch4`.

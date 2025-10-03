@@ -15,7 +15,7 @@ This folder contains the batch of experiments used for the ablation study.
 -   All models of interest are located in the `_models/{domain_name}` subfolder.
 -   All results are stored in the `_results` subfolder.
 
----
+------------------------------------------------------------------------
 
 ## Usage
 
@@ -33,8 +33,6 @@ python3 scripts/gnn_exp/run_batch.py --bin cmake-build-release-nn/bin/deep --exp
 ```
 
 Replace `--bin` with the path to your compiled `deep` binary.
-
----
 
 ### Arguments
 
