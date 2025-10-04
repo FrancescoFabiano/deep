@@ -347,7 +347,7 @@ if __name__ == "__main__":
     main(
         tex_paths=[
             f"{exp_dir}/_results/Astar_GNN/monolithic_combined_results.tex",
-            f"{exp_dir}/_results/BFS/monolithic_combined_results.tex",
+            f"{exp_dir}/_results/HFS_GNN/monolithic_combined_results.tex",
         ],
         output_csv=f"{output_csv_dir}/combined_results.csv",
     )
