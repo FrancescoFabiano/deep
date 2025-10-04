@@ -1,7 +1,10 @@
+#!/usr/bin/env python3
+# scripts/tables_tex_management/1_combine_results_in_csv.py
+
 import os
 import re
 import pandas as pd
-from typing import List
+from typing import List, Tuple
 import argparse
 
 # Regex to extract just the "Combined (Training + Test)" subsection
@@ -128,13 +131,74 @@ def extract_combined_tables(tex: str) -> list[pd.DataFrame]:
     return out
 
 
+def combine_tables(tex_paths: List[str]) -> Tuple[pd.DataFrame, int, dict]:
+    """
+    Parse all given tex files and combine their 'Combined (Training + Test)' tables
+    into a single long DataFrame with a source file column, numeric 'pl',
+    and a left-to-right underscore-natural problem key for global ordering.
+
+    Returns:
+      long_df, total_rows_read, per_file_rows_read (dict path->count)
+    """
+    frames = []
+    total_rows_read = 0
+    per_file_counts: dict[str, int] = {}
+
+    for fp in tex_paths:
+        file_rows = 0
+        try:
+            with open(fp, "r", encoding="utf-8") as f:
+                tex = f.read()
+        except Exception as e:
+            print(f"[WARN] Could not read {fp}: {e}")
+            continue
+
+        tables = extract_combined_tables(tex)
+        if not tables:
+            print(f"[INFO] {fp}: no 'Combined (Training + Test)' tabulars found.")
+        for tdf in tables:
+            clean_df = normalize_and_filter(tdf)
+            file_rows += len(clean_df)
+            if not clean_df.empty:
+                clean_df["__source_file__"] = os.path.basename(fp)
+                clean_df["pl"] = clean_df["Problem"].map(_extract_pl)
+                clean_df["__prob_key__"] = clean_df["Problem"].map(
+                    _ltr_underscore_natural_key
+                )
+                frames.append(clean_df)
+
+        per_file_counts[fp] = file_rows
+        total_rows_read += file_rows
+        print(f"[INFO] {fp}: rows with results read = {file_rows}")
+
+    if not frames:
+        return pd.DataFrame(), total_rows_read, per_file_counts
+
+    long_df = pd.concat(frames, ignore_index=True)
+
+    # De-duplicate per key + Search, then sort primarily by Problem key (global)
+    before = len(long_df)
+    long_df = long_df.sort_values(
+        ["__prob_key__", "Mode", "Domain", "Search"]
+    ).drop_duplicates(["Mode", "Domain", "Problem", "Search"], keep="last")
+    after = len(long_df)
+    if after < before:
+        print(
+            f"[INFO] Deduplicated combined rows: {before} -> {after} (-{before-after})"
+        )
+
+    return long_df, total_rows_read, per_file_counts
+
+
 def normalize_and_filter(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Keep only columns of interest and valid rows.
+    Keep all rows (including those with Search='', '-'), so that problems
+    unsolved by every search still appear in the final CSV.
+
     Required columns (exact names):
       Mode, Domain, Problem, Goal, Length, Nodes, Total (ms), Init (ms),
       Search (ms), Overhead (ms), Search
-    Drop summary rows (e.g., 'Averages:') and invalid Search values ('', '-').
+    Drop summary rows (e.g., 'Averages:').
     """
     needed = [
         "Mode",
@@ -160,8 +224,8 @@ def normalize_and_filter(df: pd.DataFrame) -> pd.DataFrame:
     for c in df.columns:
         df[c] = df[c].astype(str).str.strip()
 
-    # Valid search values
-    df = df[df["Search"].notna() & (df["Search"] != "") & (df["Search"] != "-")]
+    # IMPORTANT CHANGE: do NOT filter out rows based on 'Search' anymore.
+    # We keep even Search in {"", "-"} to preserve problems unsolved by all searches.
 
     # Numeric coercion
     num_cols = [
@@ -178,48 +242,14 @@ def normalize_and_filter(df: pd.DataFrame) -> pd.DataFrame:
     return df[needed].copy()
 
 
-def combine_tables(tex_paths: List[str]) -> pd.DataFrame:
+def to_pivoted_csv(long_df: pd.DataFrame, output_csv: str) -> int:
     """
-    Parse all given tex files and combine their 'Combined (Training + Test)' tables
-    into a single long DataFrame with a source file column, numeric 'pl',
-    and a left-to-right underscore-natural problem key for global ordering.
-    """
-    frames = []
-    for fp in tex_paths:
-        try:
-            with open(fp, "r", encoding="utf-8") as f:
-                tex = f.read()
-        except Exception as e:
-            print(f"[WARN] Could not read {fp}: {e}")
-            continue
-
-        for tdf in extract_combined_tables(tex):
-            clean_df = normalize_and_filter(tdf)
-            if not clean_df.empty:
-                clean_df["__source_file__"] = os.path.basename(fp)
-                clean_df["pl"] = clean_df["Problem"].map(_extract_pl)
-                clean_df["__prob_key__"] = clean_df["Problem"].map(
-                    _ltr_underscore_natural_key
-                )
-                frames.append(clean_df)
-
-    if not frames:
-        return pd.DataFrame()
-
-    long_df = pd.concat(frames, ignore_index=True)
-
-    # De-duplicate per key + Search, then **sort primarily by Problem key** (global),
-    # so rows won't be block-grouped by Mode anymore.
-    long_df = long_df.sort_values(
-        ["__prob_key__", "Mode", "Domain", "Search"]
-    ).drop_duplicates(["Mode", "Domain", "Problem", "Search"], keep="last")
-    return long_df
-
-
-def to_pivoted_csv(long_df: pd.DataFrame, output_csv: str):
-    """
-    Pivot the long_df so each Search becomes its own block of columns,
-    include 'pl' before per-Search results, and order rows globally by Problem.
+    Build a wide CSV that preserves ALL problems, even if no search solved them.
+    Strategy:
+      1) Build a base index of unique (Mode, Domain, Problem, pl).
+      2) Discover valid search labels = unique Search values excluding "" and "-".
+      3) For each search label, left-join its metrics onto the base.
+    Returns: number of rows written.
     """
     if long_df.empty:
         raise RuntimeError(
@@ -232,27 +262,24 @@ def to_pivoted_csv(long_df: pd.DataFrame, output_csv: str):
     if "__prob_key__" not in long_df.columns:
         long_df["__prob_key__"] = long_df["Problem"].map(_ltr_underscore_natural_key)
 
-    # Keys (pl appears before metric blocks as requested)
+    # Base index: ALL unique instances we saw (even from rows with Search in {"","-"})
     id_cols = ["Mode", "Domain", "Problem", "pl"]
-    value_cols = [
-        "Goal",
-        "Length",
-        "Nodes",
-        "Total (ms)",
-        "Init (ms)",
-        "Search (ms)",
-        "Overhead (ms)",
-    ]
-
-    wide = long_df.set_index(id_cols + ["Search"])[value_cols].unstack("Search")
-    wide.columns = [f"{metric} {{{search}}}" for metric, search in wide.columns]
-    wide = wide.reset_index()
-
-    # Column order: keys first, then per-Search blocks
-    search_names = sorted(
-        {c.split("{", 1)[1].rstrip("}") for c in wide.columns if "{" in c}
+    base = (
+        long_df[id_cols + ["__prob_key__"]]
+        .drop_duplicates(id_cols + ["__prob_key__"])
+        .sort_values(["__prob_key__", "Mode", "Domain"], kind="mergesort")
+        .drop(columns="__prob_key__")
+        .reset_index(drop=True)
     )
-    metrics_order = [
+
+    # Valid search labels for column-block creation (ignore "" and "-")
+    raw_searches = (
+        long_df["Search"].astype(str).str.strip().replace({"nan": ""}).fillna("")
+    )
+    valid_searches = sorted({s for s in raw_searches.unique() if s not in ("", "-")})
+
+    # Metrics to attach per search
+    metric_cols = [
         "Goal",
         "Length",
         "Nodes",
@@ -261,28 +288,48 @@ def to_pivoted_csv(long_df: pd.DataFrame, output_csv: str):
         "Search (ms)",
         "Overhead (ms)",
     ]
-    ordered_cols = id_cols[:]
-    for s in search_names:
-        for m in metrics_order:
-            col = f"{m} {{{s}}}"
-            if col in wide.columns:
-                ordered_cols.append(col)
-    for c in wide.columns:
-        if c not in ordered_cols:
-            ordered_cols.append(c)
-    wide = wide[ordered_cols]
 
-    # **Global Problem ordering** (natural, left-to-right on '_' tokens)
-    wide["__prob_key__"] = wide["Problem"].map(_ltr_underscore_natural_key)
-    wide = wide.sort_values(
-        ["__prob_key__", "Mode", "Domain"], kind="mergesort"
-    ).reset_index(drop=True)
-    wide = wide.drop(columns="__prob_key__")
+    wide = base.copy()
 
+    for s in valid_searches:
+        sub = long_df[long_df["Search"].astype(str).str.strip() == s].copy()
+        if sub.empty:
+            # Nothing for this search; still create empty columns for consistency
+            for m in metric_cols:
+                wide[f"{m} {{{s}}}"] = pd.NA
+            continue
+
+        # Deduplicate per instance for this search (keep last)
+        sub = sub.sort_values(["Mode", "Domain", "Problem"]).drop_duplicates(
+            ["Mode", "Domain", "Problem"], keep="last"
+        )
+
+        attach = sub[id_cols + metric_cols].copy()
+        # Rename metric columns with {search} suffix
+        attach = attach.rename(columns={m: f"{m} {{{s}}}" for m in metric_cols})
+
+        wide = wide.merge(attach, on=id_cols, how="left")
+
+    # Save CSV
+    os.makedirs(os.path.dirname(output_csv) or ".", exist_ok=True)
     wide.to_csv(output_csv, index=False)
+    rows_written = len(wide)
     print(
-        f"[OK] Wrote: {os.path.abspath(output_csv)}  (rows={len(wide)}, cols={len(wide.columns)})"
+        f"[OK] Wrote CSV: {os.path.abspath(output_csv)}  (rows_written={rows_written}, cols={len(wide.columns)})"
     )
+    return rows_written
+
+
+def _print_search_distribution(long_df: pd.DataFrame):
+    print("[INFO] Rows per Search value (including empty/'-'):")
+    counts = (
+        long_df.groupby(long_df["Search"].fillna(""))
+        .size()
+        .sort_values(ascending=False)
+    )
+    for k, v in counts.items():
+        disp = k if k not in ("",) else "<EMPTY>"
+        print(f"        - {disp}: {v}")
 
 
 def main(tex_paths: List[str], output_csv: str):
@@ -297,40 +344,52 @@ def main(tex_paths: List[str], output_csv: str):
         print("[ERROR] No valid files to process.")
         return
 
-    long_df = combine_tables(checked_paths)
-    to_pivoted_csv(long_df, output_csv)
+    long_df, total_rows_read, per_file_counts = combine_tables(checked_paths)
+    _print_search_distribution(long_df)  # <-- add this
+    print(f"[INFO] Total rows with results read (all files): {total_rows_read}")
+
+    if long_df.empty:
+        print(
+            "[ERROR] No rows survived normalization/filtering. CSV will NOT be written."
+        )
+        return
+
+    rows_written = to_pivoted_csv(long_df, output_csv)
+    print(f"[INFO] Rows with results written to CSV: {rows_written}")
 
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Train and/or build data for the distance estimator model."
+        description="Combine LaTeX results into a single CSV (with counts)."
     )
     parser.add_argument(
         "--experiment_set",
         default="gnn_exp",
         type=str,
-        help="Name for the distance estimator model",
+        help="Experiment set name",
     )
     parser.add_argument(
         "--experiment_batch",
         type=str,
-        help="Name for the distance estimator model",
+        required=True,
+        help="Experiment batch name (used to locate _results/*/monolithic_combined_results.tex)",
     )
     parser.add_argument(
         "--out_dir_name",
         default="final_reports",
         type=str,
-        help="Name for the distance estimator model",
+        help="Directory under exp/<set>/<out_dir_name>/<batch> to place combined_results.csv",
     )
-    args = parser.parse_args()
-
-    return args
+    return parser.parse_args()
 
 
 if __name__ == "__main__":
     """
-    EXAMPLE OF USAGE:
-    python3 scripts/tables_tex_management/1_combine_results_in_csv.py --experiment_set "gnn_exp" --experiment_batch "batch_test" --out_dir_name "final_reports"
+    EXAMPLE:
+    python3 scripts/tables_tex_management/1_combine_results_in_csv.py \
+      --experiment_set gnn_exp \
+      --experiment_batch batch_test \
+      --out_dir_name final_reports
     """
     args = parse_args()
 
@@ -339,9 +398,7 @@ if __name__ == "__main__":
     out_dir_name = args.out_dir_name
 
     exp_dir = f"./exp/{experiment_set}/{experiment_batch}"
-
     output_csv_dir = f"./exp/{experiment_set}/{out_dir_name}/{experiment_batch}"
-
     os.makedirs(output_csv_dir, exist_ok=True)
 
     main(
