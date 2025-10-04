@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import os
 import re
 import difflib
@@ -7,7 +8,44 @@ from typing import Dict, List, Tuple
 import numpy as np
 import pandas as pd
 
+# ─────────────────────────────── PREAMBLE (inline) ───────────────────────────────
+# If your doc already defines these macros/packages elsewhere, that's okay: LaTeX will ignore dups.
+PREAMBLE_TEX = r"""% ====== Auto-inlined preamble for the monolithic results table ======
+\usepackage{booktabs}
+\usepackage{geometry}
+\usepackage{multirow}
+\usepackage{tabularx}
+\usepackage{xspace}
+\usepackage{longtable}
+\usepackage{array}
 
+% Column labels/macros used in the table
+\newcommand{\planLength}{Plan Len.}
+\newcommand{\nodesExp}{Nodes}
+\newcommand{\solvingTime}{Time}
+\newcommand{\unsolvedColumn}{--}
+\newcommand{\myTO}{TO}
+
+% Stats labels
+\newcommand{\myAvg}{avg}
+\newcommand{\myStd}{std}
+\newcommand{\IQM}{iqm}
+\newcommand{\IQR}{iqr}
+\newcommand{\allInstances}{all}
+\newcommand{\onlyInCommon}{comm}
+
+% Header macros (override in your LaTeX preamble if you want different display text)
+\newcommand{\GNNres}{A*(GNN)}
+\newcommand{\BFSres}{BFS}
+\newcommand{\HFSres}{HFS}
+
+% Convenience for your header layout
+\newcommand{\multirow2}[2]{\multirow{2}{*}{#2}}
+% ====== End preamble ======
+"""
+
+
+# ────────────────────────────── VERBOSITY HELPERS ──────────────────────────────
 def vinfo(msg: str):
     print(f"[INFO] {msg}")
 
@@ -20,7 +58,9 @@ def vok(msg: str):
     print(f"[OK] {msg}")
 
 
+# ────────────────────────── SORTING & STRING HELPERS ───────────────────────────
 def _ltr_underscore_natural_key(s: str):
+    """Left-to-right underscore natural sort: numbers as ints, text case-insensitive."""
     if not isinstance(s, str):
         return ()
     toks = [t for t in s.split("_") if t != ""]
@@ -37,6 +77,7 @@ def _pretty_instance_name(problem: str) -> str:
     return "" if not isinstance(problem, str) else problem.replace("__pl_", "-pl_")
 
 
+# ─────────────────────────────── STATS HELPERS ─────────────────────────────────
 def _percentile(x: np.ndarray, q: List[float]) -> Tuple[float, float]:
     try:
         return tuple(np.percentile(x, q, method="linear"))
@@ -82,6 +123,7 @@ def _fmt_stat_pair(mu: float, sigma: float) -> str:
     return f"{_fmt_num(mu)} $\\pm$ {_fmt_num(sigma)}"
 
 
+# ───────────────────────────── COLUMN HELPERS ──────────────────────────────────
 def discover_search_labels(df: pd.DataFrame) -> List[str]:
     return [
         col[len("Goal {") : -1]
@@ -170,14 +212,16 @@ def resolve_search_label(df: pd.DataFrame, requested: str) -> str:
 
 
 def _cols(search: str) -> dict:
+    # Use "Total (ms)" for solving time; change to "Search (ms)" if you prefer
     return {
         "goal": f"Goal {{{search}}}",
         "length": f"Length {{{search}}}",
         "nodes": f"Nodes {{{search}}}",
-        "time": f"Total (ms) {{{search}}}",  # change to Search (ms) if needed
+        "time": f"Total (ms) {{{search}}}",
     }
 
 
+# ───────────────────────────── CORE BUILD ─────────────────────────────
 def _collect(df: pd.DataFrame, cols: dict, mask: pd.Series):
     L = pd.to_numeric(df.loc[mask, cols["length"]], errors="coerce").to_numpy()
     N = pd.to_numeric(df.loc[mask, cols["nodes"]], errors="coerce").to_numpy()
@@ -188,53 +232,22 @@ def _collect(df: pd.DataFrame, cols: dict, mask: pd.Series):
     return L, N, T
 
 
-def build_table_multi(
-    df_mode: pd.DataFrame, searches: Dict[str, str], caption: str, label: str
-) -> str:
-    if df_mode.empty:
-        raise RuntimeError("No rows for the selected Mode in the CSV.")
-    resolved = {}
-    colmaps = {}
-    for macro, requested in searches.items():
-        try:
-            label_res = resolve_search_label(df_mode, requested)
-        except RuntimeError as e:
-            vwarn(str(e))
-            continue
-        resolved[macro] = label_res
-        colmaps[macro] = _cols(label_res)
-    if not colmaps:
-        raise RuntimeError(
-            "None of the requested searches were found in the CSV columns."
-        )
-    vinfo(
-        "Resolved search labels: "
-        + ", ".join([f"{m}:{r}" for m, r in resolved.items()])
-    )
-
-    df = df_mode.copy()
-    df["__prob_key__"] = df["Problem"].map(_ltr_underscore_natural_key)
-    df = df.sort_values(["__prob_key__"], kind="mergesort").drop(columns="__prob_key__")
-
-    colspec = "l|" + "|".join(["ccc"] * len(colmaps))
-    lines = []
-    lines.append(r"\begin{table}[!ht]")
-    lines.append(r"\centering")
-    lines.append(r"\begin{tabular}{" + colspec + r"}")
-
-    first_line = r"\multirow2{*}{\textbf{Instance Name}}"
+def _build_header_blocks(colmaps: Dict[str, dict]) -> Tuple[str, str, int]:
+    first = r"\multirow2{*}{\textbf{Instance Name}}"
     for i, macro in enumerate(colmaps.keys()):
         bar = "|" if i < len(colmaps) - 1 else ""
-        first_line += f" & \\multicolumn{{3}}{{c{bar}}}{{{macro}}}"
-    lines.append(first_line + r" \\")
-    cline_end = 1 + 3 * len(colmaps)
-    lines.append(rf"\cline{{2-{cline_end}}}")
-    subhdr = r"& \planLength & \nodesExp & \solvingTime [ms]"
+        first += f" & \\multicolumn{{3}}{{c{bar}}}{{{macro}}}"
+    second = r"& \planLength & \nodesExp & \solvingTime [ms]"
     for _ in list(colmaps.keys())[1:]:
-        subhdr += r" & \planLength & \nodesExp & \solvingTime [ms]"
-    lines.append(subhdr + r" \\")
-    lines.append(r"\hline")
+        second += r" & \planLength & \nodesExp & \solvingTime [ms]"
+    cline_end = 1 + 3 * len(colmaps)
+    return first, second, cline_end
 
+
+def build_table_body_and_stats(
+    df: pd.DataFrame, colmaps: Dict[str, dict]
+) -> Tuple[List[str], List[str]]:
+    body_rows = []
     for _, r in df.iterrows():
         row_cells = [_pretty_instance_name(r["Problem"])]
         for cols in colmaps.values():
@@ -247,18 +260,15 @@ def build_table_multi(
                 l = n = r"\unsolvedColumn"
                 t = r"\myTO"
             row_cells += [l, n, t]
-        lines.append(" & ".join(row_cells) + r" \\")
-    lines.append(r"\hline")
-
+        body_rows.append(" & ".join(row_cells) + r" \\")
     masks = {}
     metrics_all = {}
     solved_counts = {}
     for macro, cols in colmaps.items():
-        mask = df[cols["goal"]].astype(str).eq("Yes")
-        masks[macro] = mask
-        solved_counts[macro] = int(mask.sum())
-        metrics_all[macro] = _collect(df, cols, mask)
-
+        m = df[cols["goal"]].astype(str).eq("Yes")
+        masks[macro] = m
+        solved_counts[macro] = int(m.sum())
+        metrics_all[macro] = _collect(df, cols, m)
     total_instances = len(df)
     common_mask = None
     for macro in colmaps.keys():
@@ -289,52 +299,65 @@ def build_table_multi(
         iqm = f"{_fmt_num(iqmL)} $\\pm$ {_fmt_num(iqrL)} & {_fmt_num(iqmN)} $\\pm$ {_fmt_num(iqrN)} & {_fmt_num(iqmT)} $\\pm$ {_fmt_num(iqrT)}"
         return avg, iqm
 
+    footer = []
     line = r"\myAvg  $\pm$ \myStd \hfill (\allInstances)"
     for macro in colmaps.keys():
         avg_all, _ = fmt_block(stats_pack(metrics_all[macro]))
         line += " & " + avg_all
-    lines.append(line + r" \\")
+    footer.append(line + r" \\")
     line = r"\IQM $\pm$ \IQR \hfill (\allInstances)"
     for macro in colmaps.keys():
         _, iqm_all = fmt_block(stats_pack(metrics_all[macro]))
         line += " & " + iqm_all
-    lines.append(line + r" \\")
+    footer.append(line + r" \\")
     line = r"\myAvg  $\pm$ \myStd \hfill (\onlyInCommon)"
     for macro in colmaps.keys():
         avg_com, _ = fmt_block(stats_pack(metrics_common[macro]))
         line += " & " + avg_com
-    lines.append(line + r" \\")
+    footer.append(line + r" \\")
     line = r"\IQM $\pm$ \IQR \hfill (\onlyInCommon)"
     for macro in colmaps.keys():
         _, iqm_com = fmt_block(stats_pack(metrics_common[macro]))
         line += " & " + iqm_com
-    lines.append(line + r" \\")
-    lines.append(r"\hline")
-
+    footer.append(line + r" \\")
     solved = r"Solved Instances"
     for i, macro in enumerate(colmaps.keys()):
         cnt = solved_counts[macro]
         pct = f"{(100.0*cnt/total_instances):.2f}\\%"
         bar = "|" if i < len(colmaps) - 1 else ""
         solved += rf" & \multicolumn{{3}}{{c{bar}}}{{{cnt}/{total_instances} ({pct})}}"
-    lines.append(solved)
+    footer.append(solved)
+    return body_rows, footer
 
-    lines.append(r"\end{tabular}")
-    lines.append(r"\caption{" + caption + r"}")
-    lines.append(r"\label{" + label + r"}")
-    lines.append(r"\end{table}")
+
+def render_longtable_block(
+    colspec: str,
+    first_hdr: str,
+    second_hdr: str,
+    cline_end: int,
+    body_rows: List[str],
+    footer_rows: List[str],
+) -> str:
+    lines = []
+    lines.append(r"\begin{longtable}[!ht]{" + colspec + r"}")
+    lines.append(r"\centering")
+    lines.append(first_hdr + r" \\")
+    lines.append(rf"\cline{{2-{cline_end}}}")
+    lines.append(second_hdr + r" \\")
+    lines.append(r"\hline")
+    lines.extend(body_rows)
+    lines.append(r"\hline")
+    lines.extend(footer_rows)
+    lines.append(r"\end{longtable}")
     return "\n".join(lines)
 
 
 # ───────────────────────── ARGPARSE / MAIN ─────────────────────────
-
-
 def parse_args():
     p = argparse.ArgumentParser(
-        description="Make a single LaTeX comparison table from combined_results.csv"
+        description="Make ONE longtable LaTeX comparison (aggregating ALL domains) from combined_results.csv (with inlined preamble)."
     )
     p.add_argument("--csv", required=True, help="Path to combined_results.csv")
-    # NEW: includes 'Train and Test'
     p.add_argument(
         "--mode",
         required=True,
@@ -342,18 +365,16 @@ def parse_args():
         help="Which rows to include (aggregates ALL domains).",
     )
     p.add_argument(
+        "--domain",
+        required=True,
+        help="Domain name placeholder used in section title and caption (e.g., 'Grapevine' or 'ALL DOMAINS').",
+    )
+    p.add_argument(
         "--search",
         action="append",
         required=True,
-        help=r"Repeatable: header macro and requested label, e.g. --search '\GNNres=Astar_GNN'. "
-        r"Use quotes to protect backslashes.",
+        help=r"Repeatable: header macro and requested label, e.g. --search '\GNNres=Astar_GNN'. Use quotes to protect backslashes.",
     )
-    p.add_argument(
-        "--caption",
-        default=None,
-        help="Custom caption (optional). {MODE} will be expanded if present.",
-    )
-    p.add_argument("--label", default=None, help="Custom LaTeX label (optional).")
     p.add_argument(
         "--out-dir",
         default=None,
@@ -369,9 +390,10 @@ def main():
     args = parse_args()
 
     CSV_PATH = args.csv
-    MODE = args.mode  # can be "Train", "Test", or "Train and Test"
+    MODE = args.mode
+    DOMAIN = args.domain
 
-    # parse searches
+    # Parse searches
     SEARCHES: Dict[str, str] = {}
     for item in args.search:
         if "=" not in item:
@@ -394,7 +416,7 @@ def main():
             raise SystemExit(f"[ERROR] CSV must contain '{c}' column.")
     vinfo(f"Discovered search labels in CSV: {sorted(discover_search_labels(df_all))}")
 
-    # Slice by mode (supporting "Train and Test")
+    # Mode slice (aggregate all domains inside it)
     if MODE == "Train and Test":
         df_mode = df_all[df_all["Mode"].astype(str).isin(["Train", "Test"])].copy()
     else:
@@ -403,29 +425,121 @@ def main():
     if df_mode.empty:
         raise SystemExit(f"[ERROR] No rows with Mode='{MODE}' in CSV.")
 
-    # Caption / label (MODE token preserved exactly, including "Train and Test")
-    CAPTION = args.caption or (
-        f"Comparison over \\textbf{{{MODE}}} instances across all domains. "
-        "The model used by \\GNNres has been trained using the instances reported "
-        "in the previous \\textbf{Train} Table."
-    )
-    LABEL = args.label or f"tab:combined_comparison_{MODE.lower().replace(' ', '_')}"
-
-    # Build table
-    vinfo(
-        f"Building SINGLE table for Mode='{MODE}' (aggregating all domains); "
-        f"instances: {len(df_mode)}; searches: {list(SEARCHES.keys())}"
-    )
-    try:
-        latex = build_table_multi(
-            df_mode=df_mode, searches=SEARCHES, caption=CAPTION, label=LABEL
+    # Resolve searches
+    resolved = {}
+    colmaps = {}
+    for macro, requested in SEARCHES.items():
+        try:
+            label_res = resolve_search_label(df_mode, requested)
+        except RuntimeError as e:
+            vwarn(str(e))
+            continue
+        resolved[macro] = label_res
+        colmaps[macro] = _cols(label_res)
+    if not colmaps:
+        raise SystemExit(
+            "[ERROR] None of the requested searches were found in the CSV columns."
         )
-    except RuntimeError as e:
-        raise SystemExit(f"[ERROR] {e}")
+    vinfo(
+        "Resolved search labels: "
+        + ", ".join([f"{m}:{r}" for m, r in resolved.items()])
+    )
 
-    # ---- Output path logic (uses unique domains & mode) ----
-    # Extract unique domains from the filtered data
-    domains = sorted(set(df_mode["Domain"].astype(str).dropna()))
+    # Global sort by Problem
+    df = df_mode.copy()
+    df["__prob_key__"] = df["Problem"].map(_ltr_underscore_natural_key)
+    df = df.sort_values(["__prob_key__"], kind="mergesort").drop(columns="__prob_key__")
+
+    # Build header/body/footer
+    first_hdr, second_hdr, cline_end = _build_header_blocks(colmaps)
+    body_rows, footer_rows = build_table_body_and_stats(df, colmaps)
+
+    # Section title (before the table)
+    section_line = r"\section*{Monolithic Results (" + DOMAIN + r")}"
+
+    # Table
+    colspec = "l|" + "|".join(["ccc"] * len(colmaps))
+    table_block = render_longtable_block(
+        colspec, first_hdr, second_hdr, cline_end, body_rows, footer_rows
+    )
+
+    # Derive batch_name from CSV path (directory containing the CSV file)
+    batch_name = os.path.basename(os.path.dirname(os.path.abspath(CSV_PATH)))
+
+    # Caption + label text AFTER the table (exactly as requested)
+    if MODE == "Test":
+        caption = (
+            r"Comparison of execution on the "
+            + "{"
+            + DOMAIN
+            + "}"
+            + r" domain over the \textbf{Test} instances. The model used by \GNNres has been "
+            r"trained using the instances reported in the previous \textbf{Train} Table."
+        )
+        label = (
+            r"tab:"
+            + "{"
+            + batch_name
+            + "}"
+            + "_"
+            + "{"
+            + DOMAIN
+            + "}"
+            + "_comparison_test"
+        )
+    elif MODE == "Train":
+        caption = (
+            r"Comparison of execution on the "
+            + "{"
+            + DOMAIN
+            + "}"
+            + r" domain over the \textbf{Train} instances. The model used by \GNNres has been "
+            r"trained using the instances reported in this Table."
+        )
+        label = (
+            r"tab:"
+            + "{"
+            + batch_name
+            + "}"
+            + "_"
+            + "{"
+            + DOMAIN
+            + "}"
+            + "_comparison_train"
+        )
+    else:
+        caption = (
+            r"Comparison of execution on the "
+            + "{"
+            + DOMAIN
+            + "}"
+            + r" domain over the \textbf{Train and Test} instances."
+        )
+        label = (
+            r"tab:"
+            + "{"
+            + batch_name
+            + "}"
+            + "_"
+            + "{"
+            + DOMAIN
+            + "}"
+            + "_comparison_train_and_test"
+        )
+
+    # Assemble final .tex content
+    parts = []
+    parts.append(PREAMBLE_TEX.rstrip() + "\n")
+    parts.append(section_line)
+    parts.append(table_block)
+    # Add '//' line BEFORE caption/label, as requested
+    parts.append(r"//")
+    parts.append(r"\caption{" + caption + r"}")
+    parts.append(r"\label{" + label + r"}")
+    final_tex = "\n".join(parts) + "\n"
+
+    # Build output path: use unique domains present (for info) + mode
+    domains = sorted(set(df["Domain"].astype(str).dropna()))
     domains_joined = (
         "_".join(re.sub(r"[^A-Za-z0-9_-]+", "_", d) for d in domains)
         if domains
@@ -445,12 +559,17 @@ def main():
 
     os.makedirs(out_dir, exist_ok=True)
     with open(out_path, "w", encoding="utf-8") as f:
-        f.write(latex)
+        f.write(final_tex)
     vok(f"Saved ONE LaTeX table: {out_path}")
 
 
 if __name__ == "__main__":
     """
-    python3 scripts/tables_tex_management/2_make_latex_table.py --csv ./exp/gnn_exp/final_reports/batch_test/combined_results.csv     --mode Test     --search "\GNNres=Astar_GNN"     --search "\BFSres=BFS"
+    python3 scripts/tables_tex_management/2_make_latex_table.py \
+      --csv ./exp/gnn_exp/final_reports/batch_test/combined_results.csv \
+      --mode Test \
+      --domain Grapevine \
+      --search "\GNNres=Astar_GNN" \
+      --search "\BFSres=BFS"
     """
     main()
