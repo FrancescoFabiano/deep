@@ -184,25 +184,24 @@ ArgumentParser::ArgumentParser() : app("deep") {
       "-d,--dataset", m_dataset_mode,
       "Enable dataset generation mode for learning or analysis.");
   dataset_group
-      ->add_option(
-          "--dataset_depth", m_dataset_depth,
-          "Set the maximum depth for dataset generation.")
+      ->add_option("--dataset_depth", m_dataset_depth,
+                   "Set the maximum depth for dataset generation.")
       ->default_val("10");
   dataset_group
-    ->add_option(
-        "--dataset_depth", m_dataset_generation_threshold,
-        "Set the maximum number of nodes to generate before dataset generation stops.")
-    ->default_val("100000");
-   dataset_group
-      ->add_option(
-          "--dataset_depth", m_dataset_max_creation_threshold,
-        "Set the maximum number of valid nodes to create before dataset generation stops.")
+      ->add_option("--dataset_depth", m_dataset_generation_threshold,
+                   "Set the maximum number of nodes to generate before dataset "
+                   "generation stops.")
+      ->default_val("100000");
+  dataset_group
+      ->add_option("--dataset_depth", m_dataset_max_creation_threshold,
+                   "Set the maximum number of valid nodes to create before "
+                   "dataset generation stops.")
       ->default_val("25000");
-    dataset_group
-   ->add_option(
-       "--dataset_depth", m_dataset_max_creation_threshold,
-     "Set the minimum number of valid nodes to create to create a meaningful dataset.")
-   ->default_val("10");
+  dataset_group
+      ->add_option("--dataset_depth", m_dataset_max_creation_threshold,
+                   "Set the minimum number of valid nodes to create to create "
+                   "a meaningful dataset.")
+      ->default_val("10");
   dataset_group
       ->add_option(
           "--dataset_type", m_dataset_type_string,
