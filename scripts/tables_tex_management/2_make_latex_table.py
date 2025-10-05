@@ -1,32 +1,58 @@
 #!/usr/bin/env python3
+# scripts/tables_tex_management/2_make_latex_table.py
+#
+# Builds ONE longtable from combined_results.csv, aggregating all domains,
+# with variable-width blocks per search:
+#   - normal searches (e.g., A*(GNN), BFS, HFS): 3 cols (Len, Nodes, Time)
+#   - p5/p6: 4 cols (Len, Nodes, Time, search)  <-- shows Search {p5}/{p6}
+#
+# Example:
+#   python3 scripts/tables_tex_management/2_make_latex_table.py \
+#     --csv ./exp/gnn_exp/final_reports/batch_test/combined_results.csv \
+#     --mode Test \
+#     --domain Grapevine \
+#     --search "\GNNres=Astar_GNN" \
+#     --search "\BFSres=BFS" \
+#     --search "\Pfive=p5" \
+#     --search "\Psix=p6"
+from __future__ import annotations
+
 import os
 import re
 import difflib
 import argparse
+import shutil
+import subprocess
+from pathlib import Path
 from typing import Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
 
 # ─────────────────────────────── PREAMBLE (inline) ───────────────────────────────
-# If your doc already defines these macros/packages elsewhere, that's okay: LaTeX will ignore dups.
+# If your main .tex already defines these, LaTeX will ignore duplicates.
 PREAMBLE_TEX = r"""% ====== Auto-inlined preamble for the monolithic results table ======
+\documentclass{article}
+\usepackage[a4paper, landscape, margin=1in]{geometry}
 \usepackage{booktabs}
-\usepackage{geometry}
-\usepackage{multirow}
-\usepackage{tabularx}
-\usepackage{xspace}
 \usepackage{longtable}
 \usepackage{array}
+\usepackage{multirow}
 
-% Column labels/macros used in the table
-\newcommand{\planLength}{Plan Len.}
+% --- Display labels/macros (single, non-conflicting definitions) ---
+\newcommand{\hyperstyle}[1]{\ensuremath{\mathsf{#1}}}
+\newcommand{\resstyle}[1]{\texttt{#1}}
+
+\newcommand{\BFSres}{BFS}
+\newcommand{\GNNres}{A*(GNN)}
+\newcommand{\HFSres}{HFS} % not used in this table but left for completeness
+
+\newcommand{\planLength}{Length.}
 \newcommand{\nodesExp}{Nodes}
 \newcommand{\solvingTime}{Time}
 \newcommand{\unsolvedColumn}{--}
 \newcommand{\myTO}{TO}
 
-% Stats labels
 \newcommand{\myAvg}{avg}
 \newcommand{\myStd}{std}
 \newcommand{\IQM}{iqm}
@@ -34,18 +60,118 @@ PREAMBLE_TEX = r"""% ====== Auto-inlined preamble for the monolithic results tab
 \newcommand{\allInstances}{all}
 \newcommand{\onlyInCommon}{comm}
 
-% Header macros (override in your LaTeX preamble if you want different display text)
-\newcommand{\GNNres}{A*(GNN)}
-\newcommand{\BFSres}{BFS}
-\newcommand{\HFSres}{HFS}
+\newcommand{\Pfive}{P5}   % previously undefined in the source
+\newcommand{\Psix}{P6}    % previously undefined in the source
 
-% Convenience for your header layout
-\newcommand{\multirow2}[2]{\multirow{2}{*}{#2}}
 % ====== End preamble ======
+
+\begin{document}
 """
 
 
-# ────────────────────────────── VERBOSITY HELPERS ──────────────────────────────
+def _tail(path: Path, n=80) -> str:
+    try:
+        with path.open("r", errors="ignore") as f:
+            lines = f.readlines()
+        return "".join(lines[-n:])
+    except Exception as e:
+        return f"(could not read log: {e})"
+
+
+def compile_tex(
+    source_path: str,
+    use_latexmk: bool = True,
+    biblio: str | None = None,  # None | "bibtex" | "biber"
+    shell_escape: bool = False,
+    clean_aux: bool = False,
+):
+    src = Path(source_path).resolve()
+    if not src.exists():
+        raise FileNotFoundError(f"Input file not found: {src}")
+
+    workdir = src.parent
+    basename = src.stem  # e.g., "combined_results_Assemble_..."
+    # NOTE: LaTeX can compile a file with any extension (even .txt) if it contains a proper preamble.
+
+    pdf_path = workdir / f"{basename}.pdf"
+    log_path = workdir / f"{basename}.log"
+    shell_flag = ["-shell-escape"] if shell_escape else []
+
+    def run(cmd):
+        return subprocess.run(
+            cmd, cwd=workdir, check=True, capture_output=True, text=True
+        )
+
+    try:
+        if use_latexmk and shutil.which("latexmk"):
+            cmd = ["latexmk", "-pdf", "-interaction=nonstopmode", *shell_flag, src.name]
+            run(cmd)
+        else:
+            # manual pipeline
+            run(["pdflatex", "-interaction=nonstopmode", *shell_flag, src.name])
+            if biblio == "bibtex":
+                # bibtex expects AUX basename (no extension)
+                run(["bibtex", basename])
+            elif biblio == "biber":
+                run(["biber", basename])
+            # second pass (and a third to settle refs if biblio used)
+            run(["pdflatex", "-interaction=nonstopmode", *shell_flag, src.name])
+            if biblio:
+                run(["pdflatex", "-interaction=nonstopmode", *shell_flag, src.name])
+
+        if not pdf_path.exists():
+            raise RuntimeError(
+                "LaTeX completed but PDF not found. Check the log for details."
+            )
+
+        if clean_aux:
+            for ext in (
+                ".aux",
+                ".bbl",
+                ".blg",
+                ".bcf",
+                ".run.xml",
+                ".out",
+                ".toc",
+                ".log",
+                ".fls",
+                ".fdb_latexmk",
+                ".synctex.gz",
+            ):
+                p = workdir / f"{basename}{ext}"
+                if p.exists():
+                    p.unlink()
+
+        print(f"✅ PDF generated: {pdf_path}")
+        return pdf_path
+
+    except subprocess.CalledProcessError as e:
+        # Show a concise error plus tail of the .log (or stderr if no log yet)
+        print("❌ LaTeX compilation failed.")
+        if log_path.exists():
+            print(
+                "\n─── Log tail ─────────────────────────────────────────────────────────"
+            )
+            print(_tail(log_path, 80))
+            print(
+                "───────────────────────────────────────────────────────────────────────"
+            )
+        else:
+            # If LaTeX died before writing a log, show stderr
+            print(
+                "\n─── Compiler stderr ───────────────────────────────────────────────────"
+            )
+            print(e.stderr)
+            print(
+                "───────────────────────────────────────────────────────────────────────"
+            )
+        # Bubble up a clearer error for callers
+        raise RuntimeError(
+            f"LaTeX failed; see {log_path if log_path.exists() else 'stderr above'}"
+        ) from e
+
+
+# ───────────────────────────── VERBOSITY ─────────────────────────────
 def vinfo(msg: str):
     print(f"[INFO] {msg}")
 
@@ -58,9 +184,8 @@ def vok(msg: str):
     print(f"[OK] {msg}")
 
 
-# ────────────────────────── SORTING & STRING HELPERS ───────────────────────────
+# ────────────────────────── SORT / PRETTY ───────────────────────────
 def _ltr_underscore_natural_key(s: str):
-    """Left-to-right underscore natural sort: numbers as ints, text case-insensitive."""
     if not isinstance(s, str):
         return ()
     toks = [t for t in s.split("_") if t != ""]
@@ -74,10 +199,14 @@ def _ltr_underscore_natural_key(s: str):
 
 
 def _pretty_instance_name(problem: str) -> str:
-    return "" if not isinstance(problem, str) else problem.replace("__pl_", "-pl_")
+    return (
+        ""
+        if not isinstance(problem, str)
+        else problem.replace("__pl_", "-pl_").replace("_", "\_")
+    )
 
 
-# ─────────────────────────────── STATS HELPERS ─────────────────────────────────
+# ───────────────────────────── STATS ────────────────────────────────
 def _percentile(x: np.ndarray, q: List[float]) -> Tuple[float, float]:
     try:
         return tuple(np.percentile(x, q, method="linear"))
@@ -123,7 +252,7 @@ def _fmt_stat_pair(mu: float, sigma: float) -> str:
     return f"{_fmt_num(mu)} $\\pm$ {_fmt_num(sigma)}"
 
 
-# ───────────────────────────── COLUMN HELPERS ──────────────────────────────────
+# ───────────────────────── COLUMN HELPERS ───────────────────────────
 def discover_search_labels(df: pd.DataFrame) -> List[str]:
     return [
         col[len("Goal {") : -1]
@@ -212,16 +341,24 @@ def resolve_search_label(df: pd.DataFrame, requested: str) -> str:
 
 
 def _cols(search: str) -> dict:
-    # Use "Total (ms)" for solving time; change to "Search (ms)" if you prefer
-    return {
+    """
+    For every resolved CSV label 'search', map the needed columns.
+    If search in {p5, p6}, also expose the extra 'Search {search}' column.
+    """
+    out = {
         "goal": f"Goal {{{search}}}",
         "length": f"Length {{{search}}}",
         "nodes": f"Nodes {{{search}}}",
-        "time": f"Total (ms) {{{search}}}",
+        "time": f"Total (ms) {{{search}}}",  # or "Search (ms)" if you prefer
     }
+    if search in {"p5", "p6"}:
+        out["search_str"] = f"Search {{{search}}}"  # extra visible column for p5/p6
+    else:
+        out["search_str"] = None
+    return out
 
 
-# ───────────────────────────── CORE BUILD ─────────────────────────────
+# ───────────────────────────── CORE BUILD ───────────────────────────
 def _collect(df: pd.DataFrame, cols: dict, mask: pd.Series):
     L = pd.to_numeric(df.loc[mask, cols["length"]], errors="coerce").to_numpy()
     N = pd.to_numeric(df.loc[mask, cols["nodes"]], errors="coerce").to_numpy()
@@ -232,16 +369,43 @@ def _collect(df: pd.DataFrame, cols: dict, mask: pd.Series):
     return L, N, T
 
 
-def _build_header_blocks(colmaps: Dict[str, dict]) -> Tuple[str, str, int]:
+def _block_width(cols: dict) -> int:
+    """3 metrics (Len, Nodes, Time) + 1 extra if p5/p6 has search_str."""
+    return 3 + (1 if cols.get("search_str") else 0)
+
+
+def _build_header_blocks(colmaps: Dict[str, dict]) -> Tuple[str, str, int, str]:
+    """
+    Returns:
+      first_hdr, second_hdr, cline_end, colspec
+    Header adapts per macro width: 3 for normal, 4 for p5/p6 (adds 'search').
+    """
     first = r"\multirow2{*}{\textbf{Instance Name}}"
-    for i, macro in enumerate(colmaps.keys()):
-        bar = "|" if i < len(colmaps) - 1 else ""
-        first += f" & \\multicolumn{{3}}{{c{bar}}}{{{macro}}}"
-    second = r"& \planLength & \nodesExp & \solvingTime [ms]"
-    for _ in list(colmaps.keys())[1:]:
-        second += r" & \planLength & \nodesExp & \solvingTime [ms]"
-    cline_end = 1 + 3 * len(colmaps)
-    return first, second, cline_end
+    second_cells = []
+    colspec_parts = ["l"]
+    total_data_cols = 0
+
+    macros = list(colmaps.keys())
+    for i, macro in enumerate(macros):
+        cols = colmaps[macro]
+        w = _block_width(cols)
+        # right bar between macro blocks
+        bar = "|" if i < len(macros) - 1 else ""
+        first += f" & \\multicolumn{{{w}}}{{c{bar}}}{{{macro}}}"
+        # second row labels for this macro
+        second_cells.append(r"\planLength & \nodesExp & \solvingTime [ms]")
+        if cols.get("search_str"):
+            second_cells.append("search")  # plain text header for p5/p6 extra col
+        # colspec
+        colspec_parts.append("|")
+        colspec_parts.append("c" * w)
+        total_data_cols += w
+
+    first_hdr = first
+    second_hdr = "& " + " & ".join(second_cells)
+    cline_end = 1 + total_data_cols
+    colspec = "".join(colspec_parts)
+    return first_hdr, second_hdr, cline_end, colspec
 
 
 def build_table_body_and_stats(
@@ -260,7 +424,13 @@ def build_table_body_and_stats(
                 l = n = r"\unsolvedColumn"
                 t = r"\myTO"
             row_cells += [l, n, t]
+            # extra visible 'search' cell for p5/p6
+            if cols.get("search_str"):
+                s_val = r.get(cols["search_str"], "")
+                row_cells.append(str(s_val) if pd.notna(s_val) else "")
         body_rows.append(" & ".join(row_cells) + r" \\")
+
+    # STATS / FOOTER
     masks = {}
     metrics_all = {}
     solved_counts = {}
@@ -270,11 +440,14 @@ def build_table_body_and_stats(
         solved_counts[macro] = int(m.sum())
         metrics_all[macro] = _collect(df, cols, m)
     total_instances = len(df)
+
+    # Common solved mask across all macros
     common_mask = None
     for macro in colmaps.keys():
         common_mask = (
             masks[macro] if common_mask is None else (common_mask & masks[macro])
         )
+
     metrics_common = {
         macro: _collect(df, cols, common_mask) for macro, cols in colmaps.items()
     }
@@ -300,33 +473,59 @@ def build_table_body_and_stats(
         return avg, iqm
 
     footer = []
+
+    # avg±std (all)
     line = r"\myAvg  $\pm$ \myStd \hfill (\allInstances)"
-    for macro in colmaps.keys():
+    for _, cols in colmaps.items():
+        avg_all, _ = fmt_block(stats_pack(metrics_all[_]))
+        # (we can't index metrics_all by cols; recompute in loop properly)
+    footer.clear()
+    # rebuild lines properly:
+    line = r"\myAvg  $\pm$ \myStd \hfill (\allInstances)"
+    for macro, cols in colmaps.items():
         avg_all, _ = fmt_block(stats_pack(metrics_all[macro]))
         line += " & " + avg_all
+        if cols.get("search_str"):
+            line += " & "  # pad the extra p5/p6 column
     footer.append(line + r" \\")
+
     line = r"\IQM $\pm$ \IQR \hfill (\allInstances)"
-    for macro in colmaps.keys():
+    for macro, cols in colmaps.items():
         _, iqm_all = fmt_block(stats_pack(metrics_all[macro]))
         line += " & " + iqm_all
+        if cols.get("search_str"):
+            line += " & "
     footer.append(line + r" \\")
+
     line = r"\myAvg  $\pm$ \myStd \hfill (\onlyInCommon)"
-    for macro in colmaps.keys():
+    for macro, cols in colmaps.items():
         avg_com, _ = fmt_block(stats_pack(metrics_common[macro]))
         line += " & " + avg_com
+        if cols.get("search_str"):
+            line += " & "
     footer.append(line + r" \\")
+
     line = r"\IQM $\pm$ \IQR \hfill (\onlyInCommon)"
-    for macro in colmaps.keys():
+    for macro, cols in colmaps.items():
         _, iqm_com = fmt_block(stats_pack(metrics_common[macro]))
         line += " & " + iqm_com
+        if cols.get("search_str"):
+            line += " & "
     footer.append(line + r" \\")
+
+    # Solved Instances — span over each macro width
     solved = r"Solved Instances"
-    for i, macro in enumerate(colmaps.keys()):
+    macros = list(colmaps.keys())
+    for i, (macro, cols) in enumerate(colmaps.items()):
         cnt = solved_counts[macro]
         pct = f"{(100.0*cnt/total_instances):.2f}\\%"
-        bar = "|" if i < len(colmaps) - 1 else ""
-        solved += rf" & \multicolumn{{3}}{{c{bar}}}{{{cnt}/{total_instances} ({pct})}}"
+        bar = "|" if i < len(macros) - 1 else ""
+        width = _block_width(cols)
+        solved += (
+            rf" & \multicolumn{{{width}}}{{c{bar}}}{{{cnt}/{total_instances} ({pct})}}"
+        )
     footer.append(solved)
+
     return body_rows, footer
 
 
@@ -348,7 +547,6 @@ def render_longtable_block(
     lines.extend(body_rows)
     lines.append(r"\hline")
     lines.extend(footer_rows)
-    lines.append(r"\end{longtable}")
     return "\n".join(lines)
 
 
@@ -361,19 +559,19 @@ def parse_args():
     p.add_argument(
         "--mode",
         required=True,
-        choices=["Train", "Test", "Train and Test"],
+        choices=["Training", "Test", "Training and Test"],
         help="Which rows to include (aggregates ALL domains).",
     )
     p.add_argument(
         "--domain",
-        required=True,
+        default="",
         help="Domain name placeholder used in section title and caption (e.g., 'Grapevine' or 'ALL DOMAINS').",
     )
     p.add_argument(
         "--search",
         action="append",
         required=True,
-        help=r"Repeatable: header macro and requested label, e.g. --search '\GNNres=Astar_GNN'. Use quotes to protect backslashes.",
+        help=r"Repeatable: header macro and requested label, e.g. --search '\GNNres=Astar_GNN' (use '\Pfive=p5' and/or '\Psix=p6' to show the extra search column).",
     )
     p.add_argument(
         "--out-dir",
@@ -417,8 +615,8 @@ def main():
     vinfo(f"Discovered search labels in CSV: {sorted(discover_search_labels(df_all))}")
 
     # Mode slice (aggregate all domains inside it)
-    if MODE == "Train and Test":
-        df_mode = df_all[df_all["Mode"].astype(str).isin(["Train", "Test"])].copy()
+    if MODE == "Training and Test":
+        df_mode = df_all[df_all["Mode"].astype(str).isin(["Training", "Test"])].copy()
     else:
         df_mode = df_all[df_all["Mode"].astype(str) == MODE].copy()
 
@@ -436,10 +634,19 @@ def main():
             continue
         resolved[macro] = label_res
         colmaps[macro] = _cols(label_res)
+        # sanity: if p5/p6 requested, ensure extra col exists (warn otherwise)
+        if label_res in {"p5", "p6"}:
+            extra = colmaps[macro]["search_str"]
+            if extra not in df_mode.columns:
+                vwarn(
+                    f"CSV missing expected column '{extra}' for '{label_res}'. That extra 'search' cell will be empty."
+                )
+
     if not colmaps:
         raise SystemExit(
             "[ERROR] None of the requested searches were found in the CSV columns."
         )
+
     vinfo(
         "Resolved search labels: "
         + ", ".join([f"{m}:{r}" for m, r in resolved.items()])
@@ -450,15 +657,14 @@ def main():
     df["__prob_key__"] = df["Problem"].map(_ltr_underscore_natural_key)
     df = df.sort_values(["__prob_key__"], kind="mergesort").drop(columns="__prob_key__")
 
-    # Build header/body/footer
-    first_hdr, second_hdr, cline_end = _build_header_blocks(colmaps)
+    # Build headers/body/footer with variable widths and render
+    first_hdr, second_hdr, cline_end, colspec = _build_header_blocks(colmaps)
     body_rows, footer_rows = build_table_body_and_stats(df, colmaps)
 
     # Section title (before the table)
-    section_line = r"\section*{Monolithic Results (" + DOMAIN + r")}"
+    section_line = r"\section*{Monolithic Results}"
 
     # Table
-    colspec = "l|" + "|".join(["ccc"] * len(colmaps))
     table_block = render_longtable_block(
         colspec, first_hdr, second_hdr, cline_end, body_rows, footer_rows
     )
@@ -466,7 +672,7 @@ def main():
     # Derive batch_name from CSV path (directory containing the CSV file)
     batch_name = os.path.basename(os.path.dirname(os.path.abspath(CSV_PATH)))
 
-    # Caption + label text AFTER the table (exactly as requested)
+    # Caption + label AFTER the table
     if MODE == "Test":
         caption = (
             r"Comparison of execution on the "
@@ -487,7 +693,7 @@ def main():
             + "}"
             + "_comparison_test"
         )
-    elif MODE == "Train":
+    elif MODE == "Training":
         caption = (
             r"Comparison of execution on the "
             + "{"
@@ -529,16 +735,17 @@ def main():
 
     # Assemble final .tex content
     parts = []
-    parts.append(PREAMBLE_TEX.rstrip() + "\n")
+    parts.append(PREAMBLE_TEX.rstrip() + "\n")  # <-- inlined preamble
     parts.append(section_line)
     parts.append(table_block)
-    # Add '//' line BEFORE caption/label, as requested
-    parts.append(r"//")
+    parts.append(r"\\")
     parts.append(r"\caption{" + caption + r"}")
     parts.append(r"\label{" + label + r"}")
+    parts.append(r"\end{longtable}")
+    parts.append(r"\end{document}")
     final_tex = "\n".join(parts) + "\n"
 
-    # Build output path: use unique domains present (for info) + mode
+    # Output path
     domains = sorted(set(df["Domain"].astype(str).dropna()))
     domains_joined = (
         "_".join(re.sub(r"[^A-Za-z0-9_-]+", "_", d) for d in domains)
@@ -562,14 +769,22 @@ def main():
         f.write(final_tex)
     vok(f"Saved ONE LaTeX table: {out_path}")
 
+    compile_tex(out_path)
+
 
 if __name__ == "__main__":
     """
     python3 scripts/tables_tex_management/2_make_latex_table.py \
       --csv ./exp/gnn_exp/final_reports/batch_test/combined_results.csv \
       --mode Test \
-      --domain Grapevine \
       --search "\GNNres=Astar_GNN" \
-      --search "\BFSres=BFS"
+      --search "\BFSres=BFS" \
+      --search "\Pfive=p5" \
+      --search "\Psix=p6"
     """
     main()
+
+    """
+    sudo apt-get update
+    sudo apt-get install texlive-latex-extra
+    """

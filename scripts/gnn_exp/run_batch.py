@@ -92,6 +92,11 @@ def main():
     parser.add_argument("--ablation", action="store_true", help="Run ablation study")
     parser.add_argument("--timeout", default="600", help="Timeout")
     parser.add_argument("--threads", default=8, help="Number of threads")
+    parser.add_argument(
+        "--out_dir_name",
+        default="final_reports",
+        help="Folder where final tables are stored",
+    )
 
     args = parser.parse_args()
 
@@ -99,6 +104,9 @@ def main():
     deep_exe = Path(args.bin)
     exp_dir = Path(args.exp_dir)
     timeout = str(args.timeout)
+
+    experiment_set = str(exp_dir.parts[-2])
+    experiment_batch = exp_dir.name
 
     if not deep_exe.exists():
         print(f"✖ deep executable not found: {deep_exe}", file=sys.stderr)
@@ -177,10 +185,58 @@ def main():
 
         print("\n✅ Done. Results aggregated into the `_results` folder.")
 
+    # Step 4: make tables
+    if (exp_dir / "_results").exists():
 
-# TODO: ablation: SOLO 3a 3e per ogni dataset_type / 100k generazione
-# TODO: ricorda a Fra di sistemare readme batch ablation
-# TODO: tables command
+        csv_out_dir = (
+            Path("exp") / experiment_set / args.out_dir_name / experiment_batch
+        )
+        csv_out_dir.mkdir(parents=True, exist_ok=True)
+
+        # Step 4: build combined CSV
+        combine_cmd = (
+            f"{sys.executable} scripts/tables_tex_management/1_combine_results_in_csv.py "
+            f"--experiment_set {shlex.quote(experiment_set)} "
+            f"--experiment_batch {shlex.quote(experiment_batch)} "
+            f"--out_dir_name {shlex.quote(args.out_dir_name)} "
+            + ("--ablation" if args.ablation else "")
+        )
+        run_cmd(combine_cmd, cwd=repo_root)
+
+        csv_path = csv_out_dir / "combined_results.csv"
+
+        def _table_cmd(mode: str) -> str:
+            if args.ablation:
+                searches = [
+                    r'--search "\GNNres=Astar_GNN"',
+                    r'--search "\HFSres=HFS_GNN"',
+                ]
+            else:
+                searches = [
+                    r'--search "\GNNres=Astar_GNN"',
+                    r'--search "\BFSres=BFS"',
+                    r'--search "\Pfive=p5"',
+                    r'--search "\Psix=p6"',
+                ]
+            return " ".join(
+                [
+                    sys.executable,
+                    "scripts/tables_tex_management/2_make_latex_table.py",
+                    f"--csv {shlex.quote(str(csv_path))}",
+                    f"--mode {shlex.quote(mode)}",
+                    *searches,
+                ]
+            )
+
+        # Generate Test and Train tables (comment one out if you only want Test)
+        run_cmd(_table_cmd("Test"), cwd=repo_root)
+        run_cmd(_table_cmd("Training"), cwd=repo_root)
+
+        print("\n🎉 All done. CSV and LaTeX table(s) written under:")
+        print(f"    {csv_out_dir}")
+    else:
+        print("\n⏭ Skipping Steps 4")
+
 
 if __name__ == "__main__":
     main()
