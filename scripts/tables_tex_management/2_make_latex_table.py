@@ -559,12 +559,12 @@ def parse_args():
     p.add_argument(
         "--mode",
         required=True,
-        choices=["Train", "Test", "Train and Test"],
+        choices=["Training", "Test", "Training and Test"],
         help="Which rows to include (aggregates ALL domains).",
     )
     p.add_argument(
         "--domain",
-        required=True,
+        default="",
         help="Domain name placeholder used in section title and caption (e.g., 'Grapevine' or 'ALL DOMAINS').",
     )
     p.add_argument(
@@ -615,8 +615,8 @@ def main():
     vinfo(f"Discovered search labels in CSV: {sorted(discover_search_labels(df_all))}")
 
     # Mode slice (aggregate all domains inside it)
-    if MODE == "Train and Test":
-        df_mode = df_all[df_all["Mode"].astype(str).isin(["Train", "Test"])].copy()
+    if MODE == "Training and Test":
+        df_mode = df_all[df_all["Mode"].astype(str).isin(["Training", "Test"])].copy()
     else:
         df_mode = df_all[df_all["Mode"].astype(str) == MODE].copy()
 
@@ -693,7 +693,7 @@ def main():
             + "}"
             + "_comparison_test"
         )
-    elif MODE == "Train":
+    elif MODE == "Training":
         caption = (
             r"Comparison of execution on the "
             + "{"
@@ -777,7 +777,6 @@ if __name__ == "__main__":
     python3 scripts/tables_tex_management/2_make_latex_table.py \
       --csv ./exp/gnn_exp/final_reports/batch_test/combined_results.csv \
       --mode Test \
-      --domain Grapevine \
       --search "\GNNres=Astar_GNN" \
       --search "\BFSres=BFS" \
       --search "\Pfive=p5" \
