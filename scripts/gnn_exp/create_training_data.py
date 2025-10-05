@@ -57,7 +57,7 @@ def run_cpp_once(
     command = [
         deep_exe,
         file_path,
-        # "-b",       #Bisimulation mode
+        "-b",       #Bisimulation mode
         "--dataset",
         "--dataset_depth",
         str(depth),

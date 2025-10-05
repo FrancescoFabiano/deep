@@ -207,4 +207,6 @@ initially tail, has_key_a, -has_key_b, -has_key_c, -opened, looking_a, -looking_
 
 
 % 5 actions
-goal C([a,b,c], tail);
+goal B(a, at_4);
+goal B(a,opened);
+

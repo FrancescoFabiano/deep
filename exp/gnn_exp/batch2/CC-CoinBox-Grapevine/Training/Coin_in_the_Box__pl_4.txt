@@ -1,4 +1,4 @@
-%%% Executed actions: open_a peek_a signal_a_b signal_a_c shout_tail_a %%%
+%%% Executed actions: signal_a_b open_a peek_b %%%
 
 fluent tail, has_key_a, has_key_b, has_key_c, opened ,looking_a, looking_b, looking_c;
 fluent at_a_1, at_a_2, at_a_3, at_a_4, at_a_5, at_a_6, at_a_7, at_a_8, at_a_9;
@@ -182,9 +182,9 @@ a observes shout_tail_c if looking_a;
 b observes shout_tail_c if looking_b;
 
 
-initially at_a_1, -at_a_2, -at_a_3, -at_a_4, -at_a_5, -at_a_6, -at_a_7, -at_a_8, -at_a_9;
-initially C([a,b,c], at_a_1);
-initially C([a,b,c], -at_a_2);
+initially -at_a_1, at_a_2, -at_a_3, -at_a_4, -at_a_5, -at_a_6, -at_a_7, -at_a_8, -at_a_9;
+initially C([a,b,c], -at_a_1);
+initially C([a,b,c], at_a_2);
 initially C([a,b,c], -at_a_3);
 initially C([a,b,c], -at_a_4);
 initially C([a,b,c], -at_a_5);
@@ -206,7 +206,5 @@ initially tail, has_key_a, -has_key_b, -has_key_c, -opened, looking_a, -looking_
 %initially C([a,b,c],B(a,tail));
 
 
-% 5 actions
-goal B(a, at_4);
-goal B(a,opened);
-
+% 3 actions
+goal B(b,tail);
