@@ -190,17 +190,17 @@ ArgumentParser::ArgumentParser() : app("deep") {
       ->default_val("10");
   dataset_group
     ->add_option(
-        "--dataset_depth", m_dataset_generation_threshold,
+        "--dataset_generation", m_dataset_generation_threshold,
         "Set the maximum number of nodes to generate before dataset generation stops.")
     ->default_val("100000");
    dataset_group
       ->add_option(
-          "--dataset_depth", m_dataset_max_creation_threshold,
+          "--dataset_max_creation", m_dataset_max_creation_threshold,
         "Set the maximum number of valid nodes to create before dataset generation stops.")
       ->default_val("25000");
     dataset_group
    ->add_option(
-       "--dataset_depth", m_dataset_max_creation_threshold,
+       "--dataset_min_creation", m_dataset_min_creation_threshold,
      "Set the minimum number of valid nodes to create to create a meaningful dataset.")
    ->default_val("10");
   dataset_group

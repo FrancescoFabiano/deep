@@ -263,7 +263,7 @@ def process_file_with_retries(
         else:
             # Retry with the next seed
             print(
-                f"[RETRY] No goals found in {file_name} (seed {seed}), trying next seed..."
+                f"[RETRY] Dataset not rich enough for {file_name} (seed {seed}), trying next seed..."
             )
             failed_seeds.append(seed)
             if attempt_idx < len(seeds):
