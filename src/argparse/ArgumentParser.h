@@ -76,24 +76,23 @@ public:
    */
   [[nodiscard]] int get_dataset_depth() const noexcept;
 
+  /**
+   * \brief Retrieves the generation threshold for the dataset option.
+   * \return The generation threshold.
+   */
+  [[nodiscard]] int get_generation_threshold() const noexcept;
 
-    /**
- * \brief Retrieves the generation threshold for the dataset option.
- * \return The generation threshold.
- */
-    [[nodiscard]] int get_generation_threshold() const noexcept;
+  /**
+   * \brief Retrieves the max creation threshold for the dataset option.
+   * \return The max creation threshold.
+   */
+  [[nodiscard]] int get_max_creation_threshold() const noexcept;
 
-    /**
-* \brief Retrieves the max creation threshold for the dataset option.
-* \return The max creation threshold.
-*/
-    [[nodiscard]] int get_max_creation_threshold() const noexcept;
-
-    /**
-* \brief Retrieves the min creation threshold for the dataset option.
-* \return The min creation threshold.
-*/
-    [[nodiscard]] int get_min_creation_threshold() const noexcept;
+  /**
+   * \brief Retrieves the min creation threshold for the dataset option.
+   * \return The min creation threshold.
+   */
+  [[nodiscard]] int get_min_creation_threshold() const noexcept;
 
   /**
    * \brief Retrieves the max discard factor for dataset generation.
@@ -230,8 +229,10 @@ private:
   int m_dataset_depth = 10;     ///< Maximum depth for dataset generation.
 
   int m_dataset_generation_threshold = 100000; ///< Node generation threshold
-  int m_dataset_max_creation_threshold = 25000; ///< Maximum node creation threshold
-  int m_dataset_min_creation_threshold = 10; ///< Minimum node creation threshold
+  int m_dataset_max_creation_threshold =
+      25000; ///< Maximum node creation threshold
+  int m_dataset_min_creation_threshold =
+      10; ///< Minimum node creation threshold
 
   double m_dataset_discard_factor =
       0.4; ///< Maximum discard factor for dataset generation.
