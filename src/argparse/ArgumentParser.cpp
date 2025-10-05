@@ -62,11 +62,14 @@ void ArgumentParser::parse(int argc, char **argv) {
     // --- Dataset mode consistency check ---
     if (!m_dataset_mode && (app.count("--dataset_depth") ||
                             app.count("--dataset_discard_factor") ||
-                            app.count("--dataset_seed"))) {
+                            app.count("--dataset_seed") ||
+                            app.count("--dataset_max_generation") ||
+                            app.count("--dataset_min_creation") ||
+                            app.count("--dataset_max_creation"))) {
       ExitHandler::exit_with_message(
           ExitHandler::ExitCode::ArgParseError,
           "Dataset-related options (--dataset_depth, --dataset_discard_factor, "
-          "--dataset_seed) "
+          "--dataset_seed, etc.) "
           "were set but --dataset mode is not enabled. Please use --dataset to "
           "activate dataset mode.");
     }
@@ -188,17 +191,17 @@ ArgumentParser::ArgumentParser() : app("deep") {
                    "Set the maximum depth for dataset generation.")
       ->default_val("10");
   dataset_group
-      ->add_option("--dataset_depth", m_dataset_generation_threshold,
+      ->add_option("--dataset_max_generation", m_dataset_generation_threshold,
                    "Set the maximum number of nodes to generate before dataset "
                    "generation stops.")
       ->default_val("100000");
   dataset_group
-      ->add_option("--dataset_depth", m_dataset_max_creation_threshold,
+      ->add_option("--dataset_max_creation", m_dataset_max_creation_threshold,
                    "Set the maximum number of valid nodes to create before "
                    "dataset generation stops.")
       ->default_val("25000");
   dataset_group
-      ->add_option("--dataset_depth", m_dataset_max_creation_threshold,
+      ->add_option("--dataset_min_creation", m_dataset_min_creation_threshold,
                    "Set the minimum number of valid nodes to create to create "
                    "a meaningful dataset.")
       ->default_val("10");
