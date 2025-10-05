@@ -186,8 +186,23 @@ ArgumentParser::ArgumentParser() : app("deep") {
   dataset_group
       ->add_option(
           "--dataset_depth", m_dataset_depth,
-          "Set the maximum depth for dataset generation (default: 10).")
+          "Set the maximum depth for dataset generation.")
       ->default_val("10");
+  dataset_group
+    ->add_option(
+        "--dataset_depth", m_dataset_generation_threshold,
+        "Set the maximum number of nodes to generate before dataset generation stops.")
+    ->default_val("100000");
+   dataset_group
+      ->add_option(
+          "--dataset_depth", m_dataset_max_creation_threshold,
+        "Set the maximum number of valid nodes to create before dataset generation stops.")
+      ->default_val("25000");
+    dataset_group
+   ->add_option(
+       "--dataset_depth", m_dataset_max_creation_threshold,
+     "Set the minimum number of valid nodes to create to create a meaningful dataset.")
+   ->default_val("10");
   dataset_group
       ->add_option(
           "--dataset_type", m_dataset_type_string,
@@ -265,7 +280,7 @@ ArgumentParser::ArgumentParser() : app("deep") {
   portfolio_group
       ->add_option(
           "-p,--portfolio_threads", m_portfolio_threads,
-          "Set the number of portfolio threads (default: 1). If set > 1, "
+          "Set the number of portfolio threads. If set > 1, "
           "multiple planner configurations will run in parallel. "
           "The configurations will override the specified search and heuristic "
           "options but will keep other options such as --bisimulation, "
@@ -353,6 +368,18 @@ bool ArgumentParser::get_dataset_mode() const noexcept {
 
 int ArgumentParser::get_dataset_depth() const noexcept {
   return m_dataset_depth;
+}
+
+int ArgumentParser::get_generation_threshold() const noexcept {
+  return m_dataset_generation_threshold;
+}
+
+int ArgumentParser::get_max_creation_threshold() const noexcept {
+  return m_dataset_max_creation_threshold;
+}
+
+int ArgumentParser::get_min_creation_threshold() const noexcept {
+  return m_dataset_min_creation_threshold;
 }
 
 double ArgumentParser::get_dataset_discard_factor() const noexcept {

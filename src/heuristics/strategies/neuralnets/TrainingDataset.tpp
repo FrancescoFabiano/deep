@@ -591,6 +591,13 @@ bool TrainingDataset<StateRepr>::dfs_exploration(
 
   auto &os = ArgumentParser::get_instance().get_output_stream();
 
+
+   m_threshold_node_generation = ArgumentParser::get_instance().get_generation_threshold();
+    m_threshold_node_generation_log =
+    std::log(m_threshold_node_generation * 3);
+  m_max_threshold_node_creation = ArgumentParser::get_instance().get_max_creation_threshold();
+  m_min_threshold_node_creation = ArgumentParser::get_instance().get_min_creation_threshold();
+
   os << "Total possible nodes exceed threshold." << std::endl;
   os << "Approximate number of nodes (exp(log)) = "
      << std::exp(m_total_possible_nodes_log) << std::endl;
@@ -613,8 +620,8 @@ bool TrainingDataset<StateRepr>::dfs_exploration(
        << std::endl;
   }
 
-  return m_goal_founds > 0; // Return true if dataset is not empty and goals
-                            // were found
+  return ((m_goal_founds > 0) && (m_added_to_dataset > m_min_threshold_node_creation)); // Return true if dataset is not empty and goals
+                            // were found and if we added at least a minimum number of nodes
 }
 
 template <StateRepresentation StateRepr>
@@ -640,7 +647,8 @@ int TrainingDataset<StateRepr>::dfs_worker(State<StateRepr> &state,
   }
 #endif
 
-  if (m_current_nodes >= m_threshold_node_generation) {
+  if (m_current_nodes >= m_threshold_node_generation ||
+      m_added_to_dataset >= m_max_threshold_node_creation) {
     if (state.is_goal()) {
       add_to_dataset(state, depth, 0);
       return 0;
@@ -761,6 +769,8 @@ void TrainingDataset<StateRepr>::add_to_dataset(const State<StateRepr> &state,
   if (minimized_dataset && score >= m_failed_state) {
     return;
   }
+
+  m_added_to_dataset++;
 
   std::stringstream ss;
   auto base_filename = print_state_for_dataset(state);

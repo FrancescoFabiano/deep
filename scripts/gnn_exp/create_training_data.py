@@ -8,6 +8,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import time
 import json
 from datetime import datetime
+import random
+import hashlib
 
 LOG_LOCK = threading.Lock()
 
@@ -51,22 +53,18 @@ def save_attempt_log(logs_dir, instance_name, seed, output):
 
 
 def run_cpp_once(
-    deep_exe, file_path, no_goal, depth, discard_factor, seed, dataset_type
+        deep_exe, file_path, no_goal, depth, discard_factor, seed, dataset_type
 ):
     """Run the C++ tool once with a given seed. Returns (exit_code, output_string)."""
     command = [
         deep_exe,
         file_path,
-        "-b",       #Bisimulation mode
+        "-b",       # Bisimulation mode
         "--dataset",
-        "--dataset_depth",
-        str(depth),
-        "--dataset_discard_factor",
-        str(discard_factor),
-        "--dataset_seed",
-        str(seed),
-        "--dataset_type",
-        str(dataset_type),
+        "--dataset_depth", str(depth),
+        "--dataset_discard_factor", str(discard_factor),
+        "--dataset_seed", str(seed),
+        "--dataset_type", str(dataset_type),
     ]
     if no_goal:
         command.append("--dataset_separated")
@@ -106,7 +104,7 @@ def postprocess_and_move_output(cpp_output_folder, output_target):
 
 
 def _write_dataset_summary_logs(
-    dataset_dir, instance_name, success_seed, failed_attempts, attempt_logs
+        dataset_dir, instance_name, success_seed, failed_attempts, attempt_logs
 ):
     """
     Create per-dataset logs:
@@ -123,22 +121,18 @@ def _write_dataset_summary_logs(
         if not lp:
             continue
         try:
-            # Keep same filename, move/copy into per-dataset logs
             dst = os.path.join(per_dataset_logs_dir, os.path.basename(lp))
-            # Move if source exists and not already in place
             if os.path.abspath(lp) != os.path.abspath(dst) and os.path.exists(lp):
                 shutil.move(lp, dst)
             moved_logs.append(dst)
         except Exception as e:
             print(f"[WARNING] Could not move log {lp} to dataset logs: {e}")
 
-    # JSON summary
     summary = {
         "instance": instance_name,
         "success_seed": success_seed,
         "failed_seeds": failed_attempts,
         "attempt_logs": moved_logs,
-        #        "time_utc": datetime.utcnow().isoformat() + "Z",
     }
     summary_json = os.path.join(dataset_dir, "dataset_log.json")
     with LOG_LOCK:
@@ -159,21 +153,66 @@ def _write_dataset_summary_logs(
                 f.write("FAILED SEEDS: (none)\n")
 
 
+def _append_global_success_seed(models_folder, instance_name, seed):
+    """
+    Append the successful seed for an instance to the domain-level seeds.txt
+    at <models_folder>/seeds.txt in a thread-safe way.
+    Format: "<instance_name>,<seed>\n"
+    """
+    path = os.path.join(models_folder, "seeds.txt")
+    line = f"{instance_name},{seed}\n"
+    with LOG_LOCK:
+        with open(path, "a", encoding="utf-8") as f:
+            f.write(line)
+
+
+def _make_instance_rng(base_seed: int, instance_name: str) -> random.Random:
+    """
+    Create a deterministic RNG per instance using base_seed and a stable
+    hash of the instance name (independent of Python's hash randomization).
+    """
+    digest = hashlib.sha256(f"{base_seed}|{instance_name}".encode("utf-8")).hexdigest()
+    # Take 16 hex chars -> 64-bit int seed for RNG
+    seed_int = int(digest[:16], 16)
+    return random.Random(seed_int)
+
+
+def _generate_instance_seeds(base_seed: int, instance_name: str, max_retries: int):
+    """
+    Generate up to max_retries unique seeds for an instance using its RNG.
+    """
+    rng = _make_instance_rng(base_seed, instance_name)
+    seeds = []
+    seen = set()
+    limit = max(1, max_retries)
+    while len(seeds) < limit:
+        s = rng.randrange(1, 2**31 - 1)
+        if s not in seen:
+            seen.add(s)
+            seeds.append(s)
+    return seeds
+
+
 def process_file_with_retries(
-    deep_exe,
-    file_path,
-    target_folder,
-    no_goal,
-    depth,
-    discard_factor,
-    seeds,
-    dataset_type,
-    failed_root,
-    global_logs_dir,
+        deep_exe,
+        file_path,
+        target_folder,
+        no_goal,
+        depth,
+        discard_factor,
+        base_seed,
+        max_retries,
+        dataset_type,
+        failed_root,
+        global_logs_dir,
+        models_folder,
 ):
     file_name = os.path.basename(file_path)
     instance_name = os.path.splitext(file_name)[0]
     output_target = os.path.join(target_folder, instance_name)
+
+    # Generate per-instance unique seeds (deterministic from base_seed + instance)
+    seeds = _generate_instance_seeds(base_seed, instance_name, max_retries)
 
     failed_seeds = []
     attempt_log_paths = []
@@ -210,6 +249,9 @@ def process_file_with_retries(
                     failed_attempts=failed_seeds,
                     attempt_logs=attempt_log_paths,
                 )
+                # Also append to the domain-level seeds.txt (lowercase)
+                _append_global_success_seed(models_folder, instance_name, seed)
+
                 print(f"[SUCCESS] {file_name} with seed {seed} → {output_target}")
                 return
             except Exception as e:
@@ -218,7 +260,7 @@ def process_file_with_retries(
                 )
                 return  # Stop – don’t retry for patching failure
 
-        elif exit_code == 3:
+        else:
             # Retry with the next seed
             print(
                 f"[RETRY] No goals found in {file_name} (seed {seed}), trying next seed..."
@@ -235,7 +277,6 @@ def process_file_with_retries(
                         "file": file_path,
                         "reason": "no_goals_all_seeds",
                         "seeds_tried": list(seeds),
-                        #                    "time_utc": datetime.utcnow().isoformat() + "Z",
                     },
                 )
                 print(
@@ -243,37 +284,19 @@ def process_file_with_retries(
                 )
                 return
 
-        else:
-            # Any other failure: don’t retry
-            print(
-                f"[FAILURE] {file_name} (seed {seed}) exit {exit_code}. See log: {log_path}"
-            )
-            write_failed_record(
-                failed_root,
-                {
-                    "instance": instance_name,
-                    "file": file_path,
-                    "reason": f"failure_exit_{exit_code}",
-                    "seed": seed,
-                    "attempt": attempt_idx,
-                    "log_path": log_path,
-                    #               "time_utc": datetime.utcnow().isoformat() + "Z",
-                },
-            )
-            return
-
 
 def run_cpp_on_training_files_multithreaded(
-    deep_exe,
-    training_folder,
-    models_folder,
-    no_goal,
-    depth,
-    discard_factor,
-    seeds,
-    dataset_type,
-    failed_root,
-    logs_dir,
+        deep_exe,
+        training_folder,
+        models_folder,
+        no_goal,
+        depth,
+        discard_factor,
+        base_seed,
+        max_retries,
+        dataset_type,
+        failed_root,
+        logs_dir,
 ):
     if not os.path.isdir(training_folder):
         raise FileNotFoundError(f"Training folder not found: {training_folder}")
@@ -296,10 +319,12 @@ def run_cpp_on_training_files_multithreaded(
             no_goal,
             depth,
             discard_factor,
-            seeds,
+            base_seed,
+            max_retries,
             dataset_type,
             failed_root,
             logs_dir,
+            models_folder,
         )
 
     with ThreadPoolExecutor(max_workers=max_threads) as executor:
@@ -308,23 +333,15 @@ def run_cpp_on_training_files_multithreaded(
             future.result()  # Raise exceptions if any occurred
 
 
-def parse_seeds(seeds_arg):
-    if not seeds_arg:
-        return [42, 1337, 2024]
-    if isinstance(seeds_arg, (list, tuple)):
-        return [int(x) for x in seeds_arg]
-    # Comma or space separated
-    parts = re.split(r"[,\s]+", str(seeds_arg).strip())
-    return [int(p) for p in parts if p != ""]
-
-
 def main():
     parser = argparse.ArgumentParser(
         description=(
             "Run deep executable on all files in <base_folder>/<domain_name>/Training and "
             "store results in <base_folder>/_models/<domain_name>/training_data/.\n"
-            "On failure, retry each problem with alternative seeds and record failures.\n"
-            "Also, for every successfully saved dataset, write per-dataset logs and a seed summary inside the dataset folder.\n"
+            "Each instance gets its own RNG seeded from --seed (default 42) to generate per-attempt seeds.\n"
+            "Up to --max_retries (default 15) attempts per instance. Successful seeds are stored in:\n"
+            "  - <dataset>/SEEDS.txt (per-dataset summary)\n"
+            "  - <base_folder>/_models/<domain_name>/training_data/seeds.txt (aggregate)\n"
             "IMPORTANT: Run from the root of the project folder."
         ),
         formatter_class=argparse.RawTextHelpFormatter,
@@ -356,17 +373,24 @@ def main():
         default=0.4,
         help="Maximum discard factor (default: 0.4)",
     )
+    # New controls: base seed for RNG and max retries
     parser.add_argument(
-        "--seeds",
-        type=str,
-        default="42,1337,2024,23,31,47,59,73,89,101,137,149",
-        help="Comma/space-separated list of seeds to try on failure (order respected). Default: 42,1337,2024,23,31,47,59,73,89,101,137,149",
+        "--seed",
+        type=int,
+        default=42,
+        help="Base seed used to generate per-instance retry seeds (default: 42)",
+    )
+    parser.add_argument(
+        "--max_retries",
+        type=int,
+        default=15,
+        help="Maximum number of attempts per instance (default: 15)",
     )
     parser.add_argument(
         "--dataset_type",
         choices=["MAPPED", "HASHED", "BITMASK"],
         default="HASHED",
-        help="Specifies how node labels are represented in dataset generation. Options: MAPPED (compact integer mapping), HASHED (standard hashing), or BITMASK (bitmask representation of fluents and goals).",
+        help="Specifies how node labels are represented in dataset generation.",
     )
 
     args = parser.parse_args()
@@ -376,15 +400,6 @@ def main():
 
     models_folder = create_models_folder(args.base_folder, args.domain_name)
     failed_root, logs_dir = ensure_failed_dirs(args.base_folder, args.domain_name)
-    seeds = parse_seeds(args.seeds)
-
-    print(f"[INFO] Using seeds: {seeds}")
-    print(
-        f"[INFO] Failed attempts and global attempt logs will be stored in: {failed_root}"
-    )
-    print(
-        f"[INFO] On success, per-dataset logs and seed summaries will be placed inside each dataset folder."
-    )
 
     run_cpp_on_training_files_multithreaded(
         args.deep_exe,
@@ -393,7 +408,8 @@ def main():
         args.no_goal,
         args.depth,
         args.discard_factor,
-        seeds,
+        args.seed,
+        args.max_retries,
         args.dataset_type,
         failed_root,
         logs_dir,
