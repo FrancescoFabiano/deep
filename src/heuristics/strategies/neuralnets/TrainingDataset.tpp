@@ -646,8 +646,9 @@ int TrainingDataset<StateRepr>::dfs_worker(State<StateRepr> &state,
          << (std::to_string(percent) + "%") << " " << std::setw(20)
          << "Explored nodes:" << " " << std::setw(10) << m_current_nodes << " "
          << std::setw(15) << "Current Depth:" << " " << std::setw(5) << depth
-         << " " << std::setw(15) << "Goals found:" << " " << std::setw(10) << m_goal_founds
-         << " " << std::setw(15) << "Valid nodes found:" << " " << std::setw(5) << m_added_to_dataset << std::endl;
+         << " " << std::setw(15) << "Goals found:" << " " << std::setw(10)
+         << m_goal_founds << " " << std::setw(15) << "Valid nodes found:" << " "
+         << std::setw(5) << m_added_to_dataset << std::endl;
     }
   }
 #endif
