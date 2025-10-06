@@ -219,9 +219,11 @@ def process_file_with_retries(
 
     for attempt_idx, seed in enumerate(seeds, start=1):
         try:
+            print(f"[PROCESSING] {file_name} with seed {seed}")
             exit_code, output = run_cpp_once(
                 deep_exe, file_path, no_goal, depth, discard_factor, seed, dataset_type
             )
+
         except Exception as e:
             exit_code, output = -999, f"Python exception while invoking C++: {e}"
 

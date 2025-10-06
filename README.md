@@ -63,6 +63,7 @@ For more granular building options, please refer to the next two sections where 
 Note that the script abstracts away many details, so if you want to use more granular building options, please make sure to follow the installation procedure in `build.sh` to ensure you have all the necessary components.
 
 > Note: This script and some dependencies may require execute permissions. Use the `chmod` command or a similar tool to grant the necessary permissions.
+> For example: `find . -type f -name "*.sh" -exec chmod +x {} \;`
 
 ##### CMake Build Options
 
