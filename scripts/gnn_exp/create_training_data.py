@@ -303,11 +303,11 @@ def run_cpp_on_training_files_multithreaded(
     if not os.path.isdir(training_folder):
         raise FileNotFoundError(f"Training folder not found: {training_folder}")
 
-    files = [
+    files = sorted(
         os.path.join(training_folder, f)
         for f in os.listdir(training_folder)
         if os.path.isfile(os.path.join(training_folder, f))
-    ]
+    )
 
     # Determine number of threads to use
     max_threads = min(8, max(1, (os.cpu_count() or 4) - 2))

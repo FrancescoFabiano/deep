@@ -692,7 +692,7 @@ def select_model(
             DistanceEstimator,
             use_goal=use_goal,
             use_depth=use_depth,
-            bit_input=64 if bitmask else None,
+            bit_input=40 if bitmask else None,
         )
         return model
     else:
