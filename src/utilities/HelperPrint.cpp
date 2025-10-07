@@ -599,7 +599,8 @@ void HelperPrint::print_dataset_format(const KripkeState &kstate,
 
   const bool is_merged =
       !ArgumentParser::get_instance().get_dataset_separated();
-  std::unordered_map<KripkeWorldId, std::string> world_map;
+  std::map<KripkeWorldId, std::string> world_map;
+  world_map.clear();
 
   const auto dataset_type = ArgumentParser::get_instance().get_dataset_type();
 

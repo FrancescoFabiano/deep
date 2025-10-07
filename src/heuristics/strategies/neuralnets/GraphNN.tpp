@@ -702,12 +702,13 @@ GraphNN<StateRepr>::state_to_tensor_minimal(const KripkeState &kstate) {
   const bool is_merged =
       !ArgumentParser::get_instance().get_dataset_separated();
 
-  std::unordered_map<KripkeWorldId, KripkeWorldId> world_map;
+  std::map<KripkeWorldId, KripkeWorldId> world_map;
+  world_map.clear();
   const auto dataset_type = ArgumentParser::get_instance().get_dataset_type();
   int world_counter = training_dataset.get_shift_state_ids();
 
   if (is_merged) {
-    const auto state_parent = kstate.get_pointed();
+    const auto& state_parent = kstate.get_pointed();
     const auto state_parent_id = state_parent.get_id();
 
     add_edge(TrainingDataset<KripkeState>::get_epsilon_node_id_int(),
