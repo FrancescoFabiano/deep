@@ -708,7 +708,7 @@ GraphNN<StateRepr>::state_to_tensor_minimal(const KripkeState &kstate) {
   int world_counter = training_dataset.get_shift_state_ids();
 
   if (is_merged) {
-    const auto& state_parent = kstate.get_pointed();
+    const auto &state_parent = kstate.get_pointed();
     const auto state_parent_id = state_parent.get_id();
 
     add_edge(TrainingDataset<KripkeState>::get_epsilon_node_id_int(),
