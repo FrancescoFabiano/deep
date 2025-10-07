@@ -438,6 +438,7 @@ class DistanceEstimatorModel(BaseModel):
         state_dot_files: Sequence[str | Path],
         depths: Sequence[float | int] = None,
         goal_dot_files: Optional[Sequence[str | Path]] = None,
+        bitmask: bool = False,
     ) -> np.ndarray:
         """
         Run a **batch** of (state, goal, depth) samples through ONNX Runtime.
@@ -450,7 +451,9 @@ class DistanceEstimatorModel(BaseModel):
         """
         import onnxruntime as ort
 
-        feed = preprocess_for_onnx(state_dot_files, depths, goal_dot_files)
+        feed = preprocess_for_onnx(
+            state_dot_files, depths, goal_dot_files, bitmask=bitmask
+        )
         # inference ------- --------------------------------------------------------
         ort_sess = ort.InferenceSession(str(onnx_path))
         distance = ort_sess.run(["distance"], feed)[0]  # → np.ndarray  shape [B]
@@ -580,79 +583,167 @@ class DistanceEstimatorModel(BaseModel):
 
 def preprocess_for_onnx(
     state_dot_files: Sequence[str | Path],
-    depths: Sequence[float | int] = None,
+    depths: Sequence[float | int] | None = None,
     goal_dot_files: Optional[Sequence[str | Path]] = None,
-):
-    def _parse_dot(path: Path) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        """read DOT → PyG tensors (node-ids, edge_index, edge_attr)"""
+    *,
+    bitmask: bool = True,
+    bit_len: int = 64,  # must match ONNX input feature dim (your model prints [-1, 64])
+) -> Dict[str, np.ndarray]:
+    """
+    Build ONNX feed dict for a batch of graphs.
+    - Bitmask=True -> produces uint8 node feature matrices with keys: state_node_bits / goal_node_bits
+    - Bitmask=False -> produces float32 node id vectors with keys: state_node_ids / goal_node_ids
 
+    Returns numpy arrays with exact dtypes/shapes expected by your ONNX:
+      state_node_bits: uint8  [Ns, bit_len]   (or state_node_ids: float32 [Ns])
+      state_edge_index: int64 [2, Es]
+      state_edge_attr: float32 [Es, 1]
+      state_batch: int64      [Ns]
+      (optional) goal_* equivalents
+      (optional) depth: float32 [B], where B == len(state_dot_files)
+    """
+
+    def _parse_dot_bits(path: Path) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """read DOT -> (node_bits_u8 [N,bit_len], edge_index [2,E], edge_attr [E,1])"""
         G = _load_dot(path)
-        for n, d in G.nodes(data=True):
+
+        # normalize attrs
+        for _, d in G.nodes(data=True):
             d["shape"] = {"circle": 0, "doublecircle": 1}.get(
                 d.get("shape", "circle"), 0
             )
-        for u, v, d in G.edges(data=True):
+        for _, _, d in G.edges(data=True):
+            d["edge_label"] = int(str(d.get("label", "0")).strip('"'))
+
+        # edge tensors from PyG
+        data = from_networkx(G)
+        edge_index = data.edge_index.long()
+        edge_attr = data.edge_label.view(-1, 1).float()
+
+        # nodes: keep order consistent with networkx iteration
+        nodes = list(G.nodes())
+        # convert node labels to bit rows
+        rows = []
+        for n in nodes:
+            if isinstance(n, str):
+                s = n.strip()
+                if not set(s) <= {"0", "1"}:
+                    raise ValueError(f"Node '{n}' is not a 0/1 bitstring.")
+                if len(s) != bit_len:
+                    raise ValueError(
+                        f"Bit length mismatch for '{n}': got {len(s)}, expected {bit_len}."
+                    )
+                rows.append([1 if c == "1" else 0 for c in s])
+            elif isinstance(n, (list, tuple)):
+                bits = [int(b) for b in n]
+                if not set(bits) <= {0, 1}:
+                    raise ValueError(f"Node '{n}' contains non-binary values.")
+                if len(bits) != bit_len:
+                    raise ValueError(
+                        f"Bit length mismatch for '{n}': got {len(bits)}, expected {bit_len}."
+                    )
+                rows.append(bits)
+            else:
+                raise TypeError(
+                    f"Unsupported node label type for bitmask mode: {type(n)}"
+                )
+        node_bits = torch.tensor(rows, dtype=torch.uint8)  # ONNX expects uint8
+
+        return node_bits, edge_index, edge_attr
+
+    def _parse_dot_ids(path: Path) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """read DOT -> (node_ids_f32 [N], edge_index [2,E], edge_attr [E,1])"""
+        G = _load_dot(path)
+        for _, d in G.nodes(data=True):
+            d["shape"] = {"circle": 0, "doublecircle": 1}.get(
+                d.get("shape", "circle"), 0
+            )
+        for _, _, d in G.edges(data=True):
             d["edge_label"] = int(str(d.get("label", "0")).strip('"'))
 
         data = from_networkx(G)
-        node_ids = torch.tensor([int(x) for x in G.nodes()], dtype=torch.float32)
-        return node_ids, data.edge_index.long(), data.edge_label.view(-1, 1).float()
+        edge_index = data.edge_index.long()
+        edge_attr = data.edge_label.view(-1, 1).float()
 
-    # ------------- build a *concatenated* big graph --------------------
-    #
-    #    Each sample keeps its own graph-id via the *_batch* arrays;
-    #    edge-indices are offset so that node indexing stays correct.
-    #
+        # node ids as float32 vector
+        node_ids = torch.tensor([float(int(x)) for x in G.nodes()], dtype=torch.float32)
+        return node_ids, edge_index, edge_attr
+
+    # collectors for concatenation
     s_nodes, s_edges, s_attrs, s_batch = [], [], [], []
     g_nodes, g_edges, g_attrs, g_batch = [], [], [], []
 
     cum_state = 0
-    cum_goal = 0
-    # print(state_dot_files)
     for g_idx, s_file in enumerate(state_dot_files):
-        n_id, e_idx, e_attr = _parse_dot(Path(s_file))
-        s_nodes.append(n_id)
-        s_edges.append(e_idx + cum_state)  # offset
-        s_attrs.append(e_attr)
-        s_batch.append(torch.full((n_id.size(0),), g_idx, dtype=torch.int64))
-        """print("n_id: ", n_id)
-        print("e_idx: ", e_idx)
-        print("e_attr: ", e_attr)
-        print("g_idx: ", g_idx)
-        print(torch.full((n_id.size(0),), g_idx, dtype=torch.int64))"""
-        cum_state += n_id.size(0)
+        if bitmask:
+            n_feat, e_idx, e_attr = _parse_dot_bits(Path(s_file))
+            # offset edges by current node count
+            if e_idx.numel() > 0:
+                e_idx = e_idx + cum_state
+        else:
+            n_feat, e_idx, e_attr = _parse_dot_ids(Path(s_file))
+            if e_idx.numel() > 0:
+                e_idx = e_idx + cum_state
 
-    # print(f"\n {s_batch}")
+        s_nodes.append(n_feat)
+        s_edges.append(e_idx)
+        s_attrs.append(e_attr)
+        s_batch.append(torch.full((n_feat.size(0),), g_idx, dtype=torch.int64))
+        cum_state += n_feat.size(0)
 
     if goal_dot_files is not None:
+        cum_goal = 0
         for g_idx, g_file in enumerate(goal_dot_files):
-            n_id, e_idx, e_attr = _parse_dot(Path(g_file))
-            g_nodes.append(n_id)
-            g_edges.append(e_idx + cum_goal)  # offset
+            if bitmask:
+                n_feat, e_idx, e_attr = _parse_dot_bits(Path(g_file))
+                if e_idx.numel() > 0:
+                    e_idx = e_idx + cum_goal
+            else:
+                n_feat, e_idx, e_attr = _parse_dot_ids(Path(g_file))
+                if e_idx.numel() > 0:
+                    e_idx = e_idx + cum_goal
+
+            g_nodes.append(n_feat)
+            g_edges.append(e_idx)
             g_attrs.append(e_attr)
-            g_batch.append(torch.full((n_id.size(0),), g_idx, dtype=torch.int64))
-            cum_goal += n_id.size(0)
+            g_batch.append(torch.full((n_feat.size(0),), g_idx, dtype=torch.int64))
+            cum_goal += n_feat.size(0)
 
-    # concatenate everything -------------------------------------------------
-    state_node_names = torch.cat(s_nodes)  # [Ns]
-    state_edge_index = torch.cat(s_edges, dim=1)  # [2,Es]
-    state_edge_attr = torch.cat(s_attrs)  # [Es,1]
-    state_batch = torch.cat(s_batch)  # [Ns]
+    # concat state
+    if bitmask:
+        state_node_bits = (
+            torch.cat(s_nodes, dim=0)
+            if s_nodes
+            else torch.zeros((0, bit_len), dtype=torch.uint8)
+        )
+    else:
+        state_node_ids = (
+            torch.cat(s_nodes) if s_nodes else torch.zeros((0,), dtype=torch.float32)
+        )
 
-    """print(f"state_node_names: ", state_node_names.shape)
-    print(f"state_edge_index: ", state_edge_index.shape)
-    print(f"state_edge_attr: ", state_edge_attr.shape)
-    print(f"state_batch: ", state_batch.shape)"""
+    state_edge_index = (
+        torch.cat(s_edges, dim=1) if s_edges else torch.zeros((2, 0), dtype=torch.int64)
+    )
+    state_edge_attr = (
+        torch.cat(s_attrs, dim=0)
+        if s_attrs
+        else torch.zeros((0, 1), dtype=torch.float32)
+    )
+    state_batch = (
+        torch.cat(s_batch, dim=0) if s_batch else torch.zeros((0,), dtype=torch.int64)
+    )
 
-    # ----- pack everything that is always present -----
-    feed = {
-        "state_node_names": state_node_names.numpy(),
-        "state_edge_index": state_edge_index.numpy(),
-        "state_edge_attr": state_edge_attr.numpy(),
-        "state_batch": state_batch.numpy(),
-    }
+    # build feed dict with exact names/dtypes the ONNX expects
+    feed: Dict[str, np.ndarray] = {}
+    if bitmask:
+        feed["state_node_bits"] = state_node_bits.numpy()  # uint8 [Ns, bit_len]
+    else:
+        feed["state_node_ids"] = state_node_ids.numpy()  # float32 [Ns]
+    feed["state_edge_index"] = state_edge_index.numpy()  # int64 [2, Es]
+    feed["state_edge_attr"] = state_edge_attr.numpy()  # float32 [Es, 1]
+    feed["state_batch"] = state_batch.numpy()  # int64 [Ns]
 
-    # ----- depth is optional -------------------------------------------
+    # optional depth: float32 [B] where B = number of *state* graphs
     if depths is not None:
         if len(depths) != len(state_dot_files):
             raise ValueError(
@@ -660,22 +751,69 @@ def preprocess_for_onnx(
             )
         depth_tensor = torch.as_tensor(depths, dtype=torch.float32)
         feed["depth"] = depth_tensor.numpy()
-    else:
-        # Either leave it out (common when the downstream ONNX graph
-        # has an optional input) or put a default:
-        # feed["depth"] = np.zeros(len(state_dot_files), dtype=np.float32)
-        pass
 
+    # optional goal
     if goal_dot_files is not None:
-        goal_node_names = torch.cat(g_nodes)  # [Ng]
-        goal_edge_index = torch.cat(g_edges, dim=1)  # [2,Eg]
-        goal_edge_attr = torch.cat(g_attrs)  # [Eg,1]
-        goal_batch = torch.cat(g_batch)  # [Ng]
+        if bitmask:
+            goal_node_bits = (
+                torch.cat(g_nodes, dim=0)
+                if g_nodes
+                else torch.zeros((0, bit_len), dtype=torch.uint8)
+            )
+            feed["goal_node_bits"] = goal_node_bits.numpy()  # uint8 [Ng, bit_len]
+        else:
+            goal_node_ids = (
+                torch.cat(g_nodes)
+                if g_nodes
+                else torch.zeros((0,), dtype=torch.float32)
+            )
+            feed["goal_node_ids"] = goal_node_ids.numpy()  # float32 [Ng]
 
-        feed["goal_node_names"] = goal_node_names.numpy()
-        feed["goal_edge_index"] = goal_edge_index.numpy()
-        feed["goal_edge_attr"] = goal_edge_attr.numpy()
-        feed["goal_batch"] = goal_batch.numpy()
+        goal_edge_index = (
+            torch.cat(g_edges, dim=1)
+            if g_edges
+            else torch.zeros((2, 0), dtype=torch.int64)
+        )
+        goal_edge_attr = (
+            torch.cat(g_attrs, dim=0)
+            if g_attrs
+            else torch.zeros((0, 1), dtype=torch.float32)
+        )
+        goal_batch = (
+            torch.cat(g_batch, dim=0)
+            if g_batch
+            else torch.zeros((0,), dtype=torch.int64)
+        )
+
+        feed["goal_edge_index"] = goal_edge_index.numpy()  # int64 [2, Eg]
+        feed["goal_edge_attr"] = goal_edge_attr.numpy()  # float32 [Eg, 1]
+        feed["goal_batch"] = goal_batch.numpy()  # int64 [Ng]
+
+        # sanity: if bitmask, state/goal bit widths must match ONNX feature dim
+        if bitmask and state_node_bits.size(1) != bit_len:
+            raise ValueError("State bit width != bit_len")
+        if bitmask and g_nodes and goal_node_bits.size(1) != bit_len:
+            raise ValueError("Goal bit width != bit_len")
+
+    # extra sanity checks to avoid Gather OOB:
+    Ns = state_node_bits.shape[0] if bitmask else state_node_ids.shape[0]
+    if state_edge_index.numel() > 0:
+        max_idx = int(state_edge_index.max().item())
+        if max_idx >= Ns:
+            raise ValueError(f"state_edge_index has node id {max_idx} >= Ns={Ns}")
+
+    if (
+        goal_dot_files is not None
+        and (goal_edge_index := torch.from_numpy(feed["goal_edge_index"])).numel() > 0
+    ):
+        Ng = (
+            feed["goal_node_bits"].shape[0]
+            if bitmask
+            else feed["goal_node_ids"].shape[0]
+        )
+        max_idx_g = int(goal_edge_index.max().item())
+        if max_idx_g >= Ng:
+            raise ValueError(f"goal_edge_index has node id {max_idx_g} >= Ng={Ng}")
 
     return feed
 
