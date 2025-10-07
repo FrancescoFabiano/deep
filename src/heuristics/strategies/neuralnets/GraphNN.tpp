@@ -186,10 +186,9 @@ template <StateRepresentation StateRepr>
       inference_result < 0) {
     return 0;
   } else {
-    auto return_val =
-      static_cast<int>(
-      std::round((inference_result - m_normalization_intercept) /
-                 m_normalization_slope));
+    auto return_val = static_cast<int>(
+        std::round((inference_result - m_normalization_intercept) /
+                   m_normalization_slope));
     return return_val;
   }
 }

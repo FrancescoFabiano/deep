@@ -69,7 +69,7 @@ constexpr size_t MAX_REPETITION =
 ///< MAX_REPETITION_BITS bits.
 static constexpr size_t GOAL_ENCODING_BITS =
     8; ///< Number of bits usable to represent the information in the goal
-        ///< which will be prepended to the node representation.
+       ///< which will be prepended to the node representation.
 ///< These constants are introduced to allow bitmask representation for
 ///< GNNs, and are only checked if GNN is used.
 
