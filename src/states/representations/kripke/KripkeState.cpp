@@ -503,7 +503,7 @@ void KripkeState::maintain_oblivious_believed_worlds(
         *this);
 
     SetHelper::sum_set<KripkeWorldPointer>(world_oblivious, tmp_world_set);
-    // ret.set_max_depth(get_max_depth() + 1);
+    ret.set_max_depth(get_max_depth() + 1);
     ret.set_worlds(world_oblivious);
 
     for (const auto &wo_ob : world_oblivious) {

@@ -142,7 +142,7 @@ private:
   unsigned long m_file_counter = 0; ///< Counter for dataset files
 
   /// \brief Mersenne Twister random number generator, seeded with rd.
-  std::mt19937 m_gen;
+  std::mt19937_64 m_gen;
   int64_t m_seed = -1; ///< Seed for the random number generator
 
   // --- Mappings ---

@@ -520,7 +520,7 @@ std::string HelperPrint::kworld_to_bitmask(
     const std::vector<Fluent> &ordered_positive_fluents) {
 
 #ifdef DEBUG
-  if (to_convert.get_fluent_set().size() >= MAX_FLUENT_NUMBER) {
+  if (to_convert.get_fluent_set().size() > MAX_FLUENT_NUMBER) {
     ExitHandler::exit_with_message(
         ExitHandler::ExitCode::GNNBitmaskLengthError,
         "The number of fluents in the world exceeds the maximum allowed. "
@@ -599,7 +599,8 @@ void HelperPrint::print_dataset_format(const KripkeState &kstate,
 
   const bool is_merged =
       !ArgumentParser::get_instance().get_dataset_separated();
-  std::unordered_map<KripkeWorldId, std::string> world_map;
+  std::map<KripkeWorldId, std::string> world_map;
+  world_map.clear();
 
   const auto dataset_type = ArgumentParser::get_instance().get_dataset_type();
 
