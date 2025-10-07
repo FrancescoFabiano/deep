@@ -23,7 +23,7 @@ in the `_models` folder.
 This creates training datasets for each domain:
 
 ``` console
-python3 scripts/gnn_exp/create_all_training_data.py exp/gnn_exp/batchTest --deep_exe cmake-build-debug-nn/bin/deep
+python3 scripts/gnn_exp/create_all_training_data.py exp/gnn_exp/batchCumulativeTest --deep_exe cmake-build-debug-nn/bin/deep
 ```
 
 Replace --deep_exe with the path to your compiled deep binary.
@@ -50,7 +50,7 @@ can try adjusting the following options:
 Example command with adjusted parameters:
 
 ``` console
-python3 scripts/gnn_exp/create_all_training_data.py exp/gnn_exp/batchTest --deep_exe cmake-build-debug-nn/bin/deep --depth 40 --discard_factor 0.2
+python3 scripts/gnn_exp/create_all_training_data.py exp/gnn_exp/batchCumulativeTest --deep_exe cmake-build-debug-nn/bin/deep --depth 40 --discard_factor 0.2
 ```
 
 Similarly, if you want to generate training data with a different
@@ -64,7 +64,7 @@ same `dataset_type` in the training and execution phases
 Example command with a different dataset type:
 
 ``` console
-python3 scripts/gnn_exp/create_all_training_data.py exp/gnn_exp/batchTest --deep_exe cmake-build-debug-nn/bin/deep --dataset_type BITMASK
+python3 scripts/gnn_exp/create_all_training_data.py exp/gnn_exp/batchCumulativeTest --deep_exe cmake-build-debug-nn/bin/deep --dataset_type BITMASK
 ```
 
 ### 2. Train GNN models
@@ -74,7 +74,7 @@ data.
 > This will overwrite existing models in the `_models` folder.
 
 ``` console
-python3 scripts/gnn_exp/train_models.py exp/gnn_exp/batchTest
+python3 scripts/gnn_exp/train_models.py exp/gnn_exp/batchCumulativeTest
 ```
 
 If you generated the training data with a specific representation, you must
@@ -84,7 +84,7 @@ The available options are: `["MAPPED", "HASHED", "BITMASK"]` (default: `HASHED`)
 Example command with a different dataset type:
 
 ```console
-python3 scripts/gnn_exp/train_models.py exp/gnn_exp/batchTest --dataset_type BITMASK
+python3 scripts/gnn_exp/train_models.py exp/gnn_exp/batchCumulativeTest --dataset_type BITMASK
 ```
 
 ### 3. Run evaluation and aggregate results
@@ -98,13 +98,13 @@ This command runs inference using the GNN heuristic with the appropriate
 model generated in the previous step.
 
 ``` console
-python3 scripts/gnn_exp/bulk_coverage_run.py cmake-build-debug-nn/bin/deep exp/gnn_exp/batchTest/ --threads 8 --binary_args "-s Astar -u GNN -c -b" --timeout 600
+python3 scripts/gnn_exp/bulk_coverage_run.py cmake-build-debug-nn/bin/deep exp/gnn_exp/batchCumulativeTest/ --threads 8 --binary_args "-s Astar -u GNN -c -b" --timeout 600
 ```
 
 Example with changed dataset type:
 
 ``` console
-python3 scripts/gnn_exp/bulk_coverage_run.py cmake-build-debug-nn/bin/deep exp/gnn_exp/batchTest/ --threads 8 --binary_args "-s Astar -u GNN -c -b --dataset_type BITMASK" --timeout 600
+python3 scripts/gnn_exp/bulk_coverage_run.py cmake-build-debug-nn/bin/deep exp/gnn_exp/batchCumulativeTest/ --threads 8 --binary_args "-s Astar -u GNN -c -b --dataset_type BITMASK" --timeout 600
 ```
 
 #### Breadth-First Search
@@ -113,7 +113,7 @@ This command runs inference using the BFS heuristic, which is the
 baseline for comparison.
 
 ``` console
-python3 scripts/gnn_exp/bulk_coverage_run.py cmake-build-debug-nn/bin/deep exp/gnn_exp/batchTest/ --threads 8 --binary_args "-c -b" --timeout 600
+python3 scripts/gnn_exp/bulk_coverage_run.py cmake-build-debug-nn/bin/deep exp/gnn_exp/batchCumulativeTest/ --threads 8 --binary_args "-c -b" --timeout 600
 ```
 
 ##### Arguments
@@ -121,7 +121,7 @@ python3 scripts/gnn_exp/bulk_coverage_run.py cmake-build-debug-nn/bin/deep exp/g
 The arguments to this script are:
 - the path to the deep executable (`cmake-build-debug-nn/bin/deep` in
   the example)
-- the path to the experiment folder (`exp/gnn_exp/batchTest/` which
+- the path to the experiment folder (`exp/gnn_exp/batchCumulativeTest/` which
   is this folder)
 - the number of threads to use to speed up the testing (`8` in the
   example)
