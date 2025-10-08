@@ -55,13 +55,13 @@ using StringSetsSet = std::set<StringsSet>; ///< Formula in DNF (not grounded).
 /// \name Dataset for GNN Related
 ///@{
 static constexpr size_t MAX_FLUENT_NUMBER =
-    32; // 18; ///< Maximum length of the bitmask, and therefore the maximum
+    18; // 18; ///< Maximum length of the bitmask, and therefore the maximum
         // number of
 ///< fluents in the domain experiments. These constants are introduced
 ///< to allow bitmask representation for GNNs, and are only checked if
 ///< GNN is used.
 static constexpr size_t MAX_REPETITION_BITS =
-    16; // 14; ///< Maximum number of bits usable to represent the repetition
+    14; // 14; ///< Maximum number of bits usable to represent the repetition
         // number.
 ///< These constants are introduced to allow bitmask representation for
 ///< GNNs, and are only checked if GNN is used.
@@ -70,7 +70,7 @@ constexpr size_t MAX_REPETITION =
     1; ///< Maximum repetition number that can be represented with
 ///< MAX_REPETITION_BITS bits.
 static constexpr size_t GOAL_ENCODING_BITS =
-    16; // 8; ///< Number of bits usable to represent the information in the
+    10; // 8; ///< Number of bits usable to represent the information in the
         // goal
         ///< which will be prepended to the node representation.
 ///< These constants are introduced to allow bitmask representation for
