@@ -1,0 +1,63 @@
+\documentclass{article}
+\usepackage{booktabs}
+\usepackage[margin=1in]{geometry}
+\begin{document}
+\section*{Results for domain: \texttt{CoinBox\_Rich}}
+\textbf{Search prefix:} 
+\\[0.5cm]
+\subsection*{Training (Solved 3/5)}
+\begin{tabular}{lcccccccc}
+\toprule
+Problem & Goal & Length & Nodes & Total (ms) & Init (ms) & Search (ms) & Overhead (ms) & Search \\
+\midrule
+CoinBox\_R\_\_pl\_13 & TO & - & - & - & - & - & - & - \\
+CoinBox\_R\_\_pl\_3 & Yes & 3 & 18 & 264 & 30 & 171 & 62 & A*(GNN) \\
+CoinBox\_R\_\_pl\_4 & Yes & 4 & 48 & 556 & 27 & 442 & 86 & A*(GNN) \\
+CoinBox\_R\_\_pl\_7 & Yes & 7 & 4821 & 62755 & 30 & 61646 & 1078 & A*(GNN) \\
+CoinBox\_R\_\_pl\_9 & TO & - & - & - & - & - & - & - \\
+\textbf{Averages:} & 3/5 (60\%) & 4.67 & 1629 & 21191.67 & 29 & 20753 & 408.67 & \\
+\bottomrule
+\end{tabular}
+\\[0.7cm]
+\subsection*{Test (Solved 3/9)}
+\begin{tabular}{lcccccccc}
+\toprule
+Problem & Goal & Length & Nodes & Total (ms) & Init (ms) & Search (ms) & Overhead (ms) & Search \\
+\midrule
+CoinBox\_R\_\_pl\_10 & TO & - & - & - & - & - & - & - \\
+CoinBox\_R\_\_pl\_15 & TO & - & - & - & - & - & - & - \\
+CoinBox\_R\_\_pl\_18 & TO & - & - & - & - & - & - & - \\
+CoinBox\_R\_\_pl\_2 & Yes & 2 & 2 & 109 & 29 & 9 & 70 & A*(GNN) \\
+CoinBox\_R\_\_pl\_21 & TO & - & - & - & - & - & - & - \\
+CoinBox\_R\_\_pl\_23 & TO & - & - & - & - & - & - & - \\
+CoinBox\_R\_\_pl\_6 & Yes & 6 & 623 & 8237 & 32 & 7868 & 336 & A*(GNN) \\
+CoinBox\_R\_\_pl\_8 & Yes & 8 & 28288 & 293159 & 30 & 284749 & 8379 & A*(GNN) \\
+CoinBox\_R\_pl\_5 & TO & - & - & - & - & - & - & - \\
+\textbf{Averages:} & 3/9 (33\%) & 5.33 & 9637.67 & 100501.67 & 30.33 & 97542 & 2928.33 & \\
+\bottomrule
+\end{tabular}
+\\[0.7cm]
+\subsection*{Combined (Solved 6/14)}
+\begin{tabular}{lcccccccc}
+\toprule
+Problem & Goal & Length & Nodes & Total (ms) & Init (ms) & Search (ms) & Overhead (ms) & Search \\
+\midrule
+CoinBox\_R\_\_pl\_10 & TO & - & - & - & - & - & - & - \\
+CoinBox\_R\_\_pl\_13 & TO & - & - & - & - & - & - & - \\
+CoinBox\_R\_\_pl\_15 & TO & - & - & - & - & - & - & - \\
+CoinBox\_R\_\_pl\_18 & TO & - & - & - & - & - & - & - \\
+CoinBox\_R\_\_pl\_2 & Yes & 2 & 2 & 109 & 29 & 9 & 70 & A*(GNN) \\
+CoinBox\_R\_\_pl\_21 & TO & - & - & - & - & - & - & - \\
+CoinBox\_R\_\_pl\_23 & TO & - & - & - & - & - & - & - \\
+CoinBox\_R\_\_pl\_3 & Yes & 3 & 18 & 264 & 30 & 171 & 62 & A*(GNN) \\
+CoinBox\_R\_\_pl\_4 & Yes & 4 & 48 & 556 & 27 & 442 & 86 & A*(GNN) \\
+CoinBox\_R\_\_pl\_6 & Yes & 6 & 623 & 8237 & 32 & 7868 & 336 & A*(GNN) \\
+CoinBox\_R\_\_pl\_7 & Yes & 7 & 4821 & 62755 & 30 & 61646 & 1078 & A*(GNN) \\
+CoinBox\_R\_\_pl\_8 & Yes & 8 & 28288 & 293159 & 30 & 284749 & 8379 & A*(GNN) \\
+CoinBox\_R\_\_pl\_9 & TO & - & - & - & - & - & - & - \\
+CoinBox\_R\_pl\_5 & TO & - & - & - & - & - & - & - \\
+\textbf{Averages:} & 6/14 (43\%) & 5 & 5633.33 & 60846.67 & 29.67 & 59147.5 & 1668.5 & \\
+\bottomrule
+\end{tabular}
+\\[0.7cm]
+\end{document}

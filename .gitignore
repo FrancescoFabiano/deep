@@ -98,3 +98,14 @@ lib/libtorch.zip
 **/training_data/*
 data/
 data/*
+
+# Training files
+*.pt
+**/*.pt
+
+#Python Related
+__pycache__/
+*.pyc
+**/__pycache__/
+**/*.pyc
+
