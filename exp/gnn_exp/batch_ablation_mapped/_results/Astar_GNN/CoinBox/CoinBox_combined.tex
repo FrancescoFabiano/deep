@@ -1,0 +1,45 @@
+\documentclass{article}
+\usepackage{booktabs}
+\usepackage[margin=1in]{geometry}
+\begin{document}
+\section*{Results for domain: \texttt{CoinBox}}
+\textbf{Search prefix:} 
+\\[0.5cm]
+\subsection*{Training (Solved 2/2)}
+\begin{tabular}{lcccccccc}
+\toprule
+Problem & Goal & Length & Nodes & Total (ms) & Init (ms) & Search (ms) & Overhead (ms) & Search \\
+\midrule
+Coin\_in\_the\_Box\_\_pl\_3 & Yes & 3 & 6 & 52 & 5 & 14 & 32 & A*(GNN) \\
+Coin\_in\_the\_Box\_\_pl\_6 & Yes & 6 & 196 & 1190 & 6 & 1150 & 33 & A*(GNN) \\
+\textbf{Averages:} & 2/2 (100\%) & 4.5 & 101 & 621 & 5.5 & 582 & 32.5 & \\
+\bottomrule
+\end{tabular}
+\\[0.7cm]
+\subsection*{Test (Solved 2/3)}
+\begin{tabular}{lcccccccc}
+\toprule
+Problem & Goal & Length & Nodes & Total (ms) & Init (ms) & Search (ms) & Overhead (ms) & Search \\
+\midrule
+Coin\_in\_the\_Box\_\_pl\_2 & Yes & 2 & 2 & 40 & 6 & 4 & 29 & A*(GNN) \\
+Coin\_in\_the\_Box\_\_pl\_5 & TO & - & - & - & - & - & - & - \\
+Coin\_in\_the\_Box\_\_pl\_7 & Yes & 7 & 893 & 4627 & 7 & 4521 & 98 & A*(GNN) \\
+\textbf{Averages:} & 2/3 (67\%) & 4.5 & 447.5 & 2333.5 & 6.5 & 2262.5 & 63.5 & \\
+\bottomrule
+\end{tabular}
+\\[0.7cm]
+\subsection*{Combined (Solved 4/5)}
+\begin{tabular}{lcccccccc}
+\toprule
+Problem & Goal & Length & Nodes & Total (ms) & Init (ms) & Search (ms) & Overhead (ms) & Search \\
+\midrule
+Coin\_in\_the\_Box\_\_pl\_2 & Yes & 2 & 2 & 40 & 6 & 4 & 29 & A*(GNN) \\
+Coin\_in\_the\_Box\_\_pl\_3 & Yes & 3 & 6 & 52 & 5 & 14 & 32 & A*(GNN) \\
+Coin\_in\_the\_Box\_\_pl\_5 & TO & - & - & - & - & - & - & - \\
+Coin\_in\_the\_Box\_\_pl\_6 & Yes & 6 & 196 & 1190 & 6 & 1150 & 33 & A*(GNN) \\
+Coin\_in\_the\_Box\_\_pl\_7 & Yes & 7 & 893 & 4627 & 7 & 4521 & 98 & A*(GNN) \\
+\textbf{Averages:} & 4/5 (80\%) & 4.5 & 274.25 & 1477.25 & 6 & 1422.25 & 48 & \\
+\bottomrule
+\end{tabular}
+\\[0.7cm]
+\end{document}
