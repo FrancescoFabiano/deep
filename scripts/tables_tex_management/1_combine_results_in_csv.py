@@ -350,12 +350,14 @@ if __name__ == "__main__":
     EXAMPLE:
     python3 scripts/tables_tex_management/1_combine_results_in_csv.py \
       --experiment_set gnn_exp \
-      --experiment_batch batch_test \
+      --experiment_batch out/res \
       --out_dir_name final_reports
     """
     args = parse_args()
     exp_dir = f"./exp/{args.experiment_set}/{args.experiment_batch}"
     out_dir = f"./exp/{args.experiment_set}/{args.out_dir_name}/{args.experiment_batch}"
+    exp_dir = f"./{args.experiment_batch}"
+    out_dir = f"./{args.experiment_batch}/{args.out_dir_name}"
     os.makedirs(out_dir, exist_ok=True)
 
     output_csv = f"{out_dir}/combined_results.csv"

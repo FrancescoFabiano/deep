@@ -775,8 +775,8 @@ def main():
 if __name__ == "__main__":
     """
     python3 scripts/tables_tex_management/2_make_latex_table.py \
-      --csv ./exp/gnn_exp/final_reports/batch_test/combined_results.csv \
-      --mode Test \
+      --csv ./out/res/_tot_comparison/final_reports/combined_results/combined_results.csv \
+      --mode Training and Test \
       --search "\GNNres=Astar_GNN" \
       --search "\BFSres=BFS" \
       --search "\Pfive=p5" \
