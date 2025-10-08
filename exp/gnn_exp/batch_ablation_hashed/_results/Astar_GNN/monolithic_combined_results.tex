@@ -1,0 +1,193 @@
+\documentclass{article}
+\usepackage{booktabs}
+\usepackage[a4paper, landscape, margin=1in]{geometry}
+\begin{document}
+\section*{Monolithic Combined Results (All Domains)}
+\textbf{Search prefix:} 
+\\[0.5cm]
+\subsection*{Training}
+\begin{tabular}{lllcccccccc}
+\toprule
+Mode & Domain & Problem & Goal & Length & Nodes & Total (ms) & Init (ms) & Search (ms) & Overhead (ms) & Search \\
+\midrule
+Training & Assemble & Assemble\_B3\_\_pl\_5 & TO & - & - & - & - & - & - & - \\
+Training & Assemble & Assemble\_B5\_\_pl\_5 & TO & - & - & - & - & - & - & - \\
+Training & Assemble & Assemble\_B7\_\_pl\_5 & TO & - & - & - & - & - & - & - \\
+Training & CC & CC\_2\_2\_3\_\_pl\_4 & TO & - & - & - & - & - & - & - \\
+Training & CC & CC\_2\_2\_3\_\_pl\_6 & Yes & 7 & 14 & 256 & 3 & 213 & 39 & A*(GNN) \\
+Training & CC & CC\_2\_2\_4\_\_pl\_5 & Yes & 10 & 184 & 4603 & 12 & 4518 & 72 & A*(GNN) \\
+Training & CC & CC\_2\_3\_4\_\_pl\_3 & TO & - & - & - & - & - & - & - \\
+Training & CC & CC\_2\_3\_4\_\_pl\_7 & Yes & 11 & 63 & 6766 & 328 & 6322 & 115 & A*(GNN) \\
+Training & CC & CC\_3\_2\_3\_\_pl\_4 & TO & - & - & - & - & - & - & - \\
+Training & CC & CC\_3\_2\_3\_\_pl\_5 & Yes & 5 & 28 & 347 & 11 & 294 & 41 & A*(GNN) \\
+Training & CC & CC\_3\_3\_3\_\_pl\_4 & Yes & 4 & 4 & 528 & 28 & 398 & 101 & A*(GNN) \\
+Training & CoinBox & Coin\_in\_the\_Box\_\_pl\_3 & Yes & 3 & 6 & 45 & 6 & 17 & 21 & A*(GNN) \\
+Training & CoinBox & Coin\_in\_the\_Box\_\_pl\_6 & Yes & 6 & 213 & 1034 & 6 & 1000 & 27 & A*(GNN) \\
+Training & SCRich & SC\_10\_10\_\_pl\_10 & TO & - & - & - & - & - & - & - \\
+Training & SC & SC\_10\_10\_\_pl\_13 & Yes & 13 & 51 & 228 & 7 & 171 & 49 & A*(GNN) \\
+Training & SCRich & SC\_10\_10\_\_pl\_6 & Yes & 6 & 252 & 5916 & 14 & 5838 & 63 & A*(GNN) \\
+Training & SCRich & SC\_10\_10\_\_pl\_7 & TO & - & - & - & - & - & - & - \\
+Training & SC & SC\_10\_8\_\_pl\_10 & TO & - & - & - & - & - & - & - \\
+Training & SC & SC\_10\_8\_\_pl\_15 & Yes & 15 & 124 & 475 & 6 & 444 & 24 & A*(GNN) \\
+Training & SC & SC\_4\_1\_\_pl\_3 & TO & - & - & - & - & - & - & - \\
+Training & SC & SC\_4\_2\_\_pl\_7 & Yes & 7 & 46 & 206 & 7 & 149 & 49 & A*(GNN) \\
+Training & SC & SC\_4\_3\_\_pl\_5 & TO & - & - & - & - & - & - & - \\
+Training & SC & SC\_8\_10\_\_pl\_6 & Yes & 6 & 54 & 440 & 8 & 370 & 61 & A*(GNN) \\
+Training & SC & SC\_9\_11\_\_pl\_6 & Yes & 6 & 26 & 188 & 9 & 131 & 47 & A*(GNN) \\
+Training & SC & SC\_9\_11\_\_pl\_8 & Yes & 8 & 66 & 458 & 19 & 383 & 55 & A*(GNN) \\
+\textbf{Averages:} & & & 14/25 (56\%) & 7.64 & 80.79 & 1535 & 33.14 & 1446.29 & 54.57 & \\
+\bottomrule
+\end{tabular}
+\newpage
+\subsection*{Test}
+\begin{tabular}{lllcccccccc}
+\toprule
+Mode & Domain & Problem & Goal & Length & Nodes & Total (ms) & Init (ms) & Search (ms) & Overhead (ms) & Search \\
+\midrule
+Test & Assemble & Assemble\_B10\_\_pl\_5 & TO & - & - & - & - & - & - & - \\
+Test & Assemble & Assemble\_B2\_\_pl\_5 & TO & - & - & - & - & - & - & - \\
+Test & Assemble & Assemble\_B4\_\_pl\_5 & TO & - & - & - & - & - & - & - \\
+Test & Assemble & Assemble\_B6\_\_pl\_5 & TO & - & - & - & - & - & - & - \\
+Test & Assemble & Assemble\_B8\_\_pl\_5 & TO & - & - & - & - & - & - & - \\
+Test & Assemble & Assemble\_B9\_\_pl\_5 & TO & - & - & - & - & - & - & - \\
+Test & Assemble & Assemble\_C\_\_pl\_5 & TO & - & - & - & - & - & - & - \\
+Test & CC & CC\_2\_2\_3\_\_pl\_3 & TO & - & - & - & - & - & - & - \\
+Test & CC & CC\_2\_2\_3\_\_pl\_5 & Yes & 8 & 28 & 248 & 5 & 201 & 41 & A*(GNN) \\
+Test & CC & CC\_2\_2\_3\_\_pl\_7 & Yes & 10 & 58675 & 275397 & 5 & 274393 & 998 & A*(GNN) \\
+Test & CC & CC\_2\_2\_3\_\_pl\_8 & TO & - & - & - & - & - & - & - \\
+Test & CC & CC\_2\_2\_4\_\_pl\_3 & Yes & 4 & 15 & 844 & 20 & 782 & 41 & A*(GNN) \\
+Test & CC & CC\_2\_2\_4\_\_pl\_4 & Yes & 9 & 24 & 2106 & 18 & 2011 & 76 & A*(GNN) \\
+Test & CC & CC\_2\_2\_4\_\_pl\_6 & Yes & 8 & 509 & 16979 & 52 & 16561 & 365 & A*(GNN) \\
+Test & CC & CC\_2\_2\_4\_\_pl\_7 & TO & - & - & - & - & - & - & - \\
+Test & CC & CC\_2\_3\_4\_\_pl\_4 & Yes & 7 & 9 & 2795 & 496 & 2234 & 64 & A*(GNN) \\
+Test & CC & CC\_2\_3\_4\_\_pl\_5 & Yes & 6 & 99 & 13072 & 477 & 12447 & 147 & A*(GNN) \\
+Test & CC & CC\_2\_3\_4\_\_pl\_6 & Yes & 9 & 24 & 6634 & 288 & 6281 & 64 & A*(GNN) \\
+Test & CC & CC\_3\_2\_3\_\_pl\_3 & TO & - & - & - & - & - & - & - \\
+Test & CC & CC\_3\_2\_3\_\_pl\_6 & Yes & 6 & 125 & 1614 & 13 & 1536 & 64 & A*(GNN) \\
+Test & CC & CC\_3\_2\_3\_\_pl\_7 & Yes & 7 & 269 & 4911 & 29 & 4784 & 97 & A*(GNN) \\
+Test & CC & CC\_3\_3\_3\_\_pl\_3 & TO & - & - & - & - & - & - & - \\
+Test & CC & CC\_3\_3\_3\_\_pl\_5 & Yes & 7 & 221 & 12081 & 46 & 11846 & 188 & A*(GNN) \\
+Test & CC & CC\_3\_3\_3\_\_pl\_6 & TO & - & - & - & - & - & - & - \\
+Test & CC & CC\_3\_3\_3\_\_pl\_7 & TO & - & - & - & - & - & - & - \\
+Test & CoinBox & Coin\_in\_the\_Box\_\_pl\_2 & Yes & 2 & 2 & 45 & 6 & 4 & 34 & A*(GNN) \\
+Test & CoinBox & Coin\_in\_the\_Box\_\_pl\_5 & TO & - & - & - & - & - & - & - \\
+Test & CoinBox & Coin\_in\_the\_Box\_\_pl\_7 & Yes & 7 & 789 & 5485 & 6 & 5375 & 103 & A*(GNN) \\
+Test & SC & SC\_10\_10\_\_pl\_10 & TO & - & - & - & - & - & - & - \\
+Test & SCRich & SC\_10\_10\_\_pl\_13 & Yes & 13 & 4398 & 120498 & 13 & 120392 & 92 & A*(GNN) \\
+Test & SCRich & SC\_10\_10\_\_pl\_14 & TO & - & - & - & - & - & - & - \\
+Test & SC & SC\_10\_10\_\_pl\_17 & Yes & 17 & 969 & 6882 & 8 & 6731 & 142 & A*(GNN) \\
+Test & SCRich & SC\_10\_10\_\_pl\_17 & TO & - & - & - & - & - & - & - \\
+Test & SCRich & SC\_10\_10\_\_pl\_2 & Yes & 2 & 3 & 151 & 13 & 72 & 65 & A*(GNN) \\
+Test & SCRich & SC\_10\_10\_\_pl\_3 & TO & - & - & - & - & - & - & - \\
+Test & SC & SC\_10\_10\_\_pl\_9 & Yes & 9 & 10 & 48 & 6 & 16 & 25 & A*(GNN) \\
+Test & SCRich & SC\_10\_10\_\_pl\_9 & Yes & 9 & 553 & 15835 & 14 & 15773 & 47 & A*(GNN) \\
+Test & SC & SC\_10\_8\_\_pl\_14 & Yes & 14 & 58 & 317 & 7 & 279 & 30 & A*(GNN) \\
+Test & SC & SC\_10\_8\_\_pl\_9 & TO & - & - & - & - & - & - & - \\
+Test & SC & SC\_4\_1\_\_pl\_5 & TO & - & - & - & - & - & - & - \\
+Test & SC & SC\_4\_2\_\_pl\_5 & TO & - & - & - & - & - & - & - \\
+Test & SC & SC\_4\_2\_\_pl\_8 & Yes & 8 & 79 & 320 & 3 & 279 & 37 & A*(GNN) \\
+Test & SC & SC\_4\_3\_\_pl\_6 & Yes & 6 & 21 & 72 & 2 & 28 & 41 & A*(GNN) \\
+Test & SC & SC\_4\_3\_\_pl\_8 & Yes & 8 & 59 & 134 & 2 & 81 & 50 & A*(GNN) \\
+Test & SC & SC\_4\_4\_\_pl\_5 & TO & - & - & - & - & - & - & - \\
+Test & SC & SC\_8\_10\_\_pl\_12 & TO & - & - & - & - & - & - & - \\
+Test & SC & SC\_8\_10\_\_pl\_8 & Yes & 8 & 244 & 2074 & 10 & 1984 & 79 & A*(GNN) \\
+Test & SC & SC\_8\_10\_\_pl\_9 & Yes & 9 & 478 & 4370 & 10 & 4260 & 99 & A*(GNN) \\
+Test & SC & SC\_9\_11\_\_pl\_10 & Yes & 10 & 663 & 5768 & 12 & 5598 & 157 & A*(GNN) \\
+Test & SC & SC\_9\_11\_\_pl\_11 & Yes & 11 & 875 & 7634 & 11 & 7453 & 169 & A*(GNN) \\
+Test & SC & SC\_9\_11\_\_pl\_4 & TO & - & - & - & - & - & - & - \\
+Test & SC & SC\_9\_11\_\_pl\_5 & TO & - & - & - & - & - & - & - \\
+Test & SC & SC\_9\_11\_\_pl\_7 & Yes & 7 & 41 & 280 & 9 & 224 & 46 & A*(GNN) \\
+Test & SC & SC\_9\_11\_\_pl\_9 & Yes & 9 & 238 & 1919 & 10 & 1844 & 64 & A*(GNN) \\
+\textbf{Averages:} & & & 28/54 (52\%) & 8.21 & 2481.36 & 18161.18 & 56.82 & 17981.04 & 122.32 & \\
+\bottomrule
+\end{tabular}
+\newpage
+\subsection*{Combined (Training + Test)}
+\begin{tabular}{lllcccccccc}
+\toprule
+Mode & Domain & Problem & Goal & Length & Nodes & Total (ms) & Init (ms) & Search (ms) & Overhead (ms) & Search \\
+\midrule
+Test & Assemble & Assemble\_B10\_\_pl\_5 & TO & - & - & - & - & - & - & - \\
+Test & Assemble & Assemble\_B2\_\_pl\_5 & TO & - & - & - & - & - & - & - \\
+Test & Assemble & Assemble\_B4\_\_pl\_5 & TO & - & - & - & - & - & - & - \\
+Test & Assemble & Assemble\_B6\_\_pl\_5 & TO & - & - & - & - & - & - & - \\
+Test & Assemble & Assemble\_B8\_\_pl\_5 & TO & - & - & - & - & - & - & - \\
+Test & Assemble & Assemble\_B9\_\_pl\_5 & TO & - & - & - & - & - & - & - \\
+Test & Assemble & Assemble\_C\_\_pl\_5 & TO & - & - & - & - & - & - & - \\
+Test & CC & CC\_2\_2\_3\_\_pl\_3 & TO & - & - & - & - & - & - & - \\
+Test & CC & CC\_2\_2\_3\_\_pl\_5 & Yes & 8 & 28 & 248 & 5 & 201 & 41 & A*(GNN) \\
+Test & CC & CC\_2\_2\_3\_\_pl\_7 & Yes & 10 & 58675 & 275397 & 5 & 274393 & 998 & A*(GNN) \\
+Test & CC & CC\_2\_2\_3\_\_pl\_8 & TO & - & - & - & - & - & - & - \\
+Test & CC & CC\_2\_2\_4\_\_pl\_3 & Yes & 4 & 15 & 844 & 20 & 782 & 41 & A*(GNN) \\
+Test & CC & CC\_2\_2\_4\_\_pl\_4 & Yes & 9 & 24 & 2106 & 18 & 2011 & 76 & A*(GNN) \\
+Test & CC & CC\_2\_2\_4\_\_pl\_6 & Yes & 8 & 509 & 16979 & 52 & 16561 & 365 & A*(GNN) \\
+Test & CC & CC\_2\_2\_4\_\_pl\_7 & TO & - & - & - & - & - & - & - \\
+Test & CC & CC\_2\_3\_4\_\_pl\_4 & Yes & 7 & 9 & 2795 & 496 & 2234 & 64 & A*(GNN) \\
+Test & CC & CC\_2\_3\_4\_\_pl\_5 & Yes & 6 & 99 & 13072 & 477 & 12447 & 147 & A*(GNN) \\
+Test & CC & CC\_2\_3\_4\_\_pl\_6 & Yes & 9 & 24 & 6634 & 288 & 6281 & 64 & A*(GNN) \\
+Test & CC & CC\_3\_2\_3\_\_pl\_3 & TO & - & - & - & - & - & - & - \\
+Test & CC & CC\_3\_2\_3\_\_pl\_6 & Yes & 6 & 125 & 1614 & 13 & 1536 & 64 & A*(GNN) \\
+Test & CC & CC\_3\_2\_3\_\_pl\_7 & Yes & 7 & 269 & 4911 & 29 & 4784 & 97 & A*(GNN) \\
+Test & CC & CC\_3\_3\_3\_\_pl\_3 & TO & - & - & - & - & - & - & - \\
+Test & CC & CC\_3\_3\_3\_\_pl\_5 & Yes & 7 & 221 & 12081 & 46 & 11846 & 188 & A*(GNN) \\
+Test & CC & CC\_3\_3\_3\_\_pl\_6 & TO & - & - & - & - & - & - & - \\
+Test & CC & CC\_3\_3\_3\_\_pl\_7 & TO & - & - & - & - & - & - & - \\
+Test & CoinBox & Coin\_in\_the\_Box\_\_pl\_2 & Yes & 2 & 2 & 45 & 6 & 4 & 34 & A*(GNN) \\
+Test & CoinBox & Coin\_in\_the\_Box\_\_pl\_5 & TO & - & - & - & - & - & - & - \\
+Test & CoinBox & Coin\_in\_the\_Box\_\_pl\_7 & Yes & 7 & 789 & 5485 & 6 & 5375 & 103 & A*(GNN) \\
+Test & SC & SC\_10\_10\_\_pl\_10 & TO & - & - & - & - & - & - & - \\
+Test & SCRich & SC\_10\_10\_\_pl\_13 & Yes & 13 & 4398 & 120498 & 13 & 120392 & 92 & A*(GNN) \\
+Test & SCRich & SC\_10\_10\_\_pl\_14 & TO & - & - & - & - & - & - & - \\
+Test & SC & SC\_10\_10\_\_pl\_17 & Yes & 17 & 969 & 6882 & 8 & 6731 & 142 & A*(GNN) \\
+Test & SCRich & SC\_10\_10\_\_pl\_17 & TO & - & - & - & - & - & - & - \\
+Test & SCRich & SC\_10\_10\_\_pl\_2 & Yes & 2 & 3 & 151 & 13 & 72 & 65 & A*(GNN) \\
+Test & SCRich & SC\_10\_10\_\_pl\_3 & TO & - & - & - & - & - & - & - \\
+Test & SC & SC\_10\_10\_\_pl\_9 & Yes & 9 & 10 & 48 & 6 & 16 & 25 & A*(GNN) \\
+Test & SCRich & SC\_10\_10\_\_pl\_9 & Yes & 9 & 553 & 15835 & 14 & 15773 & 47 & A*(GNN) \\
+Test & SC & SC\_10\_8\_\_pl\_14 & Yes & 14 & 58 & 317 & 7 & 279 & 30 & A*(GNN) \\
+Test & SC & SC\_10\_8\_\_pl\_9 & TO & - & - & - & - & - & - & - \\
+Test & SC & SC\_4\_1\_\_pl\_5 & TO & - & - & - & - & - & - & - \\
+Test & SC & SC\_4\_2\_\_pl\_5 & TO & - & - & - & - & - & - & - \\
+Test & SC & SC\_4\_2\_\_pl\_8 & Yes & 8 & 79 & 320 & 3 & 279 & 37 & A*(GNN) \\
+Test & SC & SC\_4\_3\_\_pl\_6 & Yes & 6 & 21 & 72 & 2 & 28 & 41 & A*(GNN) \\
+Test & SC & SC\_4\_3\_\_pl\_8 & Yes & 8 & 59 & 134 & 2 & 81 & 50 & A*(GNN) \\
+Test & SC & SC\_4\_4\_\_pl\_5 & TO & - & - & - & - & - & - & - \\
+Test & SC & SC\_8\_10\_\_pl\_12 & TO & - & - & - & - & - & - & - \\
+Test & SC & SC\_8\_10\_\_pl\_8 & Yes & 8 & 244 & 2074 & 10 & 1984 & 79 & A*(GNN) \\
+Test & SC & SC\_8\_10\_\_pl\_9 & Yes & 9 & 478 & 4370 & 10 & 4260 & 99 & A*(GNN) \\
+Test & SC & SC\_9\_11\_\_pl\_10 & Yes & 10 & 663 & 5768 & 12 & 5598 & 157 & A*(GNN) \\
+Test & SC & SC\_9\_11\_\_pl\_11 & Yes & 11 & 875 & 7634 & 11 & 7453 & 169 & A*(GNN) \\
+Test & SC & SC\_9\_11\_\_pl\_4 & TO & - & - & - & - & - & - & - \\
+Test & SC & SC\_9\_11\_\_pl\_5 & TO & - & - & - & - & - & - & - \\
+Test & SC & SC\_9\_11\_\_pl\_7 & Yes & 7 & 41 & 280 & 9 & 224 & 46 & A*(GNN) \\
+Test & SC & SC\_9\_11\_\_pl\_9 & Yes & 9 & 238 & 1919 & 10 & 1844 & 64 & A*(GNN) \\
+Training & Assemble & Assemble\_B3\_\_pl\_5 & TO & - & - & - & - & - & - & - \\
+Training & Assemble & Assemble\_B5\_\_pl\_5 & TO & - & - & - & - & - & - & - \\
+Training & Assemble & Assemble\_B7\_\_pl\_5 & TO & - & - & - & - & - & - & - \\
+Training & CC & CC\_2\_2\_3\_\_pl\_4 & TO & - & - & - & - & - & - & - \\
+Training & CC & CC\_2\_2\_3\_\_pl\_6 & Yes & 7 & 14 & 256 & 3 & 213 & 39 & A*(GNN) \\
+Training & CC & CC\_2\_2\_4\_\_pl\_5 & Yes & 10 & 184 & 4603 & 12 & 4518 & 72 & A*(GNN) \\
+Training & CC & CC\_2\_3\_4\_\_pl\_3 & TO & - & - & - & - & - & - & - \\
+Training & CC & CC\_2\_3\_4\_\_pl\_7 & Yes & 11 & 63 & 6766 & 328 & 6322 & 115 & A*(GNN) \\
+Training & CC & CC\_3\_2\_3\_\_pl\_4 & TO & - & - & - & - & - & - & - \\
+Training & CC & CC\_3\_2\_3\_\_pl\_5 & Yes & 5 & 28 & 347 & 11 & 294 & 41 & A*(GNN) \\
+Training & CC & CC\_3\_3\_3\_\_pl\_4 & Yes & 4 & 4 & 528 & 28 & 398 & 101 & A*(GNN) \\
+Training & CoinBox & Coin\_in\_the\_Box\_\_pl\_3 & Yes & 3 & 6 & 45 & 6 & 17 & 21 & A*(GNN) \\
+Training & CoinBox & Coin\_in\_the\_Box\_\_pl\_6 & Yes & 6 & 213 & 1034 & 6 & 1000 & 27 & A*(GNN) \\
+Training & SCRich & SC\_10\_10\_\_pl\_10 & TO & - & - & - & - & - & - & - \\
+Training & SC & SC\_10\_10\_\_pl\_13 & Yes & 13 & 51 & 228 & 7 & 171 & 49 & A*(GNN) \\
+Training & SCRich & SC\_10\_10\_\_pl\_6 & Yes & 6 & 252 & 5916 & 14 & 5838 & 63 & A*(GNN) \\
+Training & SCRich & SC\_10\_10\_\_pl\_7 & TO & - & - & - & - & - & - & - \\
+Training & SC & SC\_10\_8\_\_pl\_10 & TO & - & - & - & - & - & - & - \\
+Training & SC & SC\_10\_8\_\_pl\_15 & Yes & 15 & 124 & 475 & 6 & 444 & 24 & A*(GNN) \\
+Training & SC & SC\_4\_1\_\_pl\_3 & TO & - & - & - & - & - & - & - \\
+Training & SC & SC\_4\_2\_\_pl\_7 & Yes & 7 & 46 & 206 & 7 & 149 & 49 & A*(GNN) \\
+Training & SC & SC\_4\_3\_\_pl\_5 & TO & - & - & - & - & - & - & - \\
+Training & SC & SC\_8\_10\_\_pl\_6 & Yes & 6 & 54 & 440 & 8 & 370 & 61 & A*(GNN) \\
+Training & SC & SC\_9\_11\_\_pl\_6 & Yes & 6 & 26 & 188 & 9 & 131 & 47 & A*(GNN) \\
+Training & SC & SC\_9\_11\_\_pl\_8 & Yes & 8 & 66 & 458 & 19 & 383 & 55 & A*(GNN) \\
+\textbf{Averages:} & & & 42/79 (53\%) & 8.02 & 1681.17 & 12619.12 & 48.93 & 12469.45 & 99.74 & \\
+\bottomrule
+\end{tabular}
+\newpage
+\end{document}
