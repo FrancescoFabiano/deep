@@ -1,0 +1,249 @@
+fluent useless, q, at_1, at_2, at_3, at_4, at_5, at_6, at_7, at_8, at_9, at_10;
+
+action right, left, sense, shout_1, shout_2, shout_3, shout_4, shout_5, shout_6, shout_7, shout_8, shout_9, shout_10;
+action negate_useless, activate_useless;
+action sense_useless_1, sense_useless_2, sense_useless_3, sense_useless_4, sense_useless_5, sense_useless_6, sense_useless_7, sense_useless_8, sense_useless_9, sense_useless_10;
+action shout_useless_1, shout_useless_2, shout_useless_3, shout_useless_4, shout_useless_5, shout_useless_6, shout_useless_7, shout_useless_8, shout_useless_9, shout_useless_10;
+
+agent a,b,c,d,e,f,g,h,j;
+
+%f in 1
+
+%b in 2
+%c in 3
+%d in 5
+%e in 6
+%g in 7
+%h,j in 10
+
+executable right if -at_10;
+right causes at_2 if at_1;
+right causes -at_1 if at_1;
+right causes at_3 if at_2;
+right causes -at_2 if at_2;
+right causes at_4 if at_3;
+right causes -at_3 if at_3;
+right causes at_5 if at_4;
+right causes -at_4 if at_4;
+right causes at_6 if at_5;
+right causes -at_5 if at_5;
+right causes at_7 if at_6;
+right causes -at_6 if at_6;
+right causes at_8 if at_7;
+right causes -at_7 if at_7;
+right causes at_9 if at_8;
+right causes -at_8 if at_8;
+right causes at_10 if at_9;
+right causes -at_9 if at_9;
+
+a observes right;
+b observes right;
+c observes right;
+d observes right;
+e observes right;
+f observes right;
+g observes right;
+h observes right;
+j observes right;
+
+
+
+
+executable left if -at_1;
+left causes at_9 if at_10;
+left causes -at_10 if at_10;
+left causes at_8 if at_9;
+left causes -at_9 if at_9;
+left causes at_7 if at_8;
+left causes -at_8 if at_8;
+left causes at_6 if at_7;
+left causes -at_7 if at_7;
+left causes at_5 if at_6;
+left causes -at_6 if at_6;
+left causes at_4 if at_5;
+left causes -at_5 if at_5;
+left causes at_3 if at_4;
+left causes -at_4 if at_4;
+left causes at_2 if at_3;
+left causes -at_3 if at_3;
+left causes at_1 if at_2;
+left causes -at_2 if at_2;
+
+
+a observes left;
+b observes left;
+c observes left;
+d observes left;
+e observes left;
+f observes left;
+g observes left;
+h observes left;
+j observes left;
+
+executable sense if at_8;
+sense determines q;
+a observes sense;
+
+executable shout_1 if B(a, q), at_1;
+shout_1 announces q;
+a observes shout_1;
+f observes shout_1;
+b observes shout_1;
+
+executable shout_2 if B(a, q), at_2;
+shout_2 announces q;
+a observes shout_2;
+f observes shout_2;
+b observes shout_2;
+c observes shout_2;
+
+executable shout_3 if B(a, q), at_3;
+shout_3 announces q;
+a observes shout_3;
+b observes shout_3;
+c observes shout_3;
+
+executable shout_4 if B(a, q), at_4;
+shout_4 announces q;
+a observes shout_4;
+c observes shout_4;
+d observes shout_4;
+
+executable shout_5 if B(a, q), at_5;
+shout_5 announces q;
+a observes shout_5;
+d observes shout_5;
+e observes shout_5;
+
+
+executable shout_6 if B(a, q), at_6;
+shout_6 announces q;
+a observes shout_6;
+d observes shout_6;
+e observes shout_6;
+g observes shout_6;
+
+executable shout_7 if B(a, q), at_7;
+shout_7 announces q;
+a observes shout_7;
+e observes shout_7;
+g observes shout_7;
+
+executable shout_8 if B(a, q), at_8;
+shout_8 announces q;
+a observes shout_8;
+g observes shout_8;
+
+executable shout_9 if B(a, q), at_9;
+shout_9 announces q;
+a observes shout_9;
+h observes shout_9;
+j observes shout_9;
+
+executable shout_10 if B(a, q), at_10;
+shout_10 announces q;
+a observes shout_10;
+h observes shout_10;
+j observes shout_10;
+
+executable negate_useless if B(a, useless);
+negate_useless causes -useless;
+
+executable activate_useless if B(a, -useless);
+negate_useless causes useless;
+
+executable sense_useless_1;
+sense_useless_1 determines useless if at_1;
+a observes sense_useless_1;
+
+executable sense_useless_2;
+sense_useless_2 determines useless if at_2;
+a observes sense_useless_2;
+
+executable sense_useless_3;
+sense_useless_3 determines useless if at_3;
+a observes sense_useless_3;
+
+executable sense_useless_4;
+sense_useless_4 determines useless if at_4;
+a observes sense_useless_4;
+
+executable sense_useless_5;
+sense_useless_5 determines useless if at_5;
+a observes sense_useless_5;
+
+executable sense_useless_6;
+sense_useless_6 determines useless if at_6;
+a observes sense_useless_6;
+
+executable sense_useless_7;
+sense_useless_7 determines useless if at_7;
+a observes sense_useless_7;
+
+executable sense_useless_8;
+sense_useless_8 determines useless if at_8;
+a observes sense_useless_8;
+
+executable sense_useless_9;
+sense_useless_9 determines useless if at_9;
+a observes sense_useless_9;
+
+executable sense_useless_10;
+sense_useless_10 determines useless if at_10;
+a observes sense_useless_10;
+
+executable shout_useless_1 if B(a, useless);
+shout_useless_1 announces useless;
+a observes shout_useless_1;
+
+executable shout_useless_2 if B(a, useless);
+shout_useless_2 announces useless;
+a observes shout_useless_2;
+
+executable shout_useless_3 if B(a, useless);
+shout_useless_3 announces useless;
+a observes shout_useless_3;
+
+executable shout_useless_4 if B(a, useless);
+shout_useless_4 announces useless;
+a observes shout_useless_4;
+
+executable shout_useless_5 if B(a, useless);
+shout_useless_5 announces useless;
+a observes shout_useless_5;
+
+executable shout_useless_6 if B(a, useless);
+shout_useless_6 announces useless;
+a observes shout_useless_6;
+
+executable shout_useless_7 if B(a, useless);
+shout_useless_7 announces useless;
+a observes shout_useless_7;
+
+executable shout_useless_8 if B(a, useless);
+shout_useless_8 announces useless;
+a observes shout_useless_8;
+
+executable shout_useless_9 if B(a, useless);
+shout_useless_9 announces useless;
+a observes shout_useless_9;
+
+executable shout_useless_10 if B(a, useless);
+shout_useless_10 announces useless;
+a observes shout_useless_10;
+
+initially at_1, -at_2, -at_3, -at_4, -at_5, -at_6, -at_7, -at_8, -at_9, -at_10, q, useless;
+initially C([a,b,c,d,e,f,g,h,j],at_1);
+initially C([a,b,c,d,e,f,g,h,j],-at_2);
+initially C([a,b,c,d,e,f,g,h,j],-at_3);
+initially C([a,b,c,d,e,f,g,h,j],-at_4);
+initially C([a,b,c,d,e,f,g,h,j],-at_5);
+initially C([a,b,c,d,e,f,g,h,j],-at_6);
+initially C([a,b,c,d,e,f,g,h,j],-at_7);
+initially C([a,b,c,d,e,f,g,h,j],-at_8);
+initially C([a,b,c,d,e,f,g,h,j],-at_9);
+initially C([a,b,c,d,e,f,g,h,j],-at_10);
+initially C([a,b,c,d,e,f,g,h,j],useless);
+
+% 9 actions
+goal B(g,B(a,q));

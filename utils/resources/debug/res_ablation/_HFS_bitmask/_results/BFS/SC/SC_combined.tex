@@ -1,0 +1,93 @@
+\documentclass{article}
+\usepackage{booktabs}
+\usepackage[margin=1in]{geometry}
+\begin{document}
+\section*{Results for domain: \texttt{SC}}
+\textbf{Search prefix:} 
+\\[0.5cm]
+\subsection*{Training (Solved 4/9)}
+\begin{tabular}{lcccccccc}
+\toprule
+Problem & Goal & Length & Nodes & Total (ms) & Init (ms) & Search (ms) & Overhead (ms) & Search \\
+\midrule
+SC\_10\_10\_\_pl\_13 & Yes & 17 & 49 & 406 & 19 & 313 & 73 & HFS(GNN) \\
+SC\_10\_8\_\_pl\_10 & Yes & 10 & 10 & 153 & 16 & 47 & 89 & HFS(GNN) \\
+SC\_10\_8\_\_pl\_15 & TO & - & - & - & - & - & - & - \\
+SC\_4\_1\_\_pl\_3 & Yes & 3 & 4 & 57 & 10 & 7 & 39 & HFS(GNN) \\
+SC\_4\_2\_\_pl\_7 & TO & - & - & - & - & - & - & - \\
+SC\_4\_3\_\_pl\_5 & TO & - & - & - & - & - & - & - \\
+SC\_8\_10\_\_pl\_6 & Yes & 483 & 4776 & 50264 & 11 & 49877 & 375 & HFS(GNN) \\
+SC\_9\_11\_\_pl\_6 & TO & - & - & - & - & - & - & - \\
+SC\_9\_11\_\_pl\_8 & TO & - & - & - & - & - & - & - \\
+\textbf{Averages:} & 4/9 (44\%) & 128.25 & 1209.75 & 12720 & 14 & 12561 & 144 & \\
+\bottomrule
+\end{tabular}
+\\[0.7cm]
+\subsection*{Test (Solved 7/20)}
+\begin{tabular}{lcccccccc}
+\toprule
+Problem & Goal & Length & Nodes & Total (ms) & Init (ms) & Search (ms) & Overhead (ms) & Search \\
+\midrule
+SC\_10\_10\_\_pl\_10 & Yes & 11 & 17 & 220 & 19 & 59 & 141 & HFS(GNN) \\
+SC\_10\_10\_\_pl\_17 & TO & - & - & - & - & - & - & - \\
+SC\_10\_10\_\_pl\_9 & Yes & 9 & 10 & 114 & 16 & 26 & 71 & HFS(GNN) \\
+SC\_10\_8\_\_pl\_14 & Yes & 16 & 33 & 390 & 23 & 263 & 103 & HFS(GNN) \\
+SC\_10\_8\_\_pl\_9 & TO & - & - & - & - & - & - & - \\
+SC\_4\_1\_\_pl\_5 & TO & - & - & - & - & - & - & - \\
+SC\_4\_2\_\_pl\_5 & TO & - & - & - & - & - & - & - \\
+SC\_4\_2\_\_pl\_8 & TO & - & - & - & - & - & - & - \\
+SC\_4\_3\_\_pl\_6 & TO & - & - & - & - & - & - & - \\
+SC\_4\_3\_\_pl\_8 & TO & - & - & - & - & - & - & - \\
+SC\_4\_4\_\_pl\_5 & TO & - & - & - & - & - & - & - \\
+SC\_8\_10\_\_pl\_12 & TO & - & - & - & - & - & - & - \\
+SC\_8\_10\_\_pl\_8 & Yes & 1586 & 19087 & 329262 & 14 & 327850 & 1397 & HFS(GNN) \\
+SC\_8\_10\_\_pl\_9 & Yes & 1586 & 19087 & 321429 & 30 & 319547 & 1851 & HFS(GNN) \\
+SC\_9\_11\_\_pl\_10 & TO & - & - & - & - & - & - & - \\
+SC\_9\_11\_\_pl\_11 & TO & - & - & - & - & - & - & - \\
+SC\_9\_11\_\_pl\_4 & Yes & 6 & 13 & 192 & 30 & 72 & 89 & HFS(GNN) \\
+SC\_9\_11\_\_pl\_5 & Yes & 8 & 21 & 315 & 32 & 178 & 104 & HFS(GNN) \\
+SC\_9\_11\_\_pl\_7 & TO & - & - & - & - & - & - & - \\
+SC\_9\_11\_\_pl\_9 & TO & - & - & - & - & - & - & - \\
+\textbf{Averages:} & 7/20 (35\%) & 460.29 & 5466.86 & 93131.71 & 23.43 & 92570.71 & 536.57 & \\
+\bottomrule
+\end{tabular}
+\\[0.7cm]
+\subsection*{Combined (Solved 11/29)}
+\begin{tabular}{lcccccccc}
+\toprule
+Problem & Goal & Length & Nodes & Total (ms) & Init (ms) & Search (ms) & Overhead (ms) & Search \\
+\midrule
+SC\_10\_10\_\_pl\_10 & Yes & 11 & 17 & 220 & 19 & 59 & 141 & HFS(GNN) \\
+SC\_10\_10\_\_pl\_13 & Yes & 17 & 49 & 406 & 19 & 313 & 73 & HFS(GNN) \\
+SC\_10\_10\_\_pl\_17 & TO & - & - & - & - & - & - & - \\
+SC\_10\_10\_\_pl\_9 & Yes & 9 & 10 & 114 & 16 & 26 & 71 & HFS(GNN) \\
+SC\_10\_8\_\_pl\_10 & Yes & 10 & 10 & 153 & 16 & 47 & 89 & HFS(GNN) \\
+SC\_10\_8\_\_pl\_14 & Yes & 16 & 33 & 390 & 23 & 263 & 103 & HFS(GNN) \\
+SC\_10\_8\_\_pl\_15 & TO & - & - & - & - & - & - & - \\
+SC\_10\_8\_\_pl\_9 & TO & - & - & - & - & - & - & - \\
+SC\_4\_1\_\_pl\_3 & Yes & 3 & 4 & 57 & 10 & 7 & 39 & HFS(GNN) \\
+SC\_4\_1\_\_pl\_5 & TO & - & - & - & - & - & - & - \\
+SC\_4\_2\_\_pl\_5 & TO & - & - & - & - & - & - & - \\
+SC\_4\_2\_\_pl\_7 & TO & - & - & - & - & - & - & - \\
+SC\_4\_2\_\_pl\_8 & TO & - & - & - & - & - & - & - \\
+SC\_4\_3\_\_pl\_5 & TO & - & - & - & - & - & - & - \\
+SC\_4\_3\_\_pl\_6 & TO & - & - & - & - & - & - & - \\
+SC\_4\_3\_\_pl\_8 & TO & - & - & - & - & - & - & - \\
+SC\_4\_4\_\_pl\_5 & TO & - & - & - & - & - & - & - \\
+SC\_8\_10\_\_pl\_12 & TO & - & - & - & - & - & - & - \\
+SC\_8\_10\_\_pl\_6 & Yes & 483 & 4776 & 50264 & 11 & 49877 & 375 & HFS(GNN) \\
+SC\_8\_10\_\_pl\_8 & Yes & 1586 & 19087 & 329262 & 14 & 327850 & 1397 & HFS(GNN) \\
+SC\_8\_10\_\_pl\_9 & Yes & 1586 & 19087 & 321429 & 30 & 319547 & 1851 & HFS(GNN) \\
+SC\_9\_11\_\_pl\_10 & TO & - & - & - & - & - & - & - \\
+SC\_9\_11\_\_pl\_11 & TO & - & - & - & - & - & - & - \\
+SC\_9\_11\_\_pl\_4 & Yes & 6 & 13 & 192 & 30 & 72 & 89 & HFS(GNN) \\
+SC\_9\_11\_\_pl\_5 & Yes & 8 & 21 & 315 & 32 & 178 & 104 & HFS(GNN) \\
+SC\_9\_11\_\_pl\_6 & TO & - & - & - & - & - & - & - \\
+SC\_9\_11\_\_pl\_7 & TO & - & - & - & - & - & - & - \\
+SC\_9\_11\_\_pl\_8 & TO & - & - & - & - & - & - & - \\
+SC\_9\_11\_\_pl\_9 & TO & - & - & - & - & - & - & - \\
+\textbf{Averages:} & 11/29 (38\%) & 339.55 & 3918.82 & 63891.09 & 20 & 63476.27 & 393.82 & \\
+\bottomrule
+\end{tabular}
+\\[0.7cm]
+\end{document}

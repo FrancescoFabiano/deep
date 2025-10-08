@@ -1,0 +1,55 @@
+\documentclass{article}
+\usepackage{booktabs}
+\usepackage[margin=1in]{geometry}
+\begin{document}
+\section*{Results for domain: \texttt{Assemble}}
+\textbf{Search prefix:} 
+\\[0.5cm]
+\subsection*{Training (Solved 3/3)}
+\begin{tabular}{lcccccccc}
+\toprule
+Problem & Goal & Length & Nodes & Total (ms) & Init (ms) & Search (ms) & Overhead (ms) & Search \\
+\midrule
+Assemble\_B3\_\_pl\_5 & Yes & 5 & 14 & 378 & 1 & 266 & 110 & HFS(GNN) \\
+Assemble\_B5\_\_pl\_5 & Yes & 5 & 14 & 323 & 1 & 272 & 49 & HFS(GNN) \\
+Assemble\_B7\_\_pl\_5 & Yes & 5 & 14 & 8500 & 2 & 8402 & 95 & HFS(GNN) \\
+\textbf{Averages:} & 3/3 (100\%) & 5 & 14 & 3067 & 1.33 & 2980 & 84.67 & \\
+\bottomrule
+\end{tabular}
+\\[0.7cm]
+\subsection*{Test (Solved 6/7)}
+\begin{tabular}{lcccccccc}
+\toprule
+Problem & Goal & Length & Nodes & Total (ms) & Init (ms) & Search (ms) & Overhead (ms) & Search \\
+\midrule
+Assemble\_B10\_\_pl\_5 & TO & - & - & - & - & - & - & - \\
+Assemble\_B2\_\_pl\_5 & Yes & 5 & 14 & 269 & 1 & 211 & 56 & HFS(GNN) \\
+Assemble\_B4\_\_pl\_5 & Yes & 5 & 14 & 376 & 2 & 290 & 83 & HFS(GNN) \\
+Assemble\_B6\_\_pl\_5 & Yes & 5 & 14 & 1025 & 2 & 974 & 48 & HFS(GNN) \\
+Assemble\_B8\_\_pl\_5 & Yes & 5 & 14 & 35914 & 4 & 35815 & 94 & HFS(GNN) \\
+Assemble\_B9\_\_pl\_5 & Yes & 5 & 14 & 465844 & 2 & 465801 & 40 & HFS(GNN) \\
+Assemble\_C\_\_pl\_5 & Yes & 5 & 14 & 174 & 2 & 128 & 43 & HFS(GNN) \\
+\textbf{Averages:} & 6/7 (86\%) & 5 & 14 & 83933.67 & 2.17 & 83869.83 & 60.67 & \\
+\bottomrule
+\end{tabular}
+\\[0.7cm]
+\subsection*{Combined (Solved 9/10)}
+\begin{tabular}{lcccccccc}
+\toprule
+Problem & Goal & Length & Nodes & Total (ms) & Init (ms) & Search (ms) & Overhead (ms) & Search \\
+\midrule
+Assemble\_B10\_\_pl\_5 & TO & - & - & - & - & - & - & - \\
+Assemble\_B2\_\_pl\_5 & Yes & 5 & 14 & 269 & 1 & 211 & 56 & HFS(GNN) \\
+Assemble\_B3\_\_pl\_5 & Yes & 5 & 14 & 378 & 1 & 266 & 110 & HFS(GNN) \\
+Assemble\_B4\_\_pl\_5 & Yes & 5 & 14 & 376 & 2 & 290 & 83 & HFS(GNN) \\
+Assemble\_B5\_\_pl\_5 & Yes & 5 & 14 & 323 & 1 & 272 & 49 & HFS(GNN) \\
+Assemble\_B6\_\_pl\_5 & Yes & 5 & 14 & 1025 & 2 & 974 & 48 & HFS(GNN) \\
+Assemble\_B7\_\_pl\_5 & Yes & 5 & 14 & 8500 & 2 & 8402 & 95 & HFS(GNN) \\
+Assemble\_B8\_\_pl\_5 & Yes & 5 & 14 & 35914 & 4 & 35815 & 94 & HFS(GNN) \\
+Assemble\_B9\_\_pl\_5 & Yes & 5 & 14 & 465844 & 2 & 465801 & 40 & HFS(GNN) \\
+Assemble\_C\_\_pl\_5 & Yes & 5 & 14 & 174 & 2 & 128 & 43 & HFS(GNN) \\
+\textbf{Averages:} & 9/10 (90\%) & 5 & 14 & 56978.11 & 1.89 & 56906.56 & 68.67 & \\
+\bottomrule
+\end{tabular}
+\\[0.7cm]
+\end{document}

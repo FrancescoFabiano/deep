@@ -1,0 +1,55 @@
+\documentclass{article}
+\usepackage{booktabs}
+\usepackage[margin=1in]{geometry}
+\begin{document}
+\section*{Results for domain: \texttt{Assemble}}
+\textbf{Search prefix:} 
+\\[0.5cm]
+\subsection*{Training (Solved 3/3)}
+\begin{tabular}{lcccccccc}
+\toprule
+Problem & Goal & Length & Nodes & Total (ms) & Init (ms) & Search (ms) & Overhead (ms) & Search \\
+\midrule
+Assemble\_B3\_\_pl\_5 & Yes & 5 & 14 & 308 & 6 & 203 & 98 & A*(GNN) \\
+Assemble\_B5\_\_pl\_5 & Yes & 5 & 14 & 475 & 6 & 370 & 98 & A*(GNN) \\
+Assemble\_B7\_\_pl\_5 & Yes & 5 & 14 & 9894 & 5 & 9807 & 81 & A*(GNN) \\
+\textbf{Averages:} & 3/3 (100\%) & 5 & 14 & 3559 & 5.67 & 3460 & 92.33 & \\
+\bottomrule
+\end{tabular}
+\\[0.7cm]
+\subsection*{Test (Solved 5/7)}
+\begin{tabular}{lcccccccc}
+\toprule
+Problem & Goal & Length & Nodes & Total (ms) & Init (ms) & Search (ms) & Overhead (ms) & Search \\
+\midrule
+Assemble\_B10\_\_pl\_5 & TO & - & - & - & - & - & - & - \\
+Assemble\_B2\_\_pl\_5 & Yes & 5 & 14 & 285 & 5 & 200 & 79 & A*(GNN) \\
+Assemble\_B4\_\_pl\_5 & Yes & 5 & 14 & 330 & 4 & 236 & 89 & A*(GNN) \\
+Assemble\_B6\_\_pl\_5 & Yes & 5 & 14 & 1127 & 5 & 1047 & 74 & A*(GNN) \\
+Assemble\_B8\_\_pl\_5 & Yes & 5 & 14 & 48340 & 3 & 48286 & 50 & A*(GNN) \\
+Assemble\_B9\_\_pl\_5 & TO & - & - & - & - & - & - & - \\
+Assemble\_C\_\_pl\_5 & Yes & 5 & 14 & 238 & 2 & 180 & 55 & A*(GNN) \\
+\textbf{Averages:} & 5/7 (71\%) & 5 & 14 & 10064 & 3.8 & 9989.8 & 69.4 & \\
+\bottomrule
+\end{tabular}
+\\[0.7cm]
+\subsection*{Combined (Solved 8/10)}
+\begin{tabular}{lcccccccc}
+\toprule
+Problem & Goal & Length & Nodes & Total (ms) & Init (ms) & Search (ms) & Overhead (ms) & Search \\
+\midrule
+Assemble\_B10\_\_pl\_5 & TO & - & - & - & - & - & - & - \\
+Assemble\_B2\_\_pl\_5 & Yes & 5 & 14 & 285 & 5 & 200 & 79 & A*(GNN) \\
+Assemble\_B3\_\_pl\_5 & Yes & 5 & 14 & 308 & 6 & 203 & 98 & A*(GNN) \\
+Assemble\_B4\_\_pl\_5 & Yes & 5 & 14 & 330 & 4 & 236 & 89 & A*(GNN) \\
+Assemble\_B5\_\_pl\_5 & Yes & 5 & 14 & 475 & 6 & 370 & 98 & A*(GNN) \\
+Assemble\_B6\_\_pl\_5 & Yes & 5 & 14 & 1127 & 5 & 1047 & 74 & A*(GNN) \\
+Assemble\_B7\_\_pl\_5 & Yes & 5 & 14 & 9894 & 5 & 9807 & 81 & A*(GNN) \\
+Assemble\_B8\_\_pl\_5 & Yes & 5 & 14 & 48340 & 3 & 48286 & 50 & A*(GNN) \\
+Assemble\_B9\_\_pl\_5 & TO & - & - & - & - & - & - & - \\
+Assemble\_C\_\_pl\_5 & Yes & 5 & 14 & 238 & 2 & 180 & 55 & A*(GNN) \\
+\textbf{Averages:} & 8/10 (80\%) & 5 & 14 & 7624.62 & 4.5 & 7541.12 & 78 & \\
+\bottomrule
+\end{tabular}
+\\[0.7cm]
+\end{document}
