@@ -308,10 +308,8 @@ float GraphNN<StateRepr>::run_inference(const GraphTensor &tensor) const {
   } else {
     num_nodes = tensor.real_node_ids.size();
   }
-  Ort::Value real_node_ids_tensor;
-  Ort::Value real_node_ids_bitmask_tensor;
 
-  if (is_bitmask) {
+
     // Shape [num_nodes, bitmask_size]
     const std::array<int64_t, 2> bitmask_shape{
         static_cast<int64_t>(num_nodes), static_cast<int64_t>(m_bitmask_size)};
@@ -320,19 +318,19 @@ float GraphNN<StateRepr>::run_inference(const GraphTensor &tensor) const {
     uint8_t *bitmask_ptr =
         const_cast<uint8_t *>(tensor.real_node_ids_bitmask.data());
 
-    real_node_ids_bitmask_tensor = Ort::Value::CreateTensor<uint8_t>(
+    Ort::Value real_node_ids_bitmask_tensor = Ort::Value::CreateTensor<uint8_t>(
         memory_info, bitmask_ptr, tensor.real_node_ids_bitmask.size(),
         bitmask_shape.data(), bitmask_shape.size());
-  } else {
+
     // Construct real_node_ids tensor: shape [num_nodes, 1]
     std::vector<float> real_node_ids_float(tensor.real_node_ids.begin(),
                                            tensor.real_node_ids.end());
     const std::array<int64_t, 1> node_ids_shape{
         static_cast<int64_t>(real_node_ids_float.size())};
-    real_node_ids_tensor = Ort::Value::CreateTensor<float>(
+    Ort::Value real_node_ids_tensor = Ort::Value::CreateTensor<float>(
         memory_info, real_node_ids_float.data(), real_node_ids_float.size(),
         node_ids_shape.data(), node_ids_shape.size());
-  }
+
 
   // Construct edge_index tensor: shape [2, num_edges]
   std::vector<int64_t> edge_index_data(2 * num_edges);
