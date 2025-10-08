@@ -1,0 +1,93 @@
+\documentclass{article}
+\usepackage{booktabs}
+\usepackage[margin=1in]{geometry}
+\begin{document}
+\section*{Results for domain: \texttt{SC}}
+\textbf{Search prefix:} 
+\\[0.5cm]
+\subsection*{Training (Solved 9/9)}
+\begin{tabular}{lcccccccc}
+\toprule
+Problem & Goal & Length & Nodes & Total (ms) & Init (ms) & Search (ms) & Overhead (ms) & Search \\
+\midrule
+SC\_10\_10\_\_pl\_13 & Yes & 13 & 52 & 49 & 3 & 46 & 0 & BFS \\
+SC\_10\_8\_\_pl\_10 & Yes & 10 & 10 & 8 & 3 & 5 & 0 & BFS \\
+SC\_10\_8\_\_pl\_15 & Yes & 15 & 96 & 92 & 3 & 88 & 0 & BFS \\
+SC\_4\_1\_\_pl\_3 & Yes & 3 & 4 & 2 & 0 & 1 & 0 & BFS \\
+SC\_4\_2\_\_pl\_7 & Yes & 7 & 136 & 106 & 1 & 104 & 0 & BFS \\
+SC\_4\_3\_\_pl\_5 & Yes & 5 & 11 & 4 & 0 & 2 & 1 & BFS \\
+SC\_8\_10\_\_pl\_6 & Yes & 6 & 113 & 148 & 3 & 142 & 2 & BFS \\
+SC\_9\_11\_\_pl\_6 & Yes & 6 & 17 & 20 & 4 & 15 & 0 & BFS \\
+SC\_9\_11\_\_pl\_8 & Yes & 8 & 65 & 91 & 3 & 86 & 1 & BFS \\
+\textbf{Averages:} & 9/9 (100\%) & 8.11 & 56 & 57.78 & 2.22 & 54.33 & 0.44 & \\
+\bottomrule
+\end{tabular}
+\\[0.7cm]
+\subsection*{Test (Solved 19/20)}
+\begin{tabular}{lcccccccc}
+\toprule
+Problem & Goal & Length & Nodes & Total (ms) & Init (ms) & Search (ms) & Overhead (ms) & Search \\
+\midrule
+SC\_10\_10\_\_pl\_10 & Yes & 10 & 12 & 9 & 2 & 6 & 0 & BFS \\
+SC\_10\_10\_\_pl\_17 & Yes & 17 & 1075 & 1567 & 2 & 1532 & 32 & BFS \\
+SC\_10\_10\_\_pl\_9 & Yes & 9 & 10 & 7 & 1 & 4 & 1 & BFS \\
+SC\_10\_8\_\_pl\_14 & Yes & 14 & 51 & 40 & 1 & 38 & 0 & BFS \\
+SC\_10\_8\_\_pl\_9 & TO & - & - & - & - & - & - & - \\
+SC\_4\_1\_\_pl\_5 & Yes & 5 & 11 & 4 & 0 & 3 & 0 & BFS \\
+SC\_4\_2\_\_pl\_5 & Yes & 5 & 22 & 24 & 1 & 23 & 0 & BFS \\
+SC\_4\_2\_\_pl\_8 & Yes & 8 & 318 & 258 & 1 & 253 & 3 & BFS \\
+SC\_4\_3\_\_pl\_6 & Yes & 6 & 21 & 6 & 1 & 5 & 0 & BFS \\
+SC\_4\_3\_\_pl\_8 & Yes & 8 & 66 & 16 & 1 & 15 & 0 & BFS \\
+SC\_4\_4\_\_pl\_5 & Yes & 5 & 11 & 4 & 0 & 2 & 1 & BFS \\
+SC\_8\_10\_\_pl\_12 & Yes & 12 & 22486 & 34954 & 3 & 34048 & 902 & BFS \\
+SC\_8\_10\_\_pl\_8 & Yes & 8 & 413 & 571 & 3 & 555 & 12 & BFS \\
+SC\_8\_10\_\_pl\_9 & Yes & 9 & 1399 & 2267 & 3 & 2215 & 48 & BFS \\
+SC\_9\_11\_\_pl\_10 & Yes & 10 & 355 & 590 & 3 & 573 & 13 & BFS \\
+SC\_9\_11\_\_pl\_11 & Yes & 11 & 907 & 1617 & 3 & 1576 & 37 & BFS \\
+SC\_9\_11\_\_pl\_4 & Yes & 4 & 6 & 8 & 3 & 4 & 0 & BFS \\
+SC\_9\_11\_\_pl\_5 & Yes & 5 & 10 & 12 & 3 & 8 & 0 & BFS \\
+SC\_9\_11\_\_pl\_7 & Yes & 7 & 32 & 30 & 3 & 26 & 0 & BFS \\
+SC\_9\_11\_\_pl\_9 & Yes & 9 & 146 & 216 & 3 & 209 & 3 & BFS \\
+\textbf{Averages:} & 19/20 (95\%) & 8.53 & 1439.53 & 2221.05 & 1.95 & 2162.89 & 55.37 & \\
+\bottomrule
+\end{tabular}
+\\[0.7cm]
+\subsection*{Combined (Solved 28/29)}
+\begin{tabular}{lcccccccc}
+\toprule
+Problem & Goal & Length & Nodes & Total (ms) & Init (ms) & Search (ms) & Overhead (ms) & Search \\
+\midrule
+SC\_10\_10\_\_pl\_10 & Yes & 10 & 12 & 9 & 2 & 6 & 0 & BFS \\
+SC\_10\_10\_\_pl\_13 & Yes & 13 & 52 & 49 & 3 & 46 & 0 & BFS \\
+SC\_10\_10\_\_pl\_17 & Yes & 17 & 1075 & 1567 & 2 & 1532 & 32 & BFS \\
+SC\_10\_10\_\_pl\_9 & Yes & 9 & 10 & 7 & 1 & 4 & 1 & BFS \\
+SC\_10\_8\_\_pl\_10 & Yes & 10 & 10 & 8 & 3 & 5 & 0 & BFS \\
+SC\_10\_8\_\_pl\_14 & Yes & 14 & 51 & 40 & 1 & 38 & 0 & BFS \\
+SC\_10\_8\_\_pl\_15 & Yes & 15 & 96 & 92 & 3 & 88 & 0 & BFS \\
+SC\_10\_8\_\_pl\_9 & TO & - & - & - & - & - & - & - \\
+SC\_4\_1\_\_pl\_3 & Yes & 3 & 4 & 2 & 0 & 1 & 0 & BFS \\
+SC\_4\_1\_\_pl\_5 & Yes & 5 & 11 & 4 & 0 & 3 & 0 & BFS \\
+SC\_4\_2\_\_pl\_5 & Yes & 5 & 22 & 24 & 1 & 23 & 0 & BFS \\
+SC\_4\_2\_\_pl\_7 & Yes & 7 & 136 & 106 & 1 & 104 & 0 & BFS \\
+SC\_4\_2\_\_pl\_8 & Yes & 8 & 318 & 258 & 1 & 253 & 3 & BFS \\
+SC\_4\_3\_\_pl\_5 & Yes & 5 & 11 & 4 & 0 & 2 & 1 & BFS \\
+SC\_4\_3\_\_pl\_6 & Yes & 6 & 21 & 6 & 1 & 5 & 0 & BFS \\
+SC\_4\_3\_\_pl\_8 & Yes & 8 & 66 & 16 & 1 & 15 & 0 & BFS \\
+SC\_4\_4\_\_pl\_5 & Yes & 5 & 11 & 4 & 0 & 2 & 1 & BFS \\
+SC\_8\_10\_\_pl\_12 & Yes & 12 & 22486 & 34954 & 3 & 34048 & 902 & BFS \\
+SC\_8\_10\_\_pl\_6 & Yes & 6 & 113 & 148 & 3 & 142 & 2 & BFS \\
+SC\_8\_10\_\_pl\_8 & Yes & 8 & 413 & 571 & 3 & 555 & 12 & BFS \\
+SC\_8\_10\_\_pl\_9 & Yes & 9 & 1399 & 2267 & 3 & 2215 & 48 & BFS \\
+SC\_9\_11\_\_pl\_10 & Yes & 10 & 355 & 590 & 3 & 573 & 13 & BFS \\
+SC\_9\_11\_\_pl\_11 & Yes & 11 & 907 & 1617 & 3 & 1576 & 37 & BFS \\
+SC\_9\_11\_\_pl\_4 & Yes & 4 & 6 & 8 & 3 & 4 & 0 & BFS \\
+SC\_9\_11\_\_pl\_5 & Yes & 5 & 10 & 12 & 3 & 8 & 0 & BFS \\
+SC\_9\_11\_\_pl\_6 & Yes & 6 & 17 & 20 & 4 & 15 & 0 & BFS \\
+SC\_9\_11\_\_pl\_7 & Yes & 7 & 32 & 30 & 3 & 26 & 0 & BFS \\
+SC\_9\_11\_\_pl\_8 & Yes & 8 & 65 & 91 & 3 & 86 & 1 & BFS \\
+SC\_9\_11\_\_pl\_9 & Yes & 9 & 146 & 216 & 3 & 209 & 3 & BFS \\
+\textbf{Averages:} & 28/29 (97\%) & 8.39 & 994.82 & 1525.71 & 2.04 & 1485.14 & 37.71 & \\
+\bottomrule
+\end{tabular}
+\\[0.7cm]
+\end{document}
