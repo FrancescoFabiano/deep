@@ -11,13 +11,6 @@ from tqdm import tqdm
 
 from src.utils import preprocess_sample, KEYWORD_BITMASK
 
-COL_NAMES_CSV = [
-    "File Path",
-    "Depth",
-    "Distance From Goal",
-    "Goal",
-]
-
 
 class GraphDataPipeline:
 
@@ -59,6 +52,13 @@ class GraphDataPipeline:
         return list(folder.iterdir())
 
     def _read_csv(self, csv_path: Path) -> pd.DataFrame:
+        COL_NAMES_CSV = [
+            "File Path",
+            "Depth",
+            "Distance From Goal",
+            "Goal",
+        ]
+
         records = []
         with csv_path.open(newline="") as f:
             next(f)  # skip header
@@ -71,6 +71,30 @@ class GraphDataPipeline:
             df["Distance From Goal"], errors="coerce"
         )
         return df
+
+    """def _read_csv(self, csv_path: Path) -> pd.DataFrame:
+        COL_NAMES_CSV = [
+            "Path Hash",
+            "File Path",
+            "Path Mapped",
+            "Path Mapped Merged",
+            "Depth",
+            "Distance From Goal",
+            "Goal",
+        ]
+
+        records = []
+        with csv_path.open(newline="") as f:
+            next(f)  # skip header
+            for raw in f:
+                parts = raw.rstrip("\n").split(",", len(COL_NAMES_CSV) - 1)
+                records.append(parts)
+        df = pd.DataFrame(records, columns=COL_NAMES_CSV)
+        df["Depth"] = pd.to_numeric(df["Depth"], errors="coerce")
+        df["Distance From Goal"] = pd.to_numeric(
+            df["Distance From Goal"], errors="coerce"
+        )
+        return df"""
 
     def _my_train_test_split(self, df: pd.DataFrame, stratify_col="Distance From Goal"):
         # 1) pull out singleton labels
@@ -159,6 +183,7 @@ class GraphDataPipeline:
             if not csv:
                 continue
             df = self._read_csv(csv)
+            print(df)
             df = self._balance_dataset(df)
             train_df, test_df = self._my_train_test_split(df)
             train_frames.append(train_df)
