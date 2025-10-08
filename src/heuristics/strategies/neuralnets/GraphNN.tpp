@@ -309,28 +309,26 @@ float GraphNN<StateRepr>::run_inference(const GraphTensor &tensor) const {
     num_nodes = tensor.real_node_ids.size();
   }
 
+  // Shape [num_nodes, bitmask_size]
+  const std::array<int64_t, 2> bitmask_shape{
+      static_cast<int64_t>(num_nodes), static_cast<int64_t>(m_bitmask_size)};
 
-    // Shape [num_nodes, bitmask_size]
-    const std::array<int64_t, 2> bitmask_shape{
-        static_cast<int64_t>(num_nodes), static_cast<int64_t>(m_bitmask_size)};
+  // ONNX wants a non-const pointer even though it doesn't mutate it.
+  uint8_t *bitmask_ptr =
+      const_cast<uint8_t *>(tensor.real_node_ids_bitmask.data());
 
-    // ONNX wants a non-const pointer even though it doesn't mutate it.
-    uint8_t *bitmask_ptr =
-        const_cast<uint8_t *>(tensor.real_node_ids_bitmask.data());
+  Ort::Value real_node_ids_bitmask_tensor = Ort::Value::CreateTensor<uint8_t>(
+      memory_info, bitmask_ptr, tensor.real_node_ids_bitmask.size(),
+      bitmask_shape.data(), bitmask_shape.size());
 
-    Ort::Value real_node_ids_bitmask_tensor = Ort::Value::CreateTensor<uint8_t>(
-        memory_info, bitmask_ptr, tensor.real_node_ids_bitmask.size(),
-        bitmask_shape.data(), bitmask_shape.size());
-
-    // Construct real_node_ids tensor: shape [num_nodes, 1]
-    std::vector<float> real_node_ids_float(tensor.real_node_ids.begin(),
-                                           tensor.real_node_ids.end());
-    const std::array<int64_t, 1> node_ids_shape{
-        static_cast<int64_t>(real_node_ids_float.size())};
-    Ort::Value real_node_ids_tensor = Ort::Value::CreateTensor<float>(
-        memory_info, real_node_ids_float.data(), real_node_ids_float.size(),
-        node_ids_shape.data(), node_ids_shape.size());
-
+  // Construct real_node_ids tensor: shape [num_nodes, 1]
+  std::vector<float> real_node_ids_float(tensor.real_node_ids.begin(),
+                                         tensor.real_node_ids.end());
+  const std::array<int64_t, 1> node_ids_shape{
+      static_cast<int64_t>(real_node_ids_float.size())};
+  Ort::Value real_node_ids_tensor = Ort::Value::CreateTensor<float>(
+      memory_info, real_node_ids_float.data(), real_node_ids_float.size(),
+      node_ids_shape.data(), node_ids_shape.size());
 
   // Construct edge_index tensor: shape [2, num_edges]
   std::vector<int64_t> edge_index_data(2 * num_edges);
