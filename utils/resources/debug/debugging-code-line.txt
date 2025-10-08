@@ -23,6 +23,7 @@ utils/resources/debug/onnx_test/distance_estimator.onnx
 ./cmake-build-debug-nn/bin/deep exp/gnn_exp/batchCumulativeTest/CoinBox/Test/CoinBox_R__pl_13.txt -c -b --dataset_type BITMASK -s Astar -u GNN --GNN_model exp/gnn_exp/batchCumulativeTest/_models/CoinBox/distance_estimator.onnx --GNN_constant_file exp/gnn_exp/batchCumulativeTest/_models/CoinBox/distance_estimator_C.txt
 ./cmake-build-debug-nn/bin/deep exp/gnn_exp/batchCumulativeTest/CoinBox/Test/CoinBox_R__pl_10.txt -c -b
 
+./cmake-build-debug-nn/bin/deep exp/aaai26/batch3/SCRich/Training/SC_10_10__pl_6.txt -c -b -s Astar -u GNN --GNN_model exp/aaai26/batch3/_models/SCRich/distance_estimator.onnx --GNN_constant_file exp/aaai26/batch3/_models/SCRich/distance_estimator_C.txt
 
 
 
