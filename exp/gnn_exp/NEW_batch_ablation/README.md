@@ -21,10 +21,6 @@ This folder contains the batch of experiments used for the ablation study.
 
 All commands should be run from the root directory of the repository.
 
-> **Note**: To emulate the ablation study, you can skip data and model generation and directly run inference since models are already provided in the `_models` folder.  
-> To do so, run the same command with the extra arguments:  
-> `--skip_gen --skip_train`
->
 > To fully reproduce the results, run the script for each dataset type.  
 > If skipping data and model generation, make sure to place the correct model (identified by the subfolder it is stored in) in the `_models/{domain_name}` folder so that inference can locate it.
 
