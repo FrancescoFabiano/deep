@@ -130,3 +130,9 @@ The arguments to this script are:
   to enable GNN heuristics.
 - `--timeout` specifies the maximum time in
   seconds for each instance to be solved (`600` seconds in the example).
+
+
+### ISSUES
+
+The model generated for the `CC-Grapevine` folder did not log the seeds so reproducibility is not guaranteed.
+We are working to fix this issue, but it takes server time to train and test, not high priority.
