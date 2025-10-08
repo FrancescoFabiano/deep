@@ -204,7 +204,7 @@ ArgumentParser::ArgumentParser() : app("deep") {
       ->add_option("--dataset_min_creation", m_dataset_min_creation_threshold,
                    "Set the minimum number of valid nodes to create to create "
                    "a meaningful dataset.")
-      ->default_val("100");
+      ->default_val("10");
   dataset_group
       ->add_option(
           "--dataset_type", m_dataset_type_string,
