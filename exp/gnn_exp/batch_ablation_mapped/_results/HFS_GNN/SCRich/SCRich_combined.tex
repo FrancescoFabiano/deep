@@ -1,0 +1,53 @@
+\documentclass{article}
+\usepackage{booktabs}
+\usepackage[margin=1in]{geometry}
+\begin{document}
+\section*{Results for domain: \texttt{SCRich}}
+\textbf{Search prefix:} 
+\\[0.5cm]
+\subsection*{Training (Solved 1/3)}
+\begin{tabular}{lcccccccc}
+\toprule
+Problem & Goal & Length & Nodes & Total (ms) & Init (ms) & Search (ms) & Overhead (ms) & Search \\
+\midrule
+SC\_10\_10\_\_pl\_10 & TO & - & - & - & - & - & - & - \\
+SC\_10\_10\_\_pl\_6 & Yes & 255 & 2500 & 113052 & 21 & 112830 & 200 & HFS(GNN) \\
+SC\_10\_10\_\_pl\_7 & TO & - & - & - & - & - & - & - \\
+\textbf{Averages:} & 1/3 (33\%) & 255 & 2500 & 113052 & 21 & 112830 & 200 & \\
+\bottomrule
+\end{tabular}
+\\[0.7cm]
+\subsection*{Test (Solved 2/6)}
+\begin{tabular}{lcccccccc}
+\toprule
+Problem & Goal & Length & Nodes & Total (ms) & Init (ms) & Search (ms) & Overhead (ms) & Search \\
+\midrule
+SC\_10\_10\_\_pl\_13 & TO & - & - & - & - & - & - & - \\
+SC\_10\_10\_\_pl\_14 & TO & - & - & - & - & - & - & - \\
+SC\_10\_10\_\_pl\_17 & TO & - & - & - & - & - & - & - \\
+SC\_10\_10\_\_pl\_2 & Yes & 2 & 3 & 111 & 12 & 65 & 33 & HFS(GNN) \\
+SC\_10\_10\_\_pl\_3 & TO & - & - & - & - & - & - & - \\
+SC\_10\_10\_\_pl\_9 & Yes & 209 & 2527 & 82227 & 17 & 82108 & 101 & HFS(GNN) \\
+\textbf{Averages:} & 2/6 (33\%) & 105.5 & 1265 & 41169 & 14.5 & 41086.5 & 67 & \\
+\bottomrule
+\end{tabular}
+\\[0.7cm]
+\subsection*{Combined (Solved 3/9)}
+\begin{tabular}{lcccccccc}
+\toprule
+Problem & Goal & Length & Nodes & Total (ms) & Init (ms) & Search (ms) & Overhead (ms) & Search \\
+\midrule
+SC\_10\_10\_\_pl\_10 & TO & - & - & - & - & - & - & - \\
+SC\_10\_10\_\_pl\_13 & TO & - & - & - & - & - & - & - \\
+SC\_10\_10\_\_pl\_14 & TO & - & - & - & - & - & - & - \\
+SC\_10\_10\_\_pl\_17 & TO & - & - & - & - & - & - & - \\
+SC\_10\_10\_\_pl\_2 & Yes & 2 & 3 & 111 & 12 & 65 & 33 & HFS(GNN) \\
+SC\_10\_10\_\_pl\_3 & TO & - & - & - & - & - & - & - \\
+SC\_10\_10\_\_pl\_6 & Yes & 255 & 2500 & 113052 & 21 & 112830 & 200 & HFS(GNN) \\
+SC\_10\_10\_\_pl\_7 & TO & - & - & - & - & - & - & - \\
+SC\_10\_10\_\_pl\_9 & Yes & 209 & 2527 & 82227 & 17 & 82108 & 101 & HFS(GNN) \\
+\textbf{Averages:} & 3/9 (33\%) & 155.33 & 1676.67 & 65130 & 16.67 & 65001 & 111.33 & \\
+\bottomrule
+\end{tabular}
+\\[0.7cm]
+\end{document}
