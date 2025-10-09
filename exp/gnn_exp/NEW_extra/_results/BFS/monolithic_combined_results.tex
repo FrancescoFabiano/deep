@@ -1,0 +1,177 @@
+\documentclass{article}
+\usepackage{booktabs}
+\usepackage[a4paper, landscape, margin=1in]{geometry}
+\begin{document}
+\section*{Monolithic Combined Results (All Domains)}
+\textbf{Search prefix:} 
+\\[0.5cm]
+\subsection*{Training}
+\begin{tabular}{lllcccccccc}
+\toprule
+Mode & Domain & Problem & Goal & Length & Nodes & Total (ms) & Init (ms) & Search (ms) & Overhead (ms) & Search \\
+\midrule
+Training & CC-Grapevine & CC\_2\_2\_3\_\_pl\_4 & Yes & 4 & 17 & 35 & 2 & 33 & 0 & BFS \\
+Training & CC-Grapevine & CC\_2\_2\_3\_\_pl\_6 & Yes & 6 & 287 & 705 & 2 & 692 & 10 & BFS \\
+Training & CC-Grapevine & CC\_2\_2\_4\_\_pl\_5 & Yes & 5 & 170 & 1262 & 7 & 1226 & 28 & BFS \\
+Training & CC-Grapevine & CC\_2\_3\_4\_\_pl\_3 & Yes & 3 & 6 & 446 & 126 & 297 & 22 & BFS \\
+Training & CC-Grapevine & CC\_2\_3\_4\_\_pl\_7 & Yes & 7 & 8907 & 171616 & 135 & 148048 & 23432 & BFS \\
+Training & CC-Grapevine & CC\_3\_2\_3\_\_pl\_4 & Yes & 4 & 30 & 91 & 3 & 85 & 2 & BFS \\
+Training & CC-Grapevine & CC\_3\_2\_3\_\_pl\_5 & Yes & 5 & 178 & 549 & 2 & 521 & 25 & BFS \\
+Training & CC-Grapevine & CC\_3\_3\_3\_\_pl\_4 & Yes & 4 & 39 & 197 & 9 & 167 & 20 & BFS \\
+Training & CC-Grapevine & Grapevine\_3\_\_pl\_3 & Yes & 3 & 31 & 177 & 3 & 170 & 3 & BFS \\
+Training & CC-Grapevine & Grapevine\_3\_\_pl\_4 & Yes & 4 & 160 & 1374 & 3 & 1339 & 31 & BFS \\
+Training & CC-Grapevine & Grapevine\_4\_\_pl\_2 & Yes & 2 & 7 & 160 & 8 & 150 & 1 & BFS \\
+Training & CC-Grapevine & Grapevine\_5\_\_pl\_4 & Yes & 4 & 616 & 120092 & 22 & 109019 & 11050 & BFS \\
+\textbf{Averages:} & & & 12/12 (100\%) & 4.25 & 870.67 & 24725.33 & 26.83 & 21812.25 & 2885.33 & \\
+\bottomrule
+\end{tabular}
+\newpage
+\subsection*{Test}
+\begin{tabular}{lllcccccccc}
+\toprule
+Mode & Domain & Problem & Goal & Length & Nodes & Total (ms) & Init (ms) & Search (ms) & Overhead (ms) & Search \\
+\midrule
+Test & CC-Grapevine & CC\_2\_2\_3\_\_pl\_3 & Yes & 3 & 9 & 12 & 2 & 9 & 0 & BFS \\
+Test & CC-Grapevine & CC\_2\_2\_3\_\_pl\_5 & Yes & 5 & 78 & 117 & 2 & 113 & 1 & BFS \\
+Test & CC-Grapevine & CC\_2\_2\_3\_\_pl\_7 & Yes & 7 & 1065 & 1789 & 2 & 1748 & 38 & BFS \\
+Test & CC-Grapevine & CC\_2\_2\_3\_\_pl\_8 & Yes & 8 & 2065 & 3288 & 2 & 3211 & 74 & BFS \\
+Test & CC-Grapevine & CC\_2\_2\_4\_\_pl\_3 & Yes & 3 & 6 & 39 & 7 & 31 & 0 & BFS \\
+Test & CC-Grapevine & CC\_2\_2\_4\_\_pl\_4 & Yes & 4 & 24 & 155 & 7 & 145 & 2 & BFS \\
+Test & CC-Grapevine & CC\_2\_2\_4\_\_pl\_6 & Yes & 6 & 822 & 2139 & 7 & 2020 & 111 & BFS \\
+Test & CC-Grapevine & CC\_2\_2\_4\_\_pl\_7 & Yes & 7 & 4154 & 9578 & 7 & 7924 & 1646 & BFS \\
+Test & CC-Grapevine & CC\_2\_3\_4\_\_pl\_4 & Yes & 4 & 29 & 1757 & 81 & 1615 & 60 & BFS \\
+Test & CC-Grapevine & CC\_2\_3\_4\_\_pl\_5 & Yes & 5 & 275 & 11988 & 84 & 11139 & 764 & BFS \\
+Test & CC-Grapevine & CC\_2\_3\_4\_\_pl\_6 & Yes & 6 & 1601 & 32067 & 81 & 28465 & 3521 & BFS \\
+Test & CC-Grapevine & CC\_3\_2\_3\_\_pl\_3 & Yes & 3 & 8 & 20 & 3 & 16 & 0 & BFS \\
+Test & CC-Grapevine & CC\_3\_2\_3\_\_pl\_6 & Yes & 6 & 469 & 1287 & 2 & 1257 & 27 & BFS \\
+Test & CC-Grapevine & CC\_3\_2\_3\_\_pl\_7 & Yes & 7 & 3345 & 10559 & 4 & 9889 & 665 & BFS \\
+Test & CC-Grapevine & CC\_3\_3\_3\_\_pl\_3 & Yes & 3 & 8 & 77 & 9 & 66 & 1 & BFS \\
+Test & CC-Grapevine & CC\_3\_3\_3\_\_pl\_5 & Yes & 5 & 538 & 1832 & 9 & 1703 & 119 & BFS \\
+Test & CC-Grapevine & CC\_3\_3\_3\_\_pl\_6 & Yes & 6 & 1643 & 7964 & 10 & 6368 & 1585 & BFS \\
+Test & CC-Grapevine & CC\_3\_3\_3\_\_pl\_7 & Yes & 7 & 12149 & 46251 & 10 & 43837 & 2403 & BFS \\
+Test & CC-Grapevine & Coin\_in\_the\_Box\_\_pl\_2 & Yes & 2 & 2 & 4 & 3 & 0 & 0 & BFS \\
+Test & CC-Grapevine & Coin\_in\_the\_Box\_\_pl\_5 & Yes & 5 & 102 & 127 & 2 & 121 & 3 & BFS \\
+Test & CC-Grapevine & Coin\_in\_the\_Box\_\_pl\_7 & Yes & 7 & 2523 & 4710 & 3 & 4310 & 396 & BFS \\
+Test & CC-Grapevine & Grapevine\_3\_\_pl\_2 & Yes & 2 & 6 & 25 & 3 & 21 & 0 & BFS \\
+Test & CC-Grapevine & Grapevine\_3\_\_pl\_5 & Yes & 5 & 823 & 3279 & 3 & 3093 & 182 & BFS \\
+Test & CC-Grapevine & Grapevine\_3\_\_pl\_6 & Yes & 6 & 2118 & 6000 & 3 & 4934 & 1062 & BFS \\
+Test & CC-Grapevine & Grapevine\_3\_\_pl\_7 & Yes & 7 & 12008 & 26646 & 3 & 24869 & 1773 & BFS \\
+Test & CC-Grapevine & Grapevine\_4\_\_pl\_3 & Yes & 3 & 40 & 911 & 8 & 891 & 11 & BFS \\
+Test & CC-Grapevine & Grapevine\_4\_\_pl\_4 & Yes & 4 & 233 & 2077 & 8 & 1984 & 84 & BFS \\
+Test & CC-Grapevine & Grapevine\_4\_\_pl\_5 & Yes & 5 & 1449 & 10105 & 8 & 9350 & 746 & BFS \\
+Test & CC-Grapevine & Grapevine\_4\_\_pl\_6 & Yes & 6 & 4055 & 25563 & 8 & 23905 & 1649 & BFS \\
+Test & CC-Grapevine & Grapevine\_5\_\_pl\_2 & Yes & 2 & 8 & 1184 & 21 & 1112 & 50 & BFS \\
+Test & CC-Grapevine & Grapevine\_5\_\_pl\_3 & Yes & 3 & 71 & 13375 & 21 & 12776 & 577 & BFS \\
+Test & CC-Grapevine & Grapevine\_5\_\_pl\_5 & TO & - & - & - & - & - & - & - \\
+Test & CC-Grapevine & Grapevine\_5\_\_pl\_6 & TO & - & - & - & - & - & - & - \\
+Test & CC-Grapevine & SC\_10\_10\_\_pl\_10 & Yes & 10 & 12 & 11 & 3 & 7 & 0 & BFS \\
+Test & CC-Grapevine & SC\_10\_10\_\_pl\_17 & Yes & 17 & 1075 & 1684 & 3 & 1644 & 36 & BFS \\
+Test & CC-Grapevine & SC\_10\_10\_\_pl\_9 & Yes & 9 & 10 & 9 & 3 & 5 & 0 & BFS \\
+Test & CC-Grapevine & SC\_10\_8\_\_pl\_14 & Yes & 14 & 51 & 48 & 2 & 44 & 1 & BFS \\
+Test & CC-Grapevine & SC\_10\_8\_\_pl\_9 & TO & - & - & - & - & - & - & - \\
+Test & CC-Grapevine & SC\_4\_1\_\_pl\_5 & Yes & 5 & 11 & 3 & 0 & 2 & 0 & BFS \\
+Test & CC-Grapevine & SC\_4\_2\_\_pl\_5 & Yes & 5 & 22 & 20 & 1 & 19 & 0 & BFS \\
+Test & CC-Grapevine & SC\_4\_2\_\_pl\_8 & Yes & 8 & 318 & 314 & 1 & 308 & 4 & BFS \\
+Test & CC-Grapevine & SC\_4\_3\_\_pl\_6 & Yes & 6 & 21 & 6 & 1 & 5 & 0 & BFS \\
+Test & CC-Grapevine & SC\_4\_3\_\_pl\_8 & Yes & 8 & 66 & 17 & 1 & 16 & 0 & BFS \\
+Test & CC-Grapevine & SC\_4\_4\_\_pl\_5 & Yes & 5 & 11 & 4 & 1 & 3 & 0 & BFS \\
+Test & CC-Grapevine & SC\_8\_10\_\_pl\_12 & Yes & 12 & 22486 & 32874 & 3 & 31862 & 1008 & BFS \\
+Test & CC-Grapevine & SC\_8\_10\_\_pl\_8 & Yes & 8 & 413 & 635 & 3 & 618 & 13 & BFS \\
+Test & CC-Grapevine & SC\_8\_10\_\_pl\_9 & Yes & 9 & 1399 & 2377 & 3 & 2318 & 55 & BFS \\
+Test & CC-Grapevine & SC\_9\_11\_\_pl\_10 & Yes & 10 & 355 & 689 & 4 & 670 & 14 & BFS \\
+Test & CC-Grapevine & SC\_9\_11\_\_pl\_11 & Yes & 11 & 907 & 1756 & 3 & 1713 & 39 & BFS \\
+Test & CC-Grapevine & SC\_9\_11\_\_pl\_4 & Yes & 4 & 6 & 9 & 3 & 5 & 0 & BFS \\
+Test & CC-Grapevine & SC\_9\_11\_\_pl\_5 & Yes & 5 & 10 & 12 & 3 & 8 & 0 & BFS \\
+Test & CC-Grapevine & SC\_9\_11\_\_pl\_7 & Yes & 7 & 32 & 39 & 3 & 35 & 0 & BFS \\
+Test & CC-Grapevine & SC\_9\_11\_\_pl\_9 & Yes & 9 & 146 & 241 & 3 & 233 & 4 & BFS \\
+Test & CC-Grapevine & SC\_R\_10\_10\_\_pl\_13 & Yes & 13 & 22625 & 210204 & 6 & 209767 & 430 & BFS \\
+Test & CC-Grapevine & SC\_R\_10\_10\_\_pl\_14 & Yes & 14 & 47255 & 483958 & 6 & 483008 & 943 & BFS \\
+Test & CC-Grapevine & SC\_R\_10\_10\_\_pl\_17 & TO & - & - & - & - & - & - & - \\
+Test & CC-Grapevine & SC\_R\_10\_10\_\_pl\_2 & Yes & 2 & 5 & 63 & 6 & 37 & 19 & BFS \\
+Test & CC-Grapevine & SC\_R\_10\_10\_\_pl\_3 & Yes & 3 & 17 & 142 & 10 & 131 & 0 & BFS \\
+Test & CC-Grapevine & SC\_R\_10\_10\_\_pl\_9 & Yes & 9 & 1112 & 9769 & 4 & 9741 & 23 & BFS \\
+\textbf{Averages:} & & & 55/59 (93\%) & 6.45 & 2728.93 & 17632.89 & 9.07 & 17256.75 & 366.16 & \\
+\bottomrule
+\end{tabular}
+\newpage
+\subsection*{Combined (Training + Test)}
+\begin{tabular}{lllcccccccc}
+\toprule
+Mode & Domain & Problem & Goal & Length & Nodes & Total (ms) & Init (ms) & Search (ms) & Overhead (ms) & Search \\
+\midrule
+Test & CC-Grapevine & CC\_2\_2\_3\_\_pl\_3 & Yes & 3 & 9 & 12 & 2 & 9 & 0 & BFS \\
+Test & CC-Grapevine & CC\_2\_2\_3\_\_pl\_5 & Yes & 5 & 78 & 117 & 2 & 113 & 1 & BFS \\
+Test & CC-Grapevine & CC\_2\_2\_3\_\_pl\_7 & Yes & 7 & 1065 & 1789 & 2 & 1748 & 38 & BFS \\
+Test & CC-Grapevine & CC\_2\_2\_3\_\_pl\_8 & Yes & 8 & 2065 & 3288 & 2 & 3211 & 74 & BFS \\
+Test & CC-Grapevine & CC\_2\_2\_4\_\_pl\_3 & Yes & 3 & 6 & 39 & 7 & 31 & 0 & BFS \\
+Test & CC-Grapevine & CC\_2\_2\_4\_\_pl\_4 & Yes & 4 & 24 & 155 & 7 & 145 & 2 & BFS \\
+Test & CC-Grapevine & CC\_2\_2\_4\_\_pl\_6 & Yes & 6 & 822 & 2139 & 7 & 2020 & 111 & BFS \\
+Test & CC-Grapevine & CC\_2\_2\_4\_\_pl\_7 & Yes & 7 & 4154 & 9578 & 7 & 7924 & 1646 & BFS \\
+Test & CC-Grapevine & CC\_2\_3\_4\_\_pl\_4 & Yes & 4 & 29 & 1757 & 81 & 1615 & 60 & BFS \\
+Test & CC-Grapevine & CC\_2\_3\_4\_\_pl\_5 & Yes & 5 & 275 & 11988 & 84 & 11139 & 764 & BFS \\
+Test & CC-Grapevine & CC\_2\_3\_4\_\_pl\_6 & Yes & 6 & 1601 & 32067 & 81 & 28465 & 3521 & BFS \\
+Test & CC-Grapevine & CC\_3\_2\_3\_\_pl\_3 & Yes & 3 & 8 & 20 & 3 & 16 & 0 & BFS \\
+Test & CC-Grapevine & CC\_3\_2\_3\_\_pl\_6 & Yes & 6 & 469 & 1287 & 2 & 1257 & 27 & BFS \\
+Test & CC-Grapevine & CC\_3\_2\_3\_\_pl\_7 & Yes & 7 & 3345 & 10559 & 4 & 9889 & 665 & BFS \\
+Test & CC-Grapevine & CC\_3\_3\_3\_\_pl\_3 & Yes & 3 & 8 & 77 & 9 & 66 & 1 & BFS \\
+Test & CC-Grapevine & CC\_3\_3\_3\_\_pl\_5 & Yes & 5 & 538 & 1832 & 9 & 1703 & 119 & BFS \\
+Test & CC-Grapevine & CC\_3\_3\_3\_\_pl\_6 & Yes & 6 & 1643 & 7964 & 10 & 6368 & 1585 & BFS \\
+Test & CC-Grapevine & CC\_3\_3\_3\_\_pl\_7 & Yes & 7 & 12149 & 46251 & 10 & 43837 & 2403 & BFS \\
+Test & CC-Grapevine & Coin\_in\_the\_Box\_\_pl\_2 & Yes & 2 & 2 & 4 & 3 & 0 & 0 & BFS \\
+Test & CC-Grapevine & Coin\_in\_the\_Box\_\_pl\_5 & Yes & 5 & 102 & 127 & 2 & 121 & 3 & BFS \\
+Test & CC-Grapevine & Coin\_in\_the\_Box\_\_pl\_7 & Yes & 7 & 2523 & 4710 & 3 & 4310 & 396 & BFS \\
+Test & CC-Grapevine & Grapevine\_3\_\_pl\_2 & Yes & 2 & 6 & 25 & 3 & 21 & 0 & BFS \\
+Test & CC-Grapevine & Grapevine\_3\_\_pl\_5 & Yes & 5 & 823 & 3279 & 3 & 3093 & 182 & BFS \\
+Test & CC-Grapevine & Grapevine\_3\_\_pl\_6 & Yes & 6 & 2118 & 6000 & 3 & 4934 & 1062 & BFS \\
+Test & CC-Grapevine & Grapevine\_3\_\_pl\_7 & Yes & 7 & 12008 & 26646 & 3 & 24869 & 1773 & BFS \\
+Test & CC-Grapevine & Grapevine\_4\_\_pl\_3 & Yes & 3 & 40 & 911 & 8 & 891 & 11 & BFS \\
+Test & CC-Grapevine & Grapevine\_4\_\_pl\_4 & Yes & 4 & 233 & 2077 & 8 & 1984 & 84 & BFS \\
+Test & CC-Grapevine & Grapevine\_4\_\_pl\_5 & Yes & 5 & 1449 & 10105 & 8 & 9350 & 746 & BFS \\
+Test & CC-Grapevine & Grapevine\_4\_\_pl\_6 & Yes & 6 & 4055 & 25563 & 8 & 23905 & 1649 & BFS \\
+Test & CC-Grapevine & Grapevine\_5\_\_pl\_2 & Yes & 2 & 8 & 1184 & 21 & 1112 & 50 & BFS \\
+Test & CC-Grapevine & Grapevine\_5\_\_pl\_3 & Yes & 3 & 71 & 13375 & 21 & 12776 & 577 & BFS \\
+Test & CC-Grapevine & Grapevine\_5\_\_pl\_5 & TO & - & - & - & - & - & - & - \\
+Test & CC-Grapevine & Grapevine\_5\_\_pl\_6 & TO & - & - & - & - & - & - & - \\
+Test & CC-Grapevine & SC\_10\_10\_\_pl\_10 & Yes & 10 & 12 & 11 & 3 & 7 & 0 & BFS \\
+Test & CC-Grapevine & SC\_10\_10\_\_pl\_17 & Yes & 17 & 1075 & 1684 & 3 & 1644 & 36 & BFS \\
+Test & CC-Grapevine & SC\_10\_10\_\_pl\_9 & Yes & 9 & 10 & 9 & 3 & 5 & 0 & BFS \\
+Test & CC-Grapevine & SC\_10\_8\_\_pl\_14 & Yes & 14 & 51 & 48 & 2 & 44 & 1 & BFS \\
+Test & CC-Grapevine & SC\_10\_8\_\_pl\_9 & TO & - & - & - & - & - & - & - \\
+Test & CC-Grapevine & SC\_4\_1\_\_pl\_5 & Yes & 5 & 11 & 3 & 0 & 2 & 0 & BFS \\
+Test & CC-Grapevine & SC\_4\_2\_\_pl\_5 & Yes & 5 & 22 & 20 & 1 & 19 & 0 & BFS \\
+Test & CC-Grapevine & SC\_4\_2\_\_pl\_8 & Yes & 8 & 318 & 314 & 1 & 308 & 4 & BFS \\
+Test & CC-Grapevine & SC\_4\_3\_\_pl\_6 & Yes & 6 & 21 & 6 & 1 & 5 & 0 & BFS \\
+Test & CC-Grapevine & SC\_4\_3\_\_pl\_8 & Yes & 8 & 66 & 17 & 1 & 16 & 0 & BFS \\
+Test & CC-Grapevine & SC\_4\_4\_\_pl\_5 & Yes & 5 & 11 & 4 & 1 & 3 & 0 & BFS \\
+Test & CC-Grapevine & SC\_8\_10\_\_pl\_12 & Yes & 12 & 22486 & 32874 & 3 & 31862 & 1008 & BFS \\
+Test & CC-Grapevine & SC\_8\_10\_\_pl\_8 & Yes & 8 & 413 & 635 & 3 & 618 & 13 & BFS \\
+Test & CC-Grapevine & SC\_8\_10\_\_pl\_9 & Yes & 9 & 1399 & 2377 & 3 & 2318 & 55 & BFS \\
+Test & CC-Grapevine & SC\_9\_11\_\_pl\_10 & Yes & 10 & 355 & 689 & 4 & 670 & 14 & BFS \\
+Test & CC-Grapevine & SC\_9\_11\_\_pl\_11 & Yes & 11 & 907 & 1756 & 3 & 1713 & 39 & BFS \\
+Test & CC-Grapevine & SC\_9\_11\_\_pl\_4 & Yes & 4 & 6 & 9 & 3 & 5 & 0 & BFS \\
+Test & CC-Grapevine & SC\_9\_11\_\_pl\_5 & Yes & 5 & 10 & 12 & 3 & 8 & 0 & BFS \\
+Test & CC-Grapevine & SC\_9\_11\_\_pl\_7 & Yes & 7 & 32 & 39 & 3 & 35 & 0 & BFS \\
+Test & CC-Grapevine & SC\_9\_11\_\_pl\_9 & Yes & 9 & 146 & 241 & 3 & 233 & 4 & BFS \\
+Test & CC-Grapevine & SC\_R\_10\_10\_\_pl\_13 & Yes & 13 & 22625 & 210204 & 6 & 209767 & 430 & BFS \\
+Test & CC-Grapevine & SC\_R\_10\_10\_\_pl\_14 & Yes & 14 & 47255 & 483958 & 6 & 483008 & 943 & BFS \\
+Test & CC-Grapevine & SC\_R\_10\_10\_\_pl\_17 & TO & - & - & - & - & - & - & - \\
+Test & CC-Grapevine & SC\_R\_10\_10\_\_pl\_2 & Yes & 2 & 5 & 63 & 6 & 37 & 19 & BFS \\
+Test & CC-Grapevine & SC\_R\_10\_10\_\_pl\_3 & Yes & 3 & 17 & 142 & 10 & 131 & 0 & BFS \\
+Test & CC-Grapevine & SC\_R\_10\_10\_\_pl\_9 & Yes & 9 & 1112 & 9769 & 4 & 9741 & 23 & BFS \\
+Training & CC-Grapevine & CC\_2\_2\_3\_\_pl\_4 & Yes & 4 & 17 & 35 & 2 & 33 & 0 & BFS \\
+Training & CC-Grapevine & CC\_2\_2\_3\_\_pl\_6 & Yes & 6 & 287 & 705 & 2 & 692 & 10 & BFS \\
+Training & CC-Grapevine & CC\_2\_2\_4\_\_pl\_5 & Yes & 5 & 170 & 1262 & 7 & 1226 & 28 & BFS \\
+Training & CC-Grapevine & CC\_2\_3\_4\_\_pl\_3 & Yes & 3 & 6 & 446 & 126 & 297 & 22 & BFS \\
+Training & CC-Grapevine & CC\_2\_3\_4\_\_pl\_7 & Yes & 7 & 8907 & 171616 & 135 & 148048 & 23432 & BFS \\
+Training & CC-Grapevine & CC\_3\_2\_3\_\_pl\_4 & Yes & 4 & 30 & 91 & 3 & 85 & 2 & BFS \\
+Training & CC-Grapevine & CC\_3\_2\_3\_\_pl\_5 & Yes & 5 & 178 & 549 & 2 & 521 & 25 & BFS \\
+Training & CC-Grapevine & CC\_3\_3\_3\_\_pl\_4 & Yes & 4 & 39 & 197 & 9 & 167 & 20 & BFS \\
+Training & CC-Grapevine & Grapevine\_3\_\_pl\_3 & Yes & 3 & 31 & 177 & 3 & 170 & 3 & BFS \\
+Training & CC-Grapevine & Grapevine\_3\_\_pl\_4 & Yes & 4 & 160 & 1374 & 3 & 1339 & 31 & BFS \\
+Training & CC-Grapevine & Grapevine\_4\_\_pl\_2 & Yes & 2 & 7 & 160 & 8 & 150 & 1 & BFS \\
+Training & CC-Grapevine & Grapevine\_5\_\_pl\_4 & Yes & 4 & 616 & 120092 & 22 & 109019 & 11050 & BFS \\
+\textbf{Averages:} & & & 67/71 (94\%) & 6.06 & 2396.1 & 18903.18 & 12.25 & 18072.66 & 817.36 & \\
+\bottomrule
+\end{tabular}
+\newpage
+\end{document}
