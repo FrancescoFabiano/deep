@@ -1,0 +1,67 @@
+\documentclass{article}
+\usepackage{booktabs}
+\usepackage[margin=1in]{geometry}
+\begin{document}
+\section*{Results for domain: \texttt{Grapevine}}
+\textbf{Search prefix:} 
+\\[0.5cm]
+\subsection*{Training (Solved 4/4)}
+\begin{tabular}{lcccccccc}
+\toprule
+Problem & Goal & Length & Nodes & Total (ms) & Init (ms) & Search (ms) & Overhead (ms) & Search \\
+\midrule
+Grapevine\_3\_\_pl\_3 & Yes & 3 & 31 & 117 & 5 & 109 & 2 & BFS \\
+Grapevine\_3\_\_pl\_4 & Yes & 4 & 160 & 667 & 5 & 646 & 15 & BFS \\
+Grapevine\_4\_\_pl\_2 & Yes & 2 & 7 & 101 & 7 & 92 & 1 & BFS \\
+Grapevine\_5\_\_pl\_4 & Yes & 4 & 616 & 61732 & 19 & 56219 & 5493 & BFS \\
+\textbf{Averages:} & 4/4 (100\%) & 3.25 & 203.5 & 15654.25 & 9 & 14266.5 & 1377.75 & \\
+\bottomrule
+\end{tabular}
+\\[0.7cm]
+\subsection*{Test (Solved 10/12)}
+\begin{tabular}{lcccccccc}
+\toprule
+Problem & Goal & Length & Nodes & Total (ms) & Init (ms) & Search (ms) & Overhead (ms) & Search \\
+\midrule
+Grapevine\_3\_\_pl\_2 & Yes & 2 & 6 & 22 & 5 & 16 & 0 & BFS \\
+Grapevine\_3\_\_pl\_5 & Yes & 5 & 823 & 2028 & 5 & 1902 & 120 & BFS \\
+Grapevine\_3\_\_pl\_6 & Yes & 6 & 2118 & 4353 & 5 & 3468 & 879 & BFS \\
+Grapevine\_3\_\_pl\_7 & Yes & 7 & 12008 & 19763 & 7 & 18012 & 1743 & BFS \\
+Grapevine\_4\_\_pl\_3 & Yes & 3 & 40 & 612 & 10 & 593 & 8 & BFS \\
+Grapevine\_4\_\_pl\_4 & Yes & 4 & 233 & 1429 & 11 & 1346 & 71 & BFS \\
+Grapevine\_4\_\_pl\_5 & Yes & 5 & 1449 & 7077 & 10 & 6326 & 740 & BFS \\
+Grapevine\_4\_\_pl\_6 & Yes & 6 & 4055 & 18234 & 9 & 16768 & 1456 & BFS \\
+Grapevine\_5\_\_pl\_2 & Yes & 2 & 8 & 815 & 20 & 755 & 39 & BFS \\
+Grapevine\_5\_\_pl\_3 & Yes & 3 & 71 & 11056 & 19 & 10501 & 535 & BFS \\
+Grapevine\_5\_\_pl\_5 & TO & - & - & - & - & - & - & - \\
+Grapevine\_5\_\_pl\_6 & TO & - & - & - & - & - & - & - \\
+\textbf{Averages:} & 10/12 (83\%) & 4.3 & 2081.1 & 6538.9 & 10.1 & 5968.7 & 559.1 & \\
+\bottomrule
+\end{tabular}
+\\[0.7cm]
+\subsection*{Combined (Solved 14/16)}
+\begin{tabular}{lcccccccc}
+\toprule
+Problem & Goal & Length & Nodes & Total (ms) & Init (ms) & Search (ms) & Overhead (ms) & Search \\
+\midrule
+Grapevine\_3\_\_pl\_2 & Yes & 2 & 6 & 22 & 5 & 16 & 0 & BFS \\
+Grapevine\_3\_\_pl\_3 & Yes & 3 & 31 & 117 & 5 & 109 & 2 & BFS \\
+Grapevine\_3\_\_pl\_4 & Yes & 4 & 160 & 667 & 5 & 646 & 15 & BFS \\
+Grapevine\_3\_\_pl\_5 & Yes & 5 & 823 & 2028 & 5 & 1902 & 120 & BFS \\
+Grapevine\_3\_\_pl\_6 & Yes & 6 & 2118 & 4353 & 5 & 3468 & 879 & BFS \\
+Grapevine\_3\_\_pl\_7 & Yes & 7 & 12008 & 19763 & 7 & 18012 & 1743 & BFS \\
+Grapevine\_4\_\_pl\_2 & Yes & 2 & 7 & 101 & 7 & 92 & 1 & BFS \\
+Grapevine\_4\_\_pl\_3 & Yes & 3 & 40 & 612 & 10 & 593 & 8 & BFS \\
+Grapevine\_4\_\_pl\_4 & Yes & 4 & 233 & 1429 & 11 & 1346 & 71 & BFS \\
+Grapevine\_4\_\_pl\_5 & Yes & 5 & 1449 & 7077 & 10 & 6326 & 740 & BFS \\
+Grapevine\_4\_\_pl\_6 & Yes & 6 & 4055 & 18234 & 9 & 16768 & 1456 & BFS \\
+Grapevine\_5\_\_pl\_2 & Yes & 2 & 8 & 815 & 20 & 755 & 39 & BFS \\
+Grapevine\_5\_\_pl\_3 & Yes & 3 & 71 & 11056 & 19 & 10501 & 535 & BFS \\
+Grapevine\_5\_\_pl\_4 & Yes & 4 & 616 & 61732 & 19 & 56219 & 5493 & BFS \\
+Grapevine\_5\_\_pl\_5 & TO & - & - & - & - & - & - & - \\
+Grapevine\_5\_\_pl\_6 & TO & - & - & - & - & - & - & - \\
+\textbf{Averages:} & 14/16 (88\%) & 4 & 1544.64 & 9143.29 & 9.79 & 8339.5 & 793 & \\
+\bottomrule
+\end{tabular}
+\\[0.7cm]
+\end{document}
