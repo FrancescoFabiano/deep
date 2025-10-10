@@ -1,5 +1,0 @@
-[0] Config.pm:328> INFO - This is Biber 2.21
-[0] Config.pm:331> INFO - Logfile is 'combined_results_Assemble_CC_CoinBox_SC_SCRich_Test.blg'
-[118] biber-MSWIN64:342> INFO - === 
-[611] Utils.pm:479> ERROR - Cannot find 'combined_results_Assemble_CC_CoinBox_SC_SCRich_Test.bcf'!
-[611] Biber.pm:137> INFO - ERRORS: 1
