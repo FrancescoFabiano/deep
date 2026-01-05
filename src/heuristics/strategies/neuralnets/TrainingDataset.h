@@ -293,17 +293,21 @@ private:
    * \param state Current state.
    * \param depth Current depth.
    * \param actions Set of actions.
+   * \param predecessor
+   * \param action
    * \return Score.
    */
-  int dfs_worker(State<StateRepr> &state, size_t depth, ActionsSet *actions);
+  int dfs_worker(State<StateRepr> &state, size_t depth, ActionsSet *actions, const std::string &predecessor, const std::string &action);
 
   /**
    * \brief Format a row for the dataset and insert it to the dataset itself.
-   * \param state The state.
+   * \param base_filename
    * \param depth The depth.
    * \param score The score.
+   * \param predecessor
+   * \param action
    */
-  void add_to_dataset(const State<StateRepr> &state, size_t depth, int score);
+  void add_to_dataset(const std::string &base_filename, size_t depth, int score, const std::string &predecessor, const std::string &action);
 
   /**
    * \brief Print state for dataset.
