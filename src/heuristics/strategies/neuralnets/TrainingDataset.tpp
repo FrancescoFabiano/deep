@@ -303,7 +303,9 @@ bool TrainingDataset<StateRepr>::generate_dataset() {
                                    "Error opening file: " + m_filepath_csv);
     std::exit(static_cast<int>(ExitHandler::ExitCode::ExitForCompiler));
   }
-  result << "File Path,Depth,Distance From Goal,Goal,File Path Predecessor,Action" << std::endl;
+  result
+      << "File Path,Depth,Distance From Goal,Goal,File Path Predecessor,Action"
+      << std::endl;
   result.close();
 
   return search_space_exploration();
@@ -639,8 +641,8 @@ template <StateRepresentation StateRepr>
 int TrainingDataset<StateRepr>::dfs_worker(State<StateRepr> &state,
                                            const size_t depth,
                                            ActionsSet *actions,
-                                           const std::string & predecessor,
-                                           const std::string & action) {
+                                           const std::string &predecessor,
+                                           const std::string &action) {
 #ifdef DEBUG
   if (m_current_nodes > 0 && m_threshold_node_generation > 0) {
     int percent = (m_current_nodes * 100) / m_threshold_node_generation;
@@ -662,7 +664,6 @@ int TrainingDataset<StateRepr>::dfs_worker(State<StateRepr> &state,
 #endif
 
   auto this_state_filename = print_state_for_dataset(state);
-
 
   if (m_current_nodes >= m_threshold_node_generation ||
       m_added_to_dataset >= m_max_threshold_node_creation) {
@@ -739,7 +740,8 @@ int TrainingDataset<StateRepr>::dfs_worker(State<StateRepr> &state,
         //           << depth << " with score " << current_score
         //           << " and discard probability " << discard_probability
         //           << std::endl;
-        add_to_dataset(this_state_filename, depth, current_score, predecessor, action);
+        add_to_dataset(this_state_filename, depth, current_score, predecessor,
+                       action);
         m_states_scores[state] = current_score;
         return current_score;
       }
@@ -758,7 +760,9 @@ int TrainingDataset<StateRepr>::dfs_worker(State<StateRepr> &state,
           next_state.contract_with_bisimulation();
         }
 
-        const int child_score = dfs_worker(next_state, depth + 1, actions, this_state_filename, action.get_name());
+        const int child_score =
+            dfs_worker(next_state, depth + 1, actions, this_state_filename,
+                       action.get_name());
 
         if (child_score < best_successor_score) {
           best_successor_score = child_score;
@@ -771,23 +775,21 @@ int TrainingDataset<StateRepr>::dfs_worker(State<StateRepr> &state,
     current_score = best_successor_score + 1;
   }
 
-  add_to_dataset(this_state_filename, depth, current_score, predecessor, action);
+  add_to_dataset(this_state_filename, depth, current_score, predecessor,
+                 action);
   m_states_scores[state] = current_score;
 
   return current_score;
 }
 
 template <StateRepresentation StateRepr>
-void TrainingDataset<StateRepr>::add_to_dataset(const std::string &base_filename,
-                                                const size_t depth,
-                                                const int score,
-                                                const std::string & predecessor,
-                                                const std::string & action) {
+void TrainingDataset<StateRepr>::add_to_dataset(
+    const std::string &base_filename, const size_t depth, const int score,
+    const std::string &predecessor, const std::string &action) {
   constexpr bool minimized_dataset = true;
 
   if (minimized_dataset && score >= m_failed_state) {
     return;
-
   }
 
   m_added_to_dataset++;
@@ -797,9 +799,8 @@ void TrainingDataset<StateRepr>::add_to_dataset(const std::string &base_filename
   std::string filename = format_name(base_filename);
   std::string predecessor_filename = format_name(predecessor);
 
-  ///@TODO change name of action to number (use alphabetical ordering so I can convert back after inference)
-
-  ss << filename << "," << depth << "," << score << "," << m_goal_file_path << "," << predecessor_filename << "," << m_action_to_id[action];
+  ss << filename << "," << depth << "," << score << "," << m_goal_file_path
+     << "," << predecessor_filename << "," << action;
 
   std::ofstream result_file(m_filepath_csv, std::ofstream::app);
   result_file << ss.str() << "\n";
