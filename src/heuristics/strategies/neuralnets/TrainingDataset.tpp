@@ -251,6 +251,12 @@ TrainingDataset<StateRepr>::TrainingDataset() {
     }
   }
 
+  m_action_to_id["no-op"] = 0;
+  int action_counter = 1;
+  for (const auto &act : Domain::get_instance().get_actions()) {
+    m_action_to_id[act.get_name()] = action_counter++;
+  }
+
   m_goal_file_path = m_folder + "goal_tree.dot";
 
   m_shift_state_ids =
@@ -791,7 +797,9 @@ void TrainingDataset<StateRepr>::add_to_dataset(const std::string &base_filename
   std::string filename = format_name(base_filename);
   std::string predecessor_filename = format_name(predecessor);
 
-  ss << filename << "," << depth << "," << score << "," << m_goal_file_path << "," << predecessor_filename << "," << action;
+  ///@TODO change name of action to number (use alphabetical ordering so I can convert back after inference)
+
+  ss << filename << "," << depth << "," << score << "," << m_goal_file_path << "," << predecessor_filename << "," << m_action_to_id[action];
 
   std::ofstream result_file(m_filepath_csv, std::ofstream::app);
   result_file << ss.str() << "\n";

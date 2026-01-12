@@ -150,6 +150,8 @@ private:
       m_fluent_to_id; ///< Mapping from fluent to unique ID
   std::unordered_map<Agent, size_t>
       m_agent_to_id; ///< Mapping from agent to unique ID
+    std::unordered_map<std::string, size_t>
+    m_action_to_id; ///< Mapping from action name to unique ID. This is not for the print in the dot but for the print in the CSV file
   std::string m_goal_string;
   ///< String representation of the goal tree for
   ///< efficient printing
