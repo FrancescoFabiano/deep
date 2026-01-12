@@ -800,7 +800,7 @@ void TrainingDataset<StateRepr>::add_to_dataset(
   std::string predecessor_filename = format_name(predecessor);
 
   ss << filename << "," << depth << "," << score << "," << m_goal_file_path
-     << "," << predecessor_filename << "," << action;
+     << "," << predecessor_filename << "," << m_action_to_id[action];
 
   std::ofstream result_file(m_filepath_csv, std::ofstream::app);
   result_file << ss.str() << "\n";
