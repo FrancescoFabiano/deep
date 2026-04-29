@@ -34,9 +34,9 @@ pivot = pivot.sort_index()
 pivot = pivot[sorted(pivot.columns)]
 
 # --- PLOT ---
-plt.figure(figsize=(10, 8), dpi=300)
+plt.figure(figsize=(10, 8), dpi=500)
 
-plt.imshow(pivot, aspect="auto")
+plt.imshow(pivot, aspect="auto", cmap="plasma_r")
 
 plt.xticks(range(len(pivot.columns)), pivot.columns)
 plt.yticks(range(len(pivot.index)), pivot.index)

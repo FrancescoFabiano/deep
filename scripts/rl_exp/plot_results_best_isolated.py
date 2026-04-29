@@ -121,9 +121,9 @@ def plot_best_fringe(data, name):
     # PLOT
     # --------------------------------------------------
 
-    plt.figure(figsize=(10, 8), dpi=300)
+    plt.figure(figsize=(10, 8), dpi=500)
 
-    im = plt.imshow(pivot, aspect="auto")
+    im = plt.imshow(pivot, aspect="auto", cmap="plasma_r")
 
     plt.xticks([0], ["Best Fringe"], fontsize=10)
     plt.yticks(range(len(pivot.index)), pivot.index, fontsize=8)

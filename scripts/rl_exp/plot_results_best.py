@@ -99,8 +99,8 @@ def plot_heatmap(data, name):
     pivot.index = [label_map[a] for a in pivot.index]
 
     # --- plot ---
-    plt.figure(figsize=(10, 8), dpi=300)
-    im = plt.imshow(pivot, aspect="auto")
+    plt.figure(figsize=(10, 8), dpi=500)
+    im = plt.imshow(pivot, aspect="auto", cmap="plasma_r")
 
     plt.xticks(range(len(pivot.columns)), pivot.columns, fontsize=10)
     plt.yticks(range(len(pivot.index)), pivot.index, fontsize=8)
