@@ -15,7 +15,7 @@ OUT.mkdir(exist_ok=True)
 
 #FRINGES = [8, 16, 32, 64]
 #STRICT_FLAGS = [True, False]
-FRINGES = [16, 32]
+FRINGES = [32, 64]
 STRICT_FLAGS = [True, False]
 
 def run(label, args, split_path, prefix, fringe, strict):
