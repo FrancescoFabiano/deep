@@ -3118,6 +3118,12 @@ def _run_single_frontier_size(
                         best_eval_split=best_eval_split,
                         best_metrics_by_split=best_metrics_by_split,
                     )
+                    if bool(args.export_onnx):
+                        trainer.to_onnx(
+                            onnx_path,
+                            node_input_dim=node_input_dim,
+                            onnx_frontier_size=int(frontier_size),
+                        )
                 else:
                     no_improve_eval_steps += 1
 

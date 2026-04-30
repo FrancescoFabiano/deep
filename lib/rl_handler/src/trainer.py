@@ -991,83 +991,90 @@ class RLFrontierTrainer:
             node_features_dummy = torch.zeros((n_nodes,), dtype=torch.int64)
         else:
             node_features_dummy = torch.zeros((n_nodes, raw_node_input_dim), dtype=node_tensor_dtype)
-        if self.kind_of_data == "separated" and self.model.use_goal_separate_input:
-            wrapper = OnnxFrontierPolicySeparatedWrapper(self.model).eval().cpu()
-            n_goal_nodes, n_goal_edges = 6, 8
-            if dataset_type == "HASHED":
-                goal_node_features_dummy = torch.zeros((n_goal_nodes,), dtype=torch.int64)
-            else:
-                goal_node_features_dummy = torch.zeros(
-                    (n_goal_nodes, raw_node_input_dim),
-                    dtype=node_tensor_dtype,
+        model_was_training = bool(self.model.training)
+        model_device = self._model_device()
+        try:
+            if self.kind_of_data == "separated" and self.model.use_goal_separate_input:
+                wrapper = OnnxFrontierPolicySeparatedWrapper(self.model).eval().cpu()
+                n_goal_nodes, n_goal_edges = 6, 8
+                if dataset_type == "HASHED":
+                    goal_node_features_dummy = torch.zeros((n_goal_nodes,), dtype=torch.int64)
+                else:
+                    goal_node_features_dummy = torch.zeros(
+                        (n_goal_nodes, raw_node_input_dim),
+                        dtype=node_tensor_dtype,
+                    )
+                dummy_inputs = (
+                    node_features_dummy,
+                    torch.zeros((2, n_edges), dtype=torch.int64),
+                    torch.zeros((n_edges,), dtype=torch.int64),
+                    torch.arange(n_nodes, dtype=torch.int64) % n_candidates,
+                    goal_node_features_dummy,
+                    torch.zeros((2, n_goal_edges), dtype=torch.int64),
+                    torch.zeros((n_goal_edges,), dtype=torch.int64),
+                    torch.zeros((n_goal_nodes,), dtype=torch.int64),
+                    torch.ones((n_candidates,), dtype=torch.uint8),
                 )
-            dummy_inputs = (
-                node_features_dummy,
-                torch.zeros((2, n_edges), dtype=torch.int64),
-                torch.zeros((n_edges,), dtype=torch.int64),
-                torch.arange(n_nodes, dtype=torch.int64) % n_candidates,
-                goal_node_features_dummy,
-                torch.zeros((2, n_goal_edges), dtype=torch.int64),
-                torch.zeros((n_goal_edges,), dtype=torch.int64),
-                torch.zeros((n_goal_nodes,), dtype=torch.int64),
-                torch.ones((n_candidates,), dtype=torch.uint8),
-            )
-            input_names = [
-                "node_features",
-                "edge_index",
-                "edge_attr",
-                "membership",
-                "goal_node_features",
-                "goal_edge_index",
-                "goal_edge_attr",
-                "goal_batch",
-                "mask",
-            ]
-            dynamic_axes = {
-                "node_features": {0: "N"},
-                "edge_index": {1: "E"},
-                "edge_attr": {0: "E"},
-                "membership": {0: "N"},
-                "goal_node_features": {0: "GN"},
-                "goal_edge_index": {1: "GE"},
-                "goal_edge_attr": {0: "GE"},
-                "goal_batch": {0: "GN"},
-                "mask": {0: "F"},
-                "logits": {0: "F"},
-            }
-        else:
-            wrapper = OnnxFrontierPolicyWrapper(self.model).eval().cpu()
-            dummy_inputs = (
-                node_features_dummy,
-                torch.zeros((2, n_edges), dtype=torch.int64),
-                torch.zeros((n_edges,), dtype=torch.int64),
-                torch.arange(n_nodes, dtype=torch.int64) % n_candidates,
-                torch.ones((n_candidates,), dtype=torch.uint8),
-            )
-            input_names = [
-                "node_features",
-                "edge_index",
-                "edge_attr",
-                "membership",
-                "mask",
-            ]
-            dynamic_axes = {
-                "node_features": {0: "N"},
-                "edge_index": {1: "E"},
-                "edge_attr": {0: "E"},
-                "membership": {0: "N"},
-                "mask": {0: "F"},
-                "logits": {0: "F"},
-            }
+                input_names = [
+                    "node_features",
+                    "edge_index",
+                    "edge_attr",
+                    "membership",
+                    "goal_node_features",
+                    "goal_edge_index",
+                    "goal_edge_attr",
+                    "goal_batch",
+                    "mask",
+                ]
+                dynamic_axes = {
+                    "node_features": {0: "N"},
+                    "edge_index": {1: "E"},
+                    "edge_attr": {0: "E"},
+                    "membership": {0: "N"},
+                    "goal_node_features": {0: "GN"},
+                    "goal_edge_index": {1: "GE"},
+                    "goal_edge_attr": {0: "GE"},
+                    "goal_batch": {0: "GN"},
+                    "mask": {0: "F"},
+                    "logits": {0: "F"},
+                }
+            else:
+                wrapper = OnnxFrontierPolicyWrapper(self.model).eval().cpu()
+                dummy_inputs = (
+                    node_features_dummy,
+                    torch.zeros((2, n_edges), dtype=torch.int64),
+                    torch.zeros((n_edges,), dtype=torch.int64),
+                    torch.arange(n_nodes, dtype=torch.int64) % n_candidates,
+                    torch.ones((n_candidates,), dtype=torch.uint8),
+                )
+                input_names = [
+                    "node_features",
+                    "edge_index",
+                    "edge_attr",
+                    "membership",
+                    "mask",
+                ]
+                dynamic_axes = {
+                    "node_features": {0: "N"},
+                    "edge_index": {1: "E"},
+                    "edge_attr": {0: "E"},
+                    "membership": {0: "N"},
+                    "mask": {0: "F"},
+                    "logits": {0: "F"},
+                }
 
-        torch.onnx.export(
-            wrapper,
-            dummy_inputs,
-            out_path.as_posix(),
-            opset_version=18,
-            dynamo=False,
-            input_names=input_names,
-            output_names=["logits"],
-            dynamic_axes=dynamic_axes,
-            do_constant_folding=False,
-        )
+            torch.onnx.export(
+                wrapper,
+                dummy_inputs,
+                out_path.as_posix(),
+                opset_version=18,
+                dynamo=False,
+                input_names=input_names,
+                output_names=["logits"],
+                dynamic_axes=dynamic_axes,
+                do_constant_folding=False,
+            )
+        finally:
+            self.model.to(model_device)
+            self.model.train(model_was_training)
+            self.device = model_device

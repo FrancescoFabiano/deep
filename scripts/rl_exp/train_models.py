@@ -201,7 +201,7 @@ def main():
         "--onnx-frontier-size",
         type=int,
         nargs="+",
-        default=[32, 64, 128],
+        default=[8, 16, 32, 64],
         help=(
             "Frontier size cap used during training/evaluation (and optional ONNX export). "
             "Provide one or more integers (e.g. 32 or 16 32 64)."
