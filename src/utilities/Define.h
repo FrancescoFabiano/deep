@@ -3,6 +3,7 @@
 #include <boost/dynamic_bitset.hpp>
 #include <climits>
 #include <cstddef>
+#include <cstdint>
 #include <limits>
 #include <list>
 #include <map>
