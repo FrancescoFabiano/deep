@@ -18,7 +18,7 @@ def main():
     parser.add_argument("batch_path", help="Path to the batch folder (e.g., exp/gnn_exp/batch1/)")
     parser.add_argument("--deep_exe", default="cmake-release-nn/bin/deep", help="Path to the deep C++ executable")
     parser.add_argument("--no_goal", action="store_true", help="Add --dataset_separated to the C++ execution")
-    parser.add_argument("--strong_equivalence", action="store_true", help="Add --strong_equivalence to the C++ execution")
+    parser.add_argument("--strong_equality", action="store_true", help="Add --strong_equality to the C++ execution")
     parser.add_argument("--depth", type=int, default=25, help="Depth for dataset generation (default: 25)")
     parser.add_argument("--discard_factor", type=float, default=0.4, help="Maximum discard factor (default: 0.4)")
     # Forwarded to the per-domain script (which generates per-instance random seeds)
@@ -102,8 +102,8 @@ def main():
         ]
         if args.no_goal:
             cmd.append("--no_goal")
-        if args.strong_equivalence:
-            cmd.append("--strong_equivalence")
+        if args.strong_equality:
+            cmd.append("--strong_equality")
 
         try:
             # Let the per-domain script print its own detailed progress & logs
