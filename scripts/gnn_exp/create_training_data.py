@@ -56,6 +56,7 @@ def run_cpp_once(
         deep_exe,
         file_path,
         no_goal,
+        strong_equality,
         depth,
         discard_factor,
         seed,
@@ -76,6 +77,8 @@ def run_cpp_once(
     ]
     if no_goal:
         command.append("--dataset_separated")
+    if strong_equality:
+        command.append("--strong_equality")
 
     result = subprocess.run(
         command,
@@ -206,6 +209,7 @@ def process_file_with_retries(
         file_path,
         target_folder,
         no_goal,
+        strong_equality,
         depth,
         discard_factor,
         dataset_max_creation,
@@ -233,6 +237,7 @@ def process_file_with_retries(
                 deep_exe,
                 file_path,
                 no_goal,
+                strong_equality,
                 depth,
                 discard_factor,
                 seed,
@@ -308,6 +313,7 @@ def run_cpp_on_training_files_multithreaded(
         training_folder,
         models_folder,
         no_goal,
+        strong_equality,
         depth,
         discard_factor,
         dataset_max_creation,
@@ -336,6 +342,7 @@ def run_cpp_on_training_files_multithreaded(
             file_path,
             models_folder,
             no_goal,
+            strong_equality,
             depth,
             discard_factor,
             dataset_max_creation,
@@ -380,6 +387,7 @@ def main():
         action="store_true",
         help="Run with the --dataset_separated argument",
     )
+    parser.add_argument("--strong_equality", action="store_true", help="Add --strong_equality to the C++ execution")
     parser.add_argument(
         "--depth",
         type=int,
@@ -447,6 +455,7 @@ def main():
         training_folder,
         models_folder,
         args.no_goal,
+        args.strong_equality,
         args.depth,
         args.discard_factor,
         args.dataset_max_creation,
