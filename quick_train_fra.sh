@@ -1,4 +1,3 @@
-source .venv/bin/activate
 python3 scripts/gnn_exp/create_all_training_data.py exp/rl_exp/batch0_strict_training --deep_exe cmake-build-release-nn/bin/deep --dataset-max-creation 30000 --strong_equality
 python3 scripts/gnn_exp/create_all_training_data.py exp/rl_exp/batch0_strict_training --deep_exe cmake-build-release-nn/bin/deep --dataset-name "test_data" --dataset-max-creation 1000 --training-folder "Test" --strong_equality
 python3 scripts/rl_exp/train_models.py exp/rl_exp/batch0_strict_training
