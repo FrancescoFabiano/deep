@@ -12,3 +12,4 @@ pydot==3.0.4
 onnx
 onnxscript
 onnxruntime
+pandas

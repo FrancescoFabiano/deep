@@ -22,6 +22,8 @@ def run(label, args, split_path, prefix, fringe, strict):
     #print("\n[DEBUG] ===== RUN START =====")
 
     domain = split_path.parent.name
+    OUT_check = OUT / domain
+    OUT_check.mkdir(exist_ok=True)
     split = split_path.name
 
     uses_rl = "--search RL" in args
@@ -60,7 +62,7 @@ def run(label, args, split_path, prefix, fringe, strict):
     subprocess.run(cmd, check=True)
 
     # ---- save results ----
-    out_dir = OUT / ("bfs" if label == "BFS" else f"fringe_{fringe}")
+    out_dir = OUT_check / ("bfs" if label == "BFS" else f"fringe_{fringe}")
     out_dir.mkdir(exist_ok=True)
 
     strict_tag = "strict" if strict else "nostrict"

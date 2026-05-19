@@ -58,6 +58,7 @@ def run_training(
     failure_reward_value,
     train_frontier_jaccard_threshold,
     eval_frontier_jaccard_threshold,
+    max_failure_states_per_dataset,
     build_data,
     build_eval_data,
     evaluate,
@@ -129,6 +130,8 @@ def run_training(
         str(train_frontier_jaccard_threshold),
         "--eval-frontier-jaccard-threshold",
         str(eval_frontier_jaccard_threshold),
+        "--max-failure-states-per-dataset",
+        str(max_failure_states_per_dataset),
     ]
     if no_goal:
         cmd.extend(["--kind-of-data", "separated"])
@@ -210,7 +213,7 @@ def main():
     parser.add_argument(
         "--train-random-frontier-ratio",
         type=float,
-        default=0.2,
+        default=0.1,
         help=(
             "Random frontiers generated as a ratio of finalized "
             "greedy/conservative/common frontiers."
@@ -265,6 +268,15 @@ def main():
             "If evaluation data are present, perform strategy evaluation on train/test splits."
         ),
     )
+    parser.add_argument(
+        "--max-failure-states-per-dataset",
+        type=float,
+        default=1.0,
+        help=(
+            "Keep all no-failure train frontiers; keep with-failure frontiers up to this ratio "
+            "relative to no-failure ones."
+        ),
+    )
     args = parser.parse_args()
     if args.train_random_frontier_ratio < 0.0 or args.train_random_frontier_ratio > 1.0:
         raise ValueError("--train-random-frontier-ratio must be in [0.0, 1.0].")
@@ -283,6 +295,11 @@ def main():
         or args.eval_frontier_jaccard_threshold > 1.0
     ):
         raise ValueError("--eval-frontier-jaccard-threshold must be in [0.0, 1.0].")
+    if (
+        args.max_failure_states_per_dataset < 0.0
+        or args.max_failure_states_per_dataset > 1.0
+    ):
+        raise ValueError("--max-failure-states-per-dataset must be in [0.0, 1.0].")
     if args.batch_size <= 0:
         raise ValueError("--batch-size must be > 0.")
     if args.eval_batch_size <= 0:
@@ -326,6 +343,7 @@ def main():
                 args.failure_reward_value,
                 args.train_frontier_jaccard_threshold,
                 args.eval_frontier_jaccard_threshold,
+                args.max_failure_states_per_dataset,
                 args.build_data.lower() == "true",
                 args.build_eval_data.lower() == "true",
                 args.evaluate.lower() == "true",
