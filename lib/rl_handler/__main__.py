@@ -131,7 +131,7 @@ def parse_args():
     parser.add_argument(
         "--max-failure-states-per-dataset",
         type=ratio_0_1,
-        default=0.3,
+        default=1.0,
         help=(
             "Keep all train frontiers with no failure states, then keep at most "
             "this fraction of train frontiers that have at least one failure state."
@@ -171,18 +171,18 @@ def parse_args():
         ),
     )
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--lr", type=float, default=1e-3)
-    parser.add_argument("--weight-decay", type=float, default=0.0)
+    parser.add_argument("--lr", type=float, default=3e-4)
+    parser.add_argument("--weight-decay", type=float, default=1e-4)
     parser.add_argument(
         "--max-grad-norm",
         type=float,
-        default=0.0,
+        default=1.0,
         help="If > 0, clip gradient norm to this value before optimizer step.",
     )
     parser.add_argument(
         "--early-stopping-patience-evals",
         type=int,
-        default=0,
+        default=50,
         help=(
             "If > 0, stop training when eval reward does not improve for this many "
             "evaluation checkpoints."
@@ -246,7 +246,7 @@ def parse_args():
     parser.add_argument(
         "--train-random-frontier-ratio",
         type=ratio_0_1,
-        default=0.2,
+        default=0.1,
         help=(
             "Number of random frontiers is this ratio times the count of "
             "post-processed greedy/conservative/common frontiers."
@@ -2153,6 +2153,12 @@ def _prepare_train_context(
         "train_jaccard_prune_stats": train_jaccard_prune_stats,
         "train_random_ratio_cap_stats": train_random_ratio_cap_stats,
         "train_loader": train_loader,
+        "train_samples_by_frontier_size": {
+            int(onnx_frontier_size): train_samples,
+        },
+        "train_loaders_by_frontier_size": {
+            int(onnx_frontier_size): train_loader,
+        },
         "base_onnx_frontier_size": int(onnx_frontier_size),
     }
 
@@ -2398,11 +2404,345 @@ def _prepare_eval_context(
         "base_eval_frontier_size": int(eval_frontier_size),
         "eval_samples": eval_samples,
         "eval_loaders": eval_loaders,
+        "eval_samples_by_split_and_frontier_size": {
+            str(split_name): {
+                int(eval_frontier_size): list(eval_samples.get(split_name, []) or [])
+            }
+            for split_name in ("train", "test")
+        },
+        "eval_loaders_by_split_and_frontier_size": {
+            str(split_name): {
+                int(eval_frontier_size): eval_loaders.get(split_name)
+            }
+            for split_name in ("train", "test")
+        },
         "eval_samples_cache_paths": eval_cache_paths,
         "eval_samples_cache_meta_path": eval_cache_meta_path,
         "eval_samples_loaded_from_cache": bool(eval_samples_loaded_from_cache),
         "eval_materialization_stats": eval_materialization_stats,
     }
+
+
+def _infer_sample_candidate_count(sample: Dict[str, Any]) -> int:
+    for key in (
+        "reward_target",
+        "rewards",
+        "action_map",
+        "distance_raw",
+        "distances",
+        "is_failure",
+    ):
+        raw = sample.get(key)
+        if isinstance(raw, torch.Tensor) and raw.dim() >= 1:
+            return int(raw.size(0))
+        if isinstance(raw, (list, tuple)):
+            return int(len(raw))
+    successor_ids = sample.get("successor_ids")
+    if isinstance(successor_ids, (list, tuple)):
+        return int(len(successor_ids))
+    membership = sample.get("membership")
+    if isinstance(membership, torch.Tensor) and membership.numel() > 0:
+        membership_t = membership.to(torch.long).view(-1)
+        valid = membership_t[membership_t >= 0]
+        if valid.numel() > 0:
+            return int(valid.max().item() + 1)
+    return 0
+
+
+def _cap_single_frontier_sample_to_size(
+    sample: Dict[str, Any],
+    frontier_size: int,
+) -> Dict[str, Any]:
+    target_size = int(frontier_size)
+    if target_size <= 0:
+        raise ValueError(f"frontier_size must be > 0, got {target_size}.")
+
+    old_n = int(_infer_sample_candidate_count(sample))
+    if old_n <= 0:
+        return dict(sample)
+    keep_n = int(min(old_n, target_size))
+    if keep_n >= old_n:
+        return dict(sample)
+
+    out: Dict[str, Any] = dict(sample)
+    remap = torch.full((old_n,), -1, dtype=torch.long)
+    remap[:keep_n] = torch.arange(keep_n, dtype=torch.long)
+    keep_idx = torch.arange(keep_n, dtype=torch.long)
+
+    candidate_tensor_keys = (
+        "action_map",
+        "reward_target",
+        "rewards",
+        "distance_raw",
+        "distances",
+        "is_failure",
+    )
+    for key in candidate_tensor_keys:
+        value = sample.get(key)
+        if (
+            isinstance(value, torch.Tensor)
+            and value.dim() >= 1
+            and int(value.size(0)) == old_n
+        ):
+            out[key] = value.index_select(0, keep_idx)
+
+    successor_ids = sample.get("successor_ids")
+    if isinstance(successor_ids, (list, tuple)):
+        out["successor_ids"] = [str(x) for x in successor_ids[:keep_n]]
+
+    node_remap: Optional[torch.Tensor] = None
+    keep_node_mask = None
+    if isinstance(sample.get("membership"), torch.Tensor):
+        membership = sample["membership"].to(torch.long).view(-1)
+        candidate_mask = membership >= 0
+        membership_new = torch.full_like(membership, -1)
+        if bool(candidate_mask.any().item()):
+            old_membership = membership[candidate_mask]
+            valid_old = (old_membership >= 0) & (old_membership < old_n)
+            mapped_values = torch.full((old_membership.numel(),), -1, dtype=torch.long)
+            if bool(valid_old.any().item()):
+                mapped_values[valid_old] = remap[old_membership[valid_old]]
+            membership_new[candidate_mask] = mapped_values
+
+        keep_node_mask = membership_new >= 0
+        keep_node_index = (
+            torch.nonzero(keep_node_mask, as_tuple=False).view(-1)
+            if bool(keep_node_mask.any().item())
+            else torch.zeros((0,), dtype=torch.long)
+        )
+        node_remap = torch.full((membership_new.numel(),), -1, dtype=torch.long)
+        if keep_node_index.numel() > 0:
+            node_remap[keep_node_index] = torch.arange(
+                keep_node_index.numel(), dtype=torch.long
+            )
+
+        node_features = sample.get("node_features")
+        if isinstance(node_features, torch.Tensor):
+            out["node_features"] = node_features.index_select(0, keep_node_index)
+        out["membership"] = membership_new.index_select(0, keep_node_index)
+
+        edge_index = sample.get("edge_index")
+        edge_attr = sample.get("edge_attr")
+        if isinstance(edge_index, torch.Tensor):
+            edge_index_t = edge_index.to(torch.long)
+            if edge_index_t.numel() > 0 and keep_node_index.numel() > 0:
+                src = edge_index_t[0]
+                dst = edge_index_t[1]
+                keep_edge_mask = keep_node_mask[src] & keep_node_mask[dst]
+                edge_index_kept = edge_index_t[:, keep_edge_mask]
+                out["edge_index"] = (
+                    node_remap[edge_index_kept]
+                    if edge_index_kept.numel() > 0
+                    else torch.zeros((2, 0), dtype=torch.long)
+                )
+                if (
+                    isinstance(edge_attr, torch.Tensor)
+                    and edge_attr.dim() >= 1
+                    and int(edge_attr.size(0)) == int(edge_index_t.size(1))
+                ):
+                    out["edge_attr"] = edge_attr[keep_edge_mask]
+            else:
+                out["edge_index"] = torch.zeros((2, 0), dtype=torch.long)
+                if isinstance(edge_attr, torch.Tensor):
+                    trailing_shape = tuple(edge_attr.shape[1:])
+                    out["edge_attr"] = edge_attr.new_zeros((0, *trailing_shape))
+                else:
+                    out["edge_attr"] = torch.zeros((0, 1), dtype=torch.int64)
+
+    if isinstance(sample.get("pool_membership"), torch.Tensor) and isinstance(
+        sample.get("pool_node_index"), torch.Tensor
+    ):
+        pool_membership = sample["pool_membership"].to(torch.long).view(-1)
+        pool_node_index = sample["pool_node_index"].to(torch.long).view(-1)
+        valid_old = (pool_membership >= 0) & (pool_membership < old_n)
+        mapped_pool = torch.full((pool_membership.numel(),), -1, dtype=torch.long)
+        if bool(valid_old.any().item()):
+            mapped_pool[valid_old] = remap[pool_membership[valid_old]]
+        keep_pool_mask = mapped_pool >= 0
+        mapped_pool_kept = mapped_pool[keep_pool_mask]
+        pool_node_kept = pool_node_index[keep_pool_mask]
+        if node_remap is not None:
+            node_valid_mask = (pool_node_kept >= 0) & (
+                pool_node_kept < node_remap.numel()
+            )
+            pool_node_new = torch.full((pool_node_kept.numel(),), -1, dtype=torch.long)
+            if bool(node_valid_mask.any().item()):
+                pool_node_new[node_valid_mask] = node_remap[pool_node_kept[node_valid_mask]]
+            keep_new_pool_mask = pool_node_new >= 0
+            out["pool_membership"] = mapped_pool_kept[keep_new_pool_mask]
+            out["pool_node_index"] = pool_node_new[keep_new_pool_mask]
+        else:
+            out["pool_membership"] = mapped_pool_kept
+            out["pool_node_index"] = pool_node_kept
+
+    reward_t = out.get("reward_target")
+    if not isinstance(reward_t, torch.Tensor):
+        reward_t = out.get("rewards")
+    if isinstance(reward_t, torch.Tensor):
+        reward_t = reward_t.to(torch.float32).view(-1)
+        out["reward_target"] = reward_t
+        out["rewards"] = reward_t
+        if reward_t.numel() > 0:
+            best_idx = int(torch.argmax(reward_t).item())
+            out["oracle_index"] = torch.tensor(best_idx, dtype=torch.long)
+            out["oracle_reward"] = reward_t[best_idx]
+        else:
+            out["oracle_index"] = torch.tensor(0, dtype=torch.long)
+            out["oracle_reward"] = reward_t.new_tensor(0.0)
+
+    if isinstance(out.get("distance_raw"), torch.Tensor):
+        out["distances"] = out["distance_raw"]
+    elif isinstance(out.get("distances"), torch.Tensor):
+        out["distance_raw"] = out["distances"]
+
+    is_failure = out.get("is_failure")
+    if isinstance(is_failure, torch.Tensor):
+        out["frontier_has_failure"] = bool(is_failure.to(torch.bool).any().item())
+    elif isinstance(reward_t, torch.Tensor):
+        out["frontier_has_failure"] = bool(
+            (reward_t <= float(FAILURE_REWARD_VALUE + FAILURE_EPS)).any().item()
+        )
+
+    return out
+
+
+def _cap_frontier_samples_to_size(
+    samples: Sequence[Dict[str, Any]],
+    frontier_size: int,
+) -> list[Dict[str, Any]]:
+    target_size = int(frontier_size)
+    if target_size <= 0:
+        raise ValueError(f"frontier_size must be > 0, got {target_size}.")
+    out: list[Dict[str, Any]] = []
+    for sample in samples:
+        out.append(
+            _cap_single_frontier_sample_to_size(
+                sample=sample,
+                frontier_size=target_size,
+            )
+        )
+    return out
+
+
+def _get_or_build_train_loader_for_frontier_size(
+    prepared_train_context: Dict[str, Any],
+    args,
+    frontier_size: int,
+):
+    size = int(frontier_size)
+    base_size = int(prepared_train_context["base_onnx_frontier_size"])
+
+    loaders_cache = prepared_train_context.get("train_loaders_by_frontier_size")
+    if not isinstance(loaders_cache, dict):
+        loaders_cache = {}
+        prepared_train_context["train_loaders_by_frontier_size"] = loaders_cache
+    cached_loader = loaders_cache.get(size)
+    if cached_loader is not None:
+        return cached_loader
+
+    samples_cache = prepared_train_context.get("train_samples_by_frontier_size")
+    if not isinstance(samples_cache, dict):
+        samples_cache = {}
+        prepared_train_context["train_samples_by_frontier_size"] = samples_cache
+
+    if size in samples_cache:
+        samples = samples_cache[size]
+    else:
+        base_samples = prepared_train_context["train_samples"]
+        samples = (
+            base_samples
+            if size >= base_size
+            else _cap_frontier_samples_to_size(base_samples, frontier_size=size)
+        )
+        samples_cache[size] = samples
+
+    if size == base_size and "train_loader" in prepared_train_context:
+        loader = prepared_train_context["train_loader"]
+    else:
+        loader = build_frontier_dataloader(
+            samples=samples,
+            batch_size=args.batch_size,
+            seed=int(args.seed),
+            num_workers=0,
+            pad_frontiers=True,
+            shuffle=True,
+        )
+
+    loaders_cache[size] = loader
+    return loader
+
+
+def _get_or_build_eval_loaders_for_frontier_size(
+    prepared_eval_context: Dict[str, Any],
+    args,
+    frontier_size: int,
+) -> Dict[str, Any]:
+    size = int(frontier_size)
+    base_size = int(prepared_eval_context["base_eval_frontier_size"])
+
+    samples_by_split_size = prepared_eval_context.get("eval_samples_by_split_and_frontier_size")
+    if not isinstance(samples_by_split_size, dict):
+        samples_by_split_size = {}
+        prepared_eval_context["eval_samples_by_split_and_frontier_size"] = samples_by_split_size
+
+    loaders_by_split_size = prepared_eval_context.get("eval_loaders_by_split_and_frontier_size")
+    if not isinstance(loaders_by_split_size, dict):
+        loaders_by_split_size = {}
+        prepared_eval_context["eval_loaders_by_split_and_frontier_size"] = loaders_by_split_size
+
+    eval_samples_base = dict(prepared_eval_context.get("eval_samples") or {})
+    eval_loaders_base = dict(prepared_eval_context.get("eval_loaders") or {})
+
+    eval_batch_size = (
+        int(args.eval_batch_size)
+        if getattr(args, "eval_batch_size", None)
+        else int(args.batch_size)
+    )
+    eval_num_workers = int(getattr(args, "eval_num_workers", 0))
+
+    out: Dict[str, Any] = {}
+    for split_name in ("train", "test"):
+        split_samples_cache = samples_by_split_size.get(split_name)
+        if not isinstance(split_samples_cache, dict):
+            split_samples_cache = {}
+            samples_by_split_size[split_name] = split_samples_cache
+        split_loaders_cache = loaders_by_split_size.get(split_name)
+        if not isinstance(split_loaders_cache, dict):
+            split_loaders_cache = {}
+            loaders_by_split_size[split_name] = split_loaders_cache
+
+        if size in split_loaders_cache:
+            out[split_name] = split_loaders_cache[size]
+            continue
+
+        if size in split_samples_cache:
+            samples = split_samples_cache[size]
+        else:
+            base_samples = list(eval_samples_base.get(split_name, []) or [])
+            samples = (
+                base_samples
+                if size >= base_size
+                else _cap_frontier_samples_to_size(base_samples, frontier_size=size)
+            )
+            split_samples_cache[size] = samples
+
+        if not samples:
+            loader = None
+        elif size == base_size and split_name in eval_loaders_base:
+            loader = eval_loaders_base.get(split_name)
+        else:
+            loader = build_frontier_dataloader(
+                samples=samples,
+                batch_size=eval_batch_size,
+                seed=int(args.seed),
+                num_workers=eval_num_workers,
+                pad_frontiers=True,
+                shuffle=False,
+            )
+        split_loaders_cache[size] = loader
+        out[split_name] = loader
+
+    return out
 
 
 def _adapt_train_batch_to_frontier_size(
@@ -2695,7 +3035,11 @@ def _run_single_frontier_size(
     train_filter_stats = prepared_train_context["train_filter_stats"]
     train_jaccard_prune_stats = prepared_train_context["train_jaccard_prune_stats"]
     train_random_ratio_cap_stats = prepared_train_context["train_random_ratio_cap_stats"]
-    train_loader = prepared_train_context["train_loader"]
+    train_loader = _get_or_build_train_loader_for_frontier_size(
+        prepared_train_context=prepared_train_context,
+        args=args,
+        frontier_size=int(frontier_size),
+    )
     base_onnx_frontier_size = int(prepared_train_context["base_onnx_frontier_size"])
 
     model_metrics_root = model_root / "metrics"
@@ -2796,15 +3140,6 @@ def _run_single_frontier_size(
     loader_generator = getattr(train_loader, "generator", None)
     if isinstance(loader_generator, torch.Generator):
         loader_generator.manual_seed(int(args.seed))
-    # Seed eval dataloaders (if any) for reproducibility
-    if prepared_eval_context is not None:
-        eval_loaders = dict(prepared_eval_context.get("eval_loaders") or {})
-        for _name, loader in eval_loaders.items():
-            if loader is None:
-                continue
-            loader_generator = getattr(loader, "generator", None)
-            if isinstance(loader_generator, torch.Generator):
-                loader_generator.manual_seed(int(args.seed))
 
     query_bundle = {}
     query_bundle_path: Optional[Path] = None
@@ -2815,6 +3150,7 @@ def _run_single_frontier_size(
     eval_samples_cache_meta_path: Optional[Path] = None
     eval_samples_loaded_from_cache = False
     eval_materialization_stats: Dict[str, Any] = {}
+    eval_loaders_for_frontier_size: Dict[str, Any] = {}
     if bool(args.evaluate):
         # Build/load evaluation data and two evaluation loaders:
         # - `train`: evaluation frontiers built from train data
@@ -2878,6 +3214,18 @@ def _run_single_frontier_size(
                 "[warning] Evaluation is enabled but all query splits are empty. "
                 "Training-time/final evaluation will be skipped."
             )
+
+        eval_loaders_for_frontier_size = _get_or_build_eval_loaders_for_frontier_size(
+            prepared_eval_context=prepared_eval_context,
+            args=args,
+            frontier_size=int(frontier_size),
+        )
+        for _name, loader in eval_loaders_for_frontier_size.items():
+            if loader is None:
+                continue
+            loader_generator = getattr(loader, "generator", None)
+            if isinstance(loader_generator, torch.Generator):
+                loader_generator.manual_seed(int(args.seed))
 
     dataset_type_norm = str(args.dataset_type).upper()
     node_input_dim = 1 if dataset_type_norm == "HASHED" else int(train_samples[0]["node_features"].size(1))
@@ -2990,11 +3338,7 @@ def _run_single_frontier_size(
             epoch_batch_losses: list[float] = []
 
             for raw_batch in train_loader:
-                adapted_raw_batch = _adapt_train_batch_to_frontier_size(
-                    raw_batch=raw_batch,
-                    frontier_size=int(frontier_size),
-                )
-                batch = trainer._move_to_device(adapted_raw_batch)
+                batch = trainer._move_to_device(raw_batch)
                 trainer.optimizer.zero_grad()
                 loss_terms = trainer.compute_loss(batch)
                 loss = loss_terms["total_loss"]
@@ -3033,23 +3377,16 @@ def _run_single_frontier_size(
             if should_eval:
                 eval_step += 1
                 # Evaluate using the pre-built evaluation DataLoaders (batched PyTorch evaluation).
-                eval_loaders = prepared_eval_context.get("eval_loaders") if prepared_eval_context else {}
                 step_summary_path = (
                     eval_step_reports_dir / f"step_{eval_step:04d}_epoch_{epoch + 1:04d}.json"
                 )
                 all_metrics: Dict[str, Any] = {}
                 for split_name in ("test", "train"):
-                    loader = (eval_loaders or {}).get(split_name)
+                    loader = eval_loaders_for_frontier_size.get(split_name)
                     if loader is None:
                         continue
                     # Batched evaluation on trainer.model (uses trainer.device)
-                    metrics = trainer.evaluate(
-                        _iter_capped_frontier_batches(
-                            loader=loader,
-                            frontier_size=int(frontier_size),
-                        ),
-                        verbose=False,
-                    )
+                    metrics = trainer.evaluate(loader, verbose=False)
                     all_metrics[split_name] = metrics
                     # Update trackers (plots/history) if requested
                     if (
@@ -3215,22 +3552,15 @@ def _run_single_frontier_size(
     if bool(args.evaluate):
         if flat_query_splits:
             final_summary_path = eval_root / "final_summary.json"
-            eval_loaders = prepared_eval_context.get("eval_loaders") if prepared_eval_context else {}
             final_eval_order = [s for s in selection_order if s in flat_query_splits]
             final_eval_order.extend(
                 split_name for split_name in flat_query_splits.keys() if split_name not in final_eval_order
             )
             for split_name in final_eval_order:
-                loader = eval_loaders.get(split_name)
+                loader = eval_loaders_for_frontier_size.get(split_name)
                 if loader is None:
                     continue
-                metrics = trainer.evaluate(
-                    _iter_capped_frontier_batches(
-                        loader=loader,
-                        frontier_size=int(frontier_size),
-                    ),
-                    verbose=False,
-                )
+                metrics = trainer.evaluate(loader, verbose=False)
                 final_eval_metrics[split_name] = metrics
                 split_dir = eval_root / split_name
                 split_dir.mkdir(parents=True, exist_ok=True)
@@ -3325,6 +3655,18 @@ def _run_single_frontier_size(
     split_summary["onnx_frontier_size"] = int(frontier_size)
     split_summary["base_onnx_frontier_size_for_train_data"] = int(base_onnx_frontier_size)
     split_summary["base_eval_frontier_size_for_eval_data"] = int(base_eval_frontier_size)
+    split_summary["cached_train_frontier_size_views"] = sorted(
+        int(size) for size in dict(
+            prepared_train_context.get("train_samples_by_frontier_size") or {}
+        ).keys()
+    )
+    if prepared_eval_context is not None:
+        split_summary["cached_eval_frontier_size_views_by_split"] = {
+            str(split_name): sorted(int(size) for size in dict(size_map or {}).keys())
+            for split_name, size_map in dict(
+                prepared_eval_context.get("eval_samples_by_split_and_frontier_size") or {}
+            ).items()
+        }
     split_summary["train_random_frontier_ratio"] = float(args.train_random_frontier_ratio)
     split_summary["train_random_frontier_with_failure_ratio"] = float(
         args.train_random_frontier_with_failure_ratio
@@ -3477,8 +3819,26 @@ def main(args):
                 "onnx_frontier_sizes": [int(v) for v in frontier_sizes],
                 "base_onnx_frontier_size_for_train_data": int(max_frontier_size),
                 "base_eval_frontier_size_for_eval_data": int(max_frontier_size),
-                "single_dataloader_reused_across_frontier_sizes": True,
+                "single_train_samples_reused_across_frontier_sizes": True,
+                "single_dataloader_reused_across_frontier_sizes": False,
+                "frontier_size_view_cache_enabled": True,
                 "single_eval_bundle_reused_across_frontier_sizes": bool(args.evaluate),
+                "cached_train_frontier_size_views": sorted(
+                    int(size) for size in dict(
+                        shared_train_context.get("train_samples_by_frontier_size") or {}
+                    ).keys()
+                ),
+                "cached_eval_frontier_size_views_by_split": (
+                    {
+                        str(split_name): sorted(int(size) for size in dict(size_map or {}).keys())
+                        for split_name, size_map in dict(
+                            (shared_eval_context or {}).get("eval_samples_by_split_and_frontier_size")
+                            or {}
+                        ).items()
+                    }
+                    if shared_eval_context is not None
+                    else {}
+                ),
                 "runs": run_summaries,
             },
             fh,
