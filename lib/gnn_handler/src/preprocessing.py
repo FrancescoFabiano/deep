@@ -44,6 +44,7 @@ class GraphDataPipeline:
         self.test_df: Optional[pd.DataFrame] = None
         self.train_samples: List[Dict[str, Any]] = []
         self.test_samples: List[Dict[str, Any]] = []
+        self._instance_dirs: List[Path] = []
 
         self._build_df()
         self._load_samples()
@@ -183,11 +184,11 @@ class GraphDataPipeline:
             if not csv:
                 continue
             df = self._read_csv(csv)
-            print(df)
             df = self._balance_dataset(df)
             train_df, test_df = self._my_train_test_split(df)
             train_frames.append(train_df)
             test_frames.append(test_df)
+            self._instance_dirs.append(Path(prob_dir))
 
         if len(train_frames) == 0 or len(test_frames) == 0:
             raise ValueError(
@@ -198,10 +199,26 @@ class GraphDataPipeline:
         self.test_df = pd.concat(test_frames, ignore_index=True)
         # self.test_df = self._balance_dataset(self.test_df)
 
+    def _load_graph_cache(self) -> Optional[Dict[str, Any]]:
+        """Merge pre-serialized graph caches (see preprocess_dot_to_pt.py).
+
+        Each training instance dir may hold a graph_cache_<DATASET_TYPE>.pt
+        with {resolved_dot_path: Data}.  Missing caches are fine — DOT files
+        not found in the cache are parsed on the fly by preprocess_sample().
+        """
+        cache: Dict[str, Any] = {}
+        for inst_dir in self._instance_dirs:
+            cache_file = inst_dir / f"graph_cache_{self.dataset_type}.pt"
+            if cache_file.is_file():
+                cache.update(torch.load(cache_file, weights_only=False))
+        return cache or None
+
     def _load_samples(self):
 
         s = [self.train_samples, self.test_samples]
         t = [self.train_df, self.test_df]
+
+        graph_cache = self._load_graph_cache()
 
         for i, df in enumerate(t):
             if df is None:
@@ -216,6 +233,7 @@ class GraphDataPipeline:
                     int(row["Distance From Goal"]),
                     row["Goal"] if self.use_goal else None,
                     bitmask=self.dataset_type == KEYWORD_BITMASK,
+                    graph_cache=graph_cache,
                 )
                 s[i].append(sample)
 

@@ -55,6 +55,7 @@ def run_training(training_data_folder, batch_root, no_goal, dataset_type):
         cmd.append("--kind-of-data")
         cmd.append("separated")
 
+    print(" ".join(cmd))
     # print(f"[INFO] Launching training for {training_data_folder}")
 
     try:
