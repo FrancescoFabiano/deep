@@ -20,10 +20,13 @@ inherited from the baseline DistanceEstimatorModel.
 """
 from __future__ import annotations
 
+import math
 import os
 from collections import defaultdict
 
 import torch
+from scipy.stats import spearmanr
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from tqdm import tqdm
 
 from src.utils import DistanceEstimatorModel
@@ -35,7 +38,76 @@ _METRICS = {
 }
 
 
+def _metric_block(preds: torch.Tensor, targets: torch.Tensor) -> dict:
+    """Baseline metric set (val_loss/mse/rmse/mae/r2/spearman) on tensors."""
+    p, t = preds.numpy(), targets.numpy()
+    mse = mean_squared_error(t, p)
+    r2 = r2_score(t, p)
+    rho = spearmanr(p, t).statistic
+    return {
+        "val_loss": 1 - r2,
+        "mse": mse,
+        "rmse": math.sqrt(mse),
+        "mae": mean_absolute_error(t, p),
+        "r2": r2,
+        "spearman": float(rho) if not math.isnan(rho) else 0.0,
+    }
+
+
 class DistanceEstimatorModelPlus(DistanceEstimatorModel):
+
+    # Wired by the entry point after prepare_samples_plus(): the scaled
+    # target value of unreachable states (f(MAX_DEPTH)) and the scaling
+    # params.  No reachable state can alias the value — max reachable
+    # distance is < MAX_DEPTH by the 1.1 headroom.  When left None the
+    # class behaves exactly like the baseline (single metric set).
+    unreachable_target_value: float | None = None
+    scale_params: dict | None = None
+
+    def evaluate(self, loader, verbose: bool = False, **kwargs) -> dict:
+        """Baseline metrics on ALL states, plus reachable-only (`*_reach`)
+        and unreachable-only diagnostics when unreachable states exist.
+
+        Rationale (INV-1): a handful of unreachable val states (target at
+        the top of the range) can demolish squared-error metrics — plus's
+        all-states val R² read 0.34 while the reachable subset was
+        unaffected — so headline numbers and any val_loss-based selection
+        must be interpretable per subset.
+        """
+        self.model.eval()
+        preds, targets = [], []
+        with torch.no_grad():
+            for batch in loader:
+                batch = self._move_batch_to_device(batch)
+                preds.append(self.model(batch).view(-1).cpu())
+                targets.append(batch["target"].view(-1).cpu())
+        p, t = torch.cat(preds), torch.cat(targets)
+
+        metrics = _metric_block(p, t)
+
+        if self.unreachable_target_value is not None:
+            ur = torch.isclose(
+                t, torch.tensor(float(self.unreachable_target_value)),
+                atol=1e-6,
+            )
+            if bool(ur.any()):
+                metrics.update({
+                    f"{k}_reach": v
+                    for k, v in _metric_block(p[~ur], t[~ur]).items()
+                })
+                metrics["n_unreach"] = int(ur.sum())
+                metrics["mae_unreach"] = float((p[ur] - t[ur]).abs().mean())
+                if self.scale_params is not None:
+                    s = self.scale_params
+                    metrics["pred_dist_mean_unreach"] = float(
+                        (p[ur].mean() - s["intercept"]) / s["slope"]
+                    )
+            else:  # no unreachable in this loader: reach == all
+                metrics.update(
+                    {f"{k}_reach": v for k, v in list(metrics.items())}
+                )
+                metrics["n_unreach"] = 0
+        return metrics
 
     def train(
         self,

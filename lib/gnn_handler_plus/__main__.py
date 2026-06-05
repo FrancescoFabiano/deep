@@ -188,6 +188,13 @@ def main(args):
         args.use_goal, args.use_depth,
         bitmask=args.dataset_type == KEYWORD_BITMASK,
     )
+    # INV-1 instrumentation: let evaluate() split metrics by reachability.
+    # Unreachable samples carry the scaled target f(MAX_DEPTH); no reachable
+    # state can alias it (max reachable distance < MAX_DEPTH by headroom).
+    m.unreachable_target_value = (
+        params["max_depth"] * params["slope"] + params["intercept"]
+    )
+    m.scale_params = params
 
     if args.train:
         m.train(
