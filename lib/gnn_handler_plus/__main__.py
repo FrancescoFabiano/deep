@@ -107,6 +107,10 @@ def parse_args():
         "--heuristic-weight", type=float, default=1.0,
         help="W: write slope x W into distance_estimator_C.txt at export "
              "(h_planner ~ h/W, bounded-suboptimality knob).")
+    parser.add_argument(
+        "--unreachable-loss-weight", type=float, default=1.0,
+        help="U: MSE weight for unreachable samples (loss = sum(w e^2)/sum(w)); "
+             "counters their ~0.3%% gradient share under plain MSE.")
 
     return parser.parse_args()
 
@@ -195,6 +199,16 @@ def main(args):
         params["max_depth"] * params["slope"] + params["intercept"]
     )
     m.scale_params = params
+    m.unreachable_loss_weight = args.unreachable_loss_weight
+    if args.unreachable_loss_weight != 1.0 and args.include_unreachable:
+        n_ur = params.get("train_unreachable_kept", 0)
+        n_tot = len(train_c)
+        u = args.unreachable_loss_weight
+        mass = u * n_ur / (u * n_ur + (n_tot - n_ur))
+        params["unreachable_loss_weight"] = u
+        params["unreachable_effective_loss_mass"] = mass
+        print(f"[plus] unreachable loss weight U={u}: effective loss mass "
+              f"{100 * mass:.2f}% ({n_ur}/{n_tot} samples)")
 
     if args.train:
         m.train(

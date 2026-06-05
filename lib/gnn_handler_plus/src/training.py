@@ -63,6 +63,35 @@ class DistanceEstimatorModelPlus(DistanceEstimatorModel):
     # class behaves exactly like the baseline (single metric set).
     unreachable_target_value: float | None = None
     scale_params: dict | None = None
+    # INV-3: weight applied to unreachable samples in the MSE loss.  At the
+    # observed 0.3% prevalence, plain MSE gives dead ends ~0.3% of the
+    # gradient mass — the model learned their ordering but not their
+    # magnitude (predicted mean 5.5 vs target 26).  U > 1 amplifies them;
+    # loss = sum(w * err^2) / sum(w), w = U for unreachable else 1.
+    unreachable_loss_weight: float = 1.0
+
+    def _compute_loss(self, batch):
+        if (
+            self.unreachable_loss_weight == 1.0
+            or self.unreachable_target_value is None
+        ):
+            return super()._compute_loss(batch)
+        preds = self.model(batch)
+        targets = batch["target"].view(-1)
+        ur = torch.isclose(
+            targets,
+            torch.tensor(
+                float(self.unreachable_target_value),
+                dtype=targets.dtype, device=targets.device,
+            ),
+            atol=1e-6,
+        )
+        w = torch.where(
+            ur,
+            torch.full_like(targets, float(self.unreachable_loss_weight)),
+            torch.ones_like(targets),
+        )
+        return (w * (preds - targets) ** 2).sum() / w.sum()
 
     def evaluate(self, loader, verbose: bool = False, **kwargs) -> dict:
         """Baseline metrics on ALL states, plus reachable-only (`*_reach`)
