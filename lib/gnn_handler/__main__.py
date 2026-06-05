@@ -1,4 +1,5 @@
 import argparse
+import json
 import os
 
 import torch
@@ -275,6 +276,16 @@ def main(args):
     ) as fh:
         for key, value in params_f.items():
             fh.write(f"{key} = {value}\n")
+
+    # Record the target-scaling constants alongside the training history so
+    # every checkpoint is self-describing (max_depth is data-driven now).
+    history_path = f"{path_model}/history_losses.json"
+    if os.path.exists(history_path):
+        with open(history_path, encoding="utf-8") as fh:
+            history = json.load(fh)
+        history.update(params_f)
+        with open(history_path, "w", encoding="utf-8") as fh:
+            json.dump(history, fh, indent=4)
 
     kwargs = {"th": params_f["slope"] / 2}
 

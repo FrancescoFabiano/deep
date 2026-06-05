@@ -1138,28 +1138,24 @@ def prepare_samples(
     t_s_copy = [s for s in t_s_copy if s["target"].item() != unreachable_state_value]
     t_t_copy = [s for s in t_t_copy if s["target"].item() != unreachable_state_value]
 
-    """def find_max(sss):
-        max_v = -1
-        for s in sss:
-            v = s["target"].item()
-            if v > max_v and v != UNREACHABLE_STATE_VALUE:
-                max_v = v
-        return max_v
-
-    max_train = find_max(t_s_copy)
-    max_test = find_max(t_t_copy)
-
-    max_tot = max(max_train, max_test)"""
-
     MIN_DEPTH = 0
-    MAX_DEPTH = 50  # if max_tot * 2 > 50 else max_tot * 2
+    # Data-driven target scaling: a hardcoded MAX_DEPTH=50 wasted half the
+    # sigmoid range when the deepest observed training distance was 23
+    # (mean scaled target 0.0105 — a weak signal at an awkward sigmoid
+    # operating point).  Use the max distance actually present in the
+    # training targets plus 10% headroom for unseen-depth states.  The
+    # resulting slope/intercept are written to distance_estimator_C.txt,
+    # which the C++ planner reads to invert the scaling — so training and
+    # planner-side interpretation stay consistent automatically.
+    max_train_dist = max(s["target"].item() for s in t_s_copy)
+    MAX_DEPTH = math.ceil(1.1 * max_train_dist)
 
     MIN_V_NN = 1e-3
     MAX_V_NN = 1 - MIN_V_NN
 
     slope = (MAX_V_NN - MIN_V_NN) / (MAX_DEPTH - MIN_DEPTH)
 
-    params = {"slope": slope, "intercept": MIN_V_NN}
+    params = {"slope": slope, "intercept": MIN_V_NN, "max_depth": MAX_DEPTH}
 
     for s in t_s_copy:
         v = s["target"].item()
