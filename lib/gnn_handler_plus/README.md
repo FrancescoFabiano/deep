@@ -28,6 +28,54 @@ NOTE: `--include-unreachable` requires a `samples.pt` built by THIS entry
 point (the baseline build drops unreachable rows at build time); run once
 with `--build-data true` per dataset directory.
 
+## Default configuration: the node-economy champion
+
+The argparse defaults are not placeholders — they are the **measured
+node-economy champion** on batch0/CC at t600, per the single-convention
+table in `REPORT_plus_investigations.md` (cross-investigation synthesis):
+running this entry point with **no plus flags at all** reproduces the
+"plus W=1.0" row — **26/26 coverage, 2,874 total expanded nodes**
+(13.2× under BFS's 37,927, 7.4× under the fixed baseline's 21,128),
+plan quality **+1.73 avg / +6 worst** over BFS-optimal.
+
+| Flag | Default (champion) |
+|---|---|
+| `--dynamic-max-depth` | `true` |
+| `--include-unreachable` | `true` |
+| `--unreachable-cap` | `0.25` |
+| `--unreachable-loss-weight` | `1.0` |
+| `--ckpt-metric` | `spearman` |
+| `--heuristic-weight` | `1.0` |
+
+These defaults are guarded by `tests/test_defaults.py` — changing any of
+them fails the test, because "plus with no flags" is the reference point
+every number in the report compares against.
+
+**Two caveats (verbatim from the synthesis):**
+
+1. **Node economy is bought at a plan-quality cost.** For quality, use
+   W=2.0 on the same trained model (+1.15 avg / +6 worst at 5,821 nodes)
+   or the C+w=2.0 recipe (`--include-unreachable false --ckpt-metric
+   val_loss --heuristic-weight 2.0`; 26/26, +0.54/+2 at 4,435 nodes).
+2. **Defaults are validated on CC only.** On Grapevine these defaults
+   COLLAPSE in training (INV-5), and `--dynamic-max-depth` /
+   `--include-unreachable` need guards before cross-domain use — see the
+   three-mechanism failure catalogue in `REPORT_plus_investigations.md`
+   (bias attractor → `--include-unreachable`; saturation collapse →
+   `--dynamic-max-depth`).
+
+**Presets** — the two named operating points, with exact flag sets so
+future runs can cite them unambiguously:
+
+| Preset | Exact flags | Measured (batch0/CC t600) |
+|---|---|---|
+| **node-economy default** | *(none — all defaults)* ≡ `--dynamic-max-depth true --include-unreachable true --unreachable-cap 0.25 --unreachable-loss-weight 1.0 --ckpt-metric spearman --heuristic-weight 1.0` | 26/26, 2,874 nodes, +1.73 avg / +6 worst |
+| **quality preset** | `--include-unreachable false --ckpt-metric val_loss --heuristic-weight 2.0` (the C+w=2.0 recipe; other flags at default) | 26/26, 4,435 nodes, +0.54 avg / +2 worst |
+
+Middle ground on the same champion-trained model (no retraining, export
+only): `--heuristic-weight 2.0` with everything else default → 26/26,
+5,821 nodes, +1.15/+6. Never W=1.5 (dominated; see synthesis).
+
 ## (i) Why this package exists — problems observed in gnn_handler
 
 All findings are documented in `REPORT_unattended_run.md` and
