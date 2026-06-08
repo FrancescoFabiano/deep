@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -163,6 +164,26 @@ def main() -> None:
                 onnx_frontier_size=int(args.fringe_size),
             )
             print(f"[export] {onnx_path}")
+
+    # Per-run (single-seed) plots, written into the same dir as the export.
+    # Done AFTER the model save + ONNX export and wrapped so a plotting
+    # failure can never cost the trained model. Cross-seed IQM bands stay in
+    # offline_analysis.py; these are single-seed only.
+    try:
+        if os.environ.get("RL_FORCE_PLOT_ERROR"):  # test hook for the guard
+            raise RuntimeError("forced plot error (RL_FORCE_PLOT_ERROR)")
+        from src.offline.plots import plot_seed_curves, plot_seed_val_curves
+
+        history_file = out_dir / "history.json"
+        plot_seed_curves(history_file, out_dir, seed=args.seed)
+        plot_seed_val_curves(history_file, out_dir, seed=args.seed)
+        pngs = [
+            f"training_curves_seed{args.seed}.png",
+            f"val_metrics_seed{args.seed}.png",
+        ]
+        print(f"[plots] {out_dir}: {', '.join(pngs)}")
+    except Exception as exc:  # non-fatal: model + ONNX are already saved
+        print(f"[plots] WARN failed to render per-run plots: {exc}")
 
     print("[done]")
 

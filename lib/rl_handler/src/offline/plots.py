@@ -54,7 +54,7 @@ def plot_seed_curves(history_file: Path, out_dir: Path, seed: int) -> None:
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    fig, axes = plt.subplots(1, 3, figsize=(15, 4), dpi=200)
+    fig, axes = plt.subplots(1, 4, figsize=(20, 4), dpi=200)
     axes[0].plot(h["frame"], h["td_loss"])
     axes[0].set_title(f"seed {seed} | TD loss")
     axes[0].set_xlabel("frame")
@@ -72,10 +72,47 @@ def plot_seed_curves(history_file: Path, out_dir: Path, seed: int) -> None:
     axes[2].set_title(f"seed {seed} | episode return")
     axes[2].set_xlabel("frame")
     axes[2].legend()
+    axes[3].plot(
+        h["episode_frame"],
+        _moving_avg([float(e) for e in h["episode_expansions"]]),
+        label="expansions (MA-25)",
+    )
+    axes[3].set_title(f"seed {seed} | episode expansions")
+    axes[3].set_xlabel("frame")
+    axes[3].legend()
     for ax in axes:
         ax.grid(alpha=0.25)
     fig.tight_layout()
     fig.savefig(out_dir / f"training_curves_seed{seed}.png")
+    plt.close(fig)
+
+
+def plot_seed_val_curves(history_file: Path, out_dir: Path, seed: int) -> None:
+    """Single-seed eval-metric curves over checkpoint frames.
+
+    Companion to plot_seed_curves for per-run (single-seed) output; the
+    cross-seed IQM bands stay in plot_iqm_bands_across_seeds.
+    """
+    payload = json.loads(Path(history_file).read_text())
+    ckpts = payload["checkpoints"]
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    frames = [c["frame"] for c in ckpts]
+    exps = [c["summary"]["val_total_expansions"] for c in ckpts]
+    rhos = [c["summary"]["val_spearman_all"] for c in ckpts]
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4), dpi=200)
+    axes[0].plot(frames, exps, marker="o")
+    axes[0].set_title(f"seed {seed} | val greedy #expansions (lower=better)")
+    axes[0].set_xlabel("frame")
+    axes[1].plot(frames, rhos, marker="o")
+    axes[1].set_title(f"seed {seed} | val Spearman(score, -d*) incl. unreachable")
+    axes[1].set_xlabel("frame")
+    for ax in axes:
+        ax.grid(alpha=0.25)
+    fig.tight_layout()
+    fig.savefig(out_dir / f"val_metrics_seed{seed}.png")
     plt.close(fig)
 
 

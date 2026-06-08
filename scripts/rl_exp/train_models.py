@@ -198,6 +198,17 @@ def train_domain(
         installed = domain_model_dir / f"frontier_policy_{fringe}.onnx"
         shutil.copy2(exported, installed)
         print(f"[{domain}] installed {installed}")
+
+        # Carry the per-run plots next to the deployed ONNX so the single-seed
+        # view sits beside the model. Multi-seed runs keep plots in their
+        # per-seed dirs (offline_analysis.py remains the cross-seed view).
+        copied = []
+        for png in sorted(seed_dir.glob("*.png")):
+            dst = domain_model_dir / png.name
+            shutil.copy2(png, dst)
+            copied.append(dst.name)
+        if copied:
+            print(f"[{domain}] copied plots to {domain_model_dir}: {', '.join(copied)}")
     else:
         print(
             f"[{domain}] multi-seed run ({len(seeds)} seeds): no model auto-"
