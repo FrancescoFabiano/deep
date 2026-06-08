@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import json
 import math
-import sys
 import time
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple
@@ -332,9 +331,6 @@ class OfflineDQNTrainer:
                     )
 
         pbar.close()
-        self._save_model(
-            out_dir / "last.pt", frames, checkpoints[-1] if checkpoints else None
-        )
         with (out_dir / "history.json").open("w") as fh:
             json.dump({"history": history, "checkpoints": checkpoints}, fh, indent=1)
         return {"history": history, "checkpoints": checkpoints}

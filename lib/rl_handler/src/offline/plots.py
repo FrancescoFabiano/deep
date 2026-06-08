@@ -48,7 +48,10 @@ def _moving_avg(xs: List[float], k: int = 25) -> List[float]:
     return out
 
 
-def plot_seed_curves(history_file: Path, out_dir: Path, seed: int) -> None:
+def plot_seed_curves(
+    history_file: Path, out_dir: Path, seed: int, fringe: Optional[int] = None
+) -> None:
+    suffix = f"_fringe{fringe}" if fringe is not None else ""
     payload = json.loads(Path(history_file).read_text())
     h = payload["history"]
     out_dir = Path(out_dir)
@@ -83,16 +86,19 @@ def plot_seed_curves(history_file: Path, out_dir: Path, seed: int) -> None:
     for ax in axes:
         ax.grid(alpha=0.25)
     fig.tight_layout()
-    fig.savefig(out_dir / f"training_curves_seed{seed}.png")
+    fig.savefig(out_dir / f"training_curves_seed{seed}{suffix}.png")
     plt.close(fig)
 
 
-def plot_seed_val_curves(history_file: Path, out_dir: Path, seed: int) -> None:
+def plot_seed_val_curves(
+    history_file: Path, out_dir: Path, seed: int, fringe: Optional[int] = None
+) -> None:
     """Single-seed eval-metric curves over checkpoint frames.
 
     Companion to plot_seed_curves for per-run (single-seed) output; the
     cross-seed IQM bands stay in plot_iqm_bands_across_seeds.
     """
+    suffix = f"_fringe{fringe}" if fringe is not None else ""
     payload = json.loads(Path(history_file).read_text())
     ckpts = payload["checkpoints"]
     out_dir = Path(out_dir)
@@ -112,7 +118,7 @@ def plot_seed_val_curves(history_file: Path, out_dir: Path, seed: int) -> None:
     for ax in axes:
         ax.grid(alpha=0.25)
     fig.tight_layout()
-    fig.savefig(out_dir / f"val_metrics_seed{seed}.png")
+    fig.savefig(out_dir / f"val_metrics_seed{seed}{suffix}.png")
     plt.close(fig)
 
 

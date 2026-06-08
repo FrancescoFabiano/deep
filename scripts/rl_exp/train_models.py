@@ -15,22 +15,24 @@ Domain/data convention (same as gnn_exp):
 Train/val split: instances are sorted; the last one is held out as validation,
 the rest are training (single-instance domains use it as both, with a warning).
 
-KWARGS PASS-THROUGH: this script owns only orchestration flags (exp dir,
---domains, --seeds, output root).  Every offline_main.py flag (--frames,
---n-checkpoints, --gamma, --epsilon-schedule, --fringe-size, --device, ...) is
+KWARGS PASS-THROUGH: this script owns orchestration flags (exp dir, --domains,
+--seeds, --fringe-sizes, output root).  Every other offline_main.py flag
+(--frames, --n-checkpoints, --gamma, --epsilon-schedule, --device, ...) is
 forwarded verbatim via the unknown-args remainder; offline_main.py validates
-them, and a non-zero exit there fails this script loudly.  The fully resolved
-command is echoed before each launch so runs reproduce from the log.
+them, and a non-zero exit there fails this script loudly.  --fringe-sizes is a
+known flag here, so it is passed through deliberately (one trained+installed
+model per fringe size).  The fully resolved command is echoed before each
+launch so runs reproduce from the log.
 
 Examples
 --------
 # All domains found under the experiment root, defaults, single seed (42):
 python3 scripts/rl_exp/train_models.py exp/rl_exp/batch0_merged
 
-# One domain, short run, forwarding offline_main flags after the orchestration
-# args (note --frames/--fringe-size are passed straight through):
+# One domain, short run, both fringe sizes, forwarding offline_main flags after
+# the orchestration args (--frames is passed straight through):
 python3 scripts/rl_exp/train_models.py exp/rl_exp/batch0_merged \\
-    --domains CC -- --frames 100000 --n-checkpoints 20 --fringe-size 32
+    --domains CC --fringe-sizes 32 64 -- --frames 100000 --n-checkpoints 20
 
 # Multi-seed production run (each seed in its own subdir; no auto-install):
 python3 scripts/rl_exp/train_models.py exp/rl_exp/batch0_merged \\
@@ -82,21 +84,6 @@ def split_train_val(csvs: list[Path]) -> tuple[list[Path], list[Path]]:
     return csvs[:-1], csvs[-1:]
 
 
-def fringe_size_from_forwarded(forwarded: list[str], default: int = 32) -> int:
-    """Read --fringe-size from the forwarded remainder to name the install file.
-
-    Non-destructive: the flag stays in `forwarded` and still reaches
-    offline_main.py; we only peek at it so the installed ONNX matches the
-    `frontier_policy_<F>.onnx` name the eval consumer expects.
-    """
-    for i, tok in enumerate(forwarded):
-        if tok == "--fringe-size" and i + 1 < len(forwarded):
-            return int(forwarded[i + 1])
-        if tok.startswith("--fringe-size="):
-            return int(tok.split("=", 1)[1])
-    return default
-
-
 def user_supplied_csvs(forwarded: list[str]) -> bool:
     return any(
         tok == "--train-csv" or tok == "--val-csv"
@@ -141,6 +128,7 @@ def train_domain(
     models_root: Path,
     domain: str,
     seeds: list[int],
+    fringe_sizes: list[int],
     forwarded: list[str],
 ) -> None:
     csvs = domain_instance_csvs(models_root, domain)
@@ -156,10 +144,10 @@ def train_domain(
             "using it as both train and val."
         )
 
-    fringe = fringe_size_from_forwarded(forwarded)
     domain_model_dir = models_root / domain
 
     for seed in seeds:
+        # Base dir; offline_main.py appends `_fringe{F}` per fringe size.
         seed_dir = domain_model_dir / f"seed{seed}"
         prefix = f"[{domain}/seed{seed}]".ljust(22)
 
@@ -175,6 +163,9 @@ def train_domain(
             cmd += ["--train-csv", *(str(p.resolve()) for p in train_csvs)]
             cmd += ["--val-csv", *(str(p.resolve()) for p in val_csvs)]
         cmd += forwarded
+        # --fringe-sizes is a known flag here, so parse_known_args strips it
+        # from the forwarded remainder; pass it through deliberately.
+        cmd += ["--fringe-sizes", *(str(F) for F in fringe_sizes)]
 
         rc = run_one(cmd, prefix)
         if rc != 0:
@@ -184,31 +175,36 @@ def train_domain(
             sys.exit(rc)
         print(f"{prefix} [SUCCESS]")
 
-    # Single-seed run: install the objective-best export where the eval
-    # consumer expects it, mirroring gnn_exp's zero-manual-step flow.
+    # Single-seed run: install the objective-best export for EACH fringe size
+    # where the eval consumer expects it, mirroring gnn_exp's zero-manual-step
+    # flow. Each fringe coexists under its own frontier_policy_<F>.onnx name.
     if len(seeds) == 1:
-        seed_dir = domain_model_dir / f"seed{seeds[0]}"
-        exported = seed_dir / f"frontier_policy_{fringe}_best_by_expansions.onnx"
-        if not exported.exists():
-            print(
-                f"[WARNING] expected export not found: {exported} "
-                "(did you pass --no-export-onnx?); skipping install."
-            )
-            return
-        installed = domain_model_dir / f"frontier_policy_{fringe}.onnx"
-        shutil.copy2(exported, installed)
-        print(f"[{domain}] installed {installed}")
+        for F in fringe_sizes:
+            fringe_dir = domain_model_dir / f"seed{seeds[0]}_fringe{F}"
+            exported = fringe_dir / f"frontier_policy_{F}_best_by_expansions.onnx"
+            if not exported.exists():
+                print(
+                    f"[WARNING] expected export not found: {exported} "
+                    "(did you pass --no-export-onnx?); skipping install."
+                )
+                continue
+            installed = domain_model_dir / f"frontier_policy_{F}.onnx"
+            shutil.copy2(exported, installed)
+            print(f"[{domain}] installed {installed}")
 
-        # Carry the per-run plots next to the deployed ONNX so the single-seed
-        # view sits beside the model. Multi-seed runs keep plots in their
-        # per-seed dirs (offline_analysis.py remains the cross-seed view).
-        copied = []
-        for png in sorted(seed_dir.glob("*.png")):
-            dst = domain_model_dir / png.name
-            shutil.copy2(png, dst)
-            copied.append(dst.name)
-        if copied:
-            print(f"[{domain}] copied plots to {domain_model_dir}: {', '.join(copied)}")
+            # Carry this fringe's per-run plots next to the deployed ONNX so the
+            # single-seed view sits beside the model. The fringe-named PNGs keep
+            # each fringe's plots distinct when copied up.
+            copied = []
+            for png in sorted(fringe_dir.glob("*.png")):
+                dst = domain_model_dir / png.name
+                shutil.copy2(png, dst)
+                copied.append(dst.name)
+            if copied:
+                print(
+                    f"[{domain}] copied plots to {domain_model_dir}: "
+                    f"{', '.join(copied)}"
+                )
     else:
         print(
             f"[{domain}] multi-seed run ({len(seeds)} seeds): no model auto-"
@@ -247,6 +243,14 @@ def main() -> None:
         help="Seeds; one subdir per seed. A single seed also installs the "
         "exported model under _models/<domain>/. Default: 42.",
     )
+    parser.add_argument(
+        "--fringe-sizes",
+        type=int,
+        nargs="+",
+        default=[32, 64],
+        help="Train one model per fringe size (forwarded to offline_main.py). "
+        "Each F installs its own frontier_policy_<F>.onnx. Default: 32 64.",
+    )
     args, forwarded = parser.parse_known_args()
     # Allow an explicit `--` separator before the forwarded block.
     if forwarded and forwarded[0] == "--":
@@ -266,12 +270,17 @@ def main() -> None:
         )
         sys.exit(1)
 
-    print(f"[INFO] exp_dir={exp_dir} domains={domains} seeds={args.seeds}")
+    print(
+        f"[INFO] exp_dir={exp_dir} domains={domains} seeds={args.seeds} "
+        f"fringe_sizes={args.fringe_sizes}"
+    )
     if forwarded:
         print(f"[INFO] forwarding to offline_main.py: {' '.join(forwarded)}")
 
     for domain in domains:
-        train_domain(exp_dir, models_root, domain, args.seeds, forwarded)
+        train_domain(
+            exp_dir, models_root, domain, args.seeds, args.fringe_sizes, forwarded
+        )
 
 
 if __name__ == "__main__":
