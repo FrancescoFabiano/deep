@@ -1,357 +1,266 @@
+"""Per-experiment training driver for the offline RL fringe-ranking pipeline.
+
+Twin of scripts/gnn_exp/train_models.py, adapted for lib/rl_handler's offline
+Double-DQN trainer (lib/rl_handler/offline_main.py).  It enumerates domains
+under an experiment root, builds each domain's train/val split from its
+generation-table CSVs, runs offline_main.py per (domain, seed), and — for a
+single-seed run — installs the exported ONNX where the eval consumer
+(scripts/rl_exp/bulk_coverage_run.py) looks for it:
+
+    <exp_dir>/_models/<domain>/frontier_policy_<F>.onnx
+
+Domain/data convention (same as gnn_exp):
+    <exp_dir>/_models/<domain>/training_data/<instance>/<instance>_depth_*.csv
+
+Train/val split: instances are sorted; the last one is held out as validation,
+the rest are training (single-instance domains use it as both, with a warning).
+
+KWARGS PASS-THROUGH: this script owns only orchestration flags (exp dir,
+--domains, --seeds, output root).  Every offline_main.py flag (--frames,
+--n-checkpoints, --gamma, --epsilon-schedule, --fringe-size, --device, ...) is
+forwarded verbatim via the unknown-args remainder; offline_main.py validates
+them, and a non-zero exit there fails this script loudly.  The fully resolved
+command is echoed before each launch so runs reproduce from the log.
+
+Examples
+--------
+# All domains found under the experiment root, defaults, single seed (42):
+python3 scripts/rl_exp/train_models.py exp/rl_exp/batch0_merged
+
+# One domain, short run, forwarding offline_main flags after the orchestration
+# args (note --frames/--fringe-size are passed straight through):
+python3 scripts/rl_exp/train_models.py exp/rl_exp/batch0_merged \\
+    --domains CC -- --frames 100000 --n-checkpoints 20 --fringe-size 32
+
+# Multi-seed production run (each seed in its own subdir; no auto-install):
+python3 scripts/rl_exp/train_models.py exp/rl_exp/batch0_merged \\
+    --domains CC --seeds 0 1 2 -- --frames 100000 --gamma 0.99
+"""
+
+from __future__ import annotations
+
 import argparse
-import concurrent.futures
-import multiprocessing
-import os
-import re
+import shutil
 import subprocess
+import sys
 import time
+from collections import deque
+from pathlib import Path
 
-from requests.compat import str
-
-
-def find_training_data_folders(batch_root):
-    models_root = os.path.join(batch_root, "_models")
-    training_data_folders = []
-    for root, dirs, _ in os.walk(models_root):
-        if "training_data" in dirs:
-            training_data_folders.append(os.path.join(root, "training_data"))
-    return training_data_folders
+REPO_ROOT = Path(__file__).resolve().parents[2]
+OFFLINE_MAIN = REPO_ROOT / "lib" / "rl_handler" / "offline_main.py"
 
 
-def parse_onnx_frontier_size_values(raw_value):
-    text = str(raw_value).strip()
-    if text.startswith("[") and text.endswith("]"):
-        text = text[1:-1].strip()
-    if not text:
-        raise ValueError("--onnx-frontier-size requires at least one value.")
-
-    values = []
-    seen = set()
-    for token in [tok for tok in re.split(r"[,\s]+", text) if tok]:
-        size = int(token)
-        if size <= 0:
-            raise ValueError("--onnx-frontier-size values must be > 0.")
-        if size not in seen:
-            seen.add(size)
-            values.append(size)
-    return values
+def find_domains(models_root: Path) -> list[str]:
+    """Domains = subdirs of <exp_dir>/_models that contain a training_data dir."""
+    if not models_root.is_dir():
+        return []
+    domains = []
+    for child in sorted(p for p in models_root.iterdir() if p.is_dir()):
+        if (child / "training_data").is_dir():
+            domains.append(child.name)
+    return domains
 
 
-def run_training(
-    training_data_folder,
-    no_goal,
-    dataset_type,
-    batch_size,
-    eval_batch_size,
-    n_train_epochs,
-    n_checkpoints_evaluation,
-    edge_label_buckets,
-    max_regular_distance_for_reward,
-    n_max_dataset_queries,
-    onnx_frontier_sizes,
-    train_random_frontier_ratio,
-    train_random_frontier_with_failure_ratio,
-    lr,
-    weight_decay,
-    max_grad_norm,
-    early_stopping_patience_evals,
-    failure_reward_value,
-    train_frontier_jaccard_threshold,
-    eval_frontier_jaccard_threshold,
-    max_failure_states_per_dataset,
-    build_data,
-    build_eval_data,
-    evaluate,
-):
-    if not os.path.isdir(training_data_folder):
-        print(f"[ERROR] Missing training folder: {training_data_folder}")
-        return
+def domain_instance_csvs(models_root: Path, domain: str) -> list[Path]:
+    """All per-instance generation tables for a domain, sorted by instance name."""
+    training_data = models_root / domain / "training_data"
+    csvs: list[Path] = []
+    for inst_dir in sorted(p for p in training_data.iterdir() if p.is_dir()):
+        matches = sorted(inst_dir.glob(f"{inst_dir.name}_depth_*.csv"))
+        if not matches:
+            matches = sorted(inst_dir.glob("*_depth_*.csv"))
+        if matches:
+            csvs.append(matches[0])
+    return csvs
 
-    instance_names = sorted(
-        name
-        for name in os.listdir(training_data_folder)
-        if os.path.isdir(os.path.join(training_data_folder, name))
+
+def split_train_val(csvs: list[Path]) -> tuple[list[Path], list[Path]]:
+    """Hold out the last instance as validation; the rest train."""
+    if len(csvs) <= 1:
+        return csvs, csvs  # caller warns
+    return csvs[:-1], csvs[-1:]
+
+
+def fringe_size_from_forwarded(forwarded: list[str], default: int = 32) -> int:
+    """Read --fringe-size from the forwarded remainder to name the install file.
+
+    Non-destructive: the flag stays in `forwarded` and still reaches
+    offline_main.py; we only peek at it so the installed ONNX matches the
+    `frontier_policy_<F>.onnx` name the eval consumer expects.
+    """
+    for i, tok in enumerate(forwarded):
+        if tok == "--fringe-size" and i + 1 < len(forwarded):
+            return int(forwarded[i + 1])
+        if tok.startswith("--fringe-size="):
+            return int(tok.split("=", 1)[1])
+    return default
+
+
+def user_supplied_csvs(forwarded: list[str]) -> bool:
+    return any(
+        tok == "--train-csv" or tok == "--val-csv"
+        or tok.startswith("--train-csv=") or tok.startswith("--val-csv=")
+        for tok in forwarded
     )
-    if not instance_names:
-        print(f"[WARNING] Empty training folder: {training_data_folder}")
-        return
 
-    model_dir = os.path.dirname(training_data_folder)
-    cmd = [
-        "python3",
-        "lib/rl_handler/__main__.py",
-        "--folder-raw-data",
-        training_data_folder,
-        "--subset-train",
-        *instance_names,
-        "--dir-save-model",
-        model_dir,
-        "--dir-save-data",
-        model_dir,
-        "--dataset_type",
-        dataset_type,
-        "--batch-size",
-        str(batch_size),
-        "--eval-batch-size",
-        str(eval_batch_size),
-        "--n-train-epochs",
-        str(n_train_epochs),
-        "--n-checkpoints-evaluation",
-        str(n_checkpoints_evaluation),
-        "--K",
-        str(edge_label_buckets),
-        "--build-data",
-        str(bool(build_data)).lower(),
-        "--failure-reward-value",
-        str(failure_reward_value),
-        "--max-regular-distance-for-reward",
-        str(max_regular_distance_for_reward),
-        "--n-max-dataset-queries",
-        str(n_max_dataset_queries),
-        "--onnx-frontier-size",
-        *[str(v) for v in onnx_frontier_sizes],
-        "--train-random-frontier-ratio",
-        str(train_random_frontier_ratio),
-        "--train-random-frontier-with-failure-ratio",
-        str(train_random_frontier_with_failure_ratio),
-        "--build-eval-data",
-        str(bool(build_eval_data)).lower(),
-        "--evaluate",
-        str(bool(evaluate)).lower(),
-        "--lr",
-        str(lr),
-        "--weight-decay",
-        str(weight_decay),
-        "--max-grad-norm",
-        str(max_grad_norm),
-        "--early-stopping-patience-evals",
-        str(early_stopping_patience_evals),
-        "--train-frontier-jaccard-threshold",
-        str(train_frontier_jaccard_threshold),
-        "--eval-frontier-jaccard-threshold",
-        str(eval_frontier_jaccard_threshold),
-        "--max-failure-states-per-dataset",
-        str(max_failure_states_per_dataset),
-    ]
-    if no_goal:
-        cmd.extend(["--kind-of-data", "separated"])
-    print(" ".join(cmd))
 
+def run_one(cmd: list[str], prefix: str) -> int:
+    """Run offline_main.py, streaming one log line every ~15s; return exit code.
+
+    The 15s throttle keeps long training runs readable, but would hide a
+    fast-failing error (e.g. a rejected kwarg).  So the most recent lines are
+    kept in a ring buffer and dumped verbatim on a non-zero exit — kwargs
+    errors are never silent.
+    """
+    print(" ".join(cmd), flush=True)
     process = subprocess.Popen(
-        cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-        bufsize=1,
+        cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1
     )
-    prefix = f"[{os.path.basename(model_dir)}]".ljust(20)
-    print(f"{prefix} Running RL training...")
-
     last_print = 0.0
+    recent: deque[str] = deque(maxlen=40)
+    assert process.stdout is not None
     for line in iter(process.stdout.readline, ""):
+        recent.append(line.rstrip())
         now = time.time()
         if now - last_print >= 15:
-            print(f"{prefix} {line.strip()}")
+            print(f"{prefix} {recent[-1]}", flush=True)
             last_print = now
     process.stdout.close()
     rc = process.wait()
-    if rc == 0:
-        print(f"{prefix} [SUCCESS]")
-    else:
-        print(f"{prefix} [ERROR] return code {rc}")
+    if rc != 0:
+        print(f"{prefix} ---- offline_main.py output (last {len(recent)} lines) ----")
+        for line in recent:
+            print(f"{prefix} {line}", flush=True)
+        print(f"{prefix} ---- end output ----", flush=True)
+    return rc
 
 
-def main():
-    parser = argparse.ArgumentParser(
-        description="Run RL model training in parallel for all _models/*/training_data folders."
-    )
-    parser.add_argument("batch_root")
-    parser.add_argument("--no_goal", action="store_true")
-    parser.add_argument("--dataset_type", choices=["MAPPED", "HASHED", "BITMASK"], default="HASHED")
-    parser.add_argument("--batch-size", type=int, default=128)
-    parser.add_argument(
-        "--eval-batch-size",
-        type=int,
-        default=128,
-        help="Batch size for evaluation dataloaders.",
-    )
-    parser.add_argument("--n-train-epochs", type=int, default=100)
-    parser.add_argument(
-        "--n-checkpoints-evaluation",
-        type=int,
-        default=5,
-        help="Number of uniformly-distributed evaluation checkpoints during training.",
-    )
-    parser.add_argument(
-        "--K",
-        "--edge-label-buckets",
-        dest="edge_label_buckets",
-        type=int,
-        default=128,
-        help=(
-            "Fixed number of edge-label buckets (K) passed to RL model "
-            "edge embeddings."
-        ),
-    )
-    parser.add_argument("--max-regular-distance-for-reward", type=float, default=50.0)
-    parser.add_argument(
-        "--n-max-dataset-queries",
-        type=int,
-        default=500,
-        help="Max generated evaluation strategy frontiers per dataset.",
-    )
-    parser.add_argument(
-        "--onnx-frontier-size",
-        type=int,
-        nargs="+",
-        default=[8, 16, 32, 64],
-        help=(
-            "Frontier size cap used during training/evaluation (and optional ONNX export). "
-            "Provide one or more integers (e.g. 32 or 16 32 64)."
-        ),
-    )
-    parser.add_argument(
-        "--train-random-frontier-ratio",
-        type=float,
-        default=0.1,
-        help=(
-            "Random frontiers generated as a ratio of finalized "
-            "greedy/conservative/common frontiers."
-        ),
-    )
-    parser.add_argument(
-        "--train-random-frontier-with-failure-ratio",
-        type=float,
-        default=0.4,
-        help=(
-            "Among random frontiers, target this fraction to include "
-            "at least one failure state."
-        ),
-    )
-    parser.add_argument("--lr", type=float, default=3e-4)
-    parser.add_argument("--weight-decay", type=float, default=1e-4)
-    parser.add_argument("--failure-reward-value", type=float, default=-1.0)
-    parser.add_argument("--max-grad-norm", type=float, default=1.0)
-    parser.add_argument("--early-stopping-patience-evals", type=int, default=50)
-    parser.add_argument(
-        "--train-frontier-jaccard-threshold",
-        type=float,
-        default=0.6,
-        help="Drop near-duplicate train frontiers with Jaccard similarity >= threshold.",
-    )
-    parser.add_argument(
-        "--eval-frontier-jaccard-threshold",
-        type=float,
-        default=0.3,
-        help="Drop near-duplicate evaluation frontiers with Jaccard similarity >= threshold.",
-    )
-    parser.add_argument(
-        "--build-data",
-        choices=["true", "false"],
-        default="true",
-        help="Whether to rebuild training samples before training.",
-    )
-    parser.add_argument(
-        "--build-eval-data",
-        choices=["true", "false"],
-        default="true",
-        help=(
-            "Whether to rebuild evaluation query definitions "
-            "(train/test x random/fifo/stress) before evaluation."
-        ),
-    )
-    parser.add_argument(
-        "--evaluate",
-        choices=["true", "false"],
-        default="true",
-        help=(
-            "If evaluation data are present, perform strategy evaluation on train/test splits."
-        ),
-    )
-    parser.add_argument(
-        "--max-failure-states-per-dataset",
-        type=float,
-        default=1.0,
-        help=(
-            "Keep all no-failure train frontiers; keep with-failure frontiers up to this ratio "
-            "relative to no-failure ones."
-        ),
-    )
-    args = parser.parse_args()
-    if args.train_random_frontier_ratio < 0.0 or args.train_random_frontier_ratio > 1.0:
-        raise ValueError("--train-random-frontier-ratio must be in [0.0, 1.0].")
-    if (
-        args.train_random_frontier_with_failure_ratio < 0.0
-        or args.train_random_frontier_with_failure_ratio > 1.0
-    ):
-        raise ValueError("--train-random-frontier-with-failure-ratio must be in [0.0, 1.0].")
-    if (
-        args.train_frontier_jaccard_threshold < 0.0
-        or args.train_frontier_jaccard_threshold > 1.0
-    ):
-        raise ValueError("--train-frontier-jaccard-threshold must be in [0.0, 1.0].")
-    if (
-        args.eval_frontier_jaccard_threshold < 0.0
-        or args.eval_frontier_jaccard_threshold > 1.0
-    ):
-        raise ValueError("--eval-frontier-jaccard-threshold must be in [0.0, 1.0].")
-    if (
-        args.max_failure_states_per_dataset < 0.0
-        or args.max_failure_states_per_dataset > 1.0
-    ):
-        raise ValueError("--max-failure-states-per-dataset must be in [0.0, 1.0].")
-    if args.batch_size <= 0:
-        raise ValueError("--batch-size must be > 0.")
-    if args.eval_batch_size <= 0:
-        raise ValueError("--eval-batch-size must be > 0.")
-    if args.n_train_epochs <= 0:
-        raise ValueError("--n-train-epochs must be > 0.")
-    if args.n_checkpoints_evaluation <= 0:
-        raise ValueError("--n-checkpoints-evaluation must be > 0.")
-    if args.n_checkpoints_evaluation > args.n_train_epochs:
-        raise ValueError(
-            "--n-checkpoints-evaluation cannot exceed --n-train-epochs."
-        )
-    onnx_frontier_sizes = parse_onnx_frontier_size_values(args.onnx_frontier_size)
-    folders = find_training_data_folders(args.batch_root)
-    if not folders:
-        print(f"[ERROR] No training_data folders found in {args.batch_root}/_models/")
+def train_domain(
+    exp_dir: Path,
+    models_root: Path,
+    domain: str,
+    seeds: list[int],
+    forwarded: list[str],
+) -> None:
+    csvs = domain_instance_csvs(models_root, domain)
+    if not csvs:
+        print(f"[WARNING] No instance CSVs for domain '{domain}', skipping.")
         return
 
-    max_workers = min(multiprocessing.cpu_count(), len(folders))
-    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as pool:
-        futures = [
-            pool.submit(
-                run_training,
-                folder,
-                args.no_goal,
-                args.dataset_type,
-                args.batch_size,
-                args.eval_batch_size,
-                args.n_train_epochs,
-                args.n_checkpoints_evaluation,
-                args.edge_label_buckets,
-                args.max_regular_distance_for_reward,
-                args.n_max_dataset_queries,
-                onnx_frontier_sizes,
-                args.train_random_frontier_ratio,
-                args.train_random_frontier_with_failure_ratio,
-                args.lr,
-                args.weight_decay,
-                args.max_grad_norm,
-                args.early_stopping_patience_evals,
-                args.failure_reward_value,
-                args.train_frontier_jaccard_threshold,
-                args.eval_frontier_jaccard_threshold,
-                args.max_failure_states_per_dataset,
-                args.build_data.lower() == "true",
-                args.build_eval_data.lower() == "true",
-                args.evaluate.lower() == "true",
-            )
-            for folder in folders
+    auto_split = not user_supplied_csvs(forwarded)
+    train_csvs, val_csvs = split_train_val(csvs)
+    if auto_split and len(csvs) == 1:
+        print(
+            f"[WARNING] domain '{domain}' has a single instance; "
+            "using it as both train and val."
+        )
+
+    fringe = fringe_size_from_forwarded(forwarded)
+    domain_model_dir = models_root / domain
+
+    for seed in seeds:
+        seed_dir = domain_model_dir / f"seed{seed}"
+        prefix = f"[{domain}/seed{seed}]".ljust(22)
+
+        cmd = [
+            sys.executable,
+            str(OFFLINE_MAIN),
+            "--seed",
+            str(seed),
+            "--dir-save-model",
+            str(seed_dir),
         ]
-        for future in concurrent.futures.as_completed(futures):
-            future.result()
+        if auto_split:
+            cmd += ["--train-csv", *(str(p.resolve()) for p in train_csvs)]
+            cmd += ["--val-csv", *(str(p.resolve()) for p in val_csvs)]
+        cmd += forwarded
+
+        rc = run_one(cmd, prefix)
+        if rc != 0:
+            # Fail loudly: propagate offline_main's non-zero exit immediately
+            # (covers rejected kwargs and training errors alike).
+            print(f"{prefix} [ERROR] offline_main.py exited with code {rc}")
+            sys.exit(rc)
+        print(f"{prefix} [SUCCESS]")
+
+    # Single-seed run: install the objective-best export where the eval
+    # consumer expects it, mirroring gnn_exp's zero-manual-step flow.
+    if len(seeds) == 1:
+        seed_dir = domain_model_dir / f"seed{seeds[0]}"
+        exported = seed_dir / f"frontier_policy_{fringe}_best_by_expansions.onnx"
+        if not exported.exists():
+            print(
+                f"[WARNING] expected export not found: {exported} "
+                "(did you pass --no-export-onnx?); skipping install."
+            )
+            return
+        installed = domain_model_dir / f"frontier_policy_{fringe}.onnx"
+        shutil.copy2(exported, installed)
+        print(f"[{domain}] installed {installed}")
+    else:
+        print(
+            f"[{domain}] multi-seed run ({len(seeds)} seeds): no model auto-"
+            "installed. Use offline_analysis.py to pick a seed, then copy its "
+            f"frontier_policy_<F>_best_by_expansions.onnx to "
+            f"{domain_model_dir / 'frontier_policy_<F>.onnx'}."
+        )
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description=(
+            "Train the offline RL fringe-ranking model per domain under an "
+            "experiment root. Orchestration flags are below; any other flags "
+            "(after them, optionally separated by --) are forwarded verbatim "
+            "to lib/rl_handler/offline_main.py."
+        )
+    )
+    parser.add_argument(
+        "exp_dir",
+        help="Experiment root (e.g. exp/rl_exp/batch0_merged); models read "
+        "from / written to <exp_dir>/_models/<domain>/",
+    )
+    parser.add_argument(
+        "--domains",
+        nargs="+",
+        default=None,
+        help="Domains to train (default: all under <exp_dir>/_models with a "
+        "training_data dir).",
+    )
+    parser.add_argument(
+        "--seeds",
+        type=int,
+        nargs="+",
+        default=[42],
+        help="Seeds; one subdir per seed. A single seed also installs the "
+        "exported model under _models/<domain>/. Default: 42.",
+    )
+    args, forwarded = parser.parse_known_args()
+    # Allow an explicit `--` separator before the forwarded block.
+    if forwarded and forwarded[0] == "--":
+        forwarded = forwarded[1:]
+
+    exp_dir = Path(args.exp_dir)
+    models_root = exp_dir / "_models"
+    if not models_root.is_dir():
+        print(f"[ERROR] No _models dir under: {exp_dir}")
+        sys.exit(1)
+
+    domains = args.domains or find_domains(models_root)
+    if not domains:
+        print(
+            f"[ERROR] No domains (with a training_data dir) found under "
+            f"{models_root}."
+        )
+        sys.exit(1)
+
+    print(f"[INFO] exp_dir={exp_dir} domains={domains} seeds={args.seeds}")
+    if forwarded:
+        print(f"[INFO] forwarding to offline_main.py: {' '.join(forwarded)}")
+
+    for domain in domains:
+        train_domain(exp_dir, models_root, domain, args.seeds, forwarded)
 
 
 if __name__ == "__main__":

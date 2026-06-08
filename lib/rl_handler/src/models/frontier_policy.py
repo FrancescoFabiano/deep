@@ -1,3 +1,13 @@
+"""Deployed network architecture (DO NOT rename exported symbols).
+
+FrontierPolicyNetwork is the model behind every frontier_policy_<F>.onnx the
+C++ planner loads (FringeEvalRL): GNN encoder with in-graph HASHED int64
+normalization + per-fringe-slot score head with optional frontier context.
+Used by the offline DQN trainer (src/offline/dqn.py). Checkpoint configs
+reference the constructor signature; the ONNX contract depends on the
+forward semantics.
+"""
+
 from __future__ import annotations
 
 import torch
