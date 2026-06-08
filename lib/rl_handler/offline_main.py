@@ -81,9 +81,9 @@ def main() -> None:
     pbar = tqdm(
         csvs,
         desc="preparing instances",
-        unit="inst",
-        dynamic_ncols=True,
-        disable=not sys.stderr.isatty(),  # clean logs under nohup/pipes
+        #unit="inst",
+        #dynamic_ncols=True,
+        # disable=not sys.stderr.isatty(),  # clean logs under nohup/pipes
     )
     for csv in pbar:
         csv_path = _resolve(csv)

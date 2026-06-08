@@ -233,7 +233,6 @@ class OfflineDQNTrainer:
         t0 = time.time()
         frame = 0
         last_td = last_q = float("nan")
-        log_every = max(self.update_every, frames // 100)
 
         # Basic frame progress bar; auto-disabled off-TTY so nohup/piped logs
         # stay clean. [train]/[ckpt] lines go through pbar.write so they print
@@ -241,9 +240,10 @@ class OfflineDQNTrainer:
         pbar = tqdm(
             total=frames,
             unit="frame",
-            dynamic_ncols=True,
-            disable=not sys.stderr.isatty(),
-            mininterval=1.0,
+            desc="training"
+            #dynamic_ncols=True,
+            #disable=not sys.stderr.isatty(),
+            #mininterval=1.0,
         )
 
         while frame < frames:
@@ -289,8 +289,7 @@ class OfflineDQNTrainer:
 
             pbar.update(1)
             pbar.set_postfix(
-                {"eps": f"{eps:.3f}", "td": f"{last_td:.4f}", "q": f"{last_q:.2f}"},
-                refresh=False,  # redraw rides update()'s mininterval throttle
+                {"eps": f"{eps:.3f}", "td": f"{last_td:.4f}", "q": f"{last_q:.2f}"}
             )
 
             if len(self.replay) >= self.warmup and frame % self.update_every == 0:
@@ -298,7 +297,7 @@ class OfflineDQNTrainer:
             if frame % self.target_sync == 0:
                 self.target.load_state_dict(self.model.state_dict())
 
-            if frame % log_every == 0 and loss_acc:
+            if frame % n_checkpoints == 0 and loss_acc:
                 avg = {
                     k: sum(d[k] for d in loss_acc) / len(loss_acc)
                     for k in loss_acc[0]
