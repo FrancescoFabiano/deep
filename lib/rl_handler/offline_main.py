@@ -49,7 +49,7 @@ def parse_args() -> argparse.Namespace:
         help="start,end,frac-of-frames for the linear decay",
     )
     p.add_argument("--fringe-size", type=int, default=32)
-    p.add_argument("--batch-size", type=int, default=64)
+    p.add_argument("--batch-size", type=int, default=512)
     p.add_argument("--lr", type=float, default=1e-4)
     p.add_argument("--replay-capacity", type=int, default=50_000)
     p.add_argument("--warmup", type=int, default=1_000)
@@ -106,13 +106,13 @@ def main() -> None:
         gnn_layers=3,
         conv_type="gine",
         pooling_type="mean",
-        dataset_type="HASHED",
+        dataset_type="HASHED", # TODO
         edge_emb_dim=32,
         num_edge_labels=128,
         num_node_labels=4096,
         use_global_context=True,
         mlp_depth=2,
-        use_goal_separate_input=False,
+        use_goal_separate_input=False, # TODO
     )
 
     trainer = OfflineDQNTrainer(
