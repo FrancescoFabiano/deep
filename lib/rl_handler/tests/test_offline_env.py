@@ -26,6 +26,9 @@ from src.offline.tree_env import (  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[3]
 
+# Historical CC tables (live under out/NN/Training when generation data is on
+# disk). That data is untracked, so on a fresh branch checkout it may be
+# absent; discover_instances() falls back to whatever CC depth tables exist.
 CSVS = {
     "CC_2_2_4__pl_7": "out/NN/Training/CC_2_2_4__pl_7/CC_2_2_4__pl_7_depth_25.csv",
     "CC_3_2_3__pl_6": "out/NN/Training/CC_3_2_3__pl_6/CC_3_2_3__pl_6_depth_25.csv",
@@ -33,10 +36,27 @@ CSVS = {
 }
 
 
+def discover_instances() -> list[tuple[str, Path]]:
+    """Return up to 3 ``(name, csv_path)`` CC tables to exercise.
+
+    Prefers the historical out/NN/Training tables; when those are not on disk
+    falls back to the first CC depth tables under ``exp/.../training_data``.
+    """
+    found = [(n, REPO / rel) for n, rel in CSVS.items() if (REPO / rel).exists()]
+    if found:
+        return found
+    cands = sorted(REPO.glob("exp/*/*/_models/CC/training_data/*/*_depth_25.csv"))
+    return [(p.parent.name, p) for p in cands[:3]]
+
+
 def main() -> None:
     rng = random.Random(0)
-    for name, rel in CSVS.items():
-        inst = load_tree_instance(REPO / rel, name=name)
+    instances = discover_instances()
+    if not instances:
+        print("Phase-2 env checks: SKIP (no CC depth tables on disk)")
+        return
+    for name, csv_path in instances:
+        inst = load_tree_instance(csv_path, name=name)
         st = inst.stats()
         print(f"\n=== {name} ===")
         for k in (

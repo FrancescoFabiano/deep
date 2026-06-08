@@ -186,16 +186,58 @@ def benchmark(cache: InstanceCache) -> None:
         print(f"    fringe={fringe:4d}: {sps:9.0f} states/s ({dt / n_rep * 1e3:.2f} ms/fringe)")
 
 
+# Directory globs (fixed depth, so we never walk into the huge leaf dirs)
+# used to locate training DOTs when the primary CC dir is absent on a branch.
+_DOT_DIR_GLOBS = (
+    "exp/*/*/_models/*/training_data/*/RawFiles/hash_merged",
+    "exp/*/*/_models/*/training_data/*/RawFiles",
+    "exp/*/*/training_data/*/RawFiles/hash_merged",
+    "exp/*/*/training_data/*/RawFiles",
+)
+
+
+def discover_dots() -> list[Path]:
+    """Up to 2000 DOT paths for the parity/cache checks.
+
+    Prefers the historical CC training dir; if that is empty on this branch
+    (the generation data is untracked and may not be on disk), falls back to
+    the first ``exp/`` training directory that actually has ``*.dot`` files.
+    Returns ``[]`` only when no DOTs exist anywhere.
+    """
+    primary = REPO / "out/NN/Training/CC_3_2_3__pl_7/RawFiles/hash_merged"
+    files = sorted(primary.glob("*.dot"))[:2000]
+    if files:
+        return files
+    for pattern in _DOT_DIR_GLOBS:
+        for d in sorted(REPO.glob(pattern)):
+            files = sorted(d.glob("*.dot"))[:2000]
+            if files:
+                return files
+    return []
+
+
+def _fallback_cache() -> InstanceCache:
+    """In-memory cache from the inline DOT strings, sized so the structural
+    checks ([3]-[6]) can still run when no training DOTs exist on disk."""
+    states = [parse_dot_fast(s) for s in (DOT_A, DOT_B, DOT_C)]
+    states = [s for s in states if s is not None]
+    states = (states * 22)[:64]  # >= 32 for the flat-cache sampler in [5]/[6]
+    return InstanceCache(states)  # type: ignore[arg-type]
+
+
 def main() -> None:
     test_hand_derived_contract()
 
-    inst_dir = REPO / "out/NN/Training/CC_3_2_3__pl_7/RawFiles/hash_merged"
-    files = sorted(inst_dir.glob("*.dot"))[:2000]
-    rng = random.Random(1)
-    parity_sample = rng.sample(files, 25)
-    test_parser_parity_vs_pydot(parity_sample)
+    files = discover_dots()
+    if files:
+        rng = random.Random(1)
+        parity_sample = rng.sample(files, min(25, len(files)))
+        test_parser_parity_vs_pydot(parity_sample)
+        cache = InstanceCache.from_paths([str(p) for p in files], cache_file=None)
+    else:
+        print("[2] parser parity vs pydot loader: SKIP (no DOT files on disk)")
+        cache = _fallback_cache()
 
-    cache = InstanceCache.from_paths([str(p) for p in files], cache_file=None)
     test_onnx_compat(cache)
     test_alone_vs_batch(cache)
     test_flat_cache_equivalence(cache)
