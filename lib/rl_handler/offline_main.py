@@ -12,6 +12,8 @@ import json
 import sys
 from pathlib import Path
 
+from tqdm import tqdm
+
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -74,14 +76,22 @@ def main() -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
 
     instances, caches = [], []
-    for csv in [*args.train_csv, *args.val_csv]:
+    csvs = [*args.train_csv, *args.val_csv]
+    pbar = tqdm(
+        csvs,
+        desc="preparing instances",
+        unit="inst",
+        dynamic_ncols=True,
+        disable=not sys.stderr.isatty(),  # clean logs under nohup/pipes
+    )
+    for csv in pbar:
         csv_path = _resolve(csv)
         inst = load_tree_instance(csv_path)
+        pbar.set_postfix_str(f"{inst.name}: {inst.n_states} states")
         cache_file = csv_path.parent / "graph_cache_offline_v1.pt"
         cache = InstanceCache.from_paths(inst.state_paths_abs(REPO), cache_file)
         instances.append(inst)
         caches.append(cache)
-        print(f"[data] {inst.name}: {json.dumps(inst.stats(), default=str)[:400]}")
 
     train_ids = list(range(len(args.train_csv)))
     val_ids = list(range(len(args.train_csv), len(instances)))

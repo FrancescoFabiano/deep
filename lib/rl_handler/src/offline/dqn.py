@@ -203,7 +203,6 @@ class OfflineDQNTrainer:
         n_checkpoints: int,
         epsilon: EpsilonSchedule,
         out_dir: Path,
-        log_every: int = 500,
     ) -> Dict[str, object]:
         out_dir = Path(out_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
@@ -233,10 +232,12 @@ class OfflineDQNTrainer:
         loss_acc: List[Dict[str, float]] = []
         t0 = time.time()
         frame = 0
-        # Progress bar (interactive runs only — auto-disabled when stderr is
-        # not a TTY so nohup'd production logs stay clean).
-        cum_reward = 0.0
-        ep_return_sum, ep_count = 0.0, 0
+        last_td = last_q = float("nan")
+        log_every = max(self.update_every, frames // 100)
+
+        # Basic frame progress bar; auto-disabled off-TTY so nohup/piped logs
+        # stay clean. [train]/[ckpt] lines go through pbar.write so they print
+        # above the bar instead of breaking it.
         pbar = tqdm(
             total=frames,
             unit="frame",
@@ -244,6 +245,7 @@ class OfflineDQNTrainer:
             disable=not sys.stderr.isatty(),
             mininterval=1.0,
         )
+
         while frame < frames:
             frame += 1
             eps = epsilon(frame)
@@ -255,7 +257,6 @@ class OfflineDQNTrainer:
 
             nxt = env.step(action)
             ep_return += nxt.reward
-            cum_reward += nxt.reward
             self.replay.push(
                 Transition(
                     inst=inst_idx,
@@ -266,14 +267,13 @@ class OfflineDQNTrainer:
                     done=nxt.done,
                 )
             )
+
             if nxt.done:
                 history["episode_return"].append(ep_return)
                 history["episode_frame"].append(frame)
                 history["episode_expansions"].append(int(nxt.info["expansions"]))
                 history["episode_goal"].append(bool(nxt.info["goal_found"]))
                 history["episode_inst"].append(self.instances[inst_idx].name)
-                ep_return_sum += ep_return
-                ep_count += 1
                 ep_return = 0.0
                 env_cursor = (env_cursor + 1) % len(env_order)
                 inst_idx = env_order[env_cursor]
@@ -289,14 +289,8 @@ class OfflineDQNTrainer:
 
             pbar.update(1)
             pbar.set_postfix(
-                {
-                    "remaining": frames - frame,
-                    "avg_r": f"{cum_reward / frame:.4f}",
-                    "avg_return": (
-                        f"{ep_return_sum / ep_count:.1f}" if ep_count else "n/a"
-                    ),
-                },
-                refresh=False,  # redraws ride update()'s mininterval throttle
+                {"eps": f"{eps:.3f}", "td": f"{last_td:.4f}", "q": f"{last_q:.2f}"},
+                refresh=False,  # redraw rides update()'s mininterval throttle
             )
 
             if len(self.replay) >= self.warmup and frame % self.update_every == 0:
@@ -314,18 +308,17 @@ class OfflineDQNTrainer:
                 for k, v in avg.items():
                     history[k].append(v)
                 loss_acc = []
+                last_td, last_q = avg["td_loss"], avg["q_mean"]
                 fps = frame / (time.time() - t0)
-                print(
+                pbar.write(
                     f"[train] frame {frame}/{frames} eps={eps:.3f} "
-                    f"td={avg['td_loss']:.4f} q={avg['q_mean']:.2f} "
-                    f"({fps:.0f} fps)",
-                    flush=True,
+                    f"td={last_td:.4f} q={last_q:.2f} ({fps:.0f} fps)"
                 )
 
             if frame in ckpt_frames:
                 ck = self.evaluate(frame)
                 checkpoints.append(ck)
-                print(f"[ckpt] {json.dumps(ck['summary'])}", flush=True)
+                pbar.write(f"[ckpt] {json.dumps(ck['summary'])}")
                 val_exp = ck["summary"]["val_total_expansions"]
                 rho = ck["summary"]["val_spearman_all"]
                 if val_exp < best_val_exp:
@@ -340,7 +333,9 @@ class OfflineDQNTrainer:
                     )
 
         pbar.close()
-        self._save_model(out_dir / "last.pt", frames, checkpoints[-1] if checkpoints else None)
+        self._save_model(
+            out_dir / "last.pt", frames, checkpoints[-1] if checkpoints else None
+        )
         with (out_dir / "history.json").open("w") as fh:
             json.dump({"history": history, "checkpoints": checkpoints}, fh, indent=1)
         return {"history": history, "checkpoints": checkpoints}
