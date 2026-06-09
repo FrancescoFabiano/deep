@@ -66,6 +66,14 @@ def parse_args() -> argparse.Namespace:
     # is kernel-launch-bound on these tiny graphs, so this sets the fps.
     p.add_argument("--update-every", type=int, default=4)
     p.add_argument("--eval-expansion-cap", type=int, default=2_000)
+    p.add_argument(
+        "--eval-refill-seeds",
+        type=int,
+        default=1,
+        help="Average each val instance's greedy rollout over this many "
+        "reservoir-refill seeds for robust (low-noise) checkpoint selection "
+        "and convergence curves. Default: 1 (single-seed, prior behavior).",
+    )
     p.add_argument("--max-grad-norm", type=float, default=1.0)
     p.add_argument("--dir-save-model", type=str, required=True)
     p.add_argument("--device", type=str, default=None)
@@ -169,6 +177,7 @@ def main() -> None:
             max_grad_norm=args.max_grad_norm,
             seed=args.seed,
             device=args.device,
+            eval_refill_seeds=args.eval_refill_seeds,
         )
 
         with (out_f / "args.json").open("w") as fh:

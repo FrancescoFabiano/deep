@@ -69,6 +69,7 @@ class OfflineDQNTrainer:
         max_grad_norm: float = 1.0,
         seed: int = 42,
         device: Optional[str] = None,
+        eval_refill_seeds: int = 1,
     ):
         self.device = torch.device(
             device or ("cuda" if torch.cuda.is_available() else "cpu")
@@ -104,6 +105,7 @@ class OfflineDQNTrainer:
         self.eval_expansion_cap = int(eval_expansion_cap)
         self.max_grad_norm = float(max_grad_norm)
         self.seed = int(seed)
+        self.eval_refill_seeds = max(1, int(eval_refill_seeds))
 
         torch.manual_seed(seed)
         self.replay = ReplayBuffer(replay_capacity, seed=seed)
@@ -398,19 +400,32 @@ class OfflineDQNTrainer:
     def evaluate(self, frame: int, n_score_sample: int = 4096) -> Dict[str, object]:
         self.model.eval()
         per_instance: Dict[str, Dict[str, object]] = {}
-        val_total = 0
+        val_total = 0.0
         val_occ = OccupancyCounter(self.fringe_size)
+        # Average each val instance's greedy rollout over K refill seeds so the
+        # convergence curve and best_by_expansions selection are robust to
+        # reservoir-refill noise (a single seed per checkpoint made the v1 curve
+        # oscillate wildly). K=1 reproduces the prior single-seed behavior.
+        k = self.eval_refill_seeds
         for vid in self.val_ids:
             inst = self.instances[vid]
-            roll = self.greedy_rollout(vid, seed=10_000 + frame, occ_accum=val_occ)
+            rolls = [
+                self.greedy_rollout(vid, seed=10_000 + frame + s, occ_accum=val_occ)
+                for s in range(k)
+            ]
+            exps = [int(r["expansions"]) for r in rolls]
+            mean_exp = sum(exps) / len(exps)
             bfs = bfs_expansions(inst)
             per_instance[inst.name] = {
-                "greedy": roll,
+                "greedy": rolls[-1],  # representative single rollout
+                "greedy_mean_expansions": round(mean_exp, 3),
+                "greedy_expansions_per_seed": exps,
                 "bfs_expansions": int(bfs["expansions"]),
                 "optimal_expansions": inst.optimal_expansions(),
-                "occupancy": roll["occupancy"],
+                "occupancy": rolls[-1]["occupancy"],
             }
-            val_total += int(roll["expansions"])
+            val_total += mean_exp
+        val_total = round(val_total, 3)
 
         # Spearman + score stats on val states (singleton fringes).
         rho_all = rho_reach = None
@@ -461,7 +476,8 @@ class OfflineDQNTrainer:
             "frame": int(frame),
             "summary": {
                 "frame": int(frame),
-                "val_total_expansions": int(val_total),
+                "val_total_expansions": val_total,
+                "val_eval_refill_seeds": k,
                 "val_spearman_all": rho_all,
                 "val_spearman_reachable": rho_reach,
                 "val_occupancy": val_occ.summary(),
