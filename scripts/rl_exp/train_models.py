@@ -77,11 +77,18 @@ def domain_instance_csvs(models_root: Path, domain: str) -> list[Path]:
     return csvs
 
 
-def split_train_val(csvs: list[Path]) -> tuple[list[Path], list[Path]]:
-    """Hold out the last instance as validation; the rest train."""
-    if len(csvs) <= 1:
+def split_train_val(
+    csvs: list[Path], n_val: int = 1
+) -> tuple[list[Path], list[Path]]:
+    """Hold out the last ``n_val`` sorted instances as validation; rest train.
+
+    Degenerate guard: if there are not strictly more than ``n_val`` instances,
+    there is no room for a disjoint split, so every instance is used as both
+    train and val (caller warns)."""
+    n_val = max(1, int(n_val))
+    if len(csvs) <= n_val:
         return csvs, csvs  # caller warns
-    return csvs[:-1], csvs[-1:]
+    return csvs[:-n_val], csvs[-n_val:]
 
 
 def user_supplied_csvs(forwarded: list[str]) -> bool:
@@ -130,6 +137,7 @@ def train_domain(
     seeds: list[int],
     fringe_sizes: list[int],
     forwarded: list[str],
+    n_val: int = 1,
 ) -> None:
     csvs = domain_instance_csvs(models_root, domain)
     if not csvs:
@@ -137,11 +145,17 @@ def train_domain(
         return
 
     auto_split = not user_supplied_csvs(forwarded)
-    train_csvs, val_csvs = split_train_val(csvs)
-    if auto_split and len(csvs) == 1:
+    train_csvs, val_csvs = split_train_val(csvs, n_val)
+    if auto_split and len(csvs) <= n_val:
         print(
-            f"[WARNING] domain '{domain}' has a single instance; "
-            "using it as both train and val."
+            f"[WARNING] domain '{domain}' has {len(csvs)} instance(s) <= "
+            f"--n-val {n_val}; using all of them as both train and val."
+        )
+    if auto_split:
+        print(
+            f"[split] domain '{domain}' (n_val={n_val}): "
+            f"train={[p.parent.name for p in train_csvs]} "
+            f"val={[p.parent.name for p in val_csvs]}"
         )
 
     domain_model_dir = models_root / domain
@@ -251,6 +265,13 @@ def main() -> None:
         help="Train one model per fringe size (forwarded to offline_main.py). "
         "Each F installs its own frontier_policy_<F>.onnx. Default: 32 64.",
     )
+    parser.add_argument(
+        "--n-val",
+        type=int,
+        default=1,
+        help="Hold out the last N sorted instances as validation; the rest "
+        "train (auto-split only). Default: 1 (preserves prior behavior).",
+    )
     args, forwarded = parser.parse_known_args()
     # Allow an explicit `--` separator before the forwarded block.
     if forwarded and forwarded[0] == "--":
@@ -272,14 +293,15 @@ def main() -> None:
 
     print(
         f"[INFO] exp_dir={exp_dir} domains={domains} seeds={args.seeds} "
-        f"fringe_sizes={args.fringe_sizes}"
+        f"fringe_sizes={args.fringe_sizes} n_val={args.n_val}"
     )
     if forwarded:
         print(f"[INFO] forwarding to offline_main.py: {' '.join(forwarded)}")
 
     for domain in domains:
         train_domain(
-            exp_dir, models_root, domain, args.seeds, args.fringe_sizes, forwarded
+            exp_dir, models_root, domain, args.seeds, args.fringe_sizes,
+            forwarded, args.n_val,
         )
 
 
