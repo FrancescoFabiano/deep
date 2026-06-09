@@ -13,6 +13,7 @@ import os
 import sys
 from pathlib import Path
 
+import torch
 from tqdm import tqdm
 
 
@@ -134,6 +135,19 @@ def main() -> None:
         out_f = Path(str(args.dir_save_model) + f"_fringe{F}")
         out_f.mkdir(parents=True, exist_ok=True)
         print(f"[fringe {F}] training -> {out_f}")
+
+        # Control per-fringe model init: FrontierPolicyNetwork.__init__ draws its
+        # layer weights from the global torch RNG and does NOT seed it, and the
+        # global RNG advances across the fringe loop (model build + a full
+        # training run). Without re-seeding here, F=64 would init from a
+        # different RNG state than F=32, confounding any fringe-size effect with
+        # random-init variance. Re-seed so the ONLY difference across fringe runs
+        # is the beam width. (The trainer re-seeds its own training RNG in
+        # __init__, so post-build divergence is from beam binding + training,
+        # which is intended.)
+        torch.manual_seed(args.seed)
+        if (args.device or "").startswith("cuda"):
+            torch.cuda.manual_seed_all(args.seed)
 
         # Fresh model + trainer per fringe; instances/caches are reused.
         model = _build_model()

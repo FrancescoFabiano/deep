@@ -175,6 +175,82 @@ class StepResult:
     info: Dict[str, object] = field(default_factory=dict)
 
 
+class OccupancyCounter:
+    """Cheap histogram of live fringe occupancy (= active beam members/step).
+
+    The beam can never exceed ``fringe_size`` by env construction, so a length
+    ``fringe_size + 1`` histogram gives exact max/mean/percentiles at O(1) per
+    step and O(F) to summarize — no per-step list, no hot-loop overhead.  The
+    reservoir is unbounded, so it is tracked by running max + mean only.
+
+    The point of this counter is to make "does the beam ever bind past F?" a
+    number you read before trusting any fringe-size comparison: if max
+    occupancy < F, the beam never binds and the fringe-size knob is inert.
+    """
+
+    def __init__(self, fringe_size: int):
+        self.fringe_size = int(fringe_size)
+        self.counts = [0] * (self.fringe_size + 1)
+        self.n_over = 0  # safety: occupancy beyond F (should stay 0)
+        self.res_sum = 0
+        self.res_max = 0
+        self.n = 0
+
+    def record(self, fringe_len: int, reservoir_len: int = 0) -> None:
+        if 0 <= fringe_len <= self.fringe_size:
+            self.counts[fringe_len] += 1
+        else:
+            self.n_over += 1
+        self.res_sum += int(reservoir_len)
+        self.res_max = max(self.res_max, int(reservoir_len))
+        self.n += 1
+
+    def merge(self, other: "OccupancyCounter") -> None:
+        """Fold another counter (same fringe_size) in — used to aggregate
+        occupancy across val instances into one summary."""
+        m = min(len(self.counts), len(other.counts))
+        for k in range(m):
+            self.counts[k] += other.counts[k]
+        self.n_over += other.n_over
+        self.res_sum += other.res_sum
+        self.res_max = max(self.res_max, other.res_max)
+        self.n += other.n
+
+    def _percentile(self, p: float) -> int:
+        thresh = p * self.n
+        cum = 0
+        for k, ck in enumerate(self.counts):
+            cum += ck
+            if cum >= thresh:
+                return k
+        return self.fringe_size
+
+    def summary(self) -> Dict[str, object]:
+        if self.n == 0:
+            return {
+                "n_steps": 0, "max": 0, "mean": 0.0,
+                "p50": 0, "p90": 0, "p99": 0,
+                "reservoir_max": 0, "reservoir_mean": 0.0,
+                "binds": False, "fringe_size": self.fringe_size,
+            }
+        mx = max((k for k, ck in enumerate(self.counts) if ck > 0), default=0)
+        mean = sum(k * ck for k, ck in enumerate(self.counts)) / self.n
+        return {
+            "n_steps": self.n,
+            "max": int(mx),
+            "mean": round(mean, 3),
+            "p50": self._percentile(0.50),
+            "p90": self._percentile(0.90),
+            "p99": self._percentile(0.99),
+            "reservoir_max": int(self.res_max),
+            "reservoir_mean": round(self.res_sum / self.n, 3),
+            # the beam "binds" only if occupancy ever reaches F (else the
+            # fringe-size knob is inert and any F-comparison is moot).
+            "binds": bool(mx >= self.fringe_size),
+            "fringe_size": self.fringe_size,
+        }
+
+
 class FringeEnv:
     """Gym-style fringe MDP over one reconstructed tree (state ids only).
 
@@ -320,6 +396,41 @@ def bfs_expansions(instance: TreeInstance, cap: Optional[int] = None) -> Dict[st
                 return {"expansions": expansions, "goal_found": True}
             queue.append(c)
     return {"expansions": expansions, "goal_found": False}
+
+
+def bfs_frontier_max(instance: TreeInstance, cap: Optional[int] = None) -> int:
+    """Max BFS open-list size over an uncapped FIFO search (goal test at gen).
+
+    A policy-free UPPER BOUND on how many states can be simultaneously live:
+    the learned beam holds at most ``min(F, live_states)``, so if even BFS keeps
+    the open list below F the beam can never bind and the fringe-size IV is
+    inert.  Tracks the running max of ``len(queue)`` (states generated but not
+    yet expanded), including the goal that ends the search."""
+    cap = cap if cap is not None else 4 * instance.n_states
+    visited: set[int] = {instance.root_id}
+    queue: deque[int] = deque()
+    expansions = 1
+    fmax = 0
+    for c in instance.children[instance.root_id]:
+        if c in visited:
+            continue
+        visited.add(c)
+        queue.append(c)
+        if instance.is_goal[c]:
+            return max(fmax, len(queue))
+    fmax = max(fmax, len(queue))
+    while queue and expansions < cap:
+        s = queue.popleft()
+        expansions += 1
+        for c in instance.children[s]:
+            if c in visited:
+                continue
+            visited.add(c)
+            queue.append(c)
+            if instance.is_goal[c]:
+                return max(fmax, len(queue))
+        fmax = max(fmax, len(queue))
+    return fmax
 
 
 def oracle_policy(instance: TreeInstance):

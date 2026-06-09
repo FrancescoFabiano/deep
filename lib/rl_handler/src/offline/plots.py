@@ -108,13 +108,35 @@ def plot_seed_val_curves(
     exps = [c["summary"]["val_total_expansions"] for c in ckpts]
     rhos = [c["summary"]["val_spearman_all"] for c in ckpts]
 
-    fig, axes = plt.subplots(1, 2, figsize=(12, 4), dpi=200)
+    # Occupancy panel only when the history carries it (older runs predate the
+    # val_occupancy field — degrade to the original 2-panel layout).
+    has_occ = bool(ckpts) and all(
+        c["summary"].get("val_occupancy") for c in ckpts
+    )
+    n_panels = 3 if has_occ else 2
+
+    fig, axes = plt.subplots(1, n_panels, figsize=(6 * n_panels, 4), dpi=200)
     axes[0].plot(frames, exps, marker="o")
     axes[0].set_title(f"seed {seed} | val greedy #expansions (lower=better)")
     axes[0].set_xlabel("frame")
     axes[1].plot(frames, rhos, marker="o")
     axes[1].set_title(f"seed {seed} | val Spearman(score, -d*) incl. unreachable")
     axes[1].set_xlabel("frame")
+    if has_occ:
+        occ = [c["summary"]["val_occupancy"] for c in ckpts]
+        axes[2].plot(frames, [o["max"] for o in occ], marker="o", label="max")
+        axes[2].plot(frames, [o["p99"] for o in occ], marker=".", label="p99", alpha=0.8)
+        axes[2].plot(frames, [o["p90"] for o in occ], marker=".", label="p90", alpha=0.8)
+        axes[2].plot(frames, [o["mean"] for o in occ], marker=".", label="mean", alpha=0.8)
+        if fringe is not None:
+            axes[2].axhline(
+                float(fringe), ls="--", c="red",
+                label=f"F={fringe} (beam binds above)",
+            )
+        axes[2].set_title(f"seed {seed} | val fringe occupancy vs F")
+        axes[2].set_xlabel("frame")
+        axes[2].set_ylabel("live beam members")
+        axes[2].legend(fontsize=8)
     for ax in axes:
         ax.grid(alpha=0.25)
     fig.tight_layout()

@@ -25,6 +25,7 @@ from src.offline.replay import ReplayBuffer, Transition
 from src.offline.tree_env import (
     UNREACHABLE_DISTANCE,
     FringeEnv,
+    OccupancyCounter,
     TreeInstance,
     bfs_expansions,
 )
@@ -227,6 +228,10 @@ class OfflineDQNTrainer:
         env = self.envs[inst_idx]
         res = env.reset(seed=self.seed)
         ep_return, ep_rng = 0.0, torch.Generator().manual_seed(self.seed + 1)
+        # Live fringe occupancy over training episodes — cheap histogram, O(1)
+        # per frame; surfaced per checkpoint so "does the beam bind past F?" is
+        # readable for the train distribution too, not just the eval rollouts.
+        train_occ = OccupancyCounter(self.fringe_size)
 
         loss_acc: List[Dict[str, float]] = []
         t0 = time.time()
@@ -249,6 +254,7 @@ class OfflineDQNTrainer:
             frame += 1
             eps = epsilon(frame)
             fringe = res.fringe
+            train_occ.record(len(fringe), len(env.reservoir))
             if torch.rand((), generator=ep_rng).item() < eps:
                 action = int(torch.randint(len(fringe), (1,), generator=ep_rng))
             else:
@@ -315,8 +321,17 @@ class OfflineDQNTrainer:
 
             if frame in ckpt_frames:
                 ck = self.evaluate(frame)
+                ck["summary"]["train_occupancy"] = train_occ.summary()
                 checkpoints.append(ck)
                 pbar.write(f"[ckpt] {json.dumps(ck['summary'])}")
+                vo = ck["summary"]["val_occupancy"]
+                pbar.write(
+                    f"[occupancy] frame {frame} val fringe (F={self.fringe_size}): "
+                    f"max={vo['max']} mean={vo['mean']} "
+                    f"p50={vo['p50']} p90={vo['p90']} p99={vo['p99']} "
+                    f"res_max={vo['reservoir_max']} "
+                    f"binds={'YES' if vo['binds'] else 'no'}"
+                )
                 val_exp = ck["summary"]["val_total_expansions"]
                 rho = ck["summary"]["val_spearman_all"]
                 if val_exp < best_val_exp:
@@ -338,20 +353,30 @@ class OfflineDQNTrainer:
     # ---------- evaluation ----------
 
     @torch.no_grad()
-    def greedy_rollout(self, inst_idx: int, seed: int) -> Dict[str, object]:
+    def greedy_rollout(
+        self,
+        inst_idx: int,
+        seed: int,
+        occ_accum: Optional[OccupancyCounter] = None,
+    ) -> Dict[str, object]:
         env = FringeEnv(
             self.instances[inst_idx],
             fringe_size=self.fringe_size,
             seed=seed,
             expansion_cap=self.eval_expansion_cap,
         )
+        occ = OccupancyCounter(self.fringe_size)
         res = env.reset(seed=seed)
         while not res.done:
+            occ.record(len(res.fringe), len(env.reservoir))
             res = env.step(self.greedy_action(inst_idx, res.fringe))
+        if occ_accum is not None:
+            occ_accum.merge(occ)
         return {
             "expansions": int(res.info["expansions"]),
             "goal_found": bool(res.info["goal_found"]),
             "capped": int(res.info["expansions"]) >= self.eval_expansion_cap,
+            "occupancy": occ.summary(),
         }
 
     @torch.no_grad()
@@ -374,14 +399,16 @@ class OfflineDQNTrainer:
         self.model.eval()
         per_instance: Dict[str, Dict[str, object]] = {}
         val_total = 0
+        val_occ = OccupancyCounter(self.fringe_size)
         for vid in self.val_ids:
             inst = self.instances[vid]
-            roll = self.greedy_rollout(vid, seed=10_000 + frame)
+            roll = self.greedy_rollout(vid, seed=10_000 + frame, occ_accum=val_occ)
             bfs = bfs_expansions(inst)
             per_instance[inst.name] = {
                 "greedy": roll,
                 "bfs_expansions": int(bfs["expansions"]),
                 "optimal_expansions": inst.optimal_expansions(),
+                "occupancy": roll["occupancy"],
             }
             val_total += int(roll["expansions"])
 
@@ -437,6 +464,7 @@ class OfflineDQNTrainer:
                 "val_total_expansions": int(val_total),
                 "val_spearman_all": rho_all,
                 "val_spearman_reachable": rho_reach,
+                "val_occupancy": val_occ.summary(),
             },
             "val_per_instance": per_instance,
             "train_greedy": train_rollouts,
