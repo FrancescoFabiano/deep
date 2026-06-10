@@ -419,13 +419,12 @@ def run_one(args, method, seed, sa_dir) -> None:
 
 def main() -> None:
     args = parse_args()
-    # prerequisite data
+    # prerequisite data: only the CSV is required. The graph cache is a derived
+    # artifact built lazily by InstanceCache.from_paths (in offline_main and the
+    # eval), so a freshly-generated dataset (no .pt yet) is fine.
     for c in _abs(args.train_csv) + _abs(args.val_csv):
         if not Path(c).exists():
             print(f"[skip] missing csv {c}")
-            return
-        if not (Path(c).parent / "graph_cache_offline_v1.pt").exists():
-            print(f"[skip] missing graph cache for {Path(c).parent.name}")
             return
 
     F = args.fringe_size
