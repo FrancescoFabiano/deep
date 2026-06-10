@@ -5,24 +5,27 @@ Living doc, updated each session. Status: [DONE <commit>] · [PENDING] ·
 
 ## Top-line state
 The fringe-size question (does F=64 beat F=32 on node economy?) is UNRESOLVED,
-and now understood to sit downstream of two blockers: (1) TRAINING INSTABILITY
-(primary — F1, CONFIRMED by v2) and (2) DATA THINNESS (batch0 has ~4 binding
-instances — #5/#6). `diversity_v2` ran (batch-128 / 5e5 / 3 seeds / binders-in-
-train) and did NOT tame the instability: 5/6 runs fail the convergence gate and
-the inter-seed range (~180-237) dwarfs any fringe effect (~11). Verdict: "not
-resolvable; stabilize the trainer (S) first" — the fringe comparison is blocked,
-not answered.
+and now understood to sit downstream of two blockers: (1) the OBJECTIVE
+UNDER-DETERMINES THE WITHIN-FRINGE RANKING (primary — S, root-caused; the
+optimizer is healthy, the order is just never pinned by a signal-free reward)
+and (2) DATA THINNESS (batch0 has ~4 binding instances — #5/#6). `diversity_v2`
+(batch-128 / 5e5 / 3 seeds / binders-in-train) did NOT resolve it: 5/6 runs fail
+the convergence gate and the inter-seed range (~180-237) dwarfs any fringe
+effect (~11) — because three seeds converge to near-independent RANKERS
+(tau~0.13) despite identical value-convergence. Verdict: "not resolvable until
+the objective injects within-fringe ranking signal (S)" — blocked, not answered.
+Next: a supervision-availability audit decides the loss family, then a rank head.
 
 ## Findings & experiments
-F1. [INSIGHT — ROOT CAUSE] Training is unstable. The v1 val curve thrashed
-    non-monotonically (269 -> 790 -> 99) across checkpoints. A fixed converged
-    model scores identically across refill seeds [0..4] (spread 0), so this is
-    NOT eval noise — it is real policy thrash between checkpoints. Consequence:
-    best_by_expansions is a noisy MAX over a thrashing curve, so every prior
-    fringe comparison (25-vs-41, 22-vs-15, 17-vs-43) compared two noisy maxes —
-    which produced the sign-flips. Instability subsumes the init-variance story.
-    The trainer itself (target-sync rate, LR, clamp / Double-DQN dynamics — cf.
-    Phase A failure modes) is the gating problem.
+F1. [INSIGHT — SUBSUMED BY S] The val curve thrashes (v1: 269 -> 790 -> 99).
+    A fixed converged model scores identically across refill seeds [0..4]
+    (spread 0), so this is NOT eval noise — it is real policy thrash between
+    checkpoints. Consequence: best_by_expansions is a noisy MAX over a thrashing
+    curve, so every prior fringe comparison (25-vs-41, 22-vs-15, 17-vs-43)
+    compared two noisy maxes — which produced the sign-flips. NOTE: the original
+    read ("the trainer/optimizer is unstable") was WRONG — Path B exonerated the
+    optimizer; the thrash is the policy RANKING changing between checkpoints
+    because the objective never pins it (see S, now the confirmed root cause).
 F2. [INSIGHT] The deployment fringe is REGIME-DEPENDENT: it binds early (a
     poor/random policy at high epsilon accumulates a reservoir -> fringe fills
     to F) and goes inert late (a converged policy dives narrow -> fringe ~1-11).
@@ -64,14 +67,43 @@ v2. [RESOLVED — NULL/BLOCKED] diversity_v2 — batch 128, 5e5 frames,
 2.  [PENDING] Broader RNG / reproducibility audit.
 3.  [BLOCKING] Equal frame budget under-trains the wider beam (A: F=64 best@10k).
     v2 uses 5e5 + the convergence gate; scale further if a fringe is best-late.
-S.  [BLOCKING — CONFIRMED v2] Training stability (the trainer itself) is THE
-    blocker. v1 thrashed; v2 (batch 128, 5e5 frames, 3 seeds, binders-in-train)
-    STILL thrashed — 5/6 runs fail the convergence gate (tail spreads up to
-    1086), inter-seed range ~180-237 >> any fringe effect (~11), converged level
-    no better than BFS. No fringe comparison is possible until the trainer is
-    stabilized. NEXT STEP before any further fringe runs: target-sync rate, LR,
-    reward/Q clamp, Double-DQN dynamics; add a stability metric (e.g. val-curve
-    monotonicity / tail variance) as a first-class gate.
+S.  [ROOT CAUSE — CONFIRMED] The OBJECTIVE UNDER-DETERMINES THE WITHIN-FRINGE
+    RANKING. (Was mis-framed as "trainer/optimizer instability"; the optimizer
+    is exonerated.) v1/v2 val thrashed (5/6 fail convergence, inter-seed range
+    ~180-237 >> fringe effect ~11, converged level no better than BFS) NOT
+    because the learner diverges but because the within-fringe ORDER is never
+    pinned. The -1/step reward is constant across fringe picks => zero ordering
+    signal; the only other channel (the bootstrap) is too weak on thin offline
+    data to fix the argmax. Lever is the OBJECTIVE/SIGNAL, NOT target-sync / LR /
+    clip.
+    OPTIMIZER HEALTHY ON EVERY AXIS (Path B, RL_LOG_STABILITY): q_max ~13
+    BOUNDED (no monotone growth => not the deadly-triad/explosion mode), q_mean
+    smooth & seed-invariant, td_loss -> ~0, none of the 3 Phase-A divergence
+    modes fits. grad_norm exceeds the 1.0 clip 70-77% of checkpoints => a
+    SECONDARY knob (LR/clip interplay), not the cause.
+    EVIDENCE: (i) within-seed dissociation — seed0_f32 had td_loss & q_mean flat
+    over 250k->500k while val went 1993->324 (value loss converged, ranking not
+    pinned); (ii) cross-seed probe [0f23c59] — 3 seeds at identical value-
+    convergence give near-independent rankers (Kendall tau ~0.13, top-1 argmax
+    agreement 52-66%, disagreement broad and growing with fringe width).
+    THREE NOTES:
+    - q_max is bounded but POSITIVE (~+12) in an MDP whose return <= 0 (rewards
+      in {-1, 0}; goal reward verified = 0.0 in tree_env reset/step) => bounded
+      OVERESTIMATION, not a reward-sign bug; harmless except insofar as it
+      scrambles order. Watch it, don't chase it.
+    - target_online_l2 logging is phase-locked to the 1000-frame hard sync
+      (checkpoint frames are multiples of target_sync => probe lands right after
+      a sync => always 0). To be useful, sample off-sync
+      (frame % target_sync == target_sync//2). Low priority (optimizer cleared).
+    - probe 0f23c59 compared DIFFERENT-FRAME best checkpoints, so stage drift is
+      conflated with seed (agreement falls with frame-gap). The clean stage-
+      matched comparison needs saved final/periodic weights (last.pt was dropped
+      in 12d15ea) — fold into the next training run.
+    NEXT (separate prompt, gated on the supervision audit): inject within-fringe
+    ranking signal that BYPASSES the bootstrap — likely a listwise softmax-CE
+    rank head (correct = on-path / argmin-d*) sharing the GINE trunk ALONGSIDE
+    the Q-head; or supervised -d* regression if d* is fully available. NOT a
+    DQN-knob sweep.
 
 ## Experimental design / data
 4.  [DONE f4cd867] Fringe-occupancy logging (val+train history.json, [occupancy]
