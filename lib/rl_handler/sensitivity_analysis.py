@@ -220,9 +220,39 @@ def _test_rollout(model, inst, cache, F, refill_mode, expl_nodes, sd, cap=2000):
     return bool(res.info["goal_found"]), int(res.info["expansions"]), rh, rt
 
 
+def _test_group(name: str) -> str:
+    """Sub-group of a held-out test instance: 'rich' (SC_R_ richness axis) vs
+    'depth' (high-pl base-repr axis). A signal can pass one axis and fail the
+    other, so we never let the aggregate hide it."""
+    return "rich" if name.startswith("SC_R_") else "depth"
+
+
+def _rich_encoding_sanity(insts, caches, models):
+    """Confirm rich SC_R instances produce NON-degenerate scores (not all-equal
+    logits). A degenerate score there is a representation/encoding bug, not a
+    generalization result. Returns a human line."""
+    rich = [(i, c) for i, c in zip(insts, caches) if _test_group(i.name) == "rich"]
+    if not rich:
+        return "[test] rich-encoding sanity: no rich (SC_R_) instances present."
+    inst, cache = rich[0]
+    # a multi-candidate fringe from this rich instance (root children)
+    fr = list(inst.children[inst.root_id])[:8]
+    if len(fr) < 2:
+        fr = list(range(min(8, inst.n_states)))
+    stds = []
+    for m in models:
+        v = score(m, cache, fr)
+        stds.append(float(np.std(v)))
+    mx = max(stds) if stds else 0.0
+    ok = mx > 1e-4
+    return (f"[test] rich-encoding sanity on {inst.name} (N={len(fr)}): "
+            f"max logit-std across models = {mx:.4g} -> "
+            f"{'OK non-degenerate' if ok else 'DEGENERATE (encoding problem, NOT a result)'}")
+
+
 def test_eval(sa_dir, test_dir, args, F, expl_nodes):
-    """Held-out TEST metrics on last.pt across the refill sweep. Writes
-    test_table.{csv,md}; pure measure-and-report (never feeds training)."""
+    """Held-out TEST metrics on last.pt across the refill sweep, broken out by
+    sub-group (depth vs richness) and aggregate. Pure measure-and-report."""
     import csv as _csv
 
     insts, caches = [], []
@@ -244,65 +274,125 @@ def test_eval(sa_dir, test_dir, args, F, expl_nodes):
     if not insts:
         print("[test] no usable test instances in test_data; skipping test eval.")
         return
-    bfs = sum(bfs_expansions(i)["expansions"] for i in insts)
-    opt = sum((i.optimal_expansions() or 0) for i in insts)
+    groups = {i.name: _test_group(i.name) for i in insts}
+    n_by_g = {g: sum(1 for v in groups.values() if v == g) for g in set(groups.values())}
     print(f"[test] {len(insts)} held-out TEST instances | eval on last.pt (NO selection) "
-          f"| refill sweep {REFILL_SWEEP} | BFS={bfs} optimal={opt}")
+          f"| refill sweep {REFILL_SWEEP} | sub-groups {n_by_g}")
 
+    # one row per (method, seed, refill, group) where group in {all, depth, rich}
     rows = []
+    first_models = []  # seed0 model per method, for the encoding sanity check
     for method in args.methods:
         for seed in args.seeds:
             last = sa_dir / method / f"seed{seed}_fringe{F}" / "last.pt"
             if not last.exists():
                 continue
             model = RLFrontierTrainer.load_model(last, device="cpu")
+            if seed == args.seeds[0]:
+                first_models.append(model)
             for refill in REFILL_SWEEP:
-                cov = 0
-                econ = []
-                rh = rt = 0
+                acc = {g: {"cov": 0, "n": 0, "econ": [], "rh": 0, "rt": 0}
+                       for g in ("all", "depth", "rich")}
                 for inst, cache in zip(insts, caches):
                     s, e, h, t = _test_rollout(model, inst, cache, F, refill, expl_nodes, sd=0)
-                    cov += int(s)
-                    if s:
-                        econ.append(e)
-                    rh += h
-                    rt += t
-                rows.append({
-                    "method": method, "seed": seed, "refill": refill,
-                    "coverage": cov / len(insts),
-                    "node_econ_solved": float(np.mean(econ)) if econ else float("nan"),
-                    "rank_acc": rh / rt if rt else float("nan"),
-                })
-                print(f"[test] {method} s{seed} {refill}: cov={cov}/{len(insts)} "
-                      f"econ_solved={(np.mean(econ) if econ else float('nan')):.1f} "
-                      f"rank_acc={(rh / max(1, rt)):.3f}")
+                    for gg in ("all", groups[inst.name]):
+                        a = acc[gg]
+                        a["n"] += 1
+                        a["cov"] += int(s)
+                        if s:
+                            a["econ"].append(e)
+                        a["rh"] += h
+                        a["rt"] += t
+                for gg, a in acc.items():
+                    if a["n"] == 0:
+                        continue
+                    rows.append({
+                        "method": method, "seed": seed, "refill": refill, "group": gg,
+                        "coverage": a["cov"] / a["n"],
+                        "node_econ_solved": float(np.mean(a["econ"])) if a["econ"] else float("nan"),
+                        "rank_acc": a["rh"] / a["rt"] if a["rt"] else float("nan"),
+                        "n_inst": a["n"],
+                    })
+            print(f"[test] {method} s{seed}: "
+                  + " ".join(f"{r['refill']}/{r['group']} cov={r['coverage']:.2f}"
+                             for r in rows if r["method"] == method and r["seed"] == seed
+                             and r["group"] == "all"))
+
+    print(_rich_encoding_sanity(insts, caches, first_models))
 
     with (sa_dir / "test_table.csv").open("w", newline="") as fh:
-        w = _csv.DictWriter(fh, fieldnames=["method", "seed", "refill", "coverage",
-                                            "node_econ_solved", "rank_acc"])
+        w = _csv.DictWriter(fh, fieldnames=["method", "seed", "refill", "group",
+                                            "coverage", "node_econ_solved", "rank_acc", "n_inst"])
         w.writeheader()
         w.writerows(rows)
 
+    # per-group BFS/optimal context
+    ctx = {}
+    for g in ("all", "depth", "rich"):
+        gi = [i for i in insts if g == "all" or groups[i.name] == g]
+        if gi:
+            ctx[g] = (sum(bfs_expansions(i)["expansions"] for i in gi),
+                      sum((i.optimal_expansions() or 0) for i in gi), len(gi))
+
     md = ["# HELD-OUT TEST metrics (last.pt; measure-and-report only)\n",
-          f"{len(insts)} test instances, F={F}. BFS={bfs}, optimal={opt}. "
-          "Evaluated on final-frame last.pt (no checkpoint selection); never fed "
-          "training/selection.\n",
-          "| method | refill | coverage IQM | cov IQR | econ_solved IQM | "
-          "econ IQR | rank_acc IQM | n |",
-          "|---|---|---|---|---|---|---|---|"]
-    for method in args.methods:
-        for refill in REFILL_SWEEP:
-            sub = [r for r in rows if r["method"] == method and r["refill"] == refill]
-            if not sub:
-                continue
-            cm, ci = iqm_iqr([r["coverage"] for r in sub])
-            em, ei = iqm_iqr([r["node_econ_solved"] for r in sub])
-            rm, _ = iqm_iqr([r["rank_acc"] for r in sub])
-            md.append(f"| {method} | {refill} | {cm:.2f} | {ci:.2f} | {em:.1f} | "
-                      f"{ei:.1f} | {rm:.3f} | {len(sub)} |")
+          "Final-frame last.pt (NO checkpoint selection); never fed training/selection. "
+          "Sub-groups: depth = high-pl SC_Multi (base repr), rich = low-pl SC_R "
+          "(richness). EXPLORATORY: Test compares signals, not an unbiased single number.\n",
+          "context: " + "; ".join(f"{g}: n={ctx[g][2]} BFS={ctx[g][0]} opt={ctx[g][1]}"
+                                   for g in ctx) + "\n",
+          "| group | method | refill | coverage IQM | cov IQR | econ_solved IQM | "
+          "econ IQR | rank_acc IQM | n_seed |",
+          "|---|---|---|---|---|---|---|---|---|"]
+    for g in ("all", "depth", "rich"):
+        for method in args.methods:
+            for refill in REFILL_SWEEP:
+                sub = [r for r in rows if r["group"] == g and r["method"] == method
+                       and r["refill"] == refill]
+                if not sub:
+                    continue
+                cm, ci = iqm_iqr([r["coverage"] for r in sub])
+                em, ei = iqm_iqr([r["node_econ_solved"] for r in sub])
+                rm, _ = iqm_iqr([r["rank_acc"] for r in sub])
+                md.append(f"| {g} | {method} | {refill} | {cm:.2f} | {ci:.2f} | "
+                          f"{em:.1f} | {ei:.1f} | {rm:.3f} | {len(sub)} |")
     (sa_dir / "test_table.md").write_text("\n".join(md))
     print("\n" + "\n".join(md))
-    print(f"[test] wrote test_table.{{csv,md}} to {sa_dir}")
+    _test_plot(sa_dir, rows, args)
+    print(f"[test] wrote test_table.{{csv,md}} + test_*.png to {sa_dir}")
+
+
+def _test_plot(sa_dir, rows, args):
+    try:
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+    except Exception as e:
+        print(f"[warn] matplotlib unavailable, skipping test plot: {e}")
+        return
+    groups = ("depth", "rich")
+    fig, axes = plt.subplots(1, 2, figsize=(13, 4.5), dpi=150)
+    for gi, g in enumerate(groups):
+        ax = axes[gi]
+        x = 0
+        labels = []
+        for method in args.methods:
+            for refill in REFILL_SWEEP:
+                cs = [r["coverage"] for r in rows if r["group"] == g
+                      and r["method"] == method and r["refill"] == refill]
+                if not cs:
+                    continue
+                ax.scatter([x] * len(cs), cs, alpha=0.6, s=40)
+                ax.scatter([x], [np.mean(cs)], marker="_", s=400, c="k")
+                labels.append(f"{method[:5]}/{refill[:3]}")
+                x += 1
+        ax.set_xticks(range(len(labels)))
+        ax.set_xticklabels(labels, rotation=60, fontsize=7)
+        ax.set_ylim(-0.05, 1.05)
+        ax.set_title(f"held-out TEST coverage — {g} sub-group")
+        ax.grid(alpha=0.25)
+    fig.tight_layout()
+    fig.savefig(sa_dir / "test_coverage_by_group.png")
+    plt.close(fig)
 
 
 def run_one(args, method, seed, sa_dir) -> None:
