@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import math
+import os
 import time
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple
@@ -106,6 +107,12 @@ class OfflineDQNTrainer:
         self.max_grad_norm = float(max_grad_norm)
         self.seed = int(seed)
         self.eval_refill_seeds = max(1, int(eval_refill_seeds))
+        # Opt-in stability instrumentation (RL_LOG_STABILITY=1), default OFF so
+        # normal runs are byte-identical. Pure read-only probes — no effect on
+        # the model, contract, or export. See _stability_probe / train().
+        self.log_stability = os.environ.get("RL_LOG_STABILITY") == "1"
+        self._probe_batch: Optional[List[Transition]] = None
+        self._grad_norm_ema: Optional[float] = None
 
         torch.manual_seed(seed)
         self.replay = ReplayBuffer(replay_capacity, seed=seed)
@@ -191,12 +198,63 @@ class OfflineDQNTrainer:
         self.optimizer.zero_grad()
         loss.backward()
         if self.max_grad_norm > 0:
-            nn.utils.clip_grad_norm_(self.model.parameters(), self.max_grad_norm)
+            gn = nn.utils.clip_grad_norm_(self.model.parameters(), self.max_grad_norm)
+            # EMA of the PRE-clip global grad norm (clip_grad_norm_ returns it),
+            # so the stability log can show whether grads constantly saturate the
+            # clip. Free to capture; logged only when RL_LOG_STABILITY=1.
+            g = float(gn)
+            self._grad_norm_ema = g if self._grad_norm_ema is None else (
+                0.98 * self._grad_norm_ema + 0.02 * g
+            )
         self.optimizer.step()
         return {
             "td_loss": float(loss.item()),
             "q_mean": float(q_sa.mean().item()),
             "target_mean": float(targets.mean().item()),
+        }
+
+    @torch.no_grad()
+    def _stability_probe(self, frame: int) -> Dict[str, object]:
+        """Read-only stability scalars on a FIXED probe batch (set once after
+        warmup, held constant for the run so checkpoints are comparable).
+
+        Logs the Q-magnitude / TD / target-divergence signature used to name the
+        instability mode (Q-explosion vs oscillation vs saturation). Pure probe:
+        no grads stepped, no model/contract/export touched.
+        """
+        b = self._probe_batch
+        self.model.eval()
+        cur_packed = self._pack([(t.inst, t.fringe) for t in b])
+        cur_logits, cur_ptr = self._forward(self.model, [], packed=cur_packed)
+        q_sa = cur_logits[
+            cur_ptr[:-1] + torch.tensor([t.action for t in b], device=self.device)
+        ]
+        # net-divergence: RMS gap between online and target Q over the fixed
+        # probe candidates (jumps at hard target-sync events if that's the mode).
+        tg_cur, _ = self._forward(self.target, [], packed=cur_packed)
+        target_online_l2 = float((cur_logits - tg_cur).pow(2).mean().sqrt().item())
+        # Double-DQN TD on the same fixed probe (comparable across checkpoints).
+        td = float("nan")
+        live = [i for i, t in enumerate(b) if not t.done]
+        if live:
+            nxt = self._pack([(b[i].inst, b[i].next_fringe) for i in live])
+            on_logits, on_ptr = self._forward(self.model, [], packed=nxt)
+            tg_logits, _ = self._forward(self.target, [], packed=nxt)
+            a_star = segment_argmax(on_logits, on_ptr)
+            q_next = tg_logits[a_star]
+            targets = torch.tensor(
+                [t.reward for t in b], dtype=torch.float32, device=self.device
+            )
+            idx = torch.tensor(live, device=self.device)
+            targets[idx] = targets[idx] + self.gamma * q_next
+            td = float(nn.functional.smooth_l1_loss(q_sa, targets).item())
+        return {
+            "frame": int(frame),
+            "q_mean": float(q_sa.mean().item()),
+            "q_max": float(q_sa.abs().max().item()),
+            "td_loss": td,
+            "grad_norm": self._grad_norm_ema,
+            "target_online_l2": target_online_l2,
         }
 
     def train(
@@ -221,6 +279,7 @@ class OfflineDQNTrainer:
             "episode_expansions": [], "episode_goal": [], "episode_inst": [],
         }
         checkpoints: List[Dict[str, object]] = []
+        stability: List[Dict[str, object]] = []
         best_val_exp = float("inf")
         best_spearman = -float("inf")
 
@@ -300,6 +359,13 @@ class OfflineDQNTrainer:
             )
 
             if len(self.replay) >= self.warmup and frame % self.update_every == 0:
+                # Fix the stability probe batch once, the first time we learn,
+                # so its scalars are comparable across the whole run.
+                if self.log_stability and self._probe_batch is None:
+                    try:
+                        self._probe_batch = self.replay.sample(self.batch_size)
+                    except Exception:
+                        self._probe_batch = None
                 loss_acc.append(self._update())
             if frame % self.target_sync == 0:
                 self.target.load_state_dict(self.model.state_dict())
@@ -325,6 +391,18 @@ class OfflineDQNTrainer:
                 ck = self.evaluate(frame)
                 ck["summary"]["train_occupancy"] = train_occ.summary()
                 checkpoints.append(ck)
+                if self.log_stability and self._probe_batch is not None:
+                    try:
+                        sp = self._stability_probe(frame)
+                        stability.append(sp)
+                        pbar.write(
+                            f"[stability] frame {frame} q_mean={sp['q_mean']:.3f} "
+                            f"q_max={sp['q_max']:.3f} td={sp['td_loss']:.4f} "
+                            f"grad_norm={sp['grad_norm']} "
+                            f"target_online_l2={sp['target_online_l2']:.4f}"
+                        )
+                    except Exception as exc:  # instrumentation must never crash a run
+                        pbar.write(f"[stability] WARN probe failed: {exc}")
                 pbar.write(f"[ckpt] {json.dumps(ck['summary'])}")
                 vo = ck["summary"]["val_occupancy"]
                 pbar.write(
@@ -344,13 +422,16 @@ class OfflineDQNTrainer:
                     self._save_model(out_dir / "best_by_spearman.pt", frame, ck)
                 with (out_dir / "history.json").open("w") as fh:
                     json.dump(
-                        {"history": history, "checkpoints": checkpoints}, fh, indent=1
+                        {"history": history, "checkpoints": checkpoints,
+                         "stability": stability}, fh, indent=1
                     )
 
         pbar.close()
         with (out_dir / "history.json").open("w") as fh:
-            json.dump({"history": history, "checkpoints": checkpoints}, fh, indent=1)
-        return {"history": history, "checkpoints": checkpoints}
+            json.dump({"history": history, "checkpoints": checkpoints,
+                       "stability": stability}, fh, indent=1)
+        return {"history": history, "checkpoints": checkpoints,
+                "stability": stability}
 
     # ---------- evaluation ----------
 
