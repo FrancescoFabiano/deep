@@ -264,6 +264,9 @@ class FringeEnv:
         fringe_size: int = 32,
         seed: int = 0,
         expansion_cap: Optional[int] = None,
+        refill_mode: str = "random",
+        reservoir_score_fn=None,
+        exploration_nodes: int = 0,
     ):
         self.instance = instance
         self.fringe_size = int(fringe_size)
@@ -271,6 +274,17 @@ class FringeEnv:
         self.expansion_cap = (
             int(expansion_cap) if expansion_cap is not None else 2 * instance.n_states
         )
+        # Beam-refill policy. 'random' (default) is the training MDP / RANDOM
+        # deployment mode. 'heuristic' mirrors RL_BestFirst's default refill
+        # (RL_BestFirst.h:190-209): fill most free beam slots with the
+        # MODEL's best reservoir states (reservoir_score_fn, higher=better) plus
+        # a small random-exploration budget = floor(F * RL_exploration%). Used
+        # by the deployment-faithful eval; training stays 'random'.
+        if refill_mode not in ("random", "heuristic"):
+            raise ValueError(f"refill_mode must be 'random' or 'heuristic', got {refill_mode!r}")
+        self.refill_mode = refill_mode
+        self.reservoir_score_fn = reservoir_score_fn
+        self.exploration_nodes = int(exploration_nodes)
         self.fringe: List[int] = []
         self.reservoir: List[int] = []
         self.visited: set[int] = set()
@@ -291,11 +305,18 @@ class FringeEnv:
 
     def _rebuild_beam(self, new_states: List[int]) -> None:
         """push_vector semantics: old beam -> reservoir, new states first
-        (overflow -> reservoir), then uniform random refill."""
+        (overflow -> reservoir), then refill to F (random or heuristic)."""
         self.reservoir.extend(self.fringe)
         self.fringe = []
         beam = new_states[: self.fringe_size]
         self.reservoir.extend(new_states[self.fringe_size:])
+        if self.refill_mode == "heuristic" and self.reservoir_score_fn is not None:
+            self._refill_heuristic(beam)
+        else:
+            self._refill_random(beam)
+        self.fringe = beam
+
+    def _refill_random(self, beam: List[int]) -> None:
         while len(beam) < self.fringe_size and self.reservoir:
             idx = self.rng.randrange(len(self.reservoir))
             self.reservoir[idx], self.reservoir[-1] = (
@@ -303,7 +324,32 @@ class FringeEnv:
                 self.reservoir[idx],
             )
             beam.append(self.reservoir.pop())
-        self.fringe = beam
+
+    def _refill_heuristic(self, beam: List[int]) -> None:
+        """Mirror RL_BestFirst.refill_beam_heuristic: exploit_slots filled with
+        the model's best reservoir states (higher score = better), exploration_
+        slots filled at random. Approximates the deployment reservoir (which
+        keeps stored ranks) by re-scoring the reservoir with the live model."""
+        free = self.fringe_size - len(beam)
+        if free <= 0 or not self.reservoir:
+            return
+        explore = min(free, len(self.reservoir), max(0, self.exploration_nodes))
+        exploit = free - explore
+        if exploit > 0 and self.reservoir:
+            scores = list(self.reservoir_score_fn(self.reservoir))
+            # take the `exploit` highest-scoring reservoir states (deployment
+            # pops rank-0 = highest logit), removing them from the reservoir.
+            order = sorted(range(len(self.reservoir)), key=lambda i: scores[i], reverse=True)
+            take = set(order[:exploit])
+            chosen = [self.reservoir[i] for i in order[:exploit]]
+            self.reservoir = [s for i, s in enumerate(self.reservoir) if i not in take]
+            beam.extend(chosen)
+        # remaining free slots: random exploration from the reservoir
+        while len(beam) < self.fringe_size and self.reservoir:
+            idx = self.rng.randrange(len(self.reservoir))
+            self.reservoir[idx], self.reservoir[-1] = (
+                self.reservoir[-1], self.reservoir[idx])
+            beam.append(self.reservoir.pop())
 
     def reset(self, seed: Optional[int] = None) -> StepResult:
         """Expand the root (forced, counts as expansion 1)."""

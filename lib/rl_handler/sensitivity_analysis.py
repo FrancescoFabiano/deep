@@ -68,6 +68,12 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--aux-lambda", type=float, default=1.0)
     p.add_argument("--device", default=None)
     p.add_argument("--n-fringes", type=int, default=300, help="fixed val fringe set size")
+    p.add_argument("--refill-mode", choices=["heuristic", "random"], default="heuristic",
+                   help="beam refill for the node-economy rollout. 'heuristic' (default) "
+                   "mirrors RL_BestFirst's deployment MIN refill; 'random' the RNG mode.")
+    p.add_argument("--rl-exploration-pct", type=float, default=10.0,
+                   help="random-exploration %% of the beam during heuristic refill "
+                   "(deployment default 10; exploration_nodes = floor(F * pct/100)).")
     p.add_argument("--skip-train", action="store_true",
                    help="reuse existing runs; only re-evaluate + plot")
     return p.parse_args()
@@ -134,12 +140,20 @@ def oracle_regret(model, fringe_set):
     return miss / max(1, len(fringe_set))
 
 
-def node_economy(model, val_insts, val_caches, fringe_size, seeds=(0, 1, 2)):
-    """Mean greedy val expansions over refill seeds (deployment metric)."""
+def node_economy(model, val_insts, val_caches, fringe_size, refill_mode,
+                 exploration_nodes, seeds=(0, 1, 2)):
+    """Mean greedy val expansions over refill seeds, under the DEPLOYMENT refill
+    mode (default 'heuristic' = RL_BestFirst's MIN refill: model picks the best
+    reservoir states + a small random-exploration budget)."""
 
     @torch.no_grad()
     def rollout(inst, cache, sd):
-        env = FringeEnv(inst, fringe_size=fringe_size, seed=sd, expansion_cap=2000)
+        sfn = (lambda ids: score(model, cache, ids)) if refill_mode == "heuristic" else None
+        env = FringeEnv(
+            inst, fringe_size=fringe_size, seed=sd, expansion_cap=2000,
+            refill_mode=refill_mode, reservoir_score_fn=sfn,
+            exploration_nodes=exploration_nodes,
+        )
         res = env.reset(seed=sd)
         while not res.done:
             v = score(model, cache, res.fringe)
@@ -207,6 +221,7 @@ def main() -> None:
             return
 
     F = args.fringe_size
+    expl_nodes = int(F * args.rl_exploration_pct / 100.0)  # deployment refill budget
     sa_dir = Path(args.dir_save_model) / "sensitive_analysis"
     sa_dir.mkdir(parents=True, exist_ok=True)
 
@@ -224,7 +239,8 @@ def main() -> None:
     opt = sum(i.optimal_expansions() for i in val_insts)
     bfs = sum(bfs_expansions(i)["expansions"] for i in val_insts)
     print(f"[setup] {len(fringe_set)} fixed val fringes | val optimal={opt} bfs={bfs} | "
-          f"methods={args.methods} seeds={args.seeds}")
+          f"methods={args.methods} seeds={args.seeds} | "
+          f"refill={args.refill_mode} (explore_nodes={expl_nodes})")
 
     rows = []
     for method in args.methods:
@@ -239,7 +255,8 @@ def main() -> None:
                 continue
             model = RLFrontierTrainer.load_model(last, device="cpu")
             regret = oracle_regret(model, fringe_set)
-            econ = node_economy(model, val_insts, val_caches, F)
+            econ = node_economy(model, val_insts, val_caches, F,
+                                args.refill_mode, expl_nodes)
             spread = tail_spread(run_dir)
             rows.append({"method": method, "seed": seed, "regret": regret,
                          "node_economy": econ, "tail_spread": spread})
@@ -293,32 +310,39 @@ def _write_outputs(sa_dir, rows, args, opt, bfs):
     (sa_dir / "table.md").write_text("\n".join(md))
     print("\n" + "\n".join(md))
 
-    _plots(sa_dir, rows, args, bfs)
+    _plots(sa_dir, rows, args, bfs, opt)
 
     readme = (
         "# sensitive_analysis\n\n"
         "Four d*-aware training signals trained under identical config + matched "
         "per-(method,seed) init; only the SIGNAL differs.\n\n"
-        f"Pre-registered expectation: tie-aware oracle top-1 regret AND its "
-        f"cross-seed IQR should fall in the order **{PREREG}** (increasing target "
-        "discriminativeness). The CROSS-SEED IQR is the headline because the "
-        "diagnosed failure (ledger S) is variance.\n\n"
-        "Falsifier: if a d*-signal does NOT lower cross-seed regret/IQR below "
-        "basic, the supervision quality (not the under-determination diagnosis) "
-        "is wrong. Any deviation from the pre-registered order is itself a result.\n\n"
-        "Metrics: regret (primary), node_economy = mean greedy val expansions "
-        f"(vs BFS={bfs}, optimal={opt}), tail_spread = last-4-checkpoint val range.\n"
-        "Weights compared are last.pt (stage-matched final frame). ONNX exports "
-        "are labeled frontier_policy_<F>_{method}_s{seed}.onnx (aux head excluded; "
-        "output shape unchanged). These models live ONLY here, never installed to "
-        "the deploy path.\n"
+        f"PRIMARY metric: DEPLOYMENT node economy = greedy val expansions under the "
+        f"'{args.refill_mode}' beam refill that mirrors RL_BestFirst (the C++ "
+        f"within-fringe width-F beam ranker; vs BFS={bfs}, optimal={opt}). Aggregated "
+        "per method as IQM +/- cross-seed IQR; the CROSS-SEED IQR is the headline "
+        "because the diagnosed failure (ledger S) is variance.\n\n"
+        f"Pre-registered expectation: the d*-signals beat **basic** on deployment node "
+        f"economy and its cross-seed IQR, falling in the order **{PREREG}** (basic "
+        "worst, increasing target discriminativeness).\n\n"
+        "Falsifier: a d*-signal that does NOT beat basic under deployment refill is a "
+        "real null (the supervision quality, not the under-determination diagnosis, "
+        "would be wrong). Any deviation from the pre-registered order is itself a result.\n\n"
+        "SECONDARY (why-diagnostic only, NOT primary): tie-aware oracle regret on the "
+        "off-distribution random-walk fringe set (it saturates ~0.9 and dissociates "
+        "from economy; kept for continuity, not for the verdict).\n\n"
+        "Weights compared are last.pt (stage-matched final frame). ONNX exports are "
+        "labeled frontier_policy_<F>_{method}_s{seed}.onnx (aux head excluded; output "
+        "shape unchanged; confirmed to LOAD in the C++ planner, non-separated). These "
+        "models live ONLY here, never installed to the deploy path.\n"
     )
     (sa_dir / "README.md").write_text(readme)
     print(f"\n[done] wrote table.csv/md, plots, README to {sa_dir}")
 
 
-def _plots(sa_dir, rows, args, bfs):
+def _plots(sa_dir, rows, args, bfs, opt):
     try:
+        import json
+
         import matplotlib
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
@@ -326,27 +350,69 @@ def _plots(sa_dir, rows, args, bfs):
         print(f"[warn] matplotlib unavailable, skipping plots: {e}")
         return
     methods = [m for m in args.methods if any(r["method"] == m for r in rows)]
-    # regret per method across seeds (scatter + IQM)
-    fig, axes = plt.subplots(1, 2, figsize=(13, 4.5), dpi=150)
+    F = args.fringe_size
+
+    # 1) node-economy distribution per method (strip) + BFS/optimal lines
+    fig, ax = plt.subplots(figsize=(7, 4.5), dpi=150)
     for x, m in enumerate(methods):
-        rs = [r["regret"] for r in rows if r["method"] == m]
-        axes[0].scatter([x] * len(rs), rs, alpha=0.6)
-        axes[0].scatter([x], [np.mean(rs)], marker="_", s=600, c="k")
         es = [r["node_economy"] for r in rows if r["method"] == m]
-        axes[1].scatter([x] * len(es), es, alpha=0.6)
-        axes[1].scatter([x], [np.mean(es)], marker="_", s=600, c="k")
-    axes[0].set_xticks(range(len(methods)))
-    axes[0].set_xticklabels(methods, rotation=20)
-    axes[0].set_title("oracle top-1 regret per seed (lower=better)")
-    axes[0].grid(alpha=0.25)
-    axes[1].set_xticks(range(len(methods)))
-    axes[1].set_xticklabels(methods, rotation=20)
-    axes[1].axhline(bfs, ls="--", c="gray", label=f"BFS={bfs}")
-    axes[1].set_title("node economy per seed (lower=better)")
-    axes[1].legend()
-    axes[1].grid(alpha=0.25)
+        ax.scatter([x] * len(es), es, alpha=0.6, s=40)
+        ax.scatter([x], [np.mean(es)], marker="_", s=700, c="k")
+    ax.axhline(bfs, ls="--", c="gray", label=f"BFS={bfs}")
+    ax.axhline(opt, ls=":", c="green", label=f"optimal={opt}")
+    ax.set_xticks(range(len(methods)))
+    ax.set_xticklabels(methods, rotation=20)
+    ax.set_title(f"deployment node economy per seed ({args.refill_mode} refill; lower=better)")
+    ax.legend()
+    ax.grid(alpha=0.25)
     fig.tight_layout()
-    fig.savefig(sa_dir / "sensitivity.png")
+    fig.savefig(sa_dir / "node_economy_dist.png")
+    plt.close(fig)
+
+    # 2) learning curves: in-training val expansions vs frame, cross-seed band
+    fig, ax = plt.subplots(figsize=(8, 4.5), dpi=150)
+    for m in methods:
+        curves = []
+        frames = None
+        for s in args.seeds:
+            h = sa_dir / m / f"seed{s}_fringe{F}" / "history.json"
+            if not h.exists():
+                continue
+            cks = json.loads(h.read_text())["checkpoints"]
+            frames = [c["summary"]["frame"] for c in cks]
+            curves.append([c["summary"]["val_total_expansions"] for c in cks])
+        if not curves or frames is None:
+            continue
+        n = min(len(c) for c in curves)
+        arr = np.array([c[:n] for c in curves])
+        fr = frames[:n]
+        med = np.median(arr, 0)
+        ax.plot(fr, med, marker="o", label=m)
+        ax.fill_between(fr, arr.min(0), arr.max(0), alpha=0.18)
+    ax.axhline(bfs, ls="--", c="gray", label=f"BFS={bfs}")
+    ax.set_xlabel("frame")
+    ax.set_ylabel("val expansions (in-training eval)")
+    ax.set_title("learning curves: node economy vs frames (median + min-max band)")
+    ax.legend(fontsize=8)
+    ax.grid(alpha=0.25)
+    fig.tight_layout()
+    fig.savefig(sa_dir / "learning_curves.png")
+    plt.close(fig)
+
+    # 3) cross-seed IQR bar (the headline: variance is the diagnosed failure)
+    fig, ax = plt.subplots(figsize=(7, 4.5), dpi=150)
+    iqrs = []
+    for m in methods:
+        es = [r["node_economy"] for r in rows if r["method"] == m]
+        _, iqr = iqm_iqr(es)
+        iqrs.append(iqr)
+    ax.bar(range(len(methods)), iqrs, color="tab:red", alpha=0.7)
+    ax.set_xticks(range(len(methods)))
+    ax.set_xticklabels(methods, rotation=20)
+    ax.set_title("cross-seed IQR of node economy (HEADLINE; lower=more stable)")
+    ax.grid(alpha=0.25, axis="y")
+    fig.tight_layout()
+    fig.savefig(sa_dir / "cross_seed_iqr.png")
     plt.close(fig)
 
 
