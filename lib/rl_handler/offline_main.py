@@ -67,6 +67,22 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--update-every", type=int, default=4)
     p.add_argument("--eval-expansion-cap", type=int, default=2_000)
     p.add_argument(
+        "--signal-mode",
+        type=str,
+        default="basic",
+        choices=["basic", "pbrs", "exact-return", "aux"],
+        help="Training signal: 'basic' = current Double-DQN (default, unchanged); "
+        "'pbrs' = potential-based d* shaping (keeps bootstrap); 'exact-return' = "
+        "supervise chosen slot on -d* (no bootstrap); 'aux' = TD + lambda*MSE(-d*) "
+        "auxiliary head on the shared trunk (head excluded from ONNX export).",
+    )
+    p.add_argument(
+        "--aux-lambda",
+        type=float,
+        default=1.0,
+        help="Weight of the auxiliary -d* loss when --signal-mode=aux.",
+    )
+    p.add_argument(
         "--eval-refill-seeds",
         type=int,
         default=1,
@@ -178,6 +194,8 @@ def main() -> None:
             seed=args.seed,
             device=args.device,
             eval_refill_seeds=args.eval_refill_seeds,
+            signal_mode=args.signal_mode,
+            aux_lambda=args.aux_lambda,
         )
 
         with (out_f / "args.json").open("w") as fh:

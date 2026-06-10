@@ -71,6 +71,8 @@ class OfflineDQNTrainer:
         seed: int = 42,
         device: Optional[str] = None,
         eval_refill_seeds: int = 1,
+        signal_mode: str = "basic",
+        aux_lambda: float = 1.0,
     ):
         self.device = torch.device(
             device or ("cuda" if torch.cuda.is_available() else "cpu")
@@ -114,9 +116,31 @@ class OfflineDQNTrainer:
         self._probe_batch: Optional[List[Transition]] = None
         self._grad_norm_ema: Optional[float] = None
 
+        # d*-aware training signal selection (see _update). 'basic' is the
+        # current Double-DQN path (default; byte-identical to before). The other
+        # modes use the offline d* oracle (inst.distance) to inject within-fringe
+        # ranking signal that the -1/step reward lacks (ledger S).
+        valid = {"basic", "pbrs", "exact-return", "aux"}
+        if signal_mode not in valid:
+            raise ValueError(f"signal_mode must be one of {sorted(valid)}, got {signal_mode!r}")
+        self.signal_mode = signal_mode
+        self.aux_lambda = float(aux_lambda)
+        # Auxiliary -d* regression head on the shared GINE trunk, TRAINING-ONLY:
+        # it lives on the trainer, never on self.model, so it is never exported
+        # to ONNX (contract unchanged). Only built for 'aux' mode.
+        self.aux_head: Optional[nn.Module] = None
+        if self.signal_mode == "aux":
+            h = self.model.encoder.input_proj.out_features
+            self.aux_head = nn.Sequential(
+                nn.Linear(h, h), nn.ReLU(), nn.Linear(h, 1)
+            ).to(self.device)
+
         torch.manual_seed(seed)
         self.replay = ReplayBuffer(replay_capacity, seed=seed)
-        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=lr)
+        params = list(self.model.parameters())
+        if self.aux_head is not None:
+            params += list(self.aux_head.parameters())
+        self.optimizer = torch.optim.Adam(params, lr=lr)
         self.flat = GlobalFlatCache(self.caches, device=self.device)
         self.envs = {
             i: FringeEnv(self.instances[i], fringe_size=fringe_size, seed=seed + i)
@@ -176,29 +200,62 @@ class OfflineDQNTrainer:
             + torch.tensor([t.action for t in batch], device=self.device)
         ]
 
-        targets = torch.tensor(
-            [t.reward for t in batch], dtype=torch.float32, device=self.device
-        )
-        live = [i for i, t in enumerate(batch) if not t.done]
-        if live:
-            next_packed = self._pack(
-                [(batch[i].inst, batch[i].next_fringe) for i in live]
+        aux_loss = 0.0
+        if self.signal_mode == "exact-return":
+            # Supervise the chosen slot on the exact (undiscounted) return
+            # -d*(chosen node); no bootstrap. Mask transitions whose chosen node
+            # is unreachable (d*=inf). Order is all deployment uses, so y=-d*
+            # makes argmax(Q) -> argmin(d*) = the oracle pick.
+            y, keep = [], []
+            for t in batch:
+                d = self.instances[t.inst].distance[t.fringe[t.action]]
+                ok = d < UNREACHABLE_DISTANCE
+                y.append(-d if ok else 0.0)
+                keep.append(ok)
+            targets = torch.tensor(y, dtype=torch.float32, device=self.device)
+            keep_t = torch.tensor(keep, device=self.device)
+            loss = (
+                nn.functional.smooth_l1_loss(q_sa[keep_t], targets[keep_t])
+                if bool(keep_t.any()) else q_sa.sum() * 0.0
             )
-            with torch.no_grad():
-                self.model.eval()
-                on_logits, on_ptr = self._forward(self.model, [], packed=next_packed)
-                tg_logits, _ = self._forward(self.target, [], packed=next_packed)
-                self.model.train()
-                a_star = segment_argmax(on_logits, on_ptr)  # global positions
-                q_next = tg_logits[a_star]
-            idx = torch.tensor(live, device=self.device)
-            targets[idx] = targets[idx] + self.gamma * q_next
+        else:
+            # Bootstrap-based: basic / pbrs / aux. Reward r (or PBRS-shaped r_hat)
+            # plus gamma * maxQ(s') via Double-DQN.
+            if self.signal_mode == "pbrs":
+                rew = []
+                for t in batch:
+                    phi_s = self._phi(t.inst, t.fringe)
+                    phi_sp = 0.0 if t.done else self._phi(t.inst, t.next_fringe)
+                    rew.append(t.reward + self.gamma * phi_sp - phi_s)
+            else:
+                rew = [t.reward for t in batch]
+            targets = torch.tensor(rew, dtype=torch.float32, device=self.device)
+            live = [i for i, t in enumerate(batch) if not t.done]
+            if live:
+                next_packed = self._pack(
+                    [(batch[i].inst, batch[i].next_fringe) for i in live]
+                )
+                with torch.no_grad():
+                    self.model.eval()
+                    on_logits, on_ptr = self._forward(self.model, [], packed=next_packed)
+                    tg_logits, _ = self._forward(self.target, [], packed=next_packed)
+                    self.model.train()
+                    a_star = segment_argmax(on_logits, on_ptr)  # global positions
+                    q_next = tg_logits[a_star]
+                idx = torch.tensor(live, device=self.device)
+                targets[idx] = targets[idx] + self.gamma * q_next
+            loss = nn.functional.smooth_l1_loss(q_sa, targets)
+            if self.signal_mode == "aux":
+                aux_loss = self._aux_dstar_loss(batch, cur_packed)
+                loss = loss + self.aux_lambda * aux_loss
 
-        loss = nn.functional.smooth_l1_loss(q_sa, targets)
         self.optimizer.zero_grad()
         loss.backward()
         if self.max_grad_norm > 0:
-            gn = nn.utils.clip_grad_norm_(self.model.parameters(), self.max_grad_norm)
+            clip_params = list(self.model.parameters())
+            if self.aux_head is not None:
+                clip_params += list(self.aux_head.parameters())
+            gn = nn.utils.clip_grad_norm_(clip_params, self.max_grad_norm)
             # EMA of the PRE-clip global grad norm (clip_grad_norm_ returns it),
             # so the stability log can show whether grads constantly saturate the
             # clip. Free to capture; logged only when RL_LOG_STABILITY=1.
@@ -211,7 +268,45 @@ class OfflineDQNTrainer:
             "td_loss": float(loss.item()),
             "q_mean": float(q_sa.mean().item()),
             "target_mean": float(targets.mean().item()),
+            "aux_loss": float(aux_loss) if self.signal_mode == "aux" else 0.0,
         }
+
+    def _phi(self, inst_idx: int, fringe: Sequence[int]) -> float:
+        """PBRS state potential phi(fringe) = -min finite d* over its nodes
+        (0 if none reachable). State-only, as PBRS requires."""
+        finite = [
+            self.instances[inst_idx].distance[s]
+            for s in fringe
+            if self.instances[inst_idx].distance[s] < UNREACHABLE_DISTANCE
+        ]
+        return -min(finite) if finite else 0.0
+
+    def _aux_dstar_loss(self, batch, cur_packed) -> torch.Tensor:
+        """MSE(h_aux(z_candidate), -d*(candidate)) over the current fringes'
+        candidates. z is the per-candidate pooled trunk embedding; gradients
+        flow into the shared GINE trunk. h_aux is training-only (never exported).
+        Candidate order matches pack: for t in batch, for s in t.fringe."""
+        node_emb = self.model.encoder(
+            cur_packed["node_features"], cur_packed["edge_index"], cur_packed["edge_attr"]
+        )
+        z = self.model._pool_nodes(
+            node_emb, cur_packed["membership"],
+            expected_size=int(cur_packed["candidate_batch"].numel()),
+        )
+        pred = self.aux_head(z).squeeze(-1)
+        y, keep = [], []
+        for t in batch:
+            inst = self.instances[t.inst]
+            for s in t.fringe:
+                d = inst.distance[s]
+                ok = d < UNREACHABLE_DISTANCE
+                y.append(-d if ok else 0.0)
+                keep.append(ok)
+        tgt = torch.tensor(y, dtype=torch.float32, device=self.device)
+        keep_t = torch.tensor(keep, device=self.device)
+        if not bool(keep_t.any()):
+            return pred.sum() * 0.0
+        return nn.functional.mse_loss(pred[keep_t], tgt[keep_t])
 
     @torch.no_grad()
     def _stability_probe(self, frame: int) -> Dict[str, object]:
@@ -275,7 +370,7 @@ class OfflineDQNTrainer:
 
         history: Dict[str, list] = {
             "frame": [], "td_loss": [], "q_mean": [], "target_mean": [],
-            "epsilon": [], "episode_return": [], "episode_frame": [],
+            "aux_loss": [], "epsilon": [], "episode_return": [], "episode_frame": [],
             "episode_expansions": [], "episode_goal": [], "episode_inst": [],
         }
         checkpoints: List[Dict[str, object]] = []
@@ -427,6 +522,10 @@ class OfflineDQNTrainer:
                     )
 
         pbar.close()
+        # Final (last-frame) weights, so cross-run comparisons can be STAGE-
+        # MATCHED (same frame) instead of comparing different-frame best_by_*
+        # checkpoints (restores the last.pt dropped in 12d15ea).
+        self._save_model(out_dir / "last.pt", frame, None)
         with (out_dir / "history.json").open("w") as fh:
             json.dump({"history": history, "checkpoints": checkpoints,
                        "stability": stability}, fh, indent=1)
