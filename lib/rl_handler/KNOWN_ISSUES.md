@@ -6,9 +6,12 @@ Living doc, updated each session. Status: [DONE <commit>] · [PENDING] ·
 ## Top-line state
 The fringe-size question (does F=64 beat F=32 on node economy?) is UNRESOLVED,
 and now understood to sit downstream of two blockers: (1) TRAINING INSTABILITY
-(primary — F1) and (2) DATA THINNESS (batch0 has ~4 binding instances — #5/#6).
-`diversity_v2` is the in-flight test of whether batch-128 / 5e5 frames /
-binders-in-train tames the instability enough to compare the fringes.
+(primary — F1, CONFIRMED by v2) and (2) DATA THINNESS (batch0 has ~4 binding
+instances — #5/#6). `diversity_v2` ran (batch-128 / 5e5 / 3 seeds / binders-in-
+train) and did NOT tame the instability: 5/6 runs fail the convergence gate and
+the inter-seed range (~180-237) dwarfs any fringe effect (~11). Verdict: "not
+resolvable; stabilize the trainer (S) first" — the fringe comparison is blocked,
+not answered.
 
 ## Findings & experiments
 F1. [INSIGHT — ROOT CAUSE] Training is unstable. The v1 val curve thrashed
@@ -37,14 +40,23 @@ A.  [PARTIAL] Experiment A (init-controlled SC re-run): prior "F=64 wins"
 B.  [INSIGHT] Fringe size self-attenuates with policy quality (good policy dives
     narrow). Effect, if any, is training-time, not deployment-time.
 C.  [INSIGHT] When the beam never binds, F=32 == F=64 by construction.
-v2. [RUNNING] diversity_v2 — batch 128, 5e5 frames, --eval-refill-seeds 5,
-    seeds 0/1/2, fringes 32/64, fresh symlinked dir (batch0 untouched). Split:
-    TRAIN = 3 binders {SC_10_8__pl_15, SC_9_11__pl_8, SC_4_2__pl_7}; VAL = the
-    4th binder SC_8_10__pl_6 (headroom 154) + 5 lower-headroom instances. Early
-    IV check (frame 50k): train binds=true. VERDICT PENDING. The convergence
-    gate doubles as the instability detector; the variance gate (F-gap must
-    exceed inter-seed IQR) is the real test — if instability keeps the IQR wide,
-    the verdict is "not resolvable; stabilize the trainer first".
+v2. [RESOLVED — NULL/BLOCKED] diversity_v2 — batch 128, 5e5 frames,
+    --eval-refill-seeds 5, seeds 0/1/2, fringes 32/64, fresh symlinked dir
+    (batch0 untouched). TRAIN = 3 binders {SC_10_8__pl_15, SC_9_11__pl_8,
+    SC_4_2__pl_7}; VAL = SC_8_10__pl_6 (headroom 154) + 5 lower-headroom. train
+    binds=true (IV active). opt_sum=52 bfs_sum=233 on the 6 val instances.
+    VERDICT: fringe-size UNRESOLVED — both gates FAILED.
+    - CONVERGENCE GATE: 5/6 runs FAIL (best_val @best_frame, final-4 spread):
+      s0f32 324@500k sp35 PASS; s0f64 117@200k sp167; s1f32 106@50k sp464;
+      s1f64 136@300k sp674; s2f32 87@50k sp1086; s2f64 296@500k sp478. Best-
+      early + thrashing tails => best_by_expansions is a noisy max, not a
+      converged value.
+    - VARIANCE GATE: F=32 [324,106,87] mean 172 range 237; F=64 [117,136,296]
+      mean 183 range 179. F-gap |172-183| = 11 << inter-seed range ~180-237
+      (effect ~20x smaller than seed noise) => indistinguishable.
+    - FALSIFIER H (bigger F -> fewer): REJECTED (F=64 mean 183 not below F=32
+      172). A real null.
+    Lands on the pre-registered "not resolvable; stabilize the trainer first".
 
 ## Correctness & methodology
 1.  [DONE f4cd867] Per-fringe model init controlled (manual_seed before each
@@ -52,9 +64,14 @@ v2. [RUNNING] diversity_v2 — batch 128, 5e5 frames, --eval-refill-seeds 5,
 2.  [PENDING] Broader RNG / reproducibility audit.
 3.  [BLOCKING] Equal frame budget under-trains the wider beam (A: F=64 best@10k).
     v2 uses 5e5 + the convergence gate; scale further if a fringe is best-late.
-S.  [BLOCKING — NEW] Training stability (the trainer itself). v1 thrashed; this
-    gates any fringe comparison. If v2 still thrashes, stabilize before more
-    fringe runs (target sync, LR, clamp, Double-DQN dynamics).
+S.  [BLOCKING — CONFIRMED v2] Training stability (the trainer itself) is THE
+    blocker. v1 thrashed; v2 (batch 128, 5e5 frames, 3 seeds, binders-in-train)
+    STILL thrashed — 5/6 runs fail the convergence gate (tail spreads up to
+    1086), inter-seed range ~180-237 >> any fringe effect (~11), converged level
+    no better than BFS. No fringe comparison is possible until the trainer is
+    stabilized. NEXT STEP before any further fringe runs: target-sync rate, LR,
+    reward/Q clamp, Double-DQN dynamics; add a stability metric (e.g. val-curve
+    monotonicity / tail variance) as a first-class gate.
 
 ## Experimental design / data
 4.  [DONE f4cd867] Fringe-occupancy logging (val+train history.json, [occupancy]
