@@ -76,6 +76,10 @@ def parse_args() -> argparse.Namespace:
                    "(deployment default 10; exploration_nodes = floor(F * pct/100)).")
     p.add_argument("--skip-train", action="store_true",
                    help="reuse existing runs; only re-evaluate + plot")
+    p.add_argument("--test-data-dir", default=None,
+                   help="held-out test_data dir (default: <dir-save-model>/test_data). "
+                   "If present, runs measure-only TEST eval on last.pt (refill sweep "
+                   "MIN+RNG); never feeds training/selection. Absent -> skipped.")
     return p.parse_args()
 
 
@@ -187,6 +191,120 @@ def iqm_iqr(xs):
     return float(np.mean(trim)), float(q3 - q1)
 
 
+# ----------------------------- HELD-OUT TEST EVAL -----------------------------
+# test_data is measured-and-reported ONLY: evaluated on last.pt (final-frame
+# weights, NO checkpoint selection), never feeding gradients/selection. Refill
+# sweep mirrors the planner's RL_heuristics modes: heuristic (MIN) + random (RNG).
+REFILL_SWEEP = ("heuristic", "random")
+
+
+@torch.no_grad()
+def _test_rollout(model, inst, cache, F, refill_mode, expl_nodes, sd, cap=2000):
+    """One greedy rollout on a test instance under `refill_mode`. Returns
+    (solved, expansions, rank_hits, rank_total) where a 'rank hit' is the model
+    argmax being a d*-minimiser of the live beam (rank accuracy vs d*)."""
+    sfn = (lambda ids: score(model, cache, ids)) if refill_mode == "heuristic" else None
+    env = FringeEnv(inst, fringe_size=F, seed=sd, expansion_cap=cap,
+                    refill_mode=refill_mode, reservoir_score_fn=sfn,
+                    exploration_nodes=expl_nodes)
+    res = env.reset(seed=sd)
+    rh = rt = 0
+    while not res.done:
+        fr = res.fringe
+        k = int(np.argmax(score(model, cache, fr)))
+        d = np.array([inst.distance[s] for s in fr], dtype=float)
+        if (d < UNREACHABLE_DISTANCE).any():
+            rt += 1
+            rh += int(d[k] == d.min())
+        res = env.step(k)
+    return bool(res.info["goal_found"]), int(res.info["expansions"]), rh, rt
+
+
+def test_eval(sa_dir, test_dir, args, F, expl_nodes):
+    """Held-out TEST metrics on last.pt across the refill sweep. Writes
+    test_table.{csv,md}; pure measure-and-report (never feeds training)."""
+    import csv as _csv
+
+    insts, caches = [], []
+    for d in sorted(Path(test_dir).iterdir()):
+        if not d.is_dir():
+            continue
+        csvs = sorted(d.glob(f"{d.name}_depth_*.csv"))
+        if not csvs:
+            continue
+        try:
+            inst = load_tree_instance(csvs[0])
+            cache = InstanceCache.from_paths(
+                inst.state_paths_abs(REPO), d / "graph_cache_offline_v1.pt", verbose=False)
+        except Exception as e:
+            print(f"[test] skip {d.name}: {e}")
+            continue
+        insts.append(inst)
+        caches.append(cache)
+    if not insts:
+        print("[test] no usable test instances in test_data; skipping test eval.")
+        return
+    bfs = sum(bfs_expansions(i)["expansions"] for i in insts)
+    opt = sum((i.optimal_expansions() or 0) for i in insts)
+    print(f"[test] {len(insts)} held-out TEST instances | eval on last.pt (NO selection) "
+          f"| refill sweep {REFILL_SWEEP} | BFS={bfs} optimal={opt}")
+
+    rows = []
+    for method in args.methods:
+        for seed in args.seeds:
+            last = sa_dir / method / f"seed{seed}_fringe{F}" / "last.pt"
+            if not last.exists():
+                continue
+            model = RLFrontierTrainer.load_model(last, device="cpu")
+            for refill in REFILL_SWEEP:
+                cov = 0
+                econ = []
+                rh = rt = 0
+                for inst, cache in zip(insts, caches):
+                    s, e, h, t = _test_rollout(model, inst, cache, F, refill, expl_nodes, sd=0)
+                    cov += int(s)
+                    if s:
+                        econ.append(e)
+                    rh += h
+                    rt += t
+                rows.append({
+                    "method": method, "seed": seed, "refill": refill,
+                    "coverage": cov / len(insts),
+                    "node_econ_solved": float(np.mean(econ)) if econ else float("nan"),
+                    "rank_acc": rh / rt if rt else float("nan"),
+                })
+                print(f"[test] {method} s{seed} {refill}: cov={cov}/{len(insts)} "
+                      f"econ_solved={(np.mean(econ) if econ else float('nan')):.1f} "
+                      f"rank_acc={(rh / max(1, rt)):.3f}")
+
+    with (sa_dir / "test_table.csv").open("w", newline="") as fh:
+        w = _csv.DictWriter(fh, fieldnames=["method", "seed", "refill", "coverage",
+                                            "node_econ_solved", "rank_acc"])
+        w.writeheader()
+        w.writerows(rows)
+
+    md = ["# HELD-OUT TEST metrics (last.pt; measure-and-report only)\n",
+          f"{len(insts)} test instances, F={F}. BFS={bfs}, optimal={opt}. "
+          "Evaluated on final-frame last.pt (no checkpoint selection); never fed "
+          "training/selection.\n",
+          "| method | refill | coverage IQM | cov IQR | econ_solved IQM | "
+          "econ IQR | rank_acc IQM | n |",
+          "|---|---|---|---|---|---|---|---|"]
+    for method in args.methods:
+        for refill in REFILL_SWEEP:
+            sub = [r for r in rows if r["method"] == method and r["refill"] == refill]
+            if not sub:
+                continue
+            cm, ci = iqm_iqr([r["coverage"] for r in sub])
+            em, ei = iqm_iqr([r["node_econ_solved"] for r in sub])
+            rm, _ = iqm_iqr([r["rank_acc"] for r in sub])
+            md.append(f"| {method} | {refill} | {cm:.2f} | {ci:.2f} | {em:.1f} | "
+                      f"{ei:.1f} | {rm:.3f} | {len(sub)} |")
+    (sa_dir / "test_table.md").write_text("\n".join(md))
+    print("\n" + "\n".join(md))
+    print(f"[test] wrote test_table.{{csv,md}} to {sa_dir}")
+
+
 def run_one(args, method, seed, sa_dir) -> None:
     # offline_main appends `_fringe{F}` to --dir-save-model; pass the base.
     run_base = sa_dir / method / f"seed{seed}"
@@ -275,6 +393,16 @@ def main() -> None:
         return
 
     _write_outputs(sa_dir, rows, args, opt, bfs)
+
+    # Held-out TEST eval (measure-and-report only, on last.pt). Auto-located at
+    # <dir-save-model>/test_data unless overridden; skipped if absent so domains
+    # without a test set don't error.
+    test_dir = Path(args.test_data_dir) if args.test_data_dir else (
+        Path(args.dir_save_model) / "test_data")
+    if test_dir.is_dir():
+        test_eval(sa_dir, test_dir, args, F, expl_nodes)
+    else:
+        print(f"[test] no test_data at {test_dir}; skipping held-out test eval.")
 
 
 def _write_outputs(sa_dir, rows, args, opt, bfs):
