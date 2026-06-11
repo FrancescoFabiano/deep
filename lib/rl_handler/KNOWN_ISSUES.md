@@ -204,6 +204,16 @@ G-PREREG. [PRE-REGISTERED — payoff sweep, written BEFORE launch] One harness
       under-train the rank methods (if loss/rank-acc still moving -> 200k follow-up
       on survivors); EXPLORATORY signal comparison; TEST lacks its rich x deep
       corner (depth=base-repr, rich=low-pl, no rich-and-deep instance).
+G-PREREG-AMEND (recorded before run): ~70 min/run x 18 ~= 21h -> staged. Run a
+    1-seed ranks-first SCREEN (~7h); the registered 3-seed IQM H1/H2 test runs
+    only on methods clearing the wall at seed 0. Asymmetric stop: seed-0 positive
+    -> full test; seed-0 null does NOT reject Horn B -> confirm with >=1 more seed
+    first (ledger S cross-seed divergence). Watch: the rank objectives may be MORE
+    seed-stable than basic precisely because they inject the explicit ordering
+    signal -1/step lacked (the S root cause) -> divergence risk smaller for these
+    methods; readable in whether seed-0 depth rank-acc sits where expected vs
+    scatters. Screen order: rank-sup-pairwise/listwise, rank-rl-reward/advantage,
+    then basic + exact-return (reproduction anchors).
 
 ---
 Priority order: S + #3 (stabilize/converge training) gate everything; then
