@@ -214,6 +214,46 @@ G-PREREG-AMEND (recorded before run): ~70 min/run x 18 ~= 21h -> staged. Run a
     methods; readable in whether seed-0 depth rank-acc sits where expected vs
     scatters. Screen order: rank-sup-pairwise/listwise, rank-rl-reward/advantage,
     then basic + exact-return (reproduction anchors).
+G-SCREEN. [RESULT — 1-seed ranks-first SCREEN, seed0, 100k, F=32, batch128, cuda]
+    HELD-OUT TEST depth rank-acc (heuristic/random refill), wall = ~0.13:
+      rank-sup-pairwise  0.444 / 0.444   (rich 0.897, logit_std ~24, cov 6/6)
+      rank-sup-listwise  0.206 / 0.204   (rich 0.838, logit_std 0.25, cov 6/6)
+      basic              0.137 / 0.115   (rich 0.470)            [reproduces ~0.13]
+      rank-rl-advantage  0.076 / 0.032   (rich 0.690, logit_std 0.9-2.7, cov 5/6,4/6)
+      rank-rl-reward     0.067 / 0.066   (rich 0.388, logit_std ~5)
+      exact-return       0.061 / 0.042   (rich 0.867)            [reproduces floor]
+    H1 (Horn B works): CONFIRMED at seed0 via the SUPERVISED path. rank-sup-
+      pairwise 0.444 clears the 0.25 threshold and is 3.4x the wall — the FIRST
+      objective to transfer within-fringe ORDER across depth (every absolute-value
+      signal sat at 0.08-0.13). rank-sup-listwise 0.206 lifts above the wall but
+      below 0.25 (borderline).
+    H2 (range-free >> advantage): REJECTED AS FRAMED. The fully range-free reward
+      (0.067) did NOT beat the partial advantage (0.076) — both bootstrap variants
+      sit AT THE FLOOR. The decisive axis is NOT scale-vs-level but BOOTSTRAP vs
+      SUPERVISED: keeping the Double-DQN bootstrap fails depth even with a range-
+      free reward, because the gamma-discounted value it bootstraps still
+      ACCUMULATES WITH DEPTH and reintroduces the out-of-range target. Only the
+      NO-BOOTSTRAP supervised order objectives transfer — exactly the channel S
+      flagged as the one that never pinned within-fringe order. Within supervised,
+      the pairwise margin loss >> the listwise soft-CE.
+    DEGENERACY GATE: NOT triggered — advantage TEST logit_std 0.9-2.7 (the 0.015
+      was only the 600-frame dry run); its floor depth-acc is a REAL, interpretable
+      failure, not collapsed logits. advantage is also the WORST method: it loses
+      coverage on depth (0.83/0.67 heur/rand) — fails to solve some instances.
+    BONUS (not a failure as feared): rank-sup-pairwise is ALSO the most node-
+      ECONOMICAL on TEST depth (43.8 expansions vs basic 135, exact 456, advantage
+      743) AND best in-dist (val regret 0.456 ~= exact 0.452 best; val econ 81 best).
+      The "rank methods worse on economy" caveat did NOT bite pairwise — a better
+      OOD ranker is also cheaper. Reproduction: basic depth 0.137~=prior 0.129;
+      exact depth 0.061 vs prior 0.084 (single-seed scatter, same floor verdict).
+    PROMOTION (asymmetric rule, G-PREREG-AMEND): rank-sup-pairwise -> full 3-seed
+      registered H1 test (clear seed0 positive). rank-sup-listwise -> promote with
+      >=1 confirming seed (above wall, sub-0.25). rank-rl-{reward,advantage} are
+      seed0 nulls (non-degenerate -> real); the "bootstrap fails depth" claim
+      should be confirmed with >=1 more seed before it is called definitive.
+    CAVEATS: single seed (screen, not the registered test); 100k (rank methods may
+      still be under-trained -> 200k follow-up on survivors); EXPLORATORY; TEST
+      lacks the rich x deep corner.
 
 ---
 Priority order: S + #3 (stabilize/converge training) gate everything; then
