@@ -308,6 +308,49 @@ G-PARTB. [RESULT — wider-gap extrapolation test, 1-seed, 100k, dir SC_Mix_gap]
     out of scope. STRATEGIC: Horn B gives ADJACENT-depth order transfer (real, ~3x
     the wall in-range) but not far extrapolation; closing the true depth gap is a
     DATA/curriculum problem (Horn A), not solvable by the objective alone.
+G-BOOTSTRAP-FEAS. [READ-ONLY feasibility for the depth curriculum's LABEL step]
+    Q1 BUDGET: the C++ SEARCH has NO node/expansion/depth/timeout flag — bound only
+    by external `timeout`, and a timeout-kill yields NO partial (results print only
+    on completion; verified: pl_13 RL solve killed at 60s emitted nothing). The
+    GENERATOR (dataset mode -d) IS budgeted: --dataset_depth (depth cap), --dataset_
+    max_generation (100k), --dataset_max_creation (60k); returns a TYPED bool (goals
+    found & >=min) + emits the partial dataset built within budget.
+    Q2 RANKER-AS-H: CONFIRMED. `deep <inst.txt> -s RL -u RL_H --RL_model <pairwise
+    frontier_policy_32.onnx> --RL_heuristics MIN --RL_fringe_size 32` runs; on
+    SC_4_1__pl_3 -> "Goal found", plan "right,sense,shout_2", Nodes expanded 3,
+    36ms. On pl_13 it did NOT finish in 60s (the tractability gap = the interpola-
+    tion ceiling, G-PARTB).
+    Q3 LABELS: the RL SEARCH emits only the action PLAN + nodes-expanded (+ --verbose
+    dumps solution-PATH .dot, not the explored fringe) -> NO per-node cost-to-go,
+    no labeled tree. The GENERATOR emits the trainer's EXACT CSV (cols: File Path,
+    Depth, Distance From Goal, Goal, Predecessor, Action; "Distance From Goal" =
+    cost-to-go, goal=0, 1+min successor, unreached=m_failed_state 1e6), BUDGETED by
+    dataset_depth+node caps -> does NOT require globally-exhaustive d*; cost-to-go
+    is backed up over the explored (budgeted) subtree. Verified: budgeted run
+    emitted SC_4_1__pl_3_depth_4.csv, 6-col schema byte-identical to existing
+    training_data (the training_data CAME from this generator).
+    VIABLE PATH = (B) generator budgeted label mode, NO C++ change. NOT (A): the
+    ranker-guided solve's output is unlabeled (plan only); dumping the RL search's
+    explored fringe+cost-to-go is the smallest ENABLING C++ change but out of scope.
+    NOT pure (C): offline Python (FringeEnv) only REPLAYS pre-generated tree CSVs —
+    it cannot expand epistemic KripkeState successors (C++-only), so it can't solve
+    a new instance nor build its fringe; FringeEnv's expansion_cap budgets replay,
+    not live solving.
+    LABEL-STEP DESIGN (path B, existing flags only): per round r, target depth d_r
+    (start easy, +1/round to stay in the adjacent-transfer regime): (1) OPTIONAL
+    ranker-in-loop SELECTION — run the cheap RL search (Q2) under `timeout T` on
+    candidate next-depth instances, keep those that "Goal found" in-budget (ranker
+    picks the solvable frontier); (2) LABEL — run the budgeted generator on each
+    selected instance (--dataset_depth d_r + node caps) -> <name>_depth_<d_r>.csv;
+    skip on "[WARNING] No goals found"; (3) INGEST the emitted CSVs as --train-csv
+    (lazy caches already supported), accumulate, retrain pairwise; (4) d_{r+1}=d_r+1.
+    BLOCKER/CAVEAT: the LABEL source (generator) is RANKER-AGNOSTIC sparse-DFS — the
+    ranker gates SELECTION, not labeling, so tractability of step 2 rests on
+    budgeted DFS finding goals at d_r (fine for adjacent steps; not the ranker-
+    guided solve the prompt envisioned — that needs the (A) C++ tree-dump). Also
+    sparse-discard cost-to-go is an UPPER BOUND if the optimal successor was
+    discarded -> order usually preserved (ok for the rank loss) but not guaranteed-
+    optimal d*. NO LOOP BUILT (feasibility only).
 
 ---
 Priority order: S + #3 (stabilize/converge training) gate everything; then
