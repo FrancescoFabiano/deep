@@ -175,6 +175,35 @@ G.  [INSIGHT — FIRST GENUINELY HELD-OUT RESULT] On the SC_Mix generalization r
     Pursued on branch `rank-objective` (rank-sup {pairwise,listwise}, rank-rl
     {reward,advantage}); read primarily on DEPTH rank-accuracy vs the 0.08-0.13
     wall.
+G-PREREG. [PRE-REGISTERED — payoff sweep, written BEFORE launch] One harness
+    run: methods = {basic, exact-return, rank-sup-pairwise, rank-sup-listwise,
+    rank-rl-reward, rank-rl-advantage}; 3 seeds; 100k frames; F=32; batch 128;
+    cuda. basic/exact-return re-anchored under the same per-(method,seed) init
+    control (also a reproduction check of the prior SC_Mix TEST depth rank-acc:
+    basic ~0.13, exact ~0.08). Held-out SC_Mix TEST eval, measure-only on last.pt.
+    PRIOR TEST depth rank-acc (reproduction targets, heuristic/random refill):
+    basic 0.129/0.116, pbrs 0.113/0.116, exact 0.084/0.071, aux 0.089/0.084;
+    rich: basic 0.642, exact 0.626, aux 0.757 (transfer baseline to preserve).
+    - H1 (Horn B works): >=1 rank method lifts TEST DEPTH rank-acc to > 0.25 IQM
+      across seeds, clearly separated from basic's ~0.13. FALSIFIER: all four stay
+      within seed-noise of 0.13 -> order does not transfer across depth -> Horn B
+      REJECTED, lever forced to Horn A (curriculum/bootstrap).
+    - H2 (wall is SCALE not LEVEL): the fully range-free variants {rank-sup-
+      pairwise, rank-sup-listwise, rank-rl-reward} extrapolate depth better than
+      the partial {rank-rl-advantage} (level-removed, scale-retained). reward >>
+      advantage -> wall is target scale/range; advantage ~= reward -> level-
+      removal sufficed; all fail -> deeper than scale.
+    - EXPECTED, NOT a failure: rank methods likely WORSE on in-dist node-economy
+      (they optimise order, not the -1/step economy). The test is OOD depth rank-
+      acc, not in-dist economy.
+    - DEGENERACY GATE: advantage dry-run logit-std was 0.015 (near-flat). Harness
+      now reports per-(method,group) TEST logit-std; if advantage stays near-
+      degenerate on TEST, its depth number is UNINTERPRETABLE (cannot separate
+      "scale wall" from "collapsed logits"), NOT a clean H2 readout.
+    - STANDING CAVEATS: n=3 -> IQR~=range (don't lean on variance); 100k may
+      under-train the rank methods (if loss/rank-acc still moving -> 200k follow-up
+      on survivors); EXPLORATORY signal comparison; TEST lacks its rich x deep
+      corner (depth=base-repr, rich=low-pl, no rich-and-deep instance).
 
 ---
 Priority order: S + #3 (stabilize/converge training) gate everything; then

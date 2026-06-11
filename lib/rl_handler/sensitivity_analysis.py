@@ -236,23 +236,29 @@ REFILL_SWEEP = ("heuristic", "random")
 @torch.no_grad()
 def _test_rollout(model, inst, cache, F, refill_mode, expl_nodes, sd, cap=2000):
     """One greedy rollout on a test instance under `refill_mode`. Returns
-    (solved, expansions, rank_hits, rank_total) where a 'rank hit' is the model
-    argmax being a d*-minimiser of the live beam (rank accuracy vs d*)."""
+    (solved, expansions, rank_hits, rank_total, lstd_sum, lstd_n) where a 'rank
+    hit' is the model argmax being a d*-minimiser of the live beam (rank accuracy
+    vs d*), and lstd_sum/lstd_n give the mean per-beam logit STD over the rollout
+    (degeneracy gate: a near-flat-logit method's rank-acc is uninterpretable)."""
     sfn = (lambda ids: score(model, cache, ids)) if refill_mode == "heuristic" else None
     env = FringeEnv(inst, fringe_size=F, seed=sd, expansion_cap=cap,
                     refill_mode=refill_mode, reservoir_score_fn=sfn,
                     exploration_nodes=expl_nodes)
     res = env.reset(seed=sd)
     rh = rt = 0
+    lstd_sum, lstd_n = 0.0, 0
     while not res.done:
         fr = res.fringe
-        k = int(np.argmax(score(model, cache, fr)))
+        v = score(model, cache, fr)
+        k = int(np.argmax(v))
+        if len(fr) >= 2:
+            lstd_sum += float(np.std(v)); lstd_n += 1
         d = np.array([inst.distance[s] for s in fr], dtype=float)
         if (d < UNREACHABLE_DISTANCE).any():
             rt += 1
             rh += int(d[k] == d.min())
         res = env.step(k)
-    return bool(res.info["goal_found"]), int(res.info["expansions"]), rh, rt
+    return bool(res.info["goal_found"]), int(res.info["expansions"]), rh, rt, lstd_sum, lstd_n
 
 
 def _test_group(name: str) -> str:
@@ -326,10 +332,12 @@ def test_eval(sa_dir, test_dir, args, F, expl_nodes):
             if seed == args.seeds[0]:
                 first_models.append(model)
             for refill in REFILL_SWEEP:
-                acc = {g: {"cov": 0, "n": 0, "econ": [], "rh": 0, "rt": 0}
+                acc = {g: {"cov": 0, "n": 0, "econ": [], "rh": 0, "rt": 0,
+                           "ls": 0.0, "ln": 0}
                        for g in ("all", "depth", "rich")}
                 for inst, cache in zip(insts, caches):
-                    s, e, h, t = _test_rollout(model, inst, cache, F, refill, expl_nodes, sd=0)
+                    s, e, h, t, ls, ln = _test_rollout(
+                        model, inst, cache, F, refill, expl_nodes, sd=0)
                     for gg in ("all", groups[inst.name]):
                         a = acc[gg]
                         a["n"] += 1
@@ -338,6 +346,8 @@ def test_eval(sa_dir, test_dir, args, F, expl_nodes):
                             a["econ"].append(e)
                         a["rh"] += h
                         a["rt"] += t
+                        a["ls"] += ls
+                        a["ln"] += ln
                 for gg, a in acc.items():
                     if a["n"] == 0:
                         continue
@@ -346,6 +356,7 @@ def test_eval(sa_dir, test_dir, args, F, expl_nodes):
                         "coverage": a["cov"] / a["n"],
                         "node_econ_solved": float(np.mean(a["econ"])) if a["econ"] else float("nan"),
                         "rank_acc": a["rh"] / a["rt"] if a["rt"] else float("nan"),
+                        "logit_std": a["ls"] / a["ln"] if a["ln"] else float("nan"),
                         "n_inst": a["n"],
                     })
             print(f"[test] {method} s{seed}: "
@@ -357,7 +368,8 @@ def test_eval(sa_dir, test_dir, args, F, expl_nodes):
 
     with (sa_dir / "test_table.csv").open("w", newline="") as fh:
         w = _csv.DictWriter(fh, fieldnames=["method", "seed", "refill", "group",
-                                            "coverage", "node_econ_solved", "rank_acc", "n_inst"])
+                                            "coverage", "node_econ_solved", "rank_acc",
+                                            "logit_std", "n_inst"])
         w.writeheader()
         w.writerows(rows)
 
@@ -376,8 +388,8 @@ def test_eval(sa_dir, test_dir, args, F, expl_nodes):
           "context: " + "; ".join(f"{g}: n={ctx[g][2]} BFS={ctx[g][0]} opt={ctx[g][1]}"
                                    for g in ctx) + "\n",
           "| group | method | refill | coverage IQM | cov IQR | econ_solved IQM | "
-          "econ IQR | rank_acc IQM | n_seed |",
-          "|---|---|---|---|---|---|---|---|---|"]
+          "econ IQR | rank_acc IQM | rank_acc IQR | logit_std IQM | n_seed |",
+          "|---|---|---|---|---|---|---|---|---|---|---|"]
     for g in ("all", "depth", "rich"):
         for method in args.methods:
             for refill in REFILL_SWEEP:
@@ -387,9 +399,11 @@ def test_eval(sa_dir, test_dir, args, F, expl_nodes):
                     continue
                 cm, ci = iqm_iqr([r["coverage"] for r in sub])
                 em, ei = iqm_iqr([r["node_econ_solved"] for r in sub])
-                rm, _ = iqm_iqr([r["rank_acc"] for r in sub])
+                rm, rqr = iqm_iqr([r["rank_acc"] for r in sub])
+                lm, _ = iqm_iqr([r["logit_std"] for r in sub])
                 md.append(f"| {g} | {method} | {refill} | {cm:.2f} | {ci:.2f} | "
-                          f"{em:.1f} | {ei:.1f} | {rm:.3f} | {len(sub)} |")
+                          f"{em:.1f} | {ei:.1f} | {rm:.3f} | {rqr:.3f} | {lm:.4g} | "
+                          f"{len(sub)} |")
     (sa_dir / "test_table.md").write_text("\n".join(md))
     print("\n" + "\n".join(md))
     _test_plot(sa_dir, rows, args)
