@@ -144,7 +144,40 @@ S.  [ROOT CAUSE — CONFIRMED] The OBJECTIVE UNDER-DETERMINES THE WITHIN-FRINGE
 ## Housekeeping
 13. [PENDING] Stale seed42/last.pt from a pre-last.pt-removal run.
 
+## Generalization (held-out SC_Mix test eval)
+G.  [INSIGHT — FIRST GENUINELY HELD-OUT RESULT] On the SC_Mix generalization run
+    (--signal-mode sweep basic/pbrs/exact-return/aux, held-out Test/ instances),
+    the generalization frontier is DEPTH and it is SIGNAL-INDEPENDENT. Five sub-
+    findings:
+    - DEPTH RANKING COLLAPSES SIGNAL-INDEPENDENTLY. On the depth sub-group
+      (high-pl SC_Multi), rank-accuracy vs d* is 0.08-0.13 for ALL FOUR signals
+      (basic/pbrs/exact/aux) — i.e. ~1/N, near-random. No signal's within-fringe
+      ordering transfers to deeper fringes than training saw.
+    - RICHNESS TRANSFERS FOR ALL (rank-acc 0.55-0.76; aux best at 0.76). So the
+      collapse is specific to depth, not a global OOD failure.
+    - THE NODE-ECONOMY ORDERING IS A SECONDARY OVERCONFIDENCE EFFECT on top of
+      uniformly-broken depth ranking. exact-return's sharp-but-WRONG scores
+      mislead the deep search catastrophically — it is NOT better OOD ranking.
+      In-dist <-> OOD FLIP: exact-return best in-dist (108 expansions) / worst
+      OOD (231); basic least-bad OOD. The d*-signals OVERFIT.
+    - MECHANISM (well-supported hypothesis): depth needs OUT-OF-RANGE d* targets
+      (train d* <= ~10, test ~17); absolute-value learners cannot extrapolate a
+      range they never saw. Richness keeps targets IN-RANGE while presenting
+      novel features the hashed encoder absorbs -> transfers. So the
+      generalization wall is the TARGET RANGE, not the input representation.
+    - CAVEATS: cross-seed IQR unreliable at n=3 (basic swung 388->9 between runs)
+      — do NOT lean on variance; coverage saturated ~1.0 (we measure efficiency,
+      not solvability); refill ~moot on SC_Mix; PBRS middling, not a standout.
+    STRATEGIC: the lever is NOT more signal-tweaking (all four hit the same depth
+    wall). The next test is HORN B — a SCALE-INVARIANT / RANK objective:
+    deployment uses only ORDER, which is range-free, so an order-based objective
+    could extrapolate depth where absolute-value (d*-regression / TD) ones can't.
+    Pursued on branch `rank-objective` (rank-sup {pairwise,listwise}, rank-rl
+    {reward,advantage}); read primarily on DEPTH rank-accuracy vs the 0.08-0.13
+    wall.
+
 ---
 Priority order: S + #3 (stabilize/converge training) gate everything; then
 #6/#5 (data diversity) gate generalization. The fringe-size verdict is only
-trustworthy once v2 clears both the convergence and variance gates.
+trustworthy once v2 clears both the convergence and variance gates. G reframes
+the open frontier as DEPTH/target-range and motivates the rank-objective arc.
