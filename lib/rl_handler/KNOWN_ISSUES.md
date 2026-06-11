@@ -254,6 +254,35 @@ G-SCREEN. [RESULT — 1-seed ranks-first SCREEN, seed0, 100k, F=32, batch128, cu
     CAVEATS: single seed (screen, not the registered test); 100k (rank methods may
       still be under-trained -> 200k follow-up on survivors); EXPLORATORY; TEST
       lacks the rich x deep corner.
+G-3SEED. [RESULT — registered 3-seed H1 test (seeds 0/1/2, 100k, F=32, batch128)]
+    Promoted survivors pairwise + listwise + basic anchor (basic seeds1/2 reused
+    from the baseline via --skip-train; valid under deterministic per-(method,seed)
+    init, byte-identical basic path). HELD-OUT TEST depth rank-acc (IQM, IQR=range
+    at n=3), wall ~0.12:
+      rank-sup-pairwise  0.426  (IQR 0.126; seeds 0.444/0.480/0.354; econ 44.5)
+      rank-sup-listwise  0.322  (IQR 0.339; HIGHLY seed-variable; econ 76.2)
+      basic              0.124  (IQR 0.030; seeds 0.137/0.106/0.129; econ 149.2)
+    H1 CONFIRMED at the registered level for pairwise: depth IQM 0.426 clears 0.25,
+    every seed clears 0.25, and ZERO overlap with basic (pairwise min 0.354 > basic
+    max 0.137). pairwise is also the most node-ECONOMICAL on depth (44.5 vs basic
+    149.2), robustly. listwise IQM 0.322 also clears 0.25 but IQR 0.339 (~range) =>
+    a NOISY secondary (one seed near wall, one ~0.5+), not robust like pairwise.
+    SEED STABILITY (the S watch-point): pairwise DEPTH never collapses to the wall
+    (0.354-0.480); basic pinned at floor (~0.10-0.14). The ordering signal that
+    -1/step lacked (S root cause) makes the SURVIVING axis (depth order) seed-
+    stable, while basic-as-ranker stays at the floor. RICH is indistinct at 3 seeds
+    (pairwise 0.598 / listwise 0.572 / basic 0.588, all high IQR) -> depth is the
+    discriminating axis, rich is seed-noise.
+G-PARTA. [RESULT — depth-extrapolation decay probe, seed0 eval-only, ~2 inst/bin]
+    TEST depth rank-acc by pl-bin (pairwise / basic), wall ~0.13:
+      pl 11-12: 0.541 / 0.171   pl 13-14: 0.255 / 0.104   pl 15-17: 0.642 / 0.140
+    pairwise does NOT decay toward the wall as pl grows; the DEEPEST bin (15-17,
+    furthest from train pl<=10) is its BEST (rank-acc 0.642, econ 27.5). The 13-14
+    dip (0.255) is non-monotonic -> 2-inst/bin noise, not a slope. Favors order
+    being DEPTH-INVARIANT (true extrapolation) over adjacent-only interpolation —
+    a noisy HINT, not a verdict. Part B (train pl<=6, gap pl7-10 held out entirely,
+    test pl11-17) is the real test; pl<=6 pool=10 supports the widest gap (train 8
+    + val 2). Plot: sensitive_analysis/partA_depth_decay.png.
 
 ---
 Priority order: S + #3 (stabilize/converge training) gate everything; then
