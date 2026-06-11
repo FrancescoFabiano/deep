@@ -11,6 +11,23 @@ Methods: basic (current Double-DQN), pbrs (potential d* shaping), exact-return
 (supervise -d*, no bootstrap), aux (TD + lambda*MSE(-d*)). See offline_main
 --signal-mode.
 
+Horn-B RANK objectives (opt-in via --methods; ledger G — deployment uses only
+ORDER, which is range-free, so an order-based loss can extrapolate DEPTH where
+the absolute-value learners overfit the train d* range):
+- rank-sup-pairwise: supervised logistic loss over d*-ordered slot pairs (ties ->
+  no constraint). No bootstrap; inherently order-only -> fully range-free.
+- rank-sup-listwise: supervised rank-normalised soft target over the fringe
+  (average-rank, tie-aware). Order-only target -> range-free (NOT softmax(-d*/t),
+  which would smuggle magnitude back in).
+- rank-rl-reward: Double-DQN with the per-step reward redefined as the chosen
+  slot's within-fringe d* rank fraction in [0,1] (1 = min-d*). Fully range-free
+  by construction; keeps gamma / bootstrap / export.
+- rank-rl-advantage: Double-DQN with the target CENTRED by the current fringe's
+  mean (target-net) logit. NOTE: centring removes the absolute d* LEVEL but NOT
+  the scale (target spread still grows with d* gaps), so it is a PARTIAL scale-
+  fix vs the rank-fraction reward — that contrast is itself informative.
+All four export the identical frontier_policy_<F>.onnx (loss-only change).
+
 Outputs into <dir-save-model>/sensitive_analysis/: table.{csv,md}, plots, a
 README with the pre-registered expectation, and one labeled ONNX per run
 (frontier_policy_<F>_{method}_s{seed}.onnx; aux head excluded, shape unchanged).
@@ -49,8 +66,26 @@ from src.trainer import RLFrontierTrainer  # noqa: E402
 REPO = Path(__file__).resolve().parents[2]
 OFFLINE_MAIN = Path(__file__).resolve().parent / "offline_main.py"
 METHODS = ["basic", "pbrs", "exact-return", "aux"]
+# Horn-B rank objectives (ledger G): each is a (signal-mode, rank-variant) cell
+# exposed to the harness as a single method label. They export the identical
+# frontier_policy_<F>.onnx and slot beside basic/exact-return as comparable
+# methods; opt-in via --methods (NOT in the default set, so default runs are
+# byte-identical). Read primarily on DEPTH rank-accuracy vs the 0.08-0.13 wall.
+RANK_METHODS = [
+    "rank-sup-pairwise", "rank-sup-listwise", "rank-rl-reward", "rank-rl-advantage",
+]
+ALL_METHODS = METHODS + RANK_METHODS
 # pre-registered: regret & cross-seed IQR fall basic >= aux >= pbrs >= exact-return
 PREREG = "basic >= aux >= pbrs >= exact-return"
+
+
+def _split_method(method: str):
+    """Harness method label -> (signal_mode, rank_variant|None). Rank cells are
+    '<signal-mode>-<variant>' (e.g. rank-sup-pairwise); the rest pass through."""
+    if method in RANK_METHODS:
+        mode, variant = method.rsplit("-", 1)
+        return mode, variant
+    return method, None
 
 
 def parse_args() -> argparse.Namespace:
@@ -58,7 +93,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--train-csv", nargs="+", required=True)
     p.add_argument("--val-csv", nargs="+", required=True)
     p.add_argument("--dir-save-model", required=True)
-    p.add_argument("--methods", nargs="+", default=METHODS, choices=METHODS)
+    p.add_argument("--methods", nargs="+", default=METHODS, choices=ALL_METHODS)
     p.add_argument("--seeds", type=int, nargs="+", default=[0, 1, 2, 3, 4])
     p.add_argument("--fringe-size", type=int, default=32)
     p.add_argument("--frames", type=int, default=30000)
@@ -398,6 +433,7 @@ def _test_plot(sa_dir, rows, args):
 def run_one(args, method, seed, sa_dir) -> None:
     # offline_main appends `_fringe{F}` to --dir-save-model; pass the base.
     run_base = sa_dir / method / f"seed{seed}"
+    signal_mode, rank_variant = _split_method(method)
     cmd = [
         sys.executable, str(OFFLINE_MAIN),
         "--train-csv", *_abs(args.train_csv),
@@ -407,10 +443,12 @@ def run_one(args, method, seed, sa_dir) -> None:
         "--n-checkpoints", str(args.n_checkpoints),
         "--batch-size", str(args.batch_size),
         "--eval-refill-seeds", str(args.eval_refill_seeds),
-        "--signal-mode", method, "--aux-lambda", str(args.aux_lambda),
+        "--signal-mode", signal_mode, "--aux-lambda", str(args.aux_lambda),
         "--seed", str(seed), "--no-export-onnx",
         "--dir-save-model", str(run_base),
     ]
+    if rank_variant is not None:
+        cmd += ["--rank-variant", rank_variant]
     if args.device:
         cmd += ["--device", args.device]
     print(f"  [train] {method} seed{seed} -> {run_base}_fringe{args.fringe_size}", flush=True)

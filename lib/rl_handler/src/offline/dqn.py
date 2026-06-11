@@ -73,6 +73,7 @@ class OfflineDQNTrainer:
         eval_refill_seeds: int = 1,
         signal_mode: str = "basic",
         aux_lambda: float = 1.0,
+        rank_variant: Optional[str] = None,
     ):
         self.device = torch.device(
             device or ("cuda" if torch.cuda.is_available() else "cpu")
@@ -120,11 +121,39 @@ class OfflineDQNTrainer:
         # current Double-DQN path (default; byte-identical to before). The other
         # modes use the offline d* oracle (inst.distance) to inject within-fringe
         # ranking signal that the -1/step reward lacks (ledger S).
-        valid = {"basic", "pbrs", "exact-return", "aux"}
+        # 'rank-sup'/'rank-rl' are the Horn-B SCALE-INVARIANT / ORDER objectives
+        # (ledger G): deployment uses only the within-fringe ARGMAX, which is
+        # range-free, so an order-based loss can extrapolate depth where the
+        # absolute-value learners (exact-return / TD) overfit the train d* range.
+        # rank-sup = supervised, no bootstrap (beside exact-return); rank-rl =
+        # keeps the Double-DQN bootstrap + export contract (beside basic). Both
+        # change ONLY the loss/target — the model + ONNX contract are untouched.
+        valid = {"basic", "pbrs", "exact-return", "aux", "rank-sup", "rank-rl"}
         if signal_mode not in valid:
             raise ValueError(f"signal_mode must be one of {sorted(valid)}, got {signal_mode!r}")
         self.signal_mode = signal_mode
         self.aux_lambda = float(aux_lambda)
+        # Per-mode variant. None -> the mode's default (pairwise / reward).
+        _RANK_VARIANTS = {
+            "rank-sup": {"pairwise", "listwise"},
+            "rank-rl": {"reward", "advantage"},
+        }
+        _RANK_DEFAULT = {"rank-sup": "pairwise", "rank-rl": "reward"}
+        if signal_mode in _RANK_VARIANTS:
+            rv = rank_variant or _RANK_DEFAULT[signal_mode]
+            if rv not in _RANK_VARIANTS[signal_mode]:
+                raise ValueError(
+                    f"rank_variant for {signal_mode!r} must be one of "
+                    f"{sorted(_RANK_VARIANTS[signal_mode])}, got {rv!r}"
+                )
+            self.rank_variant = rv
+        else:
+            if rank_variant is not None:
+                raise ValueError(
+                    f"rank_variant is only valid for rank-sup/rank-rl, "
+                    f"not signal_mode={signal_mode!r}"
+                )
+            self.rank_variant = None
         # Auxiliary -d* regression head on the shared GINE trunk, TRAINING-ONLY:
         # it lives on the trainer, never on self.model, so it is never exported
         # to ONNX (contract unchanged). Only built for 'aux' mode.
@@ -201,7 +230,13 @@ class OfflineDQNTrainer:
         ]
 
         aux_loss = 0.0
-        if self.signal_mode == "exact-return":
+        targets = None  # set by the value-based branches; None for rank-sup
+        if self.signal_mode == "rank-sup":
+            # SUPERVISED, NO BOOTSTRAP (beside exact-return). The loss is purely
+            # ORDER-based over the full fringe's slot logits, so it carries no d*
+            # magnitude -> range-free by construction (ledger G / Horn B).
+            loss = self._rank_sup_loss(batch, cur_logits, cur_ptr)
+        elif self.signal_mode == "exact-return":
             # Supervise the chosen slot on the exact (undiscounted) return
             # -d*(chosen node); no bootstrap. Mask transitions whose chosen node
             # is unreachable (d*=inf). Order is all deployment uses, so y=-d*
@@ -219,14 +254,19 @@ class OfflineDQNTrainer:
                 if bool(keep_t.any()) else q_sa.sum() * 0.0
             )
         else:
-            # Bootstrap-based: basic / pbrs / aux. Reward r (or PBRS-shaped r_hat)
-            # plus gamma * maxQ(s') via Double-DQN.
+            # Bootstrap-based: basic / pbrs / aux / rank-rl. Reward r (or a mode-
+            # specific reward) plus gamma * maxQ(s') via Double-DQN.
             if self.signal_mode == "pbrs":
                 rew = []
                 for t in batch:
                     phi_s = self._phi(t.inst, t.fringe)
                     phi_sp = 0.0 if t.done else self._phi(t.inst, t.next_fringe)
                     rew.append(t.reward + self.gamma * phi_sp - phi_s)
+            elif self.signal_mode == "rank-rl" and self.rank_variant == "reward":
+                # RANK-FRACTION REWARD in [0,1] (1 = chose the min-d* slot). Range-
+                # free by construction: the per-step signal is a within-fringe
+                # ORDER statistic, never an absolute d*. Keeps gamma / bootstrap.
+                rew = [self._rank_fraction_reward(t) for t in batch]
             else:
                 rew = [t.reward for t in batch]
             targets = torch.tensor(rew, dtype=torch.float32, device=self.device)
@@ -244,6 +284,15 @@ class OfflineDQNTrainer:
                     q_next = tg_logits[a_star]
                 idx = torch.tensor(live, device=self.device)
                 targets[idx] = targets[idx] + self.gamma * q_next
+            if self.signal_mode == "rank-rl" and self.rank_variant == "advantage":
+                # CENTRE each transition's target by its current fringe's mean
+                # (target-net) logit -> a per-fringe baseline. Removes the absolute
+                # d* LEVEL while preserving within-fringe order. PARTIAL scale-fix:
+                # centring removes the level but NOT the scale (the spread of
+                # targets still grows with d* gaps), unlike the rank-fraction
+                # reward which is fully range-free. Loss-side only (no dueling /
+                # architecture change) -> ONNX contract untouched.
+                targets = targets - self._fringe_baseline(cur_packed, cur_ptr)
             loss = nn.functional.smooth_l1_loss(q_sa, targets)
             if self.signal_mode == "aux":
                 aux_loss = self._aux_dstar_loss(batch, cur_packed)
@@ -267,9 +316,90 @@ class OfflineDQNTrainer:
         return {
             "td_loss": float(loss.item()),
             "q_mean": float(q_sa.mean().item()),
-            "target_mean": float(targets.mean().item()),
+            "target_mean": (
+                float("nan") if targets is None else float(targets.mean().item())
+            ),
             "aux_loss": float(aux_loss) if self.signal_mode == "aux" else 0.0,
         }
+
+    # ---------- rank objectives (Horn B: scale-invariant / order) ----------
+
+    def _rank_sup_loss(
+        self, batch, cur_logits: torch.Tensor, cur_ptr: torch.Tensor
+    ) -> torch.Tensor:
+        """Supervised ORDER loss over each fringe's full slot logits, sorted by
+        d*. No bootstrap, no d* magnitude -> range-free. Per-segment (the fringe
+        is variable-length, delimited by cur_ptr). UNREACHABLE slots excluded;
+        tied-d* slots impose no order (pairwise) or equal target (listwise)."""
+        terms: List[torch.Tensor] = []
+        for b, t in enumerate(batch):
+            lo, hi = int(cur_ptr[b].item()), int(cur_ptr[b + 1].item())
+            seg = cur_logits[lo:hi]
+            inst = self.instances[t.inst]
+            d = torch.tensor(
+                [inst.distance[s] for s in t.fringe],
+                dtype=torch.float32, device=self.device,
+            )
+            reach = d < UNREACHABLE_DISTANCE
+            if int(reach.sum().item()) < 2:
+                continue  # <2 reachable slots -> no ordering signal
+            sl = seg[reach]
+            dl = d[reach]
+            n = sl.numel()
+            if self.rank_variant == "pairwise":
+                # logistic loss over ordered pairs: the smaller-d* slot must get
+                # the higher logit. Strict d_i<d_j only (ties -> no constraint).
+                better = dl[:, None] < dl[None, :]            # i strictly better than j
+                diff_s = sl[:, None] - sl[None, :]            # logit_i - logit_j (want > 0)
+                pair = nn.functional.softplus(-diff_s[better])
+                if pair.numel():
+                    terms.append(pair.mean())
+            else:  # listwise: rank-normalised soft target (range-free, tie-aware)
+                # average ascending rank (0=best); ties share an averaged rank.
+                cl = (dl[None, :] < dl[:, None]).sum(1).float()   # # strictly smaller
+                ce = (dl[None, :] == dl[:, None]).sum(1).float()  # # equal (incl self)
+                ranks = cl + (ce - 1.0) / 2.0
+                w = (n - ranks)                                   # best->n, worst->1, >0
+                target = w / w.sum()                              # ordinal only -> range-free
+                logp = nn.functional.log_softmax(sl, dim=0)
+                terms.append(-(target * logp).sum())
+        if not terms:
+            return cur_logits.sum() * 0.0  # keep grad path, contribute nothing
+        return torch.stack(terms).mean()
+
+    def _rank_fraction_reward(self, t) -> float:
+        """Chosen slot's within-fringe d* rank fraction in [0,1]: 1 = picked the
+        (a) min-d* slot, 0 = picked the max. Fraction of REACHABLE slots strictly
+        worse than the chosen one. Range-free per-step reward for rank-rl."""
+        inst = self.instances[t.inst]
+        ds = [inst.distance[s] for s in t.fringe]
+        d_ch = ds[t.action]
+        if d_ch >= UNREACHABLE_DISTANCE:
+            return 0.0  # chose an unreachable slot -> worst
+        reach = [d for d in ds if d < UNREACHABLE_DISTANCE]
+        n = len(reach)
+        if n <= 1:
+            return 1.0  # the only viable pick is the best by construction
+        worse = sum(1 for d in reach if d > d_ch)
+        return worse / (n - 1)
+
+    @torch.no_grad()
+    def _fringe_baseline(
+        self, cur_packed: Dict[str, torch.Tensor], cur_ptr: torch.Tensor
+    ) -> torch.Tensor:
+        """Per-transition baseline = mean TARGET-net logit over the current
+        fringe's slots (detached). Used by rank-rl 'advantage' to centre the
+        target within the fringe. Returns a [batch] tensor aligned to cur_ptr."""
+        self.target.eval()
+        tg_logits, _ = self._forward(self.target, [], packed=cur_packed)
+        n_seg = int(cur_ptr.numel() - 1)
+        seg = torch.repeat_interleave(
+            torch.arange(n_seg, device=self.device),
+            (cur_ptr[1:] - cur_ptr[:-1]).to(self.device),
+        )
+        sums = torch.zeros(n_seg, device=self.device).scatter_add(0, seg, tg_logits)
+        counts = (cur_ptr[1:] - cur_ptr[:-1]).to(self.device).float()
+        return sums / counts
 
     def _phi(self, inst_idx: int, fringe: Sequence[int]) -> float:
         """PBRS state potential phi(fringe) = -min finite d* over its nodes

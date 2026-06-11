@@ -70,11 +70,24 @@ def parse_args() -> argparse.Namespace:
         "--signal-mode",
         type=str,
         default="basic",
-        choices=["basic", "pbrs", "exact-return", "aux"],
+        choices=["basic", "pbrs", "exact-return", "aux", "rank-sup", "rank-rl"],
         help="Training signal: 'basic' = current Double-DQN (default, unchanged); "
         "'pbrs' = potential-based d* shaping (keeps bootstrap); 'exact-return' = "
         "supervise chosen slot on -d* (no bootstrap); 'aux' = TD + lambda*MSE(-d*) "
-        "auxiliary head on the shared trunk (head excluded from ONNX export).",
+        "auxiliary head on the shared trunk (head excluded from ONNX export); "
+        "'rank-sup' = supervised ORDER loss (no bootstrap, range-free); 'rank-rl' "
+        "= scale-invariant DQN (rank-fraction reward / fringe-centred target). "
+        "All modes export the identical frontier_policy_<F>.onnx contract.",
+    )
+    p.add_argument(
+        "--rank-variant",
+        type=str,
+        default=None,
+        choices=["pairwise", "listwise", "reward", "advantage"],
+        help="Variant for the rank objectives. rank-sup: 'pairwise' (default, "
+        "logistic over d*-ordered slot pairs) or 'listwise' (rank-normalised soft "
+        "target). rank-rl: 'reward' (default, rank-fraction reward in [0,1]) or "
+        "'advantage' (fringe-centred target). Ignored for the other signal modes.",
     )
     p.add_argument(
         "--aux-lambda",
@@ -196,6 +209,7 @@ def main() -> None:
             eval_refill_seeds=args.eval_refill_seeds,
             signal_mode=args.signal_mode,
             aux_lambda=args.aux_lambda,
+            rank_variant=args.rank_variant,
         )
 
         with (out_f / "args.json").open("w") as fh:
