@@ -283,6 +283,31 @@ G-PARTA. [RESULT — depth-extrapolation decay probe, seed0 eval-only, ~2 inst/b
     a noisy HINT, not a verdict. Part B (train pl<=6, gap pl7-10 held out entirely,
     test pl11-17) is the real test; pl<=6 pool=10 supports the widest gap (train 8
     + val 2). Plot: sensitive_analysis/partA_depth_decay.png.
+G-PARTB. [RESULT — wider-gap extrapolation test, 1-seed, 100k, dir SC_Mix_gap]
+    Train = pl<=6 (8 inst + 2 val), pl 7-10 HELD OUT ENTIRELY, test = existing
+    depth (pl 11-17) + rich. Held-out depth rank-acc (wall ~0.12-0.20 here):
+      rank-sup-pairwise 0.198 (econ 87.8, logit_std 25.1, non-degen)
+      basic             0.203 (econ 83.0)
+      rank-sup-listwise 0.175 (econ 96.0)
+    VERDICT: INTERPOLATION, not true extrapolation. The pairwise depth ADVANTAGE
+    over basic COLLAPSES from +0.30 with full data (0.426 vs 0.124, train pl<=10)
+    to ~0 under the gap (0.198 vs 0.203, train pl<=6). Removing the adjacent
+    pl 7-10 kills the transfer -> seed-0/3-seed 0.426 was largely INTERPOLATION to
+    the adjacent pl 9-10, NOT depth-invariant extrapolation. The range-free order
+    loss buys transfer to ADJACENT unseen depth, not unbounded extrapolation —
+    consistent with the optimal within-fringe ORDER itself shifting with depth in
+    ways a shallow-trained model never sees. Part A's "deepest bin best / no decay"
+    was WITHIN the small full-data gap and is OVERTURNED by this controlled gap.
+    RICH is preserved (pairwise 0.632 / listwise 0.628 > basic 0.529) because rich
+    test pl 2-7 overlaps the pl<=6 train range (no gap for rich).
+    CAVEATS: 1-seed gap SCREEN; basic's gap depth 0.203 is single-seed and ABOVE
+    its full-data 3-seed IQM 0.124 (shallow-only training may be less depth-
+    overconfident, or seed-luck) -> the robust claim is the DIFFERENTIAL collapse
+    (pairwise no longer beats basic), not the absolute levels. Pushing depth past
+    this data floor needs the planner-coverage tier (deeper d*-labelled instances),
+    out of scope. STRATEGIC: Horn B gives ADJACENT-depth order transfer (real, ~3x
+    the wall in-range) but not far extrapolation; closing the true depth gap is a
+    DATA/curriculum problem (Horn A), not solvable by the objective alone.
 
 ---
 Priority order: S + #3 (stabilize/converge training) gate everything; then
