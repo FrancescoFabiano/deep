@@ -21,7 +21,12 @@ from torch import nn
 from tqdm import tqdm
 
 from src.models.frontier_policy import FrontierPolicyNetwork
-from src.offline.encoder import GlobalFlatCache, InstanceCache, segment_argmax
+from src.offline.encoder import (
+    GlobalFlatCache,
+    InstanceCache,
+    StateGraph,
+    segment_argmax,
+)
 from src.offline.replay import ReplayBuffer, Transition
 from src.offline.tree_env import (
     UNREACHABLE_DISTANCE,
@@ -74,6 +79,7 @@ class OfflineDQNTrainer:
         signal_mode: str = "basic",
         aux_lambda: float = 1.0,
         rank_variant: Optional[str] = None,
+        goal_graphs: Optional[Sequence[Optional["StateGraph"]]] = None,
     ):
         self.device = torch.device(
             device or ("cuda" if torch.cuda.is_available() else "cpu")
@@ -98,6 +104,16 @@ class OfflineDQNTrainer:
 
         self.instances = list(instances)
         self.caches = list(caches)
+        # Separated mode: one parsed goal graph per instance (aligned with
+        # caches).  use_goal mirrors the model so the forward passes (online +
+        # target) feed goal_* iff the architecture has the separate goal input.
+        self.use_goal = bool(model.use_goal_separate_input)
+        self.goal_graphs = list(goal_graphs) if goal_graphs is not None else None
+        if self.use_goal and self.goal_graphs is None:
+            raise ValueError(
+                "use_goal_separate_input is on but no goal_graphs were passed; "
+                "separated runs must supply one goal graph per instance."
+            )
         self.train_ids = list(train_ids)
         self.val_ids = list(val_ids)
         self.fringe_size = int(fringe_size)
@@ -170,7 +186,11 @@ class OfflineDQNTrainer:
         if self.aux_head is not None:
             params += list(self.aux_head.parameters())
         self.optimizer = torch.optim.Adam(params, lr=lr)
-        self.flat = GlobalFlatCache(self.caches, device=self.device)
+        self.flat = GlobalFlatCache(
+            self.caches,
+            device=self.device,
+            goal_graphs=self.goal_graphs if self.use_goal else None,
+        )
         self.envs = {
             i: FringeEnv(self.instances[i], fringe_size=fringe_size, seed=seed + i)
             for i in set(self.train_ids) | set(self.val_ids)
@@ -190,7 +210,15 @@ class OfflineDQNTrainer:
             dtype=torch.long,
         )
         lens = torch.tensor([len(s) for _, s in fringes], dtype=torch.long)
-        return self.flat.pack(gids, lens)
+        # Separated mode: instance id per fringe drives per-fringe goal packing
+        # (goal_batch=b), so goal_emb[candidate_batch] aligns one goal per
+        # candidate. Single fringe -> goal_batch all-zeros (inference parity).
+        fringe_inst = (
+            torch.tensor([i for i, _ in fringes], dtype=torch.long)
+            if self.use_goal
+            else None
+        )
+        return self.flat.pack(gids, lens, fringe_inst=fringe_inst)
 
     def _forward(
         self,
@@ -201,12 +229,21 @@ class OfflineDQNTrainer:
         """Score fringes [(inst_idx, state_ids), ...] -> (flat logits, ptr)."""
         if packed is None:
             packed = self._pack(fringes)
+        goal_kwargs = {}
+        if self.use_goal and "goal_node_features" in packed:
+            goal_kwargs = {
+                "goal_node_features": packed["goal_node_features"],
+                "goal_edge_index": packed["goal_edge_index"],
+                "goal_edge_attr": packed["goal_edge_attr"],
+                "goal_batch": packed["goal_batch"],
+            }
         logits = net(
             node_features=packed["node_features"],
             edge_index=packed["edge_index"],
             edge_attr=packed["edge_attr"],
             membership=packed["membership"],
             candidate_batch=packed["candidate_batch"],
+            **goal_kwargs,
         )
         return logits, packed["fringe_ptr"]
 

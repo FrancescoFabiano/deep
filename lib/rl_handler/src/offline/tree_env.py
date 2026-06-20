@@ -41,6 +41,10 @@ class TreeInstance:
     children: List[List[int]]  # state id -> child state ids (edge order = CSV)
     root_id: int  # the unique Depth-0 state (its CSV predecessor is a dummy)
     n_orphan_states: int  # states not reachable from the root (table anomalies)
+    # Separated mode only: repo-root-relative path to this instance's
+    # goal_tree.dot (the CSV `Goal` column, constant across rows).  None in
+    # merged mode (the goal is inlined into each state DOT instead).
+    goal_path: Optional[str] = None
 
     @property
     def n_states(self) -> int:
@@ -52,6 +56,13 @@ class TreeInstance:
         return [
             p if Path(p).is_absolute() else str(root / p) for p in self.state_paths
         ]
+
+    def goal_path_abs(self, repo_root: str | Path) -> Optional[str]:
+        """Resolve `goal_path` like state paths; None when merged."""
+        if self.goal_path is None:
+            return None
+        p = Path(self.goal_path)
+        return str(p) if p.is_absolute() else str(Path(repo_root) / p)
 
     def stats(self) -> Dict[str, object]:
         n = self.n_states
@@ -94,9 +105,27 @@ class TreeInstance:
         return min(goal_depths) if goal_depths else None
 
 
-def load_tree_instance(csv_path: str | Path, name: Optional[str] = None) -> TreeInstance:
+def load_tree_instance(
+    csv_path: str | Path,
+    name: Optional[str] = None,
+    kind_of_data: str = "merged",
+) -> TreeInstance:
     csv_path = Path(csv_path)
     rows = list(csv.DictReader(csv_path.open()))
+
+    # Separated mode: the `Goal` column is a repo-root-relative path to this
+    # instance's goal_tree.dot (constant across rows).  In merged mode the same
+    # column still holds a goal_tree.dot path, but that file is NOT written (the
+    # goal is inlined into each state DOT), so we must NOT capture it there —
+    # only separated runs load+feed the separate goal graph.
+    goal_path: Optional[str] = None
+    if kind_of_data == "separated" and rows:
+        raw_goal = rows[0].get("Goal")
+        if raw_goal is None or not raw_goal.strip():
+            raise ValueError(
+                f"{csv_path}: separated mode requires a non-empty `Goal` column."
+            )
+        goal_path = raw_goal.strip()
 
     path_to_id: Dict[str, int] = {}
     state_paths: List[str] = []
@@ -164,6 +193,7 @@ def load_tree_instance(csv_path: str | Path, name: Optional[str] = None) -> Tree
         children=children,
         root_id=root_id,
         n_orphan_states=len(state_paths) - len(reachable),
+        goal_path=goal_path,
     )
 
 

@@ -168,3 +168,12 @@ re-measured per model generation, not inherited.
   here: requires C++ changes)*: per-node inference costs 2.5–7 ms vs BFS's
   1–2 ms per expansion and dominates wall-clock; batching frontier
   evaluations would change the coverage economics entirely.
+
+## Separated encoding
+
+Inherits the baseline data path (`src.preprocessing` resolves to
+`lib/gnn_handler`), so `--kind-of-data separated` requires `--use-goal true` and
+feeds the per-instance `goal_tree.dot` as a separate goal graph. The separated
+ONNX exports the goal inputs; training + export are **ready**, deployment pending
+the C++ `GraphNN::run_inference` separated branch (mirror `FringeEvalRL`; the
+goal tensor is already built at solve time). See `lib/rl_handler/SEPARATED.md`.

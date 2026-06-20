@@ -35,6 +35,18 @@ class GraphDataPipeline:
         self.test_size = test_size
         self.use_goal = use_goal
         self.use_depth = use_depth
+
+        # Separated state DOTs are goal-free: the goal lives in a per-instance
+        # goal_tree.dot (the CSV `Goal` column) and MUST be fed as a separate
+        # graph, so use_goal is mandatory.  In merged mode the goal is inlined
+        # into each state DOT, so the separate goal graph is never loaded (it
+        # would double-count, and the merged goal_tree.dot is not even written).
+        if kind_of_data == "separated" and not use_goal:
+            raise ValueError(
+                "kind_of_data='separated' requires use_goal=True: separated "
+                "state DOTs are goal-free, so the goal_tree.dot from the CSV "
+                "`Goal` column must be fed as a separate goal graph."
+            )
         self.unreachable_state_value = unreachable_state_value
         self.max_percentage_per_class = max_percentage_per_class
         self.random_state = random_state
@@ -53,6 +65,14 @@ class GraphDataPipeline:
         return list(folder.iterdir())
 
     def _read_csv(self, csv_path: Path) -> pd.DataFrame:
+        # The generation table is
+        #   File Path, Depth, Distance From Goal, Goal,
+        #   File Path Predecessor, Action
+        # (the last two columns were added later).  Parse by HEADER so the
+        # `Goal` column (the goal_tree.dot path in separated mode) is extracted
+        # exactly — a fixed maxsplit would otherwise fold Predecessor+Action
+        # into Goal.  Field values are DOT-file paths with no embedded commas,
+        # so a full split is safe.
         COL_NAMES_CSV = [
             "File Path",
             "Depth",
@@ -60,12 +80,13 @@ class GraphDataPipeline:
             "Goal",
         ]
 
-        records = []
         with csv_path.open(newline="") as f:
-            next(f)  # skip header
+            header = next(f).rstrip("\n").split(",")
+            col_idx = {name: header.index(name) for name in COL_NAMES_CSV}
+            records = []
             for raw in f:
-                parts = raw.rstrip("\n").split(",", len(COL_NAMES_CSV) - 1)
-                records.append(parts)
+                parts = raw.rstrip("\n").split(",")
+                records.append([parts[col_idx[name]] for name in COL_NAMES_CSV])
         df = pd.DataFrame(records, columns=COL_NAMES_CSV)
         df["Depth"] = pd.to_numeric(df["Depth"], errors="coerce")
         df["Distance From Goal"] = pd.to_numeric(
@@ -220,6 +241,13 @@ class GraphDataPipeline:
 
         graph_cache = self._load_graph_cache()
 
+        # kind_of_data drives the separate goal graph, NOT use_goal alone:
+        #   separated -> feed goal_tree.dot (CSV `Goal`) as a separate graph
+        #                (state DOT is goal-free; guaranteed use_goal by __init__)
+        #   merged    -> goal is inlined in the state DOT; never feed it again
+        #                (avoids double-counting; merged goal_tree.dot is absent)
+        load_separate_goal = self.data_kind == "separated" and self.use_goal
+
         for i, df in enumerate(t):
             if df is None:
                 raise ValueError("Call build_df() first.")
@@ -231,7 +259,7 @@ class GraphDataPipeline:
                     row["File Path"],
                     int(row["Depth"]) if self.use_depth else None,
                     int(row["Distance From Goal"]),
-                    row["Goal"] if self.use_goal else None,
+                    row["Goal"] if load_separate_goal else None,
                     bitmask=self.dataset_type == KEYWORD_BITMASK,
                     graph_cache=graph_cache,
                 )

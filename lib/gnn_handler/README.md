@@ -129,3 +129,15 @@ python __main__.py \
   --n-train-epochs 300 \
   --batch-size 1024
 ```
+
+## Separated encoding
+
+`--kind-of-data separated` requires `--use-goal true`: separated state DOTs are
+goal-free, so the per-instance `goal_tree.dot` (the CSV `Goal` column) is fed as
+a separate goal graph; `merged` leaves the goal inlined and never feeds it again.
+The separated distance-estimator ONNX exports the goal inputs
+(`goal_node_ids, goal_edge_index, goal_edge_attr, goal_batch`). Training + export
+are **ready**; deployment is pending the C++ `GraphNN::run_inference` separated
+branch to feed `get_goal_tensor()` into those inputs (mirroring `FringeEvalRL`;
+the goal tensor is already built at solve time). See
+`lib/rl_handler/SEPARATED.md` for the full contract.

@@ -21,7 +21,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from src.models.frontier_policy import FrontierPolicyNetwork  # noqa: E402
 from src.offline.dqn import EpsilonSchedule, OfflineDQNTrainer  # noqa: E402
-from src.offline.encoder import InstanceCache  # noqa: E402
+from src.offline.encoder import InstanceCache, load_goal_graph  # noqa: E402
 from src.offline.tree_env import load_tree_instance  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[2]
@@ -104,6 +104,36 @@ def parse_args() -> argparse.Namespace:
         "and convergence curves. Default: 1 (single-seed, prior behavior).",
     )
     p.add_argument("--max-grad-norm", type=float, default=1.0)
+    p.add_argument(
+        "--dataset-type",
+        type=str,
+        default="HASHED",
+        choices=["MAPPED", "HASHED", "BITMASK"],
+        help="Node-label representation; must match the generator's "
+        "--dataset_type. Default: HASHED.",
+    )
+    p.add_argument(
+        "--kind-of-data",
+        type=str,
+        default="merged",
+        choices=["merged", "separated"],
+        help="merged = goal inlined into each state DOT (default); separated = "
+        "goal in a per-instance goal_tree.dot (CSV `Goal` column), fed through "
+        "the separate goal input. Separated exports the 9-input ONNX.",
+    )
+    p.add_argument(
+        "--use-goal-separate-input",
+        dest="use_goal_separate_input",
+        action="store_true",
+        default=None,
+        help="Force the separate goal GNN input. Defaults to True when "
+        "--kind-of-data=separated, False for merged.",
+    )
+    p.add_argument(
+        "--no-use-goal-separate-input",
+        dest="use_goal_separate_input",
+        action="store_false",
+    )
     p.add_argument("--dir-save-model", type=str, required=True)
     p.add_argument("--device", type=str, default=None)
     p.add_argument("--export-onnx", action="store_true", default=True)
@@ -116,7 +146,9 @@ def _resolve(path: str) -> Path:
     return p if p.is_absolute() else (REPO / p)
 
 
-def _build_model() -> FrontierPolicyNetwork:
+def _build_model(
+    dataset_type: str, use_goal_separate_input: bool
+) -> FrontierPolicyNetwork:
     """A fresh model with the production architecture (matches deployed
     frontier_policy exports). The architecture is fringe-size-agnostic: F only
     sets the env beam width and the exported ONNX's symbolic output length, so
@@ -128,22 +160,35 @@ def _build_model() -> FrontierPolicyNetwork:
         gnn_layers=3,
         conv_type="gine",
         pooling_type="mean",
-        dataset_type="HASHED",  # TODO
+        dataset_type=dataset_type,
         edge_emb_dim=32,
         num_edge_labels=128,
         num_node_labels=4096,
         use_global_context=True,
         mlp_depth=2,
-        use_goal_separate_input=False,  # TODO
+        use_goal_separate_input=use_goal_separate_input,
     )
 
 
 def main() -> None:
     args = parse_args()
 
+    # Resolve the separate-goal switch: explicit flag wins, else it tracks
+    # kind_of_data (separated => on). Guard the contradictory combo early.
+    use_goal_separate_input = (
+        (args.kind_of_data == "separated")
+        if args.use_goal_separate_input is None
+        else bool(args.use_goal_separate_input)
+    )
+    if args.kind_of_data == "merged" and use_goal_separate_input:
+        raise SystemExit(
+            "merged data has the goal inlined into each state DOT; "
+            "--use-goal-separate-input requires --kind-of-data=separated."
+        )
+
     # Parse instances + caches ONCE — the data is fringe-independent, so the
     # whole fringe sweep reuses it (no regeneration per fringe size).
-    instances, caches = [], []
+    instances, caches, goal_graphs = [], [], []
     csvs = [*args.train_csv, *args.val_csv]
     pbar = tqdm(
         csvs,
@@ -154,12 +199,24 @@ def main() -> None:
     )
     for csv in pbar:
         csv_path = _resolve(csv)
-        inst = load_tree_instance(csv_path)
+        inst = load_tree_instance(csv_path, kind_of_data=args.kind_of_data)
         pbar.set_postfix_str(f"{inst.name}: {inst.n_states} states")
         cache_file = csv_path.parent / "graph_cache_offline_v1.pt"
         cache = InstanceCache.from_paths(inst.state_paths_abs(REPO), cache_file)
         instances.append(inst)
         caches.append(cache)
+        # Separated mode: parse this instance's goal_tree.dot once (the model
+        # feeds it through the separate goal input). merged => None.
+        if use_goal_separate_input:
+            gp = inst.goal_path_abs(REPO)
+            if gp is None:
+                raise SystemExit(
+                    f"{csv_path}: separated mode but no `Goal` path on the "
+                    "instance; cannot load goal_tree.dot."
+                )
+            goal_graphs.append(load_goal_graph(gp))
+        else:
+            goal_graphs.append(None)
 
     train_ids = list(range(len(args.train_csv)))
     val_ids = list(range(len(args.train_csv), len(instances)))
@@ -187,7 +244,7 @@ def main() -> None:
             torch.cuda.manual_seed_all(args.seed)
 
         # Fresh model + trainer per fringe; instances/caches are reused.
-        model = _build_model()
+        model = _build_model(args.dataset_type, use_goal_separate_input)
         trainer = OfflineDQNTrainer(
             model=model,
             instances=instances,
@@ -210,6 +267,7 @@ def main() -> None:
             signal_mode=args.signal_mode,
             aux_lambda=args.aux_lambda,
             rank_variant=args.rank_variant,
+            goal_graphs=goal_graphs if use_goal_separate_input else None,
         )
 
         with (out_f / "args.json").open("w") as fh:
@@ -232,7 +290,7 @@ def main() -> None:
                     continue
                 loaded = RLFrontierTrainer.load_model(ckpt, device="cpu")
                 export_trainer = RLFrontierTrainer(
-                    model=loaded, kind_of_data="merged", device="cpu"
+                    model=loaded, kind_of_data=args.kind_of_data, device="cpu"
                 )
                 onnx_path = out_f / f"frontier_policy_{F}_{tag}.onnx"
                 export_trainer.to_onnx(

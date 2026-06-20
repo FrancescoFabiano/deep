@@ -197,6 +197,16 @@ def main(args):
     os.makedirs(path_data, exist_ok=True)
     data_path = path_data + "/samples.pt"
 
+    # Separated state DOTs are goal-free, so the separate goal graph is
+    # mandatory.  Fail fast (covers train-from-saved-samples too, not just the
+    # build path where GraphDataPipeline also enforces this).
+    if kind_of_data == "separated" and not use_goal:
+        raise SystemExit(
+            "kind_of_data='separated' requires --use-goal true: separated "
+            "state DOTs are goal-free, so the goal_tree.dot must be fed as a "
+            "separate goal graph."
+        )
+
     print("\n************************************************")
     print(
         f"subset_train: {list_subset_train} | {dataset_type} | {kind_of_data} | Use goal: {use_goal} | Use depth: {use_depth} | Model name: {model_name} | Train: {if_train} | Build Data: {if_build_data}",
@@ -282,6 +292,15 @@ def main(args):
 
     onnx_model_path = f"{path_model}/{model_name}.onnx"
     m.to_onnx(onnx_model_path, use_goal, use_depth)
+
+    if kind_of_data == "separated":
+        print(
+            "\n[NOTE] kind_of_data='separated': this distance-estimator ONNX "
+            "exports the goal_* inputs. Deployment requires the C++ "
+            "GraphNN::run_inference separated branch to feed get_goal_tensor() "
+            "into them, mirroring FringeEvalRL. Training/export here is the "
+            "ready precursor.\n"
+        )
 
     if if_try_example:
         example_state_to_predict = f"./examples/{dataset_type}_{kind_of_data}_state.dot"

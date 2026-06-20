@@ -118,6 +118,16 @@ def parse_args():
 def main(args):
     seed_everything(args.seed)
 
+    # Separated state DOTs are goal-free, so the separate goal graph is
+    # mandatory.  Fail fast (covers train-from-saved-samples too, not just the
+    # build path where the baseline GraphDataPipeline also enforces this).
+    if args.kind_of_data == "separated" and not args.use_goal:
+        raise SystemExit(
+            "kind_of_data='separated' requires --use-goal true: separated "
+            "state DOTs are goal-free, so the goal_tree.dot must be fed as a "
+            "separate goal graph."
+        )
+
     path_data = args.dir_save_data
     path_model = args.dir_save_model
     if args.experiment_name:
@@ -237,6 +247,15 @@ def main(args):
 
     onnx_model_path = f"{path_model}/{args.model_name}.onnx"
     m.to_onnx(onnx_model_path, args.use_goal, args.use_depth)
+
+    if args.kind_of_data == "separated":
+        print(
+            "\n[NOTE] kind_of_data='separated': this distance-estimator ONNX "
+            "exports the goal_* inputs. Deployment requires the C++ "
+            "GraphNN::run_inference separated branch to feed get_goal_tensor() "
+            "into them, mirroring FringeEvalRL. Training/export here is the "
+            "ready precursor.\n"
+        )
 
     with open(f"{path_model}/{args.model_name}_info.txt", "w",
               encoding="utf-8") as fh:
