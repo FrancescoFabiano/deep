@@ -20,6 +20,15 @@ class Transition:
     # pipeline, so existing constructions are unchanged. Never read by training
     # (_update is regime-agnostic) — it exists only for per-regime audits.
     regime: Optional[str] = None
+    # Per-slot padded-ness, aligned with `fringe` slot order: True iff that slot
+    # was PAD-FILLED (reservoir/closed top-up on an F>fmax instance) rather than a
+    # live frontier member. Padded-ness is a property of (this fringe, this slot)
+    # — the SAME node can be live in one fringe and pad-fill in another — so it
+    # cannot be recovered from the id or d* downstream and must be carried here.
+    # None => treated as all-False (the single-source / faithful path), so the
+    # order-aux includes every slot exactly as before. The value objective never
+    # reads it (padded slots stay value-supervised); only the order-aux masks it.
+    pad_mask: Optional[Tuple[bool, ...]] = None
 
 
 class ReplayBuffer:

@@ -247,6 +247,7 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
                         e.env.hfs_diag = new
         for e in self.regime_envs:          # windowed pad counters
             e.env.reset_pad_counters()
+        self.reset_order_stats()            # windowed order-aux pair/skip counters
 
     # ---- weighted (instance uniform × regime ∝ w) scheduler ----
     def _pick(self, rng: random.Random) -> tuple:
@@ -309,6 +310,10 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
             }
             for i in self.included_train
         ]
+        # P2 order-aux: usable-pair fraction + post-mask <2-distinct skip count,
+        # over order-eligible (non-padded) slots. Zeroed when lambda_ord==0
+        # (the order loss is never computed).
+        out["order"] = {"lambda_ord": self.lambda_ord, **self.order_stats()}
         return out
 
     # ---- training loop: weighted round-robin over (instance × regime) ----
@@ -346,6 +351,9 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
             frame += 1
             eps = epsilon(frame)
             fringe = res.fringe
+            # slot-aligned pad mask for THIS state fringe (captured from res.info
+            # before env.step rebuilds the beam). Faithful envs => all-False.
+            pad_mask = tuple(res.info.get("pad_flags", ()))
             inst = self.instances[cur_i]
             st = self.regime_stats[cur_r]
             st.observe(fringe, inst, self.fringe_size, env.last_pool_size)
@@ -375,6 +383,7 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
                     inst=cur_i, fringe=tuple(fringe), action=action,
                     reward=nxt.reward, next_fringe=tuple(nxt.fringe),
                     done=nxt.done, regime=cur_r,
+                    pad_mask=pad_mask if any(pad_mask) else None,
                 ))
 
             if nxt.done:
@@ -482,6 +491,15 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
                            f"{r}: stv_true={d['stv_true']} stv_real={d['stv_real']} "
                            f"unsmp_mass={d['unsampled_mass']}"
                            for r, d in instr["hfs"].items()))
+        o = instr.get("order")
+        if o is not None:
+            pbar.write(
+                f"  order-aux: lambda={o['lambda_ord']} "
+                f"usable_pair_frac={o['order_usable_pair_frac']} "
+                f"(pairs {o['order_usable_pairs']}/{o['order_candidate_pairs']}) "
+                f"post-mask skip={o['order_skipped_fringes']}/{o['order_seen_fringes']} "
+                f"({o['order_skip_frac']})"
+            )
         pad_rows = [p for p in instr.get("padding", [])]
         if any(p["padded"] for p in pad_rows):
             pbar.write("  padding (instance fmax / padded / pad_exp / pad_slots):")

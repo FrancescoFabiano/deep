@@ -167,6 +167,14 @@ def parse_args() -> argparse.Namespace:
         help="Per-episode expansion horizon for the redraw training envs "
         "(default 2*n_states, the safety cap). Lower it to cycle regimes faster.",
     )
+    p.add_argument(
+        "--lambda-ord",
+        type=float,
+        default=0.0,
+        help="P2 order-auxiliary weight: L = L_val + lambda_ord * L_ord (pairwise "
+        "order over non-padded slots) on the single head. 0.0 (default) = value-"
+        "only (byte-identical to no order term); >0 = value+order arm.",
+    )
     p.add_argument("--max-grad-norm", type=float, default=1.0)
     p.add_argument(
         "--dataset-type",
@@ -328,6 +336,7 @@ def main() -> None:
             seed=args.seed,
             device=args.device,
             eval_refill_seeds=args.eval_refill_seeds,
+            lambda_ord=args.lambda_ord,
             goal_graphs=goal_graphs if use_goal_separate_input else None,
         )
         if args.use_regimes:

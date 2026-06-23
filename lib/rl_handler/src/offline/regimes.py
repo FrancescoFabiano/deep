@@ -351,10 +351,13 @@ class RedrawFringeEnv(FringeEnv):
         self.closed: set[int] = set()
         self.n_pad_slots_filled = 0
         self.n_pad_expansions = 0
+        # per-slot pad flag, aligned with self.fringe (True = pad-filled slot).
+        self.pad_flags: List[bool] = []
 
     def reset(self, seed=None) -> "StepResult":
         # root is expansion 1 => it is closed before the first beam is built.
         self.closed = {self.instance.root_id}
+        self.pad_flags = []
         return super().reset(seed)
 
     def step(self, action: int) -> "StepResult":
@@ -386,6 +389,7 @@ class RedrawFringeEnv(FringeEnv):
         )
         sel = set(beam)
         self.reservoir = [s for s in pool if s not in sel]
+        pad_flags = [False] * len(beam)            # live composition slots
         if self.pad_to_F and len(beam) < self.fringe_size:
             # Live frontier < F: top up from reservoir (live, normally empty here)
             # then CLOSED nodes, selected by the regime rule so regimes still
@@ -398,14 +402,20 @@ class RedrawFringeEnv(FringeEnv):
                 pad = select_beam(self.regime, pad_src, self.instance, need,
                                   self.rng, self.dfs_rank, None)
                 beam = beam + pad
+                pad_flags += [True] * len(pad)     # appended slots are pad-filled
                 self.n_pad_slots_filled += len(pad)
                 padset = set(pad)
                 self.reservoir = [s for s in self.reservoir if s not in padset]
         self.fringe = beam
+        self.pad_flags = pad_flags
 
     def _info(self, goal_found: bool) -> Dict[str, object]:
         info = super()._info(goal_found)
         info["pool_size"] = self.last_pool_size
         info["regime"] = self.regime
         info["padded"] = self.pad_to_F
+        # pad_flags aligned with the CURRENT self.fringe (= the StepResult.fringe
+        # captured alongside this info), so the trainer attaches a slot-aligned
+        # pad_mask at push without any timing hazard.
+        info["pad_flags"] = list(self.pad_flags)
         return info

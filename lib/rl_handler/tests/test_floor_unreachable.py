@@ -72,6 +72,10 @@ def make_trainer(signal_mode="basic", gamma=0.99, rank_variant=None):
 
 # ---- a lightweight stub for the pure d*-logic methods (no model needed) ----
 class _Stub:
+    # the real per-fringe helpers (need only self.instances/.device/.rank_variant)
+    _order_eligible_slots = OfflineDQNTrainer._order_eligible_slots
+    _pairwise_term = OfflineDQNTrainer._pairwise_term
+
     def __init__(self, inst, floor_v, rank_variant="pairwise"):
         self.instances = [inst]
         self.floor_v = floor_v

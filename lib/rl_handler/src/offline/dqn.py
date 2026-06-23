@@ -79,6 +79,7 @@ class OfflineDQNTrainer:
         signal_mode: str = "basic",
         aux_lambda: float = 1.0,
         rank_variant: Optional[str] = None,
+        lambda_ord: float = 0.0,
         goal_graphs: Optional[Sequence[Optional["StateGraph"]]] = None,
     ):
         self.device = torch.device(
@@ -125,6 +126,17 @@ class OfflineDQNTrainer:
         # order objectives sort everything above. gamma<1 by construction (DESIGN
         # §3); guard the degenerate gamma>=1 so floor stays finite-negative.
         self.floor_v = (-1.0 / (1.0 - self.gamma)) if self.gamma < 1.0 else -1e9
+        # P2 order-auxiliary weight: L = L_val + lambda_ord * L_ord (pairwise over
+        # ORDER-ELIGIBLE = non-padded slots) on the SAME logits. 0 => the order
+        # term is never even computed (byte-identical to the value-only path).
+        self.lambda_ord = float(lambda_ord)
+        # Windowed order-aux instrumentation (reset by reset_order_stats): pairs
+        # actually formed vs candidate pairs, and fringes skipped by the
+        # post-mask <2-distinct guard, all over order-eligible slots only.
+        self._order_usable_pairs = 0
+        self._order_candidate_pairs = 0
+        self._order_skipped_fringes = 0
+        self._order_seen_fringes = 0
         self.batch_size = int(batch_size)
         self.warmup = int(warmup)
         self.target_sync = int(target_sync)
@@ -274,6 +286,7 @@ class OfflineDQNTrainer:
         ]
 
         aux_loss = 0.0
+        order_loss = 0.0
         targets = None  # set by the value-based branches; None for rank-sup
         if self.signal_mode == "rank-sup":
             # SUPERVISED, NO BOOTSTRAP (beside exact-return). The loss is purely
@@ -337,6 +350,13 @@ class OfflineDQNTrainer:
             if self.signal_mode == "aux":
                 aux_loss = self._aux_dstar_loss(batch, cur_packed)
                 loss = loss + self.aux_lambda * aux_loss
+            # P2 combined objective: add the pairwise ORDER auxiliary on the same
+            # logits, weighted by lambda_ord. Computed (and back-propagated) ONLY
+            # when lambda_ord > 0, so lambda_ord == 0 is byte-identical to the
+            # value-only path. Padded slots are excluded inside _order_aux_loss.
+            if self.lambda_ord > 0.0:
+                order_loss = self._order_aux_loss(batch, cur_logits, cur_ptr)
+                loss = loss + self.lambda_ord * order_loss
 
         self.optimizer.zero_grad()
         loss.backward()
@@ -360,46 +380,67 @@ class OfflineDQNTrainer:
                 float("nan") if targets is None else float(targets.mean().item())
             ),
             "aux_loss": float(aux_loss) if self.signal_mode == "aux" else 0.0,
+            "order_loss": (
+                float(order_loss.detach()) if torch.is_tensor(order_loss) else 0.0
+            ),
         }
 
     # ---------- rank objectives (Horn B: scale-invariant / order) ----------
 
+    def _order_eligible_slots(self, t):
+        """The ORDER-ELIGIBLE slots of a transition's fringe: every slot whose
+        pad_mask is False (padded/closed pad-fill slots are excluded from any
+        ordering — they are value-supervised, order-excluded). Returns
+        (positions, dvals): positions index into the fringe's logit segment;
+        dvals are the d* values with unreachable mapped to a sentinel strictly
+        above every finite d* (= worst), per Task 1a. pad_mask None => all live."""
+        inst = self.instances[t.inst]
+        raw = [inst.distance[s] for s in t.fringe]
+        pad = t.pad_mask if t.pad_mask is not None else (False,) * len(raw)
+        positions = [k for k in range(len(raw)) if not pad[k]]
+        finite = [raw[k] for k in positions if raw[k] < UNREACHABLE_DISTANCE]
+        sentinel = (max(finite) + 1.0) if finite else 1.0
+        dvals = [raw[k] if raw[k] < UNREACHABLE_DISTANCE else sentinel
+                 for k in positions]
+        return positions, dvals
+
+    def _pairwise_term(self, sl: torch.Tensor, dl: torch.Tensor):
+        """Per-fringe pairwise logistic order loss over slots `sl` with d* `dl`:
+        softplus(-(logit_i - logit_j)) for every (i,j) with d_i < d_j (strict; ties
+        impose no constraint). Returns (term_or_None, n_pairs_formed)."""
+        better = dl[:, None] < dl[None, :]                # i strictly better than j
+        diff_s = sl[:, None] - sl[None, :]                # logit_i - logit_j (want > 0)
+        sel = diff_s[better]
+        npairs = int(better.sum().item())
+        if sel.numel() == 0:
+            return None, 0
+        return nn.functional.softplus(-sel).mean(), npairs
+
     def _rank_sup_loss(
         self, batch, cur_logits: torch.Tensor, cur_ptr: torch.Tensor
     ) -> torch.Tensor:
-        """Supervised ORDER loss over each fringe's full slot logits, sorted by
-        d*. No bootstrap, no d* magnitude -> range-free. Per-segment (the fringe
-        is variable-length, delimited by cur_ptr). UNREACHABLE slots are INCLUDED
-        via a sentinel that sorts strictly ABOVE every finite d* (= worst): so
-        finite-better-than-unreachable pairwise constraints fire, while
-        unreachable-vs-unreachable is a tie (no constraint). Skip a fringe with
-        <2 DISTINCT d* values (incl. the sentinel) -> no ordering signal."""
+        """Supervised ORDER loss over each fringe's ORDER-ELIGIBLE slot logits,
+        sorted by d*. No bootstrap, no d* magnitude -> range-free. Padded slots are
+        EXCLUDED (see _order_eligible_slots); the <2-distinct skip is evaluated on
+        the eligible set only. Unreachables included via the worst-sorting
+        sentinel. pairwise = logistic over d_i<d_j pairs; listwise = rank-normalised
+        soft target."""
         terms: List[torch.Tensor] = []
         for b, t in enumerate(batch):
             lo, hi = int(cur_ptr[b].item()), int(cur_ptr[b + 1].item())
             seg = cur_logits[lo:hi]
-            inst = self.instances[t.inst]
-            raw = [inst.distance[s] for s in t.fringe]
-            finite_vals = [x for x in raw if x < UNREACHABLE_DISTANCE]
-            # sentinel = strictly above the worst finite (or 1.0 if all unreachable,
-            # in which case every slot ties and the <2-distinct skip fires).
-            sentinel = (max(finite_vals) + 1.0) if finite_vals else 1.0
-            dvals = [x if x < UNREACHABLE_DISTANCE else sentinel for x in raw]
+            positions, dvals = self._order_eligible_slots(t)
             if len(set(dvals)) < 2:
-                continue  # <2 distinct values (incl. all-unreachable) -> no signal
+                continue  # <2 distinct ELIGIBLE values -> no ordering signal
+            idx = torch.tensor(positions, dtype=torch.long, device=self.device)
+            sl = seg[idx]
             dl = torch.tensor(dvals, dtype=torch.float32, device=self.device)
-            sl = seg
-            n = sl.numel()
             if self.rank_variant == "pairwise":
-                # logistic loss over ordered pairs: the smaller-d* slot must get
-                # the higher logit. Strict d_i<d_j only (ties -> no constraint).
-                better = dl[:, None] < dl[None, :]            # i strictly better than j
-                diff_s = sl[:, None] - sl[None, :]            # logit_i - logit_j (want > 0)
-                pair = nn.functional.softplus(-diff_s[better])
-                if pair.numel():
-                    terms.append(pair.mean())
+                term, _ = self._pairwise_term(sl, dl)
+                if term is not None:
+                    terms.append(term)
             else:  # listwise: rank-normalised soft target (range-free, tie-aware)
-                # average ascending rank (0=best); ties share an averaged rank.
+                n = sl.numel()
                 cl = (dl[None, :] < dl[:, None]).sum(1).float()   # # strictly smaller
                 ce = (dl[None, :] == dl[:, None]).sum(1).float()  # # equal (incl self)
                 ranks = cl + (ce - 1.0) / 2.0
@@ -410,6 +451,54 @@ class OfflineDQNTrainer:
         if not terms:
             return cur_logits.sum() * 0.0  # keep grad path, contribute nothing
         return torch.stack(terms).mean()
+
+    def _order_aux_loss(
+        self, batch, cur_logits: torch.Tensor, cur_ptr: torch.Tensor
+    ) -> torch.Tensor:
+        """P2 order auxiliary: the PAIRWISE term of _rank_sup_loss over ORDER-
+        ELIGIBLE (non-padded) slots, on the SAME logits as the value loss. Padded
+        slots never enter a pair; the <2-distinct skip runs on the eligible set.
+        Accumulates windowed instrumentation (usable vs candidate pairs, skipped
+        fringes) so pad-/tie-dominated batches are visible."""
+        terms: List[torch.Tensor] = []
+        for b, t in enumerate(batch):
+            lo, hi = int(cur_ptr[b].item()), int(cur_ptr[b + 1].item())
+            seg = cur_logits[lo:hi]
+            positions, dvals = self._order_eligible_slots(t)
+            self._order_seen_fringes += 1
+            m = len(positions)
+            self._order_candidate_pairs += m * (m - 1) // 2
+            if len(set(dvals)) < 2:
+                self._order_skipped_fringes += 1
+                continue
+            idx = torch.tensor(positions, dtype=torch.long, device=self.device)
+            sl = seg[idx]
+            dl = torch.tensor(dvals, dtype=torch.float32, device=self.device)
+            term, npairs = self._pairwise_term(sl, dl)
+            self._order_usable_pairs += npairs
+            if term is not None:
+                terms.append(term)
+        if not terms:
+            return cur_logits.sum() * 0.0
+        return torch.stack(terms).mean()
+
+    def reset_order_stats(self) -> None:
+        self._order_usable_pairs = 0
+        self._order_candidate_pairs = 0
+        self._order_skipped_fringes = 0
+        self._order_seen_fringes = 0
+
+    def order_stats(self) -> Dict[str, object]:
+        cp = max(1, self._order_candidate_pairs)
+        sf = max(1, self._order_seen_fringes)
+        return {
+            "order_seen_fringes": self._order_seen_fringes,
+            "order_usable_pairs": self._order_usable_pairs,
+            "order_candidate_pairs": self._order_candidate_pairs,
+            "order_usable_pair_frac": round(self._order_usable_pairs / cp, 4),
+            "order_skipped_fringes": self._order_skipped_fringes,
+            "order_skip_frac": round(self._order_skipped_fringes / sf, 4),
+        }
 
     def _rank_fraction_reward(self, t) -> float:
         """Chosen slot's within-fringe d* rank fraction in [0,1]: 1 = picked the
