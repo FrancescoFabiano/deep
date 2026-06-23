@@ -194,20 +194,38 @@ def select_beam(
     dfs_rank: Sequence[int],
     hfs_diag: Optional[HFSDiag] = None,
 ) -> List[int]:
-    """Rebuild the F-beam from the live pool by the regime rule. Returns a list
-    of min(F, |pool|) unique state ids (the pool is unique by construction)."""
+    """Rebuild the F-beam from the live pool by the regime rule. Returns EXACTLY
+    min(F, |pool|) unique state ids (the pool is unique by construction).
+
+    Post-condition guard: when |P| <= F every regime returns the whole pool (no
+    selection — DFS/BFS/HFS_m0/HFS_m1/random are identical there); when |P| > F
+    the regime emits F slots. The trailing top-up is a defensive net so a future
+    regime-rule edit can never silently emit a short beam (the hfs_m1 small-pool
+    regression class) — it is a no-op on every current path (test_select_beam)."""
     P = list(pool)
+    target = min(F, len(P))
     if len(P) <= F:
-        return P
+        return P                                   # whole pool, all regimes alike
     if regime == "dfs":
-        return sorted(P, key=lambda s: (dfs_rank[s], s))[:F]
-    if regime == "bfs":
-        return sorted(P, key=lambda s: (inst.depth[s], s))[:F]
-    if regime == "random":
-        return rng.sample(P, F)
-    if regime in ("hfs_m0", "hfs_m1"):
-        return _hfs_select(regime, P, inst, F, rng, hfs_diag)
-    raise ValueError(f"unknown regime {regime!r}; expected one of {REGIMES}")
+        beam = sorted(P, key=lambda s: (dfs_rank[s], s))[:F]
+    elif regime == "bfs":
+        beam = sorted(P, key=lambda s: (inst.depth[s], s))[:F]
+    elif regime == "random":
+        beam = rng.sample(P, F)
+    elif regime in ("hfs_m0", "hfs_m1"):
+        beam = _hfs_select(regime, P, inst, F, rng, hfs_diag)
+    else:
+        raise ValueError(f"unknown regime {regime!r}; expected one of {REGIMES}")
+
+    if len(beam) < target:                         # defensive top-up (never short)
+        seen = set(beam)
+        for s in P:
+            if s not in seen:
+                beam.append(s)
+                seen.add(s)
+                if len(beam) >= target:
+                    break
+    return beam[:target]
 
 
 def _hfs_select(regime, P, inst, F, rng, diag) -> List[int]:
