@@ -118,6 +118,13 @@ class OfflineDQNTrainer:
         self.val_ids = list(val_ids)
         self.fringe_size = int(fringe_size)
         self.gamma = float(gamma)
+        # Maximally-bad finite return floor = -1/(1-gamma) (all -1 forever): the
+        # value an unreachable (d*=inf) node deserves. Used to INCLUDE unreachables
+        # in the d*-aware objectives (exact-return target / aux regression / PBRS
+        # potential) instead of masking them out, and as the 'worst' anchor the
+        # order objectives sort everything above. gamma<1 by construction (DESIGN
+        # §3); guard the degenerate gamma>=1 so floor stays finite-negative.
+        self.floor_v = (-1.0 / (1.0 - self.gamma)) if self.gamma < 1.0 else -1e9
         self.batch_size = int(batch_size)
         self.warmup = int(warmup)
         self.target_sync = int(target_sync)
@@ -275,21 +282,17 @@ class OfflineDQNTrainer:
             loss = self._rank_sup_loss(batch, cur_logits, cur_ptr)
         elif self.signal_mode == "exact-return":
             # Supervise the chosen slot on the exact (undiscounted) return
-            # -d*(chosen node); no bootstrap. Mask transitions whose chosen node
-            # is unreachable (d*=inf). Order is all deployment uses, so y=-d*
-            # makes argmax(Q) -> argmin(d*) = the oracle pick.
-            y, keep = [], []
+            # -d*(chosen node); no bootstrap. Unreachable nodes (d*=inf) are KEPT,
+            # not masked: their target is floor_v = -1/(1-gamma) (worst possible
+            # return), so the model learns they are maximally bad rather than
+            # ignoring them. Order is all deployment uses, so y makes
+            # argmax(Q) -> argmin(d*) = the oracle pick, unreachables last.
+            y = []
             for t in batch:
                 d = self.instances[t.inst].distance[t.fringe[t.action]]
-                ok = d < UNREACHABLE_DISTANCE
-                y.append(-d if ok else 0.0)
-                keep.append(ok)
+                y.append(-d if d < UNREACHABLE_DISTANCE else self.floor_v)
             targets = torch.tensor(y, dtype=torch.float32, device=self.device)
-            keep_t = torch.tensor(keep, device=self.device)
-            loss = (
-                nn.functional.smooth_l1_loss(q_sa[keep_t], targets[keep_t])
-                if bool(keep_t.any()) else q_sa.sum() * 0.0
-            )
+            loss = nn.functional.smooth_l1_loss(q_sa, targets)
         else:
             # Bootstrap-based: basic / pbrs / aux / rank-rl. Reward r (or a mode-
             # specific reward) plus gamma * maxQ(s') via Double-DQN.
@@ -366,22 +369,26 @@ class OfflineDQNTrainer:
     ) -> torch.Tensor:
         """Supervised ORDER loss over each fringe's full slot logits, sorted by
         d*. No bootstrap, no d* magnitude -> range-free. Per-segment (the fringe
-        is variable-length, delimited by cur_ptr). UNREACHABLE slots excluded;
-        tied-d* slots impose no order (pairwise) or equal target (listwise)."""
+        is variable-length, delimited by cur_ptr). UNREACHABLE slots are INCLUDED
+        via a sentinel that sorts strictly ABOVE every finite d* (= worst): so
+        finite-better-than-unreachable pairwise constraints fire, while
+        unreachable-vs-unreachable is a tie (no constraint). Skip a fringe with
+        <2 DISTINCT d* values (incl. the sentinel) -> no ordering signal."""
         terms: List[torch.Tensor] = []
         for b, t in enumerate(batch):
             lo, hi = int(cur_ptr[b].item()), int(cur_ptr[b + 1].item())
             seg = cur_logits[lo:hi]
             inst = self.instances[t.inst]
-            d = torch.tensor(
-                [inst.distance[s] for s in t.fringe],
-                dtype=torch.float32, device=self.device,
-            )
-            reach = d < UNREACHABLE_DISTANCE
-            if int(reach.sum().item()) < 2:
-                continue  # <2 reachable slots -> no ordering signal
-            sl = seg[reach]
-            dl = d[reach]
+            raw = [inst.distance[s] for s in t.fringe]
+            finite_vals = [x for x in raw if x < UNREACHABLE_DISTANCE]
+            # sentinel = strictly above the worst finite (or 1.0 if all unreachable,
+            # in which case every slot ties and the <2-distinct skip fires).
+            sentinel = (max(finite_vals) + 1.0) if finite_vals else 1.0
+            dvals = [x if x < UNREACHABLE_DISTANCE else sentinel for x in raw]
+            if len(set(dvals)) < 2:
+                continue  # <2 distinct values (incl. all-unreachable) -> no signal
+            dl = torch.tensor(dvals, dtype=torch.float32, device=self.device)
+            sl = seg
             n = sl.numel()
             if self.rank_variant == "pairwise":
                 # logistic loss over ordered pairs: the smaller-d* slot must get
@@ -406,18 +413,22 @@ class OfflineDQNTrainer:
 
     def _rank_fraction_reward(self, t) -> float:
         """Chosen slot's within-fringe d* rank fraction in [0,1]: 1 = picked the
-        (a) min-d* slot, 0 = picked the max. Fraction of REACHABLE slots strictly
-        worse than the chosen one. Range-free per-step reward for rank-rl."""
+        (a) min-d* slot, 0 = picked the max. Fraction of ALL slots strictly worse
+        than the chosen one (unreachables INCLUDED as the worst class, counted in
+        the denominator). Range-free per-step reward for rank-rl."""
         inst = self.instances[t.inst]
         ds = [inst.distance[s] for s in t.fringe]
         d_ch = ds[t.action]
-        if d_ch >= UNREACHABLE_DISTANCE:
-            return 0.0  # chose an unreachable slot -> worst
-        reach = [d for d in ds if d < UNREACHABLE_DISTANCE]
-        n = len(reach)
+        n = len(ds)
         if n <= 1:
             return 1.0  # the only viable pick is the best by construction
-        worse = sum(1 for d in reach if d > d_ch)
+        if d_ch >= UNREACHABLE_DISTANCE:
+            return 0.0  # chose an unreachable (worst) slot -> nothing strictly worse
+        # finite chosen: strictly worse = larger-finite-d* slots + ALL unreachables
+        worse = sum(
+            1 for d in ds
+            if d >= UNREACHABLE_DISTANCE or d > d_ch
+        )
         return worse / (n - 1)
 
     @torch.no_grad()
@@ -440,13 +451,15 @@ class OfflineDQNTrainer:
 
     def _phi(self, inst_idx: int, fringe: Sequence[int]) -> float:
         """PBRS state potential phi(fringe) = -min finite d* over its nodes
-        (0 if none reachable). State-only, as PBRS requires."""
+        (the best node's value). An all-unreachable fringe has no finite d*, so
+        its potential is the worst-value floor floor_v (consistent with treating
+        unreachables as maximally bad), not 0. State-only, as PBRS requires."""
         finite = [
             self.instances[inst_idx].distance[s]
             for s in fringe
             if self.instances[inst_idx].distance[s] < UNREACHABLE_DISTANCE
         ]
-        return -min(finite) if finite else 0.0
+        return -min(finite) if finite else self.floor_v
 
     def _aux_dstar_loss(self, batch, cur_packed) -> torch.Tensor:
         """MSE(h_aux(z_candidate), -d*(candidate)) over the current fringes'
@@ -461,19 +474,16 @@ class OfflineDQNTrainer:
             expected_size=int(cur_packed["candidate_batch"].numel()),
         )
         pred = self.aux_head(z).squeeze(-1)
-        y, keep = [], []
+        # Unreachable candidates are KEPT and regressed onto floor_v (worst value),
+        # not masked out — the trunk learns an unreachable node is maximally bad.
+        y = []
         for t in batch:
             inst = self.instances[t.inst]
             for s in t.fringe:
                 d = inst.distance[s]
-                ok = d < UNREACHABLE_DISTANCE
-                y.append(-d if ok else 0.0)
-                keep.append(ok)
+                y.append(-d if d < UNREACHABLE_DISTANCE else self.floor_v)
         tgt = torch.tensor(y, dtype=torch.float32, device=self.device)
-        keep_t = torch.tensor(keep, device=self.device)
-        if not bool(keep_t.any()):
-            return pred.sum() * 0.0
-        return nn.functional.mse_loss(pred[keep_t], tgt[keep_t])
+        return nn.functional.mse_loss(pred, tgt)
 
     @torch.no_grad()
     def _stability_probe(self, frame: int) -> Dict[str, object]:

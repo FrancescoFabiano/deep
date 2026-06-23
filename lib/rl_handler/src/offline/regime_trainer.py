@@ -45,7 +45,7 @@ from src.offline.regimes import (
     single_distinct_dstar,
 )
 from src.offline.replay import Transition
-from src.offline.tree_env import FringeEnv, OccupancyCounter
+from src.offline.tree_env import FringeEnv, OccupancyCounter, bfs_frontier_max
 
 
 # ---------------------------------------------------------------------------
@@ -57,6 +57,7 @@ class RegimeStats:
     n_full_F: int = 0          # fringes with exactly F slots (beam binds)
     n_usable: int = 0          # fringes with >=2 distinct d* (carry ranking signal)
     n_dropped: int = 0         # dropped by the same-distance filter
+    n_dedup_drop: int = 0      # dropped by fringe-level (member-set) dedup
     pool_size_sum: int = 0     # Σ |P| at beam-build time
     n_pool_ge_F: int = 0       # steps where |P| >= F (redraw controls all F slots)
     episode_returns: List[float] = field(default_factory=list)
@@ -85,6 +86,7 @@ class RegimeStats:
             "usable_frac": round(self.n_usable / n, 3),
             "same_dist_drop_rate": round(self.n_dropped / (self.n_seen + self.n_dropped), 3)
             if (self.n_seen + self.n_dropped) else 0.0,
+            "fringe_dedup_drops": self.n_dedup_drop,
             "n_episodes": self.n_episodes,
             "mean_ep_len": round(sum(self.episode_lengths) / ne, 2),
             "mean_ep_return": round(sum(self.episode_returns) / ne, 3),
@@ -147,14 +149,21 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
         w = mixture_weights or {r: 1.0 for r in self.regimes}
         self.mixture_weights = {r: float(w.get(r, 0.0)) for r in self.regimes}
 
+        # Fringe-level dedup: a member-SET never enters replay twice (per
+        # instance). Keyed by (inst, hash(frozenset(fringe))); persists for the run.
+        self._seen_fringes: set = set()
+
         # ---- per-instance static structure + exclusions (computed predicates) ----
         self.dfs_rank: Dict[int, List[int]] = {}
         self.eligibility: Dict[int, Dict[str, object]] = {}
+        self.fmax_by_inst: Dict[int, int] = {}
+        self.padded_by_inst: Dict[int, bool] = {}
         envs: List[_Env] = []
         self.hfs_diags: Dict[str, HFSDiag] = {}
         included: List[int] = []
         excluded_subF: List[str] = []
         bfs_excluded: List[str] = []
+        padded_names: List[str] = []
         for i in self.train_ids:
             inst = self.instances[i]
             elig = eligible_nodes(inst)
@@ -163,14 +172,24 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
             uf = (usable / total) if total else 0.0
             sub_F = len(elig) < F
             bfs_out = (total == 0) or (uf < self.bfs_exclude_usable_frac)
+            # fmax = max simultaneous live frontier (policy-free). F>fmax => the
+            # live pool can never reach F, so regimes are indistinguishable unless
+            # we pad the beam from CLOSED nodes -> self-activating padding.
+            fmax = bfs_frontier_max(inst)
+            padded = (not sub_F) and (F > fmax)
             self.eligibility[i] = {
                 "name": inst.name, "E": len(elig), "var_expl": round(ve, 4),
-                "bfs_usable_frac": round(uf, 4), "sub_F": sub_F, "bfs_excluded": bfs_out,
+                "bfs_usable_frac": round(uf, 4), "sub_F": sub_F,
+                "bfs_excluded": bfs_out, "fmax": int(fmax), "padded": padded,
             }
             if sub_F:
                 excluded_subF.append(inst.name)
                 continue
             included.append(i)
+            self.fmax_by_inst[i] = int(fmax)
+            self.padded_by_inst[i] = padded
+            if padded:
+                padded_names.append(inst.name)
             self.dfs_rank[i] = dfs_preorder_rank(inst)
             avail = [
                 r for r in self.regimes
@@ -188,7 +207,7 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
                     expansion_cap=(self.train_expansion_cap
                                    if self.train_expansion_cap is not None
                                    else 2 * inst.n_states),
-                    hfs_diag=diag,
+                    hfs_diag=diag, pad_to_F=padded,
                 )
                 envs.append(_Env(inst=i, regime=r, env=env))
         if not envs:
@@ -200,6 +219,7 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
         self.included_train = included
         self.excluded_subF = excluded_subF
         self.bfs_excluded_names = bfs_excluded
+        self.padded_names = padded_names
         # per-instance available regimes + per-instance renormalised weights
         self.avail_by_inst: Dict[int, List[str]] = {}
         self.regime_w_by_inst: Dict[int, List[float]] = {}
@@ -225,6 +245,8 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
                 for e in self.regime_envs:
                     if e.regime == r:
                         e.env.hfs_diag = new
+        for e in self.regime_envs:          # windowed pad counters
+            e.env.reset_pad_counters()
 
     # ---- weighted (instance uniform × regime ∝ w) scheduler ----
     def _pick(self, rng: random.Random) -> tuple:
@@ -270,6 +292,23 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
                 out["per_regime"][r] = self.regime_stats[r].summary(self.fringe_size)
         for r, diag in self.hfs_diags.items():
             out["hfs"][r] = diag.summary()
+        # per-instance padding (windowed): fmax, padded flag, charged pad
+        # expansions + filled pad slots summed over that instance's regime envs.
+        padcounts: Dict[int, Dict[str, int]] = {}
+        for e in self.regime_envs:
+            d = padcounts.setdefault(e.inst, {"pad_expansions": 0, "pad_slots_filled": 0})
+            d["pad_expansions"] += e.env.n_pad_expansions
+            d["pad_slots_filled"] += e.env.n_pad_slots_filled
+        out["padding"] = [
+            {
+                "name": self.instances[i].name,
+                "fmax": self.fmax_by_inst[i],
+                "padded": self.padded_by_inst[i],
+                "n_pad_expansions": padcounts.get(i, {}).get("pad_expansions", 0),
+                "n_pad_slots_filled": padcounts.get(i, {}).get("pad_slots_filled", 0),
+            }
+            for i in self.included_train
+        ]
         return out
 
     # ---- training loop: weighted round-robin over (instance × regime) ----
@@ -314,6 +353,14 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
             drop = (not self.same_distance_keep) and single_distinct_dstar(inst, fringe)
             if drop:
                 st.n_dropped += 1
+            # fringe-level dedup: the identical member SET must not enter replay
+            # twice (intra-beam dedup already holds). Keyed per instance.
+            dkey = (cur_i, hash(frozenset(fringe)))
+            is_dup = dkey in self._seen_fringes
+            if is_dup:
+                st.n_dedup_drop += 1
+            else:
+                self._seen_fringes.add(dkey)
 
             if torch.rand((), generator=ep_rng).item() < eps:
                 action = int(torch.randint(len(fringe), (1,), generator=ep_rng))
@@ -323,7 +370,7 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
             nxt = env.step(action)
             ep_return += nxt.reward
             ep_len += 1
-            if not drop:
+            if not drop and not is_dup:
                 self.replay.push(Transition(
                     inst=cur_i, fringe=tuple(fringe), action=action,
                     reward=nxt.reward, next_fringe=tuple(nxt.fringe),
@@ -407,19 +454,26 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
             "included_train": [self.instances[i].name for i in self.included_train],
             "excluded_subF": self.excluded_subF,
             "bfs_excluded": self.bfs_excluded_names,
+            "padded_instances": self.padded_names,
+            "fmax_by_instance": {
+                self.instances[i].name: self.fmax_by_inst[i]
+                for i in self.included_train
+            },
         }
 
     @staticmethod
     def _print_regime_tables(pbar, frame, instr) -> None:
         pbar.write(f"[regime] frame {frame} per-regime composition:")
         hdr = (f"  {'regime':8s}{'nfr':>7}{'fullF':>7}{'poolGEF':>8}"
-               f"{'mPool':>7}{'usable':>7}{'drop':>6}{'epLen':>7}{'epRet':>8}{'goal':>6}")
+               f"{'mPool':>7}{'usable':>7}{'drop':>6}{'dedup':>7}"
+               f"{'epLen':>7}{'epRet':>8}{'goal':>6}")
         pbar.write(hdr)
         for r, s in instr["per_regime"].items():
             pbar.write(
                 f"  {r:8s}{s['n_fringes']:>7}{s['frac_full_F']:>7.2f}"
                 f"{s['frac_pool_ge_F']:>8.2f}{s['mean_pool_size']:>7.1f}"
                 f"{s['usable_frac']:>7.2f}{s['same_dist_drop_rate']:>6.2f}"
+                f"{s['fringe_dedup_drops']:>7}"
                 f"{s['mean_ep_len']:>7.1f}{s['mean_ep_return']:>8.1f}{s['goal_rate']:>6.2f}"
             )
         if instr["hfs"]:
@@ -428,3 +482,11 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
                            f"{r}: stv_true={d['stv_true']} stv_real={d['stv_real']} "
                            f"unsmp_mass={d['unsampled_mass']}"
                            for r, d in instr["hfs"].items()))
+        pad_rows = [p for p in instr.get("padding", [])]
+        if any(p["padded"] for p in pad_rows):
+            pbar.write("  padding (instance fmax / padded / pad_exp / pad_slots):")
+            for p in pad_rows:
+                flag = "PAD" if p["padded"] else "faithful"
+                pbar.write(f"    {p['name']:18s} fmax={p['fmax']:>4} {flag:>8} "
+                           f"pad_exp={p['n_pad_expansions']:>5} "
+                           f"pad_slots={p['n_pad_slots_filled']:>6}")
