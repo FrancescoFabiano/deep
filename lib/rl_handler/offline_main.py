@@ -103,6 +103,70 @@ def parse_args() -> argparse.Namespace:
         "reservoir-refill seeds for robust (low-noise) checkpoint selection "
         "and convergence curves. Default: 1 (single-seed, prior behavior).",
     )
+    # ---- P1: parallel fringe-composition regimes (value-only) ----
+    p.add_argument(
+        "--use-regimes",
+        action="store_true",
+        default=False,
+        help="Train from FIVE parallel full-beam-redraw composition regimes "
+        "(dfs/bfs/hfs_m0/hfs_m1/random) into one shared replay+model, instead of "
+        "the single-source pipeline. Off by default (existing path unchanged).",
+    )
+    p.add_argument(
+        "--regimes",
+        nargs="+",
+        default=["dfs", "bfs", "hfs_m0", "hfs_m1", "random"],
+        help="Which composition regimes to run (subset of the five). "
+        "--mixture-weights, if given, must align with this order.",
+    )
+    p.add_argument(
+        "--mixture-weights",
+        nargs="+",
+        type=float,
+        default=None,
+        help="Per-regime mixture weights aligned with --regimes (default uniform). "
+        "Renormalised per instance over that instance's available regimes.",
+    )
+    p.add_argument(
+        "--target-centering",
+        type=str,
+        default="absolute",
+        choices=["absolute", "fringe_mean"],
+        help="Value-only objective arm: 'absolute' -> signal_mode=basic; "
+        "'fringe_mean' -> signal_mode=rank-rl+advantage (per-fringe centred "
+        "target). No order term this phase (P2 adds it).",
+    )
+    p.add_argument(
+        "--same-distance",
+        dest="same_distance_keep",
+        action="store_true",
+        default=False,
+        help="KEEP fringes whose nodes all share one distance-from-goal value. "
+        "Default (flag absent) FILTERS them out of the replay (per-regime drop "
+        "rate is logged either way).",
+    )
+    p.add_argument(
+        "--bfs-exclude-usable-frac",
+        type=float,
+        default=0.02,
+        help="Exclude an instance from the BFS regime ONLY when its realized "
+        "BFS-usable fraction (same-depth F-windows with >=2 distinct d*) is below "
+        "this (depth->d* collinear; ~0 usable same-depth fringes). Default 0.02.",
+    )
+    p.add_argument(
+        "--eval-exploration-nodes",
+        type=int,
+        default=None,
+        help="Random-exploration beam slots in the deploy-faithful heuristic eval "
+        "(default floor(F*0.1), matching the planner default).",
+    )
+    p.add_argument(
+        "--train-expansion-cap",
+        type=int,
+        default=None,
+        help="Per-episode expansion horizon for the redraw training envs "
+        "(default 2*n_states, the safety cap). Lower it to cycle regimes faster.",
+    )
     p.add_argument("--max-grad-norm", type=float, default=1.0)
     p.add_argument(
         "--dataset-type",
@@ -245,7 +309,7 @@ def main() -> None:
 
         # Fresh model + trainer per fringe; instances/caches are reused.
         model = _build_model(args.dataset_type, use_goal_separate_input)
-        trainer = OfflineDQNTrainer(
+        common = dict(
             model=model,
             instances=instances,
             caches=caches,
@@ -264,11 +328,36 @@ def main() -> None:
             seed=args.seed,
             device=args.device,
             eval_refill_seeds=args.eval_refill_seeds,
-            signal_mode=args.signal_mode,
-            aux_lambda=args.aux_lambda,
-            rank_variant=args.rank_variant,
             goal_graphs=goal_graphs if use_goal_separate_input else None,
         )
+        if args.use_regimes:
+            from src.offline.regime_trainer import RegimeDQNTrainer  # noqa: E402
+
+            mix = None
+            if args.mixture_weights is not None:
+                if len(args.mixture_weights) != len(args.regimes):
+                    raise SystemExit(
+                        "--mixture-weights must align 1:1 with --regimes "
+                        f"({len(args.mixture_weights)} vs {len(args.regimes)})."
+                    )
+                mix = dict(zip(args.regimes, args.mixture_weights))
+            trainer = RegimeDQNTrainer(
+                **common,
+                regimes=args.regimes,
+                mixture_weights=mix,
+                target_centering=args.target_centering,
+                same_distance_keep=args.same_distance_keep,
+                bfs_exclude_usable_frac=args.bfs_exclude_usable_frac,
+                eval_exploration_nodes=args.eval_exploration_nodes,
+                train_expansion_cap=args.train_expansion_cap,
+            )
+        else:
+            trainer = OfflineDQNTrainer(
+                **common,
+                signal_mode=args.signal_mode,
+                aux_lambda=args.aux_lambda,
+                rank_variant=args.rank_variant,
+            )
 
         with (out_f / "args.json").open("w") as fh:
             json.dump({**vars(args), "fringe_size": F}, fh, indent=2)
