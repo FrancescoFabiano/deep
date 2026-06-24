@@ -57,6 +57,38 @@ def _iqr(vals):
     return (q1, q3, q3 - q1)
 
 
+def _classify_ties(diag_rows):
+    """Tag each diag row in place with regime_tie_class and return
+    {group_key: class}. group_key = (gamma, lambda_ord, target_centering,
+    fringe_size, seed, split, problem, frame) — the regime rows for one problem
+    at one checkpoint of one run. See the call site for the classification rule."""
+    from collections import defaultdict
+    groups = defaultdict(list)
+    for r in diag_rows:
+        key = (r.get("gamma"), r.get("lambda_ord"), r.get("target_centering"),
+               r.get("fringe_size"), r.get("seed"), r.get("split"),
+               r.get("problem"), r.get("frame"))
+        groups[key].append(r)
+    group_class = {}
+    for key, rows in groups.items():
+        F = key[3]
+        econ = [rr.get("node_economy") for rr in rows]
+        tie = len(set(econ)) == 1            # EXACT integer equality, no epsilon
+        fmax = rows[0].get("fmax")
+        if not tie:
+            klass = "distinct"
+        elif fmax is None:                   # pre-fmax run: cause unknowable
+            klass = "tie_unknown_fmax"
+        elif F is not None and fmax < F:
+            klass = "structural_nonresult"   # beam can't bind -> not a finding
+        else:
+            klass = "real_convergence"       # converged with room to differ
+        group_class[key] = klass
+        for rr in rows:
+            rr["regime_tie_class"] = klass
+    return group_class
+
+
 def discover_runs(out_root: Path):
     """Yield (args.json dict, history.json dict, run_dir) for every run dir that
     has BOTH files (offline_main writes them per fringe into <dir>_fringe<F>)."""
@@ -109,6 +141,31 @@ def main() -> None:
             for row in diag.get(split, []):
                 diag_rows.append({**coords, "seed": seed, **row})
 
+    # ---- regime-tie classification ----
+    # Group the regime rows for ONE problem at ONE checkpoint of ONE run, i.e.
+    # key = (cell coords, seed, split, problem, frame). A *tie* = every regime's
+    # node_economy (integer expansions) is EXACTLY equal (exact equality only —
+    # the structural case produces identical integers; an epsilon would falsely
+    # flag genuine near-ties). The cause is what matters:
+    #   fmax <  F  -> structural_nonresult : all regimes returned the same sub-F
+    #                 pool (the beam can't bind), so they CAN'T differ — NOT a
+    #                 finding; excluded from the regime-comparison aggregate.
+    #   fmax >= F  -> real_convergence     : regimes had room to differ and still
+    #                 agreed — a real finding; KEPT.
+    # Never collapse the two tie causes — that distinction is the whole point.
+    group_class = _classify_ties(diag_rows)
+
+    # per-(cell, seed) prevalence of each class, counted over problem-checkpoint
+    # GROUPS (not individual regime rows), so the count reflects how many
+    # problem-checkpoints were non-results, not 5× that.
+    prevalence: dict = {}
+    for gkey, klass in group_class.items():
+        ck_seed = gkey[:5]  # (gamma, lambda_ord, target_centering, fringe_size, seed)
+        d = prevalence.setdefault(ck_seed, {"structural_nonresult": 0,
+                                            "real_convergence": 0, "distinct": 0,
+                                            "tie_unknown_fmax": 0})
+        d[klass] = d.get(klass, 0) + 1
+
     # ---- (i) tidy diagnostic table ----
     diag_path = out_root / "collected_diag.csv"
     if diag_rows:
@@ -120,15 +177,25 @@ def main() -> None:
             for r in diag_rows:
                 w.writerow({k: r.get(k) for k in cols})
 
-    # ---- selection table ----
+    # ---- selection table (+ tie-class prevalence per cell×seed) ----
+    # The selection metric itself NEVER used the diag rows, so it is unchanged;
+    # we only append the diagnostic tie-class GROUP counts so the prevalence of
+    # structural non-results is visible alongside each cell's selection value.
     sel_path = out_root / "collected_selection.csv"
-    sel_cols = list(AXES) + ["seed", "best_val_expansions",
-                             "last_val_expansions", "run_dir"]
+    sel_cols = list(AXES) + ["seed", "best_val_expansions", "last_val_expansions",
+                             "n_structural_nonresult", "n_real_convergence",
+                             "n_distinct", "run_dir"]
     with sel_path.open("w", newline="") as fh:
         w = csvmod.DictWriter(fh, fieldnames=sel_cols)
         w.writeheader()
         for r in sel_rows:
-            w.writerow({k: r.get(k) for k in sel_cols})
+            ck_seed = tuple(r.get(a) for a in AXES) + (r.get("seed"),)
+            pv = prevalence.get(ck_seed, {})
+            out = {k: r.get(k) for k in sel_cols}
+            out["n_structural_nonresult"] = pv.get("structural_nonresult", 0)
+            out["n_real_convergence"] = pv.get("real_convergence", 0)
+            out["n_distinct"] = pv.get("distinct", 0)
+            w.writerow(out)
 
     # ---- (ii) per-axis median/IQR of the selection metric ----
     # Marginal over each axis value: group every (cell, seed) best-selection
@@ -159,14 +226,55 @@ def main() -> None:
         for r in axis_rows:
             w.writerow(r)
 
+    # ---- regime-comparison aggregate (EXCLUDES structural_nonresult) ----
+    # The point of the study: compare regimes on the normalized node-economy
+    # ratio. Structural non-results (the beam can't bind) would wash out real
+    # differences, so they are dropped here; their prevalence stays visible in
+    # collected_selection.csv. Grouped per (cell × split × regime).
+    agg_path = out_root / "collected_diag_regime_agg.csv"
+    agg_rows = []
+    if diag_rows:
+        agg: dict = {}
+        for r in diag_rows:
+            if r.get("regime_tie_class") == "structural_nonresult":
+                continue  # not a finding — excluded from the regime comparison
+            key = (tuple(r.get(a) for a in AXES), r.get("split"), r.get("regime"))
+            ne = r.get("node_economy_ratio")
+            if ne is None:
+                continue
+            agg.setdefault(key, []).append(float(ne))
+        for (coords, split, regime), vals in sorted(
+                agg.items(), key=lambda kv: tuple(str(x) for x in kv[0][0]) +
+                (str(kv[0][1]), str(kv[0][2]))):
+            row = dict(zip(AXES, coords))
+            row.update({"split": split, "regime": regime, "n_kept": len(vals),
+                        "median_node_economy_ratio": round(median(vals), 4)})
+            agg_rows.append(row)
+        with agg_path.open("w", newline="") as fh:
+            w = csvmod.DictWriter(
+                fh, fieldnames=list(AXES) + ["split", "regime", "n_kept",
+                                             "median_node_economy_ratio"])
+            w.writeheader()
+            for r in agg_rows:
+                w.writerow(r)
+
+    n_struct = sum(1 for k in group_class.values() if k == "structural_nonresult")
+    n_real = sum(1 for k in group_class.values() if k == "real_convergence")
+    n_dist = sum(1 for k in group_class.values() if k == "distinct")
+    n_unk = sum(1 for k in group_class.values() if k == "tie_unknown_fmax")
     print(f"[collect] {n_runs} runs, {len(sel_rows)} cell×seed, "
           f"{len(diag_rows)} diag rows")
     print(f"[collect] wrote {sel_path}")
     if diag_rows:
         print(f"[collect] wrote {diag_path}")
+        print(f"[collect] wrote {agg_path}")
     print(f"[collect] wrote {axis_path}")
+    print(f"[collect] regime-tie groups: distinct={n_dist} "
+          f"real_convergence={n_real} structural_nonresult={n_struct}"
+          + (f" tie_unknown_fmax={n_unk}" if n_unk else "")
+          + "  (structural_nonresult EXCLUDED from the regime aggregate)")
     print("[collect] per-axis median[IQR] of selection metric "
-          f"({SELECT_KEY}, lower=better):")
+          f"({SELECT_KEY}, lower=better; diag rows never feed this):")
     for r in axis_rows:
         print(f"    {r['axis']:16s} {str(r['value']):12s} "
               f"median={r['median_best_val_expansions']} "

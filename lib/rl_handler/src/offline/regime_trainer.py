@@ -117,6 +117,7 @@ class _DiagProblem:
     name: str
     optimal: Optional[int]
     padded: bool
+    fmax: int                        # max simultaneous live frontier (policy-free)
     envs: Dict[str, RedrawFringeEnv]
 
 
@@ -353,7 +354,8 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
                     envs[r] = env
                 problems.append(_DiagProblem(
                     inst=i, split=split, name=inst.name,
-                    optimal=inst.optimal_expansions(), padded=padded, envs=envs,
+                    optimal=inst.optimal_expansions(), padded=padded,
+                    fmax=int(fmax), envs=envs,
                 ))
         return problems
 
@@ -433,6 +435,7 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
                     "regime": r,
                     "problem": p.name,
                     "padded": p.padded,
+                    "fmax": p.fmax,
                     "optimal_expansions": opt,
                     "node_economy": ne,
                     "node_economy_ratio": (round(ne / opt, 4) if opt else None),
@@ -448,10 +451,10 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
         return out
 
     _DIAG_COLS = (
-        "frame", "split", "regime", "problem", "padded", "optimal_expansions",
-        "node_economy", "node_economy_ratio", "goal_found", "goal_rate", "ret",
-        "ret_ratio", "capped", "order_usable_pair_frac", "order_skip_frac",
-        "realized_pad_fill",
+        "frame", "split", "regime", "problem", "padded", "fmax",
+        "optimal_expansions", "node_economy", "node_economy_ratio", "goal_found",
+        "goal_rate", "ret", "ret_ratio", "capped", "order_usable_pair_frac",
+        "order_skip_frac", "realized_pad_fill",
     )
 
     def _write_diag_tables(self, out_dir: Path,
