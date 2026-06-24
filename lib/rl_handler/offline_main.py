@@ -22,6 +22,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from src.models.frontier_policy import FrontierPolicyNetwork  # noqa: E402
 from src.offline.dqn import EpsilonSchedule, OfflineDQNTrainer  # noqa: E402
 from src.offline.encoder import InstanceCache, load_goal_graph  # noqa: E402
+from src.offline.sweep_cells import resolve_cells  # noqa: E402
 from src.offline.tree_env import load_tree_instance  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[2]
@@ -39,10 +40,26 @@ def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Offline DQN fringe-ranking trainer")
     p.add_argument("--train-csv", nargs="+", default=DEFAULT_TRAIN)
     p.add_argument("--val-csv", nargs="+", default=DEFAULT_VAL)
+    p.add_argument(
+        "--test-csv",
+        nargs="+",
+        default=[],
+        help="DIAGNOSTIC test instances (regime-shaped, off-distribution vs the "
+        "deploy-faithful selection eval). Only consumed by the per-regime "
+        "diagnostic surface under --use-regimes; never feeds model selection.",
+    )
     p.add_argument("--frames", type=int, default=100_000)
     p.add_argument("--n-checkpoints", type=int, default=20)
     p.add_argument("--seed", type=int, default=42)
-    p.add_argument("--gamma", type=float, default=0.99)
+    p.add_argument(
+        "--gamma",
+        nargs="+",
+        type=float,
+        default=[0.99],
+        help="Sweep axis (list): discount factor(s). Length 1 = fixed; length >1 "
+        "= swept by the runner. A real training invocation must resolve to ONE "
+        "gamma (single-cell contract).",
+    )
     p.add_argument(
         "--epsilon-schedule",
         type=str,
@@ -129,12 +146,14 @@ def parse_args() -> argparse.Namespace:
     )
     p.add_argument(
         "--target-centering",
+        nargs="+",
         type=str,
-        default="absolute",
+        default=["absolute"],
         choices=["absolute", "fringe_mean"],
-        help="Value-only objective arm: 'absolute' -> signal_mode=basic; "
-        "'fringe_mean' -> signal_mode=rank-rl+advantage (per-fringe centred "
-        "target). No order term this phase (P2 adds it).",
+        help="Sweep axis (list). Value-only objective arm: 'absolute' -> "
+        "signal_mode=basic; 'fringe_mean' -> signal_mode=rank-rl+advantage "
+        "(per-fringe centred target). Length 1 = fixed; a real training run must "
+        "resolve to ONE centering (single-cell contract).",
     )
     p.add_argument(
         "--same-distance",
@@ -169,11 +188,32 @@ def parse_args() -> argparse.Namespace:
     )
     p.add_argument(
         "--lambda-ord",
+        nargs="+",
         type=float,
-        default=0.0,
-        help="P2 order-auxiliary weight: L = L_val + lambda_ord * L_ord (pairwise "
-        "order over non-padded slots) on the single head. 0.0 (default) = value-"
-        "only (byte-identical to no order term); >0 = value+order arm.",
+        default=[0.0],
+        help="Sweep axis (list). P2 order-auxiliary weight: L = L_val + "
+        "lambda_ord * L_ord (pairwise order over non-padded slots) on the single "
+        "head. 0.0 = value-only (byte-identical to no order term); >0 = "
+        "value+order arm. A real training run must resolve to ONE lambda.",
+    )
+    p.add_argument(
+        "--sweep-mode",
+        type=str,
+        default="one_at_a_time",
+        choices=["product", "one_at_a_time"],
+        help="How the runner expands the (gamma, lambda-ord, target-centering, "
+        "fringe-sizes) axis lists into cells. one_at_a_time (default): baseline = "
+        "first element of each list, vary one axis at a time off it (de-duped "
+        "union). product: full Cartesian. offline_main only uses this to emit the "
+        "resolved-cell manifest; it always trains a single cell.",
+    )
+    p.add_argument(
+        "--list-cells",
+        action="store_true",
+        default=False,
+        help="Resolve the axis lists under --sweep-mode, write the cell manifest "
+        "(<dir-save-model>_cells_manifest.json), print it, and exit WITHOUT "
+        "training. The runner / dry runs use this to introspect the cell set.",
     )
     p.add_argument("--max-grad-norm", type=float, default=1.0)
     p.add_argument(
@@ -258,10 +298,57 @@ def main() -> None:
             "--use-goal-separate-input requires --kind-of-data=separated."
         )
 
+    # Resolve the four sweep axes (gamma, lambda-ord, target-centering,
+    # fringe-sizes) into the cell set under --sweep-mode, and persist it as the
+    # manifest. The RUNNER expands these into per-cell invocations; offline_main
+    # itself always trains a SINGLE cell (single-cell contract enforced below).
+    cells = resolve_cells(
+        args.gamma, args.lambda_ord, args.target_centering, args.fringe_sizes,
+        mode=args.sweep_mode,
+    )
+    manifest = {
+        "sweep_mode": args.sweep_mode,
+        "axes": {
+            "gamma": args.gamma, "lambda_ord": args.lambda_ord,
+            "target_centering": args.target_centering,
+            "fringe_sizes": [int(f) for f in args.fringe_sizes],
+        },
+        "n_cells": len(cells),
+        "cells": cells,
+    }
+    manifest_path = Path(str(args.dir_save_model) + "_cells_manifest.json")
+    manifest_path.parent.mkdir(parents=True, exist_ok=True)
+    with manifest_path.open("w") as fh:
+        json.dump(manifest, fh, indent=2)
+    if args.list_cells:
+        print(json.dumps(manifest, indent=2))
+        print(f"[manifest] {manifest_path} ({len(cells)} cells, "
+              f"mode={args.sweep_mode})")
+        return  # introspection only — no training
+
+    # Single-cell training contract: gamma / lambda-ord / target-centering must
+    # each resolve to ONE value here (the runner passes singletons per cell).
+    # --fringe-sizes may stay a list — offline_main still trains one model per
+    # fringe size sequentially on the shared parsed data (existing behavior);
+    # the runner gives one F per cell so each F lands in its own output dir.
+    for name, vals in (("--gamma", args.gamma), ("--lambda-ord", args.lambda_ord),
+                       ("--target-centering", args.target_centering)):
+        if len(vals) != 1:
+            raise SystemExit(
+                f"{name} has {len(vals)} values; a direct training invocation "
+                "must resolve to a single cell. Use --list-cells to emit the "
+                "manifest, or scripts/sweeps/run_sensitivity.py to expand the "
+                "sweep into per-cell runs."
+            )
+    gamma = float(args.gamma[0])
+    lambda_ord = float(args.lambda_ord[0])
+    target_centering = str(args.target_centering[0])
+
     # Parse instances + caches ONCE — the data is fringe-independent, so the
-    # whole fringe sweep reuses it (no regeneration per fringe size).
+    # whole fringe sweep reuses it (no regeneration per fringe size). The order
+    # is train, then val, then DIAGNOSTIC test (off-distribution, never selects).
     instances, caches, goal_graphs = [], [], []
-    csvs = [*args.train_csv, *args.val_csv]
+    csvs = [*args.train_csv, *args.val_csv, *args.test_csv]
     pbar = tqdm(
         csvs,
         desc="preparing instances",
@@ -290,10 +377,16 @@ def main() -> None:
         else:
             goal_graphs.append(None)
 
-    train_ids = list(range(len(args.train_csv)))
-    val_ids = list(range(len(args.train_csv), len(instances)))
+    n_train, n_val = len(args.train_csv), len(args.val_csv)
+    train_ids = list(range(n_train))
+    val_ids = list(range(n_train, n_train + n_val))
+    test_ids = list(range(n_train + n_val, len(instances)))  # diagnostic only
     print(f"[split] train={[instances[i].name for i in train_ids]} "
-          f"val={[instances[i].name for i in val_ids]}")
+          f"val={[instances[i].name for i in val_ids]} "
+          f"diag_test={[instances[i].name for i in test_ids]}")
+    if test_ids and not args.use_regimes:
+        print("[warn] --test-csv given without --use-regimes; the diagnostic "
+              "per-regime surface is regime-only, so test instances are ignored.")
 
     # One trained model per fringe size, sequentially, on the same parsed data.
     for fringe in args.fringe_sizes:
@@ -324,7 +417,7 @@ def main() -> None:
             train_ids=train_ids,
             val_ids=val_ids,
             fringe_size=F,
-            gamma=args.gamma,
+            gamma=gamma,
             lr=args.lr,
             batch_size=args.batch_size,
             replay_capacity=args.replay_capacity,
@@ -336,7 +429,7 @@ def main() -> None:
             seed=args.seed,
             device=args.device,
             eval_refill_seeds=args.eval_refill_seeds,
-            lambda_ord=args.lambda_ord,
+            lambda_ord=lambda_ord,
             goal_graphs=goal_graphs if use_goal_separate_input else None,
         )
         if args.use_regimes:
@@ -354,11 +447,12 @@ def main() -> None:
                 **common,
                 regimes=args.regimes,
                 mixture_weights=mix,
-                target_centering=args.target_centering,
+                target_centering=target_centering,
                 same_distance_keep=args.same_distance_keep,
                 bfs_exclude_usable_frac=args.bfs_exclude_usable_frac,
                 eval_exploration_nodes=args.eval_exploration_nodes,
                 train_expansion_cap=args.train_expansion_cap,
+                diag_test_ids=test_ids,
             )
         else:
             trainer = OfflineDQNTrainer(
@@ -369,7 +463,13 @@ def main() -> None:
             )
 
         with (out_f / "args.json").open("w") as fh:
-            json.dump({**vars(args), "fringe_size": F}, fh, indent=2)
+            json.dump(
+                {**vars(args), "fringe_size": F,
+                 "resolved_cell": {
+                     "gamma": gamma, "lambda_ord": lambda_ord,
+                     "target_centering": target_centering, "fringe_size": F}},
+                fh, indent=2,
+            )
 
         eps = EpsilonSchedule.parse(args.epsilon_schedule, args.frames)
         trainer.train(

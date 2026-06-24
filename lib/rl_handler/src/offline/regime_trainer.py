@@ -22,6 +22,7 @@ generators only.
 
 from __future__ import annotations
 
+import csv as csvmod
 import json
 import math
 import random
@@ -45,7 +46,12 @@ from src.offline.regimes import (
     single_distinct_dstar,
 )
 from src.offline.replay import Transition
-from src.offline.tree_env import FringeEnv, OccupancyCounter, bfs_frontier_max
+from src.offline.tree_env import (
+    UNREACHABLE_DISTANCE,
+    FringeEnv,
+    OccupancyCounter,
+    bfs_frontier_max,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -101,6 +107,19 @@ class _Env:
     env: RedrawFringeEnv
 
 
+@dataclass
+class _DiagProblem:
+    """A diagnostic (NON-SELECTING) problem: one dataset instance carrying its
+    own per-regime RedrawFringeEnv set, kept separate from the training envs so a
+    diagnostic rollout never perturbs training RNG / episode state."""
+    inst: int
+    split: str                       # 'train' or 'test'
+    name: str
+    optimal: Optional[int]
+    padded: bool
+    envs: Dict[str, RedrawFringeEnv]
+
+
 # ---------------------------------------------------------------------------
 
 class RegimeDQNTrainer(OfflineDQNTrainer):
@@ -114,6 +133,7 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
         bfs_exclude_usable_frac: float = 0.02,
         eval_exploration_nodes: Optional[int] = None,
         train_expansion_cap: Optional[int] = None,
+        diag_test_ids: Optional[Sequence[int]] = None,
         **kwargs,
     ):
         if target_centering not in ("absolute", "fringe_mean"):
@@ -235,6 +255,18 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
         self.regime_stats: Dict[str, RegimeStats] = {}
         self._reset_regime_window()
 
+        # ---- DIAGNOSTIC (non-selecting) per-regime surface ----
+        # Build a SEPARATE per-(problem × regime) RedrawFringeEnv set for the
+        # TRAIN split (self.train_ids) and, if supplied, the diagnostic TEST
+        # split (diag_test_ids). These envs are used ONLY by _diagnostic_surface
+        # and never by the training loop or model selection — model selection is
+        # the deploy-faithful val eval (evaluate/greedy_rollout), full stop. Test
+        # envs are regime-shaped and therefore OFF-DISTRIBUTION vs deployment;
+        # they exist purely to read how the current model orders fringes on held-
+        # out problems, not to score it.
+        self.diag_test_ids = list(diag_test_ids) if diag_test_ids else []
+        self.diag_problems: List[_DiagProblem] = self._build_diag_problems()
+
     # ---- windowed instrumentation ----
     def _reset_regime_window(self) -> None:
         self.regime_stats = {r: RegimeStats() for r in self.regimes}
@@ -286,6 +318,157 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
             "occupancy": occ.summary(),
         }
 
+    # ---- DIAGNOSTIC surface: per-(regime × problem), NON-SELECTING ----
+    def _build_diag_problems(self) -> List[_DiagProblem]:
+        """One _DiagProblem per dataset instance (train split + diagnostic test
+        split), each with a fresh RedrawFringeEnv for EVERY regime in
+        self.regimes (bfs included regardless of training eligibility — this is a
+        diagnostic, off-distribution is fine). Static per-instance structure is
+        recomputed here so the surface is self-contained and never reuses (and
+        thus never disturbs) the training envs."""
+        problems: List[_DiagProblem] = []
+        F = self.fringe_size
+        splits = [("train", self.train_ids), ("test", self.diag_test_ids)]
+        for split, ids in splits:
+            for i in ids:
+                inst = self.instances[i]
+                elig = eligible_nodes(inst)
+                sub_F = len(elig) < F
+                fmax = bfs_frontier_max(inst)
+                padded = (not sub_F) and (F > fmax)
+                rank = dfs_preorder_rank(inst)
+                envs: Dict[str, RedrawFringeEnv] = {}
+                for ri, r in enumerate(self.regimes):
+                    diag = HFSDiag() if r in ("hfs_m0", "hfs_m1") else None
+                    # fixed per (problem, regime) seed -> the curve over
+                    # checkpoints reflects the MODEL changing, not env noise.
+                    dseed = self.seed + 70_000 + 131 * i + 7 * ri
+                    env = RedrawFringeEnv(
+                        inst, fringe_size=F, seed=dseed,
+                        regime=r, dfs_rank=rank,
+                        expansion_cap=self.eval_expansion_cap,
+                        hfs_diag=diag, pad_to_F=padded,
+                    )
+                    env.diag_seed = dseed
+                    envs[r] = env
+                problems.append(_DiagProblem(
+                    inst=i, split=split, name=inst.name,
+                    optimal=inst.optimal_expansions(), padded=padded, envs=envs,
+                ))
+        return problems
+
+    @torch.no_grad()
+    def _diag_regime_rollout(self, inst_idx: int, env: RedrawFringeEnv,
+                             seed: int) -> Dict[str, object]:
+        """Greedy rollout of the CURRENT model on one regime env. Records node
+        economy (raw expansions), goal, the -1-stream return, realized pad-fill,
+        and the order usable-pair / post-mask skip fractions over the fringes the
+        rollout actually visited (same eligibility rule as the order auxiliary).
+        Pure read: no grad, no replay, no training-state mutation."""
+        self.model.eval()
+        env.reset_pad_counters()
+        res = env.reset(seed=seed)
+        ret = 0.0
+        cand_pairs = usable_pairs = seen_fr = skip_fr = total_slots = 0
+        while not res.done:
+            fringe = res.fringe
+            pad_flags = list(res.info.get("pad_flags", ())) or [False] * len(fringe)
+            total_slots += len(fringe)
+            c, u, skipped = self._order_pair_counts(inst_idx, fringe, pad_flags)
+            cand_pairs += c
+            usable_pairs += u
+            seen_fr += 1
+            skip_fr += skipped
+            res = env.step(self.greedy_action(inst_idx, fringe))
+            ret += res.reward
+        expansions = int(res.info["expansions"])
+        goal = bool(res.info["goal_found"])
+        pad_slots = int(env.n_pad_slots_filled)
+        return {
+            "node_economy": expansions,
+            "goal_found": goal,
+            "goal_rate": 1.0 if goal else 0.0,
+            "ret": round(ret, 3),
+            "capped": expansions >= self.eval_expansion_cap,
+            "order_usable_pair_frac": round(usable_pairs / max(1, cand_pairs), 4),
+            "order_skip_frac": round(skip_fr / max(1, seen_fr), 4),
+            "realized_pad_fill": round(pad_slots / max(1, total_slots), 4),
+        }
+
+    def _order_pair_counts(self, inst_idx: int, fringe: Sequence[int],
+                           pad_flags: Sequence[bool]) -> tuple:
+        """(candidate_pairs, usable_pairs, skipped) over ORDER-ELIGIBLE (non-pad)
+        slots of one fringe, mirroring dqn._order_eligible_slots: unreachable d*
+        maps to a worst-sorting sentinel; <2 distinct eligible values -> skipped
+        (no ordering signal). Usable pairs = strictly-ordered (d_i<d_j) pairs."""
+        inst = self.instances[inst_idx]
+        raw = [inst.distance[s] for s in fringe]
+        pad = list(pad_flags) if pad_flags else [False] * len(raw)
+        positions = [k for k in range(len(raw)) if not pad[k]]
+        finite = [raw[k] for k in positions if raw[k] < UNREACHABLE_DISTANCE]
+        sentinel = (max(finite) + 1.0) if finite else 1.0
+        dvals = [raw[k] if raw[k] < UNREACHABLE_DISTANCE else sentinel
+                 for k in positions]
+        m = len(positions)
+        cand = m * (m - 1) // 2
+        if len(set(dvals)) < 2:
+            return cand, 0, 1
+        usable = sum(1 for a in range(m) for b in range(m) if dvals[a] < dvals[b])
+        return cand, usable, 0
+
+    def _diagnostic_surface(self, frame: int) -> Dict[str, List[Dict[str, object]]]:
+        """At one checkpoint, run every (regime × problem) diagnostic rollout and
+        return rows grouped by split. NEVER feeds checkpoint selection — the
+        caller stores it under a clearly-labelled non-selecting field."""
+        out: Dict[str, List[Dict[str, object]]] = {"train": [], "test": []}
+        for p in self.diag_problems:
+            for r in self.regimes:
+                env = p.envs[r]
+                roll = self._diag_regime_rollout(p.inst, env, seed=env.diag_seed)
+                opt = p.optimal
+                ne = roll["node_economy"]
+                out[p.split].append({
+                    "frame": int(frame),
+                    "split": p.split,
+                    "regime": r,
+                    "problem": p.name,
+                    "padded": p.padded,
+                    "optimal_expansions": opt,
+                    "node_economy": ne,
+                    "node_economy_ratio": (round(ne / opt, 4) if opt else None),
+                    "goal_found": roll["goal_found"],
+                    "goal_rate": roll["goal_rate"],
+                    "ret": roll["ret"],
+                    "ret_ratio": (round(roll["ret"] / opt, 4) if opt else None),
+                    "capped": roll["capped"],
+                    "order_usable_pair_frac": roll["order_usable_pair_frac"],
+                    "order_skip_frac": roll["order_skip_frac"],
+                    "realized_pad_fill": roll["realized_pad_fill"],
+                })
+        return out
+
+    _DIAG_COLS = (
+        "frame", "split", "regime", "problem", "padded", "optimal_expansions",
+        "node_economy", "node_economy_ratio", "goal_found", "goal_rate", "ret",
+        "ret_ratio", "capped", "order_usable_pair_frac", "order_skip_frac",
+        "realized_pad_fill",
+    )
+
+    def _write_diag_tables(self, out_dir: Path,
+                           diag_rows: Dict[str, List[Dict[str, object]]]) -> None:
+        """Persist the accumulated per-problem×regime diagnostic rows (raw
+        metrics, one row per problem×regime×checkpoint) to a CSV per split. Raw
+        only — normalization happens at plot time."""
+        for split, rows in diag_rows.items():
+            if not rows:
+                continue
+            path = out_dir / f"diag_per_regime_{split}.csv"
+            with path.open("w", newline="") as fh:
+                w = csvmod.DictWriter(fh, fieldnames=list(self._DIAG_COLS))
+                w.writeheader()
+                for row in rows:
+                    w.writerow({k: row.get(k) for k in self._DIAG_COLS})
+
     def _regime_instrumentation(self) -> Dict[str, object]:
         out = {"per_regime": {}, "hfs": {}, "eligibility": list(self.eligibility.values())}
         for r in self.regimes:
@@ -327,6 +510,11 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
             "frame": [], "td_loss": [], "q_mean": [], "target_mean": [], "epsilon": [],
         }
         checkpoints: List[Dict[str, object]] = []
+        # DIAGNOSTIC, NON-SELECTING: per-(regime × problem) rows accumulated over
+        # checkpoints for the train + (optional) test splits. Kept in a SEPARATE
+        # structure from `checkpoints` and never read by the best_* selection
+        # below, which uses only the deploy-faithful val eval (ck["summary"]).
+        diag_rows: Dict[str, List[Dict[str, object]]] = {"train": [], "test": []}
         best_val_exp = float("inf")
         best_spearman = -float("inf")
 
@@ -431,23 +619,81 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
                 self._print_regime_tables(pbar, frame, ck["regime_instrumentation"])
                 val_exp = ck["summary"]["val_total_expansions"]
                 rho = ck["summary"]["val_spearman_all"]
+                # ---- SELECTION (deploy-faithful val eval ONLY) ----
                 if val_exp < best_val_exp:
                     best_val_exp = val_exp
                     self._save_model(out_dir / "best_by_expansions.pt", frame, ck)
                 if rho is not None and rho > best_spearman:
                     best_spearman = rho
                     self._save_model(out_dir / "best_by_spearman.pt", frame, ck)
+                # ---- DIAGNOSTIC surface (computed AFTER selection; cannot feed
+                # it). Append this checkpoint's rows, persist the raw per-problem
+                # tables, and print a compact summary. ----
+                surf = self._diagnostic_surface(frame)
+                for split in ("train", "test"):
+                    diag_rows[split].extend(surf[split])
+                self._write_diag_tables(out_dir, diag_rows)
+                self._print_diag_tables(pbar, frame, surf)
                 with (out_dir / "history.json").open("w") as fh:
                     json.dump({"history": history, "checkpoints": checkpoints,
-                               "config": self._regime_config()}, fh, indent=1)
+                               "config": self._regime_config(),
+                               "diag_per_regime": self._diag_payload(diag_rows)},
+                              fh, indent=1)
                 self._reset_regime_window()
 
         pbar.close()
         self._save_model(out_dir / "last.pt", frame, None)
         with (out_dir / "history.json").open("w") as fh:
             json.dump({"history": history, "checkpoints": checkpoints,
-                       "config": self._regime_config()}, fh, indent=1)
-        return {"history": history, "checkpoints": checkpoints}
+                       "config": self._regime_config(),
+                       "diag_per_regime": self._diag_payload(diag_rows)},
+                      fh, indent=1)
+        # Per-run diagnostic plots (normalized aggregate per regime, per split).
+        # Wrapped: a plotting failure must never cost the trained model.
+        try:
+            from src.offline.diag_plots import plot_diag_curves
+            written = plot_diag_curves(diag_rows, out_dir, fringe=self.fringe_size)
+            if written:
+                tqdm.write(f"[diag-plots] {out_dir}: {', '.join(written)}")
+        except Exception as exc:  # non-fatal
+            tqdm.write(f"[diag-plots] WARN failed to render: {exc}")
+        return {"history": history, "checkpoints": checkpoints,
+                "diag_per_regime": self._diag_payload(diag_rows)}
+
+    def _diag_payload(self, diag_rows: Dict[str, List[Dict[str, object]]]) -> Dict[str, object]:
+        """Wrap the accumulated diagnostic rows with an explicit non-selecting
+        label so no downstream reader mistakes them for a selection signal."""
+        return {
+            "_note": (
+                "DIAGNOSTIC ONLY — per-(regime × problem) rollouts of the current "
+                "model; NEVER feeds checkpoint selection (selection = deploy-"
+                "faithful val eval). Test split is regime-shaped / off-"
+                "distribution vs deployment."
+            ),
+            "columns": list(self._DIAG_COLS),
+            "train": diag_rows["train"],
+            "test": diag_rows["test"],
+        }
+
+    @staticmethod
+    def _print_diag_tables(pbar, frame, surf) -> None:
+        for split in ("train", "test"):
+            rows = surf.get(split, [])
+            if not rows:
+                continue
+            # aggregate (normalized) per regime for a one-line readout
+            by_r: Dict[str, List[Dict[str, object]]] = {}
+            for row in rows:
+                by_r.setdefault(row["regime"], []).append(row)
+            pbar.write(f"[diag:{split}] frame {frame} (non-selecting) "
+                       f"node-econ ratio / goal-rate per regime:")
+            for r, rs in by_r.items():
+                ratios = [x["node_economy_ratio"] for x in rs
+                          if x["node_economy_ratio"] is not None]
+                mean_ratio = (sum(ratios) / len(ratios)) if ratios else float("nan")
+                goal = sum(x["goal_rate"] for x in rs) / len(rs)
+                pbar.write(f"    {r:8s} ne_ratio={mean_ratio:6.2f} "
+                           f"goal={goal:4.2f} (n={len(rs)})")
 
     def _regime_config(self) -> Dict[str, object]:
         return {
@@ -467,6 +713,11 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
             "fmax_by_instance": {
                 self.instances[i].name: self.fmax_by_inst[i]
                 for i in self.included_train
+            },
+            "diag_split": {
+                "train": [self.instances[i].name for i in self.train_ids],
+                "test": [self.instances[i].name for i in self.diag_test_ids],
+                "note": "diagnostic (non-selecting); selection = deploy-faithful val",
             },
         }
 
