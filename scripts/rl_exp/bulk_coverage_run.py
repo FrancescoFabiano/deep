@@ -10,7 +10,7 @@ NUMERIC_COLUMNS = [
     "InitTime","SearchTime","ThreadOverhead"
 ]
 
-TIMEOUT = 300
+TIMEOUT = 60
 
 
 # ---------- FLAG BUILDER ----------
