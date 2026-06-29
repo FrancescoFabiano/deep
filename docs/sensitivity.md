@@ -160,3 +160,95 @@ python scripts/sweeps/run_sensitivity.py \
 python scripts/sweeps/collect_sensitivity.py \
     --out-root exp/rl_exp/sensitivity/run1
 ```
+
+---
+
+## PRE-REGISTRATION — CC binding-pool regime study (2026-06-29)
+
+Recorded **before** the 18-run batch is interpreted. The falsifiers and scope
+below are fixed at write time; the Results block at the end is sealed PENDING and
+filled only after the runs finish — the hypotheses above it are not edited
+post-hoc.
+
+### Why this run exists (the prior failure)
+The earlier CC run was **structurally inert on the train side**: auto-split
+(`train_models.py`) held out the only training-side binder (`CC_2_3_4__pl_7`,
+fmax=442) as val, leaving four sub-F training instances. The occupancy panels
+that "hit F" were the **val rollout** of that one bushy instance, not "CC binds."
+Every training fringe was sub-F, so the regime treatment could not fire on a
+single training step. This run fixes that by **keying the split on per-instance
+`fmax = bfs_frontier_max`, not on domain.**
+
+### Split (fmax-keyed; explicit `--train/--val/--test-csv`, NOT auto-split)
+Only **4 CC instances bind** at F (fmax ≥ F at F=32; all four also ≥ 64):
+
+| role | instance | fmax | n_states | family |
+|---|---|---:|---:|---|
+| TRAIN | CC_2_3_4__pl_6 | 120 | 10,072 | CC_2_3_4 |
+| TRAIN | CC_2_2_4__pl_7 | 268 | 4,823 | CC_2_2_4 |
+| VAL (selection; deploy-faithful) | CC_2_2_4__pl_6 | 242 | 10,099 | CC_2_2_4 |
+| TEST (diagnostic only; never selects) | CC_2_3_4__pl_7 | 442 | 2,897 | CC_2_3_4 |
+
+In-distribution split: both families present on train; binders on **both** sides.
+Files live under `exp/rl_exp/batch0_train/_models/CC/{training_data,test_data}/`
+(dir name is irrelevant — the path is what matters); all four carry
+`goal_tree.dot` + a fully-populated `Goal` column (separated mode).
+
+### CONFOUND (recorded up front)
+In **this** pool, fmax is **inversely correlated with tree size**: the four
+binders are the *small* trees (2.9k–10k states); the sub-F instances are the
+~30k-state deep-narrow ones. So any regime / extrapolation effect measured here
+is **confounded with tree size** — the defensible claim is *"regime effect on
+small-bushy CC trees,"* **not** a general one. fmax tracks branching family
+(`CC_2_3_4`=442, `CC_2_2_4`=268; `CC_2_2_3` never binds, max fmax 26), not depth.
+
+### ARMS + FALSIFIERS (stated BEFORE reading results)
+Three arms, the a→b→c decomposition (gamma=0.99 fixed, F∈{32,64}, seeds {42,43,44};
+3×2×3 = 18 runs, `--frames 100000`, all `--use-regimes` separated):
+
+- **a** — `--target-centering absolute   --lambda-ord 0.0` (plain value)
+- **b** — `--target-centering fringe_mean --lambda-ord 0.0` (centred value)
+- **c** — `--target-centering fringe_mean --lambda-ord 0.5` (centred + order aux)
+
+**Falsifiers** (selection metric = deploy-faithful val `total_expansions`, lower
+is better; "within IQR" = the 3-seed spread ≈ range, so direction-only):
+- **F1:** if **b ≤ a within 3-seed IQR**, centring (absolute-level removal) is
+  **inert** on this pool.
+- **F2:** if **c ≤ b within 3-seed IQR**, the order auxiliary
+  (scale-invariance) **adds nothing** beyond centring.
+
+A real effect requires the inequality to clear the 3-seed spread; with n=3 we read
+**direction only**, never fine IQR structure.
+
+### Selection facts pinned in advance
+- **"More frames ≠ better."** Deployed = the **val-argmin** checkpoint
+  (`best_by_expansions.pt`), **not** `last.pt`. Prior CC runs degraded past the
+  binding frame (val-expansions minimum ~frame 4000; Spearman peak ~6000; both
+  worse by 10000). On a proper binding split the val-argmin should now land on or
+  after the binding frame rather than a pre-bind one — itself a recorded check.
+- **The falsifier reads the SELECTED checkpoint, not the last one.**
+
+### SCOPE (and what is DEFERRED)
+- This is the **in-distribution REGIME study**, adjudicable on 4 binders. It is
+  **NOT** the extrapolation falsifier — that needs a larger binding pool (more
+  bushy-CC generation, gated on system inode reclaim) and is **out of scope here**.
+- **DEFERRED** for the same small-pool reason: gamma sweeps, lambda-ord sweeps,
+  and fringe-size as an axis. This run fixes gamma=0.99 and treats F as a
+  confirm-at-64, not a swept axis.
+
+### Smoke gate (passed 2026-06-29, before launch)
+One arm-c F=32 seed-42 run, `--frames 1500`: reached checkpoints + exited SUCCESS
+(no `order_loss`/KeyError); `history.json["diag_per_regime"]` populated for train
+**and** test; rows carry `fmax`; the tie-classifier returned **real_convergence
+×9, structural_nonresult = 0** (all binders, fmax ≥ F); `best_by_expansions.pt`
+written. Gate green → 18-run batch launched to `exp/rl_exp/sensitivity_cc/`.
+
+### Results (P3) — SEALED PENDING
+> To be filled after the 18-run batch (`exp/rl_exp/sensitivity_cc/`) completes,
+> via `scripts/sweeps/collect_sensitivity.py --out-root exp/rl_exp/sensitivity_cc`.
+> Will record: (1) SELECTION table — per (arm, F, seed) `best_by_expansions` val
+> metric **with the frame it was saved at** (not last.pt) + best Spearman;
+> (2) per-arm median[IQR] across seeds — the a→b→c readout vs **F1/F2** above;
+> (3) DIAGNOSTIC — per-regime node-economy ratio on train+test with
+> `structural_nonresult` excluded (expected ~0 here) + tie-class counts.
+> The hypotheses above this line are **not** edited when results land.
