@@ -170,6 +170,34 @@ below are fixed at write time; the Results block at the end is sealed PENDING an
 filled only after the runs finish — the hypotheses above it are not edited
 post-hoc.
 
+### AMENDMENT 1 — frame budget 100k → 40k (2026-06-29, batch in progress, NO results seen)
+Committed as its own commit **before** STEP 5 collected anything, with the 18 runs
+already launched but no `collected_*.csv` written and 0 runs finished — so this
+amendment's timestamp honestly precedes all 40k data.
+
+- **Change:** `--frames 100000` (as originally pre-registered) → `--frames 40000`,
+  `--n-checkpoints 20` (2k-frame resolution, unchanged from prior runs, so the
+  early peak is still resolved).
+- **Why, stated honestly:** the cut was **informed by prior results** — earlier
+  CC runs showed val metrics (expansions minimum ~frame 4000, Spearman peak
+  ~6000) **peaking ~4–6k and degrading thereafter**, so 100k was largely spent
+  overfitting past the binding checkpoint. 40k retains margin past the peak to
+  confirm the degradation is real without the wasted tail. This is a
+  results-informed budget choice, recorded here rather than applied silently.
+- **Added diagnostic (also pre-results):** a per-regime **rank-fidelity** figure —
+  tie-aware Spearman(model slot score, −d\*) over order-eligible slots (non-pad,
+  finite d\*), two panels (train | eval) × five regime lines, structural_nonresult
+  excluded — plus a companion expansions (`node_economy_ratio`) figure. These are
+  non-selecting diagnostics; they do not change selection, the ONNX contract, or
+  the dqn loss math.
+- **Expected reading, fixed now so it is not re-interpreted later:** the 1500-frame
+  smoke already showed rank_spearman **identical across regimes and slightly
+  negative** — the same early-training tie seen at every scale. The realistic 40k
+  outcome is five low (ρ well under 0.2), tangled lines, possibly weak-positive
+  then declining. **Tangled-within-seed-noise = the 4-binder underpower verdict,
+  NOT "regimes don't matter."** **Weak-positive-then-declining ρ = the overfitting
+  signature, NOT a training bug.** These readings are set before the numbers.
+
 ### Why this run exists (the prior failure)
 The earlier CC run was **structurally inert on the train side**: auto-split
 (`train_models.py`) held out the only training-side binder (`CC_2_3_4__pl_7`,
