@@ -57,7 +57,16 @@ def plot_seed_curves(
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    fig, axes = plt.subplots(1, 4, figsize=(20, 4), dpi=200)
+    # Episode-level panels need per-episode history (episode_frame/return/
+    # expansions). The multi-regime trainer logs no episodes, so degrade to the
+    # two always-present loss/score panels rather than failing the whole figure
+    # — these visualizations must always render.
+    has_episodes = all(
+        k in h and h[k]
+        for k in ("episode_frame", "episode_return", "episode_expansions")
+    )
+    n_panels = 4 if has_episodes else 2
+    fig, axes = plt.subplots(1, n_panels, figsize=(5 * n_panels, 4), dpi=200)
     axes[0].plot(h["frame"], h["td_loss"])
     axes[0].set_title(f"seed {seed} | TD loss")
     axes[0].set_xlabel("frame")
@@ -67,22 +76,23 @@ def plot_seed_curves(
     axes[1].set_title(f"seed {seed} | mean score")
     axes[1].set_xlabel("frame")
     axes[1].legend()
-    axes[2].plot(
-        h["episode_frame"],
-        _moving_avg([float(r) for r in h["episode_return"]]),
-        label="return (MA-25)",
-    )
-    axes[2].set_title(f"seed {seed} | episode return")
-    axes[2].set_xlabel("frame")
-    axes[2].legend()
-    axes[3].plot(
-        h["episode_frame"],
-        _moving_avg([float(e) for e in h["episode_expansions"]]),
-        label="expansions (MA-25)",
-    )
-    axes[3].set_title(f"seed {seed} | episode expansions")
-    axes[3].set_xlabel("frame")
-    axes[3].legend()
+    if has_episodes:
+        axes[2].plot(
+            h["episode_frame"],
+            _moving_avg([float(r) for r in h["episode_return"]]),
+            label="return (MA-25)",
+        )
+        axes[2].set_title(f"seed {seed} | episode return")
+        axes[2].set_xlabel("frame")
+        axes[2].legend()
+        axes[3].plot(
+            h["episode_frame"],
+            _moving_avg([float(e) for e in h["episode_expansions"]]),
+            label="expansions (MA-25)",
+        )
+        axes[3].set_title(f"seed {seed} | episode expansions")
+        axes[3].set_xlabel("frame")
+        axes[3].legend()
     for ax in axes:
         ax.grid(alpha=0.25)
     fig.tight_layout()

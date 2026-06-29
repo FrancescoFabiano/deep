@@ -32,6 +32,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Sequence
 
 import torch
+from scipy.stats import spearmanr
 from tqdm import tqdm
 
 from src.offline.dqn import OfflineDQNTrainer
@@ -372,6 +373,15 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
         res = env.reset(seed=seed)
         ret = 0.0
         cand_pairs = usable_pairs = seen_fr = skip_fr = total_slots = 0
+        inst = self.instances[inst_idx]
+        # Rank-fidelity accumulators: the model's slot SCORES vs -d* over the
+        # ORDER-ELIGIBLE slots only (non-padded AND finite d*; floored-
+        # unreachables excluded, mirroring the order-aux eligibility), pooled
+        # across the fringes this rollout visits. One tie-aware Spearman per
+        # (regime × problem × checkpoint) -> "is the d* rank preserved through
+        # the Q-values, per environment".
+        rf_scores: List[float] = []
+        rf_neg_dstar: List[float] = []
         while not res.done:
             fringe = res.fringe
             pad_flags = list(res.info.get("pad_flags", ())) or [False] * len(fringe)
@@ -381,17 +391,37 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
             usable_pairs += u
             seen_fr += 1
             skip_fr += skipped
-            res = env.step(self.greedy_action(inst_idx, fringe))
+            # One forward serves BOTH the rank-fidelity slot scores and the
+            # greedy action (argmax) — no extra forward; behaviour is identical
+            # to greedy_action.
+            logits, _ = self._forward(self.model, [(inst_idx, fringe)])
+            slot_scores = logits.detach().cpu()
+            for k, s in enumerate(fringe):
+                if pad_flags[k]:
+                    continue
+                d = inst.distance[s]
+                if d >= UNREACHABLE_DISTANCE:
+                    continue
+                rf_scores.append(float(slot_scores[k]))
+                rf_neg_dstar.append(-float(d))
+            res = env.step(int(torch.argmax(slot_scores).item()))
             ret += res.reward
         expansions = int(res.info["expansions"])
         goal = bool(res.info["goal_found"])
         pad_slots = int(env.n_pad_slots_filled)
+        # <2 distinct eligible d* -> no ordering to measure -> None (not plotted).
+        # spearmanr can also return nan on degenerate (constant) scores -> None.
+        rank_spearman = None
+        if len(set(rf_neg_dstar)) >= 2:
+            rho = float(spearmanr(rf_scores, rf_neg_dstar).statistic)
+            rank_spearman = round(rho, 4) if math.isfinite(rho) else None
         return {
             "node_economy": expansions,
             "goal_found": goal,
             "goal_rate": 1.0 if goal else 0.0,
             "ret": round(ret, 3),
             "capped": expansions >= self.eval_expansion_cap,
+            "rank_spearman": rank_spearman,
             "order_usable_pair_frac": round(usable_pairs / max(1, cand_pairs), 4),
             "order_skip_frac": round(skip_fr / max(1, seen_fr), 4),
             "realized_pad_fill": round(pad_slots / max(1, total_slots), 4),
@@ -439,6 +469,7 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
                     "optimal_expansions": opt,
                     "node_economy": ne,
                     "node_economy_ratio": (round(ne / opt, 4) if opt else None),
+                    "rank_spearman": roll["rank_spearman"],
                     "goal_found": roll["goal_found"],
                     "goal_rate": roll["goal_rate"],
                     "ret": roll["ret"],
@@ -452,7 +483,8 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
 
     _DIAG_COLS = (
         "frame", "split", "regime", "problem", "padded", "fmax",
-        "optimal_expansions", "node_economy", "node_economy_ratio", "goal_found",
+        "optimal_expansions", "node_economy", "node_economy_ratio",
+        "rank_spearman", "goal_found",
         "goal_rate", "ret", "ret_ratio", "capped", "order_usable_pair_frac",
         "order_skip_frac", "realized_pad_fill",
     )

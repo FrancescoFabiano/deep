@@ -44,6 +44,63 @@ def _aggregate(rows: List[Dict[str, object]], ratio_key: str):
     return frames, series
 
 
+def _drop_structural_nonresult(
+    rows: List[Dict[str, object]], fringe: Optional[int]
+) -> List[Dict[str, object]]:
+    """Drop rows whose (problem, frame) group is a STRUCTURAL_NONRESULT: every
+    regime's node_economy EXACTLY equal (a tie) AND fmax < F (the beam can't
+    bind, so there is no real ordering to measure and the lines would flatten
+    falsely). Mirrors collect_sensitivity._classify_ties. fringe None or fmax
+    missing -> cannot classify -> keep (never silently drop)."""
+    if fringe is None or not rows:
+        return rows
+    groups: Dict[tuple, List[Dict[str, object]]] = defaultdict(list)
+    for r in rows:
+        groups[(r.get("problem"), r.get("frame"))].append(r)
+    keep: List[Dict[str, object]] = []
+    for g in groups.values():
+        econ = [r.get("node_economy") for r in g]
+        fmax = g[0].get("fmax")
+        tie = len(set(econ)) == 1
+        structural = tie and (fmax is not None) and (fmax < fringe)
+        if not structural:
+            keep.extend(g)
+    return keep
+
+
+def _plot_metric_two_panel(
+    diag_rows: Dict[str, List[Dict[str, object]]], out_path: Path,
+    metric_key: str, ylabel: str, suptitle: str, fringe: Optional[int],
+) -> bool:
+    """One figure, TWO panels (train | eval=test), FIVE regime lines (dfs/bfs/
+    hfs_m0/hfs_m1 kept SEPARATE/random) = per-regime aggregate of `metric_key`
+    (mean over problems, None dropped) vs frame. structural_nonresult groups
+    excluded. Returns True if any line was drawn."""
+    fig, axes = plt.subplots(1, 2, figsize=(13, 4.5), dpi=200)
+    any_line = False
+    ftag = f" | F={fringe}" if fringe is not None else ""
+    for ax, split in zip(axes, ("train", "test")):
+        rows = _drop_structural_nonresult(diag_rows.get(split, []), fringe)
+        frames, series = _aggregate(rows, metric_key)
+        for rg, ys in series.items():
+            xs = [f for f, y in zip(frames, ys) if y is not None]
+            yv = [y for y in ys if y is not None]
+            if xs:
+                ax.plot(xs, yv, marker="o", label=rg)
+                any_line = True
+        eval_tag = "eval (test)" if split == "test" else "train"
+        ax.set_title(f"{eval_tag}{ftag}")
+        ax.set_xlabel("frame")
+        ax.set_ylabel(ylabel)
+        ax.grid(alpha=0.25)
+        ax.legend(fontsize=8, title="regime (agg over problems)")
+    fig.suptitle(suptitle, fontsize=10)
+    fig.tight_layout()
+    fig.savefig(out_path)
+    plt.close(fig)
+    return any_line
+
+
 def _plot_split(rows: List[Dict[str, object]], out_path: Path, split: str,
                 fringe: Optional[int]) -> bool:
     if not rows:
@@ -90,4 +147,26 @@ def plot_diag_curves(
         name = f"diag_per_regime_{split}{suffix}.png"
         if _plot_split(rows, out_dir / name, split, fringe):
             written.append(name)
+
+    # The two-halves figures (train | eval panels, five regime lines, each
+    # rendered whenever any binding data exists): (1) does it RANK well, and
+    # (2) does good rank convert to fewer expansions.
+    rf_name = f"diag_rank_fidelity{suffix}.png"
+    if _plot_metric_two_panel(
+        diag_rows, out_dir / rf_name, "rank_spearman",
+        "Spearman(score, -d*)",
+        "RANK FIDELITY (non-selecting) — Spearman(score, -d*) per regime, "
+        "eligible slots only (non-pad, finite d*)",
+        fringe,
+    ):
+        written.append(rf_name)
+
+    ex_name = f"diag_expansions{suffix}.png"
+    if _plot_metric_two_panel(
+        diag_rows, out_dir / ex_name, "node_economy_ratio",
+        "expansions / optimal (lower=better)",
+        "NODE ECONOMY (non-selecting) — expansions / optimal per regime",
+        fringe,
+    ):
+        written.append(ex_name)
     return written
