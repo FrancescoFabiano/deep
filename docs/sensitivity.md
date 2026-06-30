@@ -198,6 +198,43 @@ amendment's timestamp honestly precedes all 40k data.
   NOT "regimes don't matter."** **Weak-positive-then-declining ρ = the overfitting
   signature, NOT a training bug.** These readings are set before the numbers.
 
+### AMENDMENT 2 — corrected split: val/test carved from held-out test_data (2026-06-30, batch killed, NO results collected)
+Committed as its own doc-only commit **after killing the prior 40k batch and
+before any corrected-split data exists** (the prior run's outputs + its
+`collected_*.csv` were moved aside to `_sensitivity_cc_wrongsplit_40k/`; the
+`sensitivity_cc/` working dir holds no `collected_*.csv`), so this amendment
+honestly precedes all corrected-split results.
+
+- **The methodological error being fixed:** the original split (AMENDMENT-0 table
+  above) drew **val and test from the same 4-binder pool** and put binders on the
+  train side too — so val was not genuinely out-of-train, and pulling val/test out
+  of the pool shrank the training set. Selection on a same-pool val cannot measure
+  generalization honestly.
+- **Corrected split (fmax-keyed, val/test genuinely held out):**
+  - **TRAIN = ALL `training_data` instances, kept whole** (no held-out val carved
+    from train): CC_2_2_3__pl_4, CC_2_2_3__pl_6, CC_2_2_4__pl_5, CC_2_3_4__pl_3,
+    CC_2_3_4__pl_7. (Binding signal comes from the one binder pl_7/fmax=442; the
+    four sub-F instances still contribute value supervision.)
+  - **VAL = one held-out binder from `test_data`:** CC_2_2_4__pl_6 (fmax=242) —
+    the selection set, now genuinely out-of-train.
+  - **TEST (diagnostic, never selects) = the remaining `test_data` binders:**
+    CC_2_2_4__pl_7 (268), CC_2_3_4__pl_6 (120). **Families mixed on val/test**
+    (CC_2_2_4 and CC_2_3_4 both represented) — no pure-family holdout.
+  - `test_data` non-binders excluded: CC_2_2_3__pl_7 (fmax 26), pl_8 (fmax 2).
+  - All eight instances confirmed to carry `goal_tree.dot` + a non-empty `Goal`
+    column (separated mode) before launch.
+- **NO-VAL FALLBACK (recorded; not exercised by this batch, which HAS a val):**
+  if no held-out instance exists at all, model selection falls back to **TRAIN
+  deploy-faithful performance** (`selection_on_train=true` in the checkpoint
+  summary). This is **weaker** — it selects on the fit set and is blind to
+  generalization — and is wired only so the no-test-data case runs instead of
+  selecting on a degenerate empty-val metric.
+- **Unchanged from earlier (reaffirmed):** the a→b→c arms and falsifiers (F1: b≤a
+  within 3-seed IQR ⇒ centring inert; F2: c≤b ⇒ order-aux inert); tangled
+  rank-fidelity lines = 4-binder underpower, NOT "regimes don't matter";
+  weak-positive-then-declining ρ = overfitting; the 40k budget from AMENDMENT 1;
+  deploy = val-argmin checkpoint, falsifier reads the SELECTED checkpoint not last.
+
 ### Why this run exists (the prior failure)
 The earlier CC run was **structurally inert on the train side**: auto-split
 (`train_models.py`) held out the only training-side binder (`CC_2_3_4__pl_7`,
