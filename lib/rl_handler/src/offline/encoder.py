@@ -253,6 +253,13 @@ class GlobalFlatCache:
         goal_graphs: Optional[Sequence[Optional[StateGraph]]] = None,
     ):
         self.device = torch.device(device)
+        # Resident graph buffers stay on the HOST regardless of the compute
+        # device: pinning every instance's full state graph on the training GPU
+        # OOMs once large instances enter the split (~30k-state instances ->
+        # several GiB resident). pack() gathers the per-batch slice on the host
+        # and moves only that small slice to self.device, so GPU residency is
+        # ~model + one batch. Output tensors are byte-identical (device aside).
+        self.store = torch.device("cpu")
         node_vals: List[torch.Tensor] = []
         e_src: List[torch.Tensor] = []
         e_dst: List[torch.Tensor] = []
@@ -272,7 +279,7 @@ class GlobalFlatCache:
                 e_len.append(int(g.edge_attr.numel()))
             total_states += len(cache.states)
 
-        d = self.device
+        d = self.store
         self.node_vals = torch.cat(node_vals).to(d)
         self.edge_src = torch.cat(e_src).to(d)  # local node indices
         self.edge_dst = torch.cat(e_dst).to(d)
@@ -351,7 +358,9 @@ class GlobalFlatCache:
         fringe_lens: torch.Tensor,  # long [B]
         fringe_inst: Optional[torch.Tensor] = None,  # long [B] — instance per fringe
     ) -> Dict[str, torch.Tensor]:
-        d = self.device
+        # Gather the per-batch slice on the host (where the resident buffers
+        # live), then move only the assembled batch to the compute device below.
+        d = self.store
         state_gids = state_gids.to(d)
         fringe_lens = fringe_lens.to(d)
         nl = self.node_len[state_gids]
@@ -416,6 +425,10 @@ class GlobalFlatCache:
             out["goal_edge_index"] = goal_edge_index
             out["goal_edge_attr"] = goal_edge_attr
             out["goal_batch"] = goal_batch
+        # Move the assembled batch (small: ~one beam's worth of nodes/edges) to
+        # the compute device. The big resident buffers never leave the host.
+        if self.device != self.store:
+            out = {k: v.to(self.device) for k, v in out.items()}
         return out
 
 
