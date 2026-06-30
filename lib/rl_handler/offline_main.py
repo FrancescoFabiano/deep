@@ -13,6 +13,13 @@ import os
 import sys
 from pathlib import Path
 
+# Reduce CUDA allocator fragmentation BEFORE torch initializes CUDA. The
+# separated-mode dual-GNN forward leaves >1 GiB reserved-but-unallocated on a
+# small (8 GiB) GPU, which tips F=64 (2x-wider beam) over at its first update.
+# expandable_segments lets the allocator grow segments instead of fragmenting.
+# setdefault so an explicit caller env still wins.
+os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
+
 import torch
 from tqdm import tqdm
 
