@@ -45,9 +45,9 @@ def parse_args() -> argparse.Namespace:
         "--test-csv",
         nargs="+",
         default=[],
-        help="DIAGNOSTIC test instances (regime-shaped, off-distribution vs the "
-        "deploy-faithful selection eval). Only consumed by the per-regime "
-        "diagnostic surface under --use-regimes; never feeds model selection.",
+        help="Held-out DIAGNOSTIC test instances (regime-shaped, off-distribution "
+        "vs the deploy-faithful TRAIN selection eval). Consumed by the per-regime "
+        "diagnostic surface (default-on); never feeds model selection.",
     )
     p.add_argument("--frames", type=int, default=100_000)
     p.add_argument("--n-checkpoints", type=int, default=20)
@@ -122,20 +122,31 @@ def parse_args() -> argparse.Namespace:
         "and convergence curves. Default: 1 (single-seed, prior behavior).",
     )
     # ---- P1: parallel fringe-composition regimes (value-only) ----
+    # Regimes are now the DEFAULT path: the four composition regimes
+    # {dfs,bfs,hfs,random} train into one shared replay+model. --use-regimes is
+    # accepted (no-op, kept for back-compat); --no-regimes is the escape hatch
+    # back to the single-source pipeline (debug only).
     p.add_argument(
         "--use-regimes",
+        dest="use_regimes",
         action="store_true",
-        default=False,
-        help="Train from FIVE parallel full-beam-redraw composition regimes "
-        "(dfs/bfs/hfs/random) into one shared replay+model, instead of "
-        "the single-source pipeline. Off by default (existing path unchanged).",
+        default=True,
+        help="Default ON. The four composition regimes train into one shared "
+        "replay+model. Kept for back-compat; the regime path is now the default.",
+    )
+    p.add_argument(
+        "--no-regimes",
+        dest="use_regimes",
+        action="store_false",
+        help="Escape hatch: use the single-source (non-regime) pipeline. Debug "
+        "only — the study path is regimes-default.",
     )
     p.add_argument(
         "--regimes",
         nargs="+",
         default=["dfs", "bfs", "hfs", "random"],
-        help="Which composition regimes to run (subset of the five). "
-        "--mixture-weights, if given, must align with this order.",
+        help="Which composition regimes to run (subset of the four). Default: "
+        "all four. --mixture-weights, if given, must align with this order.",
     )
     p.add_argument(
         "--mixture-weights",
@@ -382,18 +393,34 @@ def main() -> None:
     train_ids = list(range(n_train))
     val_ids = list(range(n_train, n_train + n_val))
     test_ids = list(range(n_train + n_val, len(instances)))  # diagnostic only
-    sel = "TRAIN (deploy-faithful; held-out is diagnostic-only)" if args.use_regimes \
-        else ("val" if val_ids else "TRAIN (no val supplied)")
+    # Selection is ALWAYS train-based now (no val-based path remains).
+    sel = "TRAIN (deploy-faithful; held-out is diagnostic-only)"
     print(f"[split] train={[instances[i].name for i in train_ids]} "
           f"val={[instances[i].name for i in val_ids]} "
           f"diag_test={[instances[i].name for i in test_ids]} | selection={sel}")
-    if args.use_regimes and val_ids:
-        print("[warn] --val-csv given with --use-regimes; val is NOT the selection "
-              "set here (selection is train-based) and is not in the diagnostic "
-              "surface — it is parsed but unused. Prefer --test-csv for held-out.")
+    if val_ids:
+        print("[warn] --val-csv given but val is NOT a selection set (selection is "
+              "train-based) and is not in the diagnostic surface — it is parsed "
+              "but unused. Prefer --test-csv for held-out diagnostics.")
     if test_ids and not args.use_regimes:
-        print("[warn] --test-csv given without --use-regimes; the diagnostic "
+        print("[warn] --test-csv given with --no-regimes; the diagnostic "
               "per-regime surface is regime-only, so test instances are ignored.")
+
+    # Record the resolved TRAIN/TEST split (by instance name) into the per-seed
+    # manifest, written once at run start (before training) so it travels with
+    # the run and survives a kill. Merged into the existing _cells_manifest.json
+    # (which already follows the seed{seed} convention since --dir-save-model
+    # ends in seed{seed}).
+    manifest["seed"] = int(args.seed)
+    manifest["fringe_sizes"] = [int(f) for f in args.fringe_sizes]
+    manifest["regimes"] = list(args.regimes) if args.use_regimes else []
+    manifest["train"] = [instances[i].name for i in train_ids]
+    manifest["test"] = [instances[i].name for i in test_ids]
+    manifest["selection"] = "train"
+    with manifest_path.open("w") as fh:
+        json.dump(manifest, fh, indent=2)
+    print(f"[manifest] {manifest_path} (train={len(train_ids)} test={len(test_ids)} "
+          f"selection=train)")
 
     # One trained model per fringe size, sequentially, on the same parsed data.
     for fringe in args.fringe_sizes:
@@ -438,10 +465,10 @@ def main() -> None:
             eval_refill_seeds=args.eval_refill_seeds,
             lambda_ord=lambda_ord,
             goal_graphs=goal_graphs if use_goal_separate_input else None,
-            # Regime/study path: selection is TRAIN-based regardless of any val
-            # set (held-out instances are diagnostic only). Plain path keeps the
-            # prior val-based selection (falls back to train only if no val).
-            select_on_train=args.use_regimes,
+            # Train-based selection is the ALWAYS path now: checkpoints are picked
+            # on the TRAIN deploy-faithful metric, held-out instances are
+            # diagnostic only. There is no val-based selection path anymore.
+            select_on_train=True,
         )
         if args.use_regimes:
             from src.offline.regime_trainer import RegimeDQNTrainer  # noqa: E402
