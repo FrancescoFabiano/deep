@@ -556,6 +556,15 @@ def main() -> None:
         except Exception as exc:  # non-fatal: model + ONNX are already saved
             print(f"[plots] WARN failed to render per-run plots: {exc}")
 
+        # Release this fringe's GPU memory before the next fringe builds its own
+        # model/trainer. Without this the allocator cache from F=32 persists into
+        # F=64 (a 2x-wider beam needs more), OOMing on a small GPU even though
+        # each fringe alone fits. The flat cache is host-resident (encoder), so
+        # this frees the model/target/optimizer/activation pools.
+        del trainer, model
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
     print("[done]")
 
 
