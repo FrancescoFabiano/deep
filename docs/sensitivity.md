@@ -259,6 +259,55 @@ Committed (code + this doc, two separate commits) while no corrected-split
   lines = 4-binder underpower, NOT "regimes don't matter"; the corrected split
   (AMENDMENT 2); the 40k budget (AMENDMENT 1); deploy = val-argmin checkpoint.
 
+### AMENDMENT 4 — train-based selection + no padding + top-1-regret diagnostic (2026-06-30, PRE-results)
+Committed (code + this doc, separate commits) while no `collected_*.csv` exists.
+
+- **SELECTION CHANGE — train-based is now the default (not a fallback).** Model
+  selection (`best_by_expansions` / `best_by_spearman`) is on the **TRAIN**
+  deploy-faithful greedy metric, always, in the regime/study path — the
+  best-train checkpoint deploys **regardless of which frame** achieves it. Any
+  held-out instance is **diagnostic only and never selects**; the split is
+  **TRAIN + optional held-out TEST**. Flagged `selection_on_train=true` in every
+  checkpoint summary.
+  - **Why:** selecting on the held-out set would leak it into the model choice
+    and make the reported held-out number optimistic (textbook test-leakage). So
+    the held-out set is kept clean for *measurement*.
+  - **Consequence (recorded):** selection is now **blind to overfitting** — the
+    fit set can keep improving while generalization degrades. The **train+test
+    per-regime diagnostic plots are the only overfitting detector.** Internal
+    train-slice early-stopping is **DEFERRED** as the mitigation (not in this
+    phase).
+  - **Diagnosis rule (pinned):** **TRAIN-set** node-economy/regret **degrading
+    over frames = a model/optimization bug** to fix (it should not get worse on
+    its own fit set). **TRAIN-good but TEST-degrading = overfitting**
+    (data/regularization, not a model bug). The train-vs-test panels of the three
+    figures distinguish the two; do not conflate them.
+
+- **PADDING REMOVED + order-loss semantics change.** Regime beams are composed
+  from the **live pool only**; when the live frontier < F (fmax wall) the beam
+  runs **short** — no fabrication from closed nodes (deployment runs short beams
+  too). This is also a **real loss-semantics change**, not just plumbing: the
+  order auxiliary previously **excluded** padded slots; it now ranks **every live
+  slot**, with **unreachable (d\*=∞) live nodes mapped to a worst-sorting
+  sentinel** (ranked below all finite-d\* nodes) rather than dropped. The
+  `<2-distinct-eligible-d*` skip stays (a short/flat beam carries no order
+  signal).
+
+- **NEW top-1-regret diagnostic.** Per beam: `regret = d*(model's argmax-eligible
+  slot) − min(eligible d*)` (0 = oracle, lower better), **same eligibility as the
+  order loss** (shared helper, so they can't disagree), skipping beams with <2
+  distinct eligible d\*. Plotted as a third per-regime figure: two panels
+  (train | eval), 4 lines, **IQM line + IQM ± std-over-the-interquartile-beams
+  band, pooled OVER BEAMS** (not over-problems — at 1–2 binders an over-problems
+  band is degenerate). Joins the existing node-economy and rank-fidelity figures.
+
+- **Unchanged (reaffirmed):** 4 regimes {dfs,bfs,hfs,random}; the a→b→c
+  falsifiers (F1: b≤a within IQR ⇒ centring inert; F2: c≤b ⇒ order-aux inert);
+  40k frames; honest-short beams; tangled lines = underpower, not "regimes don't
+  matter". The study is now runnable through `scripts/rl_exp/train_models.py`
+  (`--model dqn`, train=training_data, held-out test=test_data, no val,
+  one invocation per arm) — no hand-built driver, no silent-broken-split trap.
+
 ### Why this run exists (the prior failure)
 The earlier CC run was **structurally inert on the train side**: auto-split
 (`train_models.py`) held out the only training-side binder (`CC_2_3_4__pl_7`,
