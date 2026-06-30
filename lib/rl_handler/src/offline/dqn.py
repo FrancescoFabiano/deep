@@ -636,8 +636,9 @@ class OfflineDQNTrainer:
 
         history: Dict[str, list] = {
             "frame": [], "td_loss": [], "q_mean": [], "target_mean": [],
-            "aux_loss": [], "epsilon": [], "episode_return": [], "episode_frame": [],
-            "episode_expansions": [], "episode_goal": [], "episode_inst": [],
+            "aux_loss": [], "order_loss": [], "epsilon": [], "episode_return": [],
+            "episode_frame": [], "episode_expansions": [], "episode_goal": [],
+            "episode_inst": [],
         }
         checkpoints: List[Dict[str, object]] = []
         stability: List[Dict[str, object]] = []
@@ -848,12 +849,21 @@ class OfflineDQNTrainer:
         per_instance: Dict[str, Dict[str, object]] = {}
         val_total = 0.0
         val_occ = OccupancyCounter(self.fringe_size)
-        # Average each val instance's greedy rollout over K refill seeds so the
+        # SELECTION eval set: the held-out val instances when provided, else fall
+        # back to the TRAIN instances. Train-based selection is WEAKER — it picks
+        # the checkpoint on the FIT set, so it cannot see val/test generalization
+        # and is only correct when no held-out instance exists at all. It is
+        # flagged (selection_on_train) in the summary so no downstream reader
+        # mistakes a fit-set selection for a held-out one. (train is always non-
+        # empty, so eval_ids is never empty.)
+        select_on_train = not self.val_ids
+        eval_ids = self.val_ids if self.val_ids else self.train_ids
+        # Average each instance's greedy rollout over K refill seeds so the
         # convergence curve and best_by_expansions selection are robust to
         # reservoir-refill noise (a single seed per checkpoint made the v1 curve
         # oscillate wildly). K=1 reproduces the prior single-seed behavior.
         k = self.eval_refill_seeds
-        for vid in self.val_ids:
+        for vid in eval_ids:
             inst = self.instances[vid]
             rolls = [
                 self.greedy_rollout(vid, seed=10_000 + frame + s, occ_accum=val_occ)
@@ -873,11 +883,12 @@ class OfflineDQNTrainer:
             val_total += mean_exp
         val_total = round(val_total, 3)
 
-        # Spearman + score stats on val states (singleton fringes).
+        # Spearman + score stats on the selection set's states (singleton
+        # fringes) — val if held out, else the train fallback set.
         rho_all = rho_reach = None
         score_stats: Dict[str, object] = {}
-        if self.val_ids:
-            vid = self.val_ids[0]
+        if eval_ids:
+            vid = eval_ids[0]
             inst = self.instances[vid]
             g = torch.Generator().manual_seed(self.seed + 7)
             n = inst.n_states
@@ -927,6 +938,7 @@ class OfflineDQNTrainer:
                 "val_spearman_all": rho_all,
                 "val_spearman_reachable": rho_reach,
                 "val_occupancy": val_occ.summary(),
+                "selection_on_train": select_on_train,
             },
             "val_per_instance": per_instance,
             "train_greedy": train_rollouts,

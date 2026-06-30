@@ -39,7 +39,10 @@ DEFAULT_VAL = [
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Offline DQN fringe-ranking trainer")
     p.add_argument("--train-csv", nargs="+", default=DEFAULT_TRAIN)
-    p.add_argument("--val-csv", nargs="+", default=DEFAULT_VAL)
+    # nargs="*": `--val-csv` with no values -> empty -> model selection falls
+    # back to TRAIN performance (see OfflineDQNTrainer.evaluate; weaker, fit-set
+    # selection). Omitting the flag entirely still uses DEFAULT_VAL.
+    p.add_argument("--val-csv", nargs="*", default=DEFAULT_VAL)
     p.add_argument(
         "--test-csv",
         nargs="+",
