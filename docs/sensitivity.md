@@ -235,6 +235,30 @@ honestly precedes all corrected-split results.
   weak-positive-then-declining ρ = overfitting; the 40k budget from AMENDMENT 1;
   deploy = val-argmin checkpoint, falsifier reads the SELECTED checkpoint not last.
 
+### AMENDMENT 3 — regime set 5 → 4: hfs_m0 dropped, hfs_m1 kept as `hfs` (2026-06-30, PRE-results)
+Committed (code + this doc, two separate commits) while no corrected-split
+`collected_*.csv` exists — precedes all data.
+
+- **CHANGE:** the regime set goes from five to four: **{dfs, bfs, hfs, random}**.
+  The two histogram-faithful-sampling variants are collapsed — `hfs_m0` (strict
+  histogram: `round(p·F)`, which sends rare buckets to 0) is **dropped**, and
+  `hfs_m1` (min-1-slot floor on every non-empty bucket) is **kept and renamed
+  `hfs`**.
+- **WHY, stated honestly:** this **ASSERTS near-goal tail-coverage over strict
+  histogram-fidelity** for the ranker, rather than *measuring* the m0/m1 tradeoff
+  the original five-regime design tested. The near-goal tail is the
+  discriminative part of the fringe (P0c found `m0` starved it ~13×), so `m1` is
+  taken as the intended hfs. **The fidelity-vs-coverage question is now closed by
+  decision, not by result** — we will no longer see an m0-vs-m1 separation
+  because m0 is gone.
+- **Plot/reading spec updated:** the rank-fidelity and expansions figures now
+  plot **four** regime lines {dfs, bfs, hfs, random}, not five (the earlier
+  "five regime lines, m0/m1 separate" wording in AMENDMENT 1 is superseded here).
+- **Unchanged (reaffirmed):** the a→b→c arms and falsifiers (F1: b≤a within
+  3-seed IQR ⇒ centring inert; F2: c≤b ⇒ order-aux inert); tangled rank-fidelity
+  lines = 4-binder underpower, NOT "regimes don't matter"; the corrected split
+  (AMENDMENT 2); the 40k budget (AMENDMENT 1); deploy = val-argmin checkpoint.
+
 ### Why this run exists (the prior failure)
 The earlier CC run was **structurally inert on the train side**: auto-split
 (`train_models.py`) held out the only training-side binder (`CC_2_3_4__pl_7`,
