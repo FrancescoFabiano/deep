@@ -117,7 +117,6 @@ class _DiagProblem:
     split: str                       # 'train' or 'test'
     name: str
     optimal: Optional[int]
-    padded: bool
     fmax: int                        # max simultaneous live frontier (policy-free)
     envs: Dict[str, RedrawFringeEnv]
 
@@ -179,13 +178,11 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
         self.dfs_rank: Dict[int, List[int]] = {}
         self.eligibility: Dict[int, Dict[str, object]] = {}
         self.fmax_by_inst: Dict[int, int] = {}
-        self.padded_by_inst: Dict[int, bool] = {}
         envs: List[_Env] = []
         self.hfs_diags: Dict[str, HFSDiag] = {}
         included: List[int] = []
         excluded_subF: List[str] = []
         bfs_excluded: List[str] = []
-        padded_names: List[str] = []
         for i in self.train_ids:
             inst = self.instances[i]
             elig = eligible_nodes(inst)
@@ -195,23 +192,19 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
             sub_F = len(elig) < F
             bfs_out = (total == 0) or (uf < self.bfs_exclude_usable_frac)
             # fmax = max simultaneous live frontier (policy-free). F>fmax => the
-            # live pool can never reach F, so regimes are indistinguishable unless
-            # we pad the beam from CLOSED nodes -> self-activating padding.
+            # live pool can never reach F, so the beam runs SHORT on this instance
+            # (no fabrication; kept honest-short — see RedrawFringeEnv).
             fmax = bfs_frontier_max(inst)
-            padded = (not sub_F) and (F > fmax)
             self.eligibility[i] = {
                 "name": inst.name, "E": len(elig), "var_expl": round(ve, 4),
                 "bfs_usable_frac": round(uf, 4), "sub_F": sub_F,
-                "bfs_excluded": bfs_out, "fmax": int(fmax), "padded": padded,
+                "bfs_excluded": bfs_out, "fmax": int(fmax),
             }
             if sub_F:
                 excluded_subF.append(inst.name)
                 continue
             included.append(i)
             self.fmax_by_inst[i] = int(fmax)
-            self.padded_by_inst[i] = padded
-            if padded:
-                padded_names.append(inst.name)
             self.dfs_rank[i] = dfs_preorder_rank(inst)
             avail = [
                 r for r in self.regimes
@@ -229,7 +222,7 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
                     expansion_cap=(self.train_expansion_cap
                                    if self.train_expansion_cap is not None
                                    else 2 * inst.n_states),
-                    hfs_diag=diag, pad_to_F=padded,
+                    hfs_diag=diag,
                 )
                 envs.append(_Env(inst=i, regime=r, env=env))
         if not envs:
@@ -241,7 +234,6 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
         self.included_train = included
         self.excluded_subF = excluded_subF
         self.bfs_excluded_names = bfs_excluded
-        self.padded_names = padded_names
         # per-instance available regimes + per-instance renormalised weights
         self.avail_by_inst: Dict[int, List[str]] = {}
         self.regime_w_by_inst: Dict[int, List[float]] = {}
@@ -279,8 +271,6 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
                 for e in self.regime_envs:
                     if e.regime == r:
                         e.env.hfs_diag = new
-        for e in self.regime_envs:          # windowed pad counters
-            e.env.reset_pad_counters()
         self.reset_order_stats()            # windowed order-aux pair/skip counters
 
     # ---- weighted (instance uniform × regime ∝ w) scheduler ----
@@ -334,10 +324,7 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
         for split, ids in splits:
             for i in ids:
                 inst = self.instances[i]
-                elig = eligible_nodes(inst)
-                sub_F = len(elig) < F
                 fmax = bfs_frontier_max(inst)
-                padded = (not sub_F) and (F > fmax)
                 rank = dfs_preorder_rank(inst)
                 envs: Dict[str, RedrawFringeEnv] = {}
                 for ri, r in enumerate(self.regimes):
@@ -349,13 +336,13 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
                         inst, fringe_size=F, seed=dseed,
                         regime=r, dfs_rank=rank,
                         expansion_cap=self.eval_expansion_cap,
-                        hfs_diag=diag, pad_to_F=padded,
+                        hfs_diag=diag,
                     )
                     env.diag_seed = dseed
                     envs[r] = env
                 problems.append(_DiagProblem(
                     inst=i, split=split, name=inst.name,
-                    optimal=inst.optimal_expansions(), padded=padded,
+                    optimal=inst.optimal_expansions(),
                     fmax=int(fmax), envs=envs,
                 ))
         return problems
@@ -364,19 +351,18 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
     def _diag_regime_rollout(self, inst_idx: int, env: RedrawFringeEnv,
                              seed: int) -> Dict[str, object]:
         """Greedy rollout of the CURRENT model on one regime env. Records node
-        economy (raw expansions), goal, the -1-stream return, realized pad-fill,
-        and the order usable-pair / post-mask skip fractions over the fringes the
-        rollout actually visited (same eligibility rule as the order auxiliary).
-        Pure read: no grad, no replay, no training-state mutation."""
+        economy (raw expansions), goal, the -1-stream return, and the order
+        usable-pair / skip fractions over the fringes the rollout actually
+        visited (same eligibility rule as the order auxiliary). Beams are live-
+        pool only (possibly short); there is no padding. Pure read: no grad, no
+        replay, no training-state mutation."""
         self.model.eval()
-        env.reset_pad_counters()
         res = env.reset(seed=seed)
         ret = 0.0
-        cand_pairs = usable_pairs = seen_fr = skip_fr = total_slots = 0
+        cand_pairs = usable_pairs = seen_fr = skip_fr = 0
         inst = self.instances[inst_idx]
         # Rank-fidelity accumulators: the model's slot SCORES vs -d* over the
-        # ORDER-ELIGIBLE slots only (non-padded AND finite d*; floored-
-        # unreachables excluded, mirroring the order-aux eligibility), pooled
+        # ORDER-ELIGIBLE slots (finite d*; floored-unreachables excluded), pooled
         # across the fringes this rollout visits. One tie-aware Spearman per
         # (regime × problem × checkpoint) -> "is the d* rank preserved through
         # the Q-values, per environment".
@@ -384,9 +370,7 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
         rf_neg_dstar: List[float] = []
         while not res.done:
             fringe = res.fringe
-            pad_flags = list(res.info.get("pad_flags", ())) or [False] * len(fringe)
-            total_slots += len(fringe)
-            c, u, skipped = self._order_pair_counts(inst_idx, fringe, pad_flags)
+            c, u, skipped = self._order_pair_counts(inst_idx, fringe)
             cand_pairs += c
             usable_pairs += u
             seen_fr += 1
@@ -397,8 +381,6 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
             logits, _ = self._forward(self.model, [(inst_idx, fringe)])
             slot_scores = logits.detach().cpu()
             for k, s in enumerate(fringe):
-                if pad_flags[k]:
-                    continue
                 d = inst.distance[s]
                 if d >= UNREACHABLE_DISTANCE:
                     continue
@@ -408,7 +390,6 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
             ret += res.reward
         expansions = int(res.info["expansions"])
         goal = bool(res.info["goal_found"])
-        pad_slots = int(env.n_pad_slots_filled)
         # <2 distinct eligible d* -> no ordering to measure -> None (not plotted).
         # spearmanr can also return nan on degenerate (constant) scores -> None.
         rank_spearman = None
@@ -424,19 +405,16 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
             "rank_spearman": rank_spearman,
             "order_usable_pair_frac": round(usable_pairs / max(1, cand_pairs), 4),
             "order_skip_frac": round(skip_fr / max(1, seen_fr), 4),
-            "realized_pad_fill": round(pad_slots / max(1, total_slots), 4),
         }
 
-    def _order_pair_counts(self, inst_idx: int, fringe: Sequence[int],
-                           pad_flags: Sequence[bool]) -> tuple:
-        """(candidate_pairs, usable_pairs, skipped) over ORDER-ELIGIBLE (non-pad)
-        slots of one fringe, mirroring dqn._order_eligible_slots: unreachable d*
-        maps to a worst-sorting sentinel; <2 distinct eligible values -> skipped
-        (no ordering signal). Usable pairs = strictly-ordered (d_i<d_j) pairs."""
+    def _order_pair_counts(self, inst_idx: int, fringe: Sequence[int]) -> tuple:
+        """(candidate_pairs, usable_pairs, skipped) over the ORDER-ELIGIBLE slots
+        of one fringe, mirroring dqn._order_eligible_slots: unreachable d* maps to
+        a worst-sorting sentinel; <2 distinct eligible values -> skipped (no
+        ordering signal). Usable pairs = strictly-ordered (d_i<d_j) pairs."""
         inst = self.instances[inst_idx]
         raw = [inst.distance[s] for s in fringe]
-        pad = list(pad_flags) if pad_flags else [False] * len(raw)
-        positions = [k for k in range(len(raw)) if not pad[k]]
+        positions = list(range(len(raw)))
         finite = [raw[k] for k in positions if raw[k] < UNREACHABLE_DISTANCE]
         sentinel = (max(finite) + 1.0) if finite else 1.0
         dvals = [raw[k] if raw[k] < UNREACHABLE_DISTANCE else sentinel
@@ -464,7 +442,6 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
                     "split": p.split,
                     "regime": r,
                     "problem": p.name,
-                    "padded": p.padded,
                     "fmax": p.fmax,
                     "optimal_expansions": opt,
                     "node_economy": ne,
@@ -477,16 +454,15 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
                     "capped": roll["capped"],
                     "order_usable_pair_frac": roll["order_usable_pair_frac"],
                     "order_skip_frac": roll["order_skip_frac"],
-                    "realized_pad_fill": roll["realized_pad_fill"],
                 })
         return out
 
     _DIAG_COLS = (
-        "frame", "split", "regime", "problem", "padded", "fmax",
+        "frame", "split", "regime", "problem", "fmax",
         "optimal_expansions", "node_economy", "node_economy_ratio",
         "rank_spearman", "goal_found",
         "goal_rate", "ret", "ret_ratio", "capped", "order_usable_pair_frac",
-        "order_skip_frac", "realized_pad_fill",
+        "order_skip_frac",
     )
 
     def _write_diag_tables(self, out_dir: Path,
@@ -511,26 +487,16 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
                 out["per_regime"][r] = self.regime_stats[r].summary(self.fringe_size)
         for r, diag in self.hfs_diags.items():
             out["hfs"][r] = diag.summary()
-        # per-instance padding (windowed): fmax, padded flag, charged pad
-        # expansions + filled pad slots summed over that instance's regime envs.
-        padcounts: Dict[int, Dict[str, int]] = {}
-        for e in self.regime_envs:
-            d = padcounts.setdefault(e.inst, {"pad_expansions": 0, "pad_slots_filled": 0})
-            d["pad_expansions"] += e.env.n_pad_expansions
-            d["pad_slots_filled"] += e.env.n_pad_slots_filled
-        out["padding"] = [
-            {
-                "name": self.instances[i].name,
-                "fmax": self.fmax_by_inst[i],
-                "padded": self.padded_by_inst[i],
-                "n_pad_expansions": padcounts.get(i, {}).get("pad_expansions", 0),
-                "n_pad_slots_filled": padcounts.get(i, {}).get("pad_slots_filled", 0),
-            }
+        # per-instance fmax (live frontier ceiling). F>fmax => the beam runs short
+        # on that instance (no padding); the short-ness is visible in the regime
+        # composition table's poolGEF/fullF columns.
+        out["fmax"] = [
+            {"name": self.instances[i].name, "fmax": self.fmax_by_inst[i],
+             "short": self.fmax_by_inst[i] < self.fringe_size}
             for i in self.included_train
         ]
-        # P2 order-aux: usable-pair fraction + post-mask <2-distinct skip count,
-        # over order-eligible (non-padded) slots. Zeroed when lambda_ord==0
-        # (the order loss is never computed).
+        # P2 order-aux: usable-pair fraction + <2-distinct skip count over the
+        # order-eligible slots. Zeroed when lambda_ord==0 (no order loss).
         out["order"] = {"lambda_ord": self.lambda_ord, **self.order_stats()}
         return out
 
@@ -575,8 +541,6 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
             eps = epsilon(frame)
             fringe = res.fringe
             # slot-aligned pad mask for THIS state fringe (captured from res.info
-            # before env.step rebuilds the beam). Faithful envs => all-False.
-            pad_mask = tuple(res.info.get("pad_flags", ()))
             inst = self.instances[cur_i]
             st = self.regime_stats[cur_r]
             st.observe(fringe, inst, self.fringe_size, env.last_pool_size)
@@ -606,7 +570,6 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
                     inst=cur_i, fringe=tuple(fringe), action=action,
                     reward=nxt.reward, next_fringe=tuple(nxt.fringe),
                     done=nxt.done, regime=cur_r,
-                    pad_mask=pad_mask if any(pad_mask) else None,
                 ))
 
             if nxt.done:
@@ -744,7 +707,6 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
             "included_train": [self.instances[i].name for i in self.included_train],
             "excluded_subF": self.excluded_subF,
             "bfs_excluded": self.bfs_excluded_names,
-            "padded_instances": self.padded_names,
             "fmax_by_instance": {
                 self.instances[i].name: self.fmax_by_inst[i]
                 for i in self.included_train
@@ -786,11 +748,8 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
                 f"post-mask skip={o['order_skipped_fringes']}/{o['order_seen_fringes']} "
                 f"({o['order_skip_frac']})"
             )
-        pad_rows = [p for p in instr.get("padding", [])]
-        if any(p["padded"] for p in pad_rows):
-            pbar.write("  padding (instance fmax / padded / pad_exp / pad_slots):")
-            for p in pad_rows:
-                flag = "PAD" if p["padded"] else "faithful"
-                pbar.write(f"    {p['name']:18s} fmax={p['fmax']:>4} {flag:>8} "
-                           f"pad_exp={p['n_pad_expansions']:>5} "
-                           f"pad_slots={p['n_pad_slots_filled']:>6}")
+        short = [p for p in instr.get("fmax", []) if p.get("short")]
+        if short:
+            pbar.write("  short-beam instances (fmax < F, run short, no padding):")
+            for p in short:
+                pbar.write(f"    {p['name']:18s} fmax={p['fmax']:>4}")

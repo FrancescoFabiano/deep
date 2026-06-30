@@ -127,8 +127,8 @@ class OfflineDQNTrainer:
         # §3); guard the degenerate gamma>=1 so floor stays finite-negative.
         self.floor_v = (-1.0 / (1.0 - self.gamma)) if self.gamma < 1.0 else -1e9
         # P2 order-auxiliary weight: L = L_val + lambda_ord * L_ord (pairwise over
-        # ORDER-ELIGIBLE = non-padded slots) on the SAME logits. 0 => the order
-        # term is never even computed (byte-identical to the value-only path).
+        # the order-eligible slots) on the SAME logits. 0 => the order term is
+        # never even computed (byte-identical to the value-only path).
         self.lambda_ord = float(lambda_ord)
         # Windowed order-aux instrumentation (reset by reset_order_stats): pairs
         # actually formed vs candidate pairs, and fringes skipped by the
@@ -388,20 +388,18 @@ class OfflineDQNTrainer:
     # ---------- rank objectives (Horn B: scale-invariant / order) ----------
 
     def _order_eligible_slots(self, t):
-        """The ORDER-ELIGIBLE slots of a transition's fringe: every slot whose
-        pad_mask is False (padded/closed pad-fill slots are excluded from any
-        ordering — they are value-supervised, order-excluded). Returns
-        (positions, dvals): positions index into the fringe's logit segment;
-        dvals are the d* values with unreachable mapped to a sentinel strictly
-        above every finite d* (= worst), per Task 1a. pad_mask None => all live."""
+        """The ORDER-ELIGIBLE slots of a transition's fringe: every slot (beams
+        are live-pool only now — there is no padding). Returns (positions, dvals):
+        positions index into the fringe's logit segment; dvals are the d* values
+        with unreachable mapped to a sentinel strictly above every finite d*
+        (= worst), per Task 1a. The <2-distinct-eligible-d* skip still applies
+        downstream (a short beam with no d* spread carries no order signal)."""
         inst = self.instances[t.inst]
         raw = [inst.distance[s] for s in t.fringe]
-        pad = t.pad_mask if t.pad_mask is not None else (False,) * len(raw)
-        positions = [k for k in range(len(raw)) if not pad[k]]
-        finite = [raw[k] for k in positions if raw[k] < UNREACHABLE_DISTANCE]
+        positions = list(range(len(raw)))
+        finite = [d for d in raw if d < UNREACHABLE_DISTANCE]
         sentinel = (max(finite) + 1.0) if finite else 1.0
-        dvals = [raw[k] if raw[k] < UNREACHABLE_DISTANCE else sentinel
-                 for k in positions]
+        dvals = [d if d < UNREACHABLE_DISTANCE else sentinel for d in raw]
         return positions, dvals
 
     def _pairwise_term(self, sl: torch.Tensor, dl: torch.Tensor):
@@ -455,11 +453,11 @@ class OfflineDQNTrainer:
     def _order_aux_loss(
         self, batch, cur_logits: torch.Tensor, cur_ptr: torch.Tensor
     ) -> torch.Tensor:
-        """P2 order auxiliary: the PAIRWISE term of _rank_sup_loss over ORDER-
-        ELIGIBLE (non-padded) slots, on the SAME logits as the value loss. Padded
-        slots never enter a pair; the <2-distinct skip runs on the eligible set.
-        Accumulates windowed instrumentation (usable vs candidate pairs, skipped
-        fringes) so pad-/tie-dominated batches are visible."""
+        """P2 order auxiliary: the PAIRWISE term of _rank_sup_loss over the
+        ORDER-ELIGIBLE slots, on the SAME logits as the value loss. Beams are
+        live-pool only (no padding); the <2-distinct skip runs on the eligible
+        set. Accumulates windowed instrumentation (usable vs candidate pairs,
+        skipped fringes) so tie-dominated batches are visible."""
         terms: List[torch.Tensor] = []
         for b, t in enumerate(batch):
             lo, hi = int(cur_ptr[b].item()), int(cur_ptr[b + 1].item())

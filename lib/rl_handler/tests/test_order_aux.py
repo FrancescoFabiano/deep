@@ -1,11 +1,10 @@
-"""Unit tests for the P2 order auxiliary + padded-slot exclusion.
+"""Unit tests for the P2 order auxiliary (no-padding beams).
 
 Covers:
-  - pad_mask plumbs intact + slot-aligned through replay (push -> sample);
-  - the order-eligible slot set excludes padded slots, so no pair ever involves a
-    padded slot; a fringe of 2 live + N padded forms only the live-live pair(s);
-  - the <2-distinct skip is evaluated on the ELIGIBLE (live) set, so 2 same-d*
-    live + distinct-d* padded slots skip (would NOT skip on the raw fringe);
+  - the order-eligible slot set is EVERY slot (beams are live-pool only; there is
+    no padding), with unreachable d* mapped to a worst-sorting sentinel;
+  - the <2-distinct-eligible-d* skip still applies (a beam with no d* spread —
+    e.g. all-unreachable — carries no order signal and is skipped);
   - lambda_ord == 0 never enters the order path (byte-identical value-only);
   - lambda_ord > 0 produces an order gradient that lifts a finite-d* slot's logit
     above a larger-d* slot's, and populates the usable-pair / skip instrumentation.
@@ -78,60 +77,51 @@ class _Stub:
         self.device = torch.device("cpu")
 
 
-def _T(fringe, action, pad_mask=None):
+def _T(fringe, action):
     return Transition(inst=0, fringe=tuple(fringe), action=action, reward=-1.0,
-                      next_fringe=(), done=True, regime="dfs", pad_mask=pad_mask)
+                      next_fringe=(), done=True, regime="dfs")
 
 
-def test_pad_mask_roundtrips_replay():
+def test_transition_roundtrips_replay():
     buf = ReplayBuffer(8, seed=0)
-    pm = (False, True, False)
-    buf.push(_T((1, 2, 3), 0, pad_mask=pm))
+    buf.push(_T((1, 2, 3), 0))
     s = buf.sample(1)[0]
-    assert s.pad_mask == pm and len(s.pad_mask) == len(s.fringe)
-    # default None still works (single-source path)
-    buf.push(_T((1, 2), 0, pad_mask=None))
+    assert s.fringe == (1, 2, 3) and s.regime == "dfs"
 
 
-def test_order_eligible_excludes_padded():
+def test_order_eligible_is_every_slot():
     stub = _Stub(make_instance())
-    # fringe ids (2,1,3); mark slot 2 (id 3) padded
-    pos, dv = stub._order_eligible_slots(_T((2, 1, 3), 0, pad_mask=(False, False, True)))
-    assert pos == [0, 1], pos                      # padded position 2 excluded
-    assert dv == [1.0, 2.0], dv                    # d* of ids 2 and 1
+    # fringe ids (2,1,3): d* = 1, 2, INF -> all slots eligible; unreachable id 3
+    # maps to the worst-sorting sentinel = max(finite)+1 = 3.0.
+    pos, dv = stub._order_eligible_slots(_T((2, 1, 3), 0))
+    assert pos == [0, 1, 2], pos
+    assert dv == [1.0, 2.0, 3.0], dv
 
 
-def test_pair_never_involves_padded():
+def test_pairwise_over_all_slots():
     stub = _Stub(make_instance())
-    # 2 live (ids 2,1 -> d* 1,2) + 3 padded (ids 0,3,5)
-    t = _T((2, 1, 0, 3, 5), 0, pad_mask=(False, False, True, True, True))
-    pos, dv = stub._order_eligible_slots(t)
-    assert pos == [0, 1]                            # only the live slots survive
+    # ids (2,1) -> d* 1,2 -> exactly one strictly-ordered pair.
+    pos, dv = stub._order_eligible_slots(_T((2, 1), 0))
     sl = torch.tensor([0.5, -0.5], requires_grad=True)
-    dl = torch.tensor(dv)
-    term, npairs = stub._pairwise_term(sl, dl)
-    assert npairs == 1                              # exactly the one live-live pair
-    assert term is not None
+    term, npairs = stub._pairwise_term(sl, torch.tensor(dv))
+    assert npairs == 1 and term is not None
 
 
-def test_post_mask_skip_on_live_set():
+def test_skip_on_no_dstar_spread():
     stub = _Stub(make_instance())
-    # 2 live with the SAME d* (ids 3 and 5 are both unreachable -> tie) + padded
-    # ids 1,2 (distinct finite d*). Raw fringe has >=2 distinct, but the ELIGIBLE
-    # (live) set is a single tied value -> must skip.
-    t = _T((3, 5, 1, 2), 0, pad_mask=(False, False, True, True))
-    pos, dv = stub._order_eligible_slots(t)
+    # ids (3,5): both unreachable -> both map to the same sentinel -> tie -> skip.
+    pos, dv = stub._order_eligible_slots(_T((3, 5), 0))
     assert pos == [0, 1]
-    assert len(set(dv)) < 2, dv                     # eligible set ties -> skip
-    # sanity: the raw fringe (all live) would NOT skip
-    pos2, dv2 = stub._order_eligible_slots(_T((3, 5, 1, 2), 0))
+    assert len(set(dv)) < 2, dv
+    # a fringe with finite spread does NOT skip
+    _, dv2 = stub._order_eligible_slots(_T((2, 1, 3), 0))
     assert len(set(dv2)) >= 2
 
 
 def test_lambda0_never_enters_order_path():
     tr, _ = make_trainer(lambda_ord=0.0)
     for _ in range(8):
-        tr.replay.push(_T((1, 2, 3), 0, pad_mask=(False, False, True)))
+        tr.replay.push(_T((1, 2, 3), 0))
     out = tr._update()
     assert out["order_loss"] == 0.0
     assert tr._order_seen_fringes == 0             # _order_aux_loss not called
@@ -150,11 +140,11 @@ def test_lambda_pos_order_gradient_and_instrumentation():
     # integration: lambda>0 trains and populates the order instrumentation.
     tr, _ = make_trainer(lambda_ord=0.5)
     for _ in range(8):
-        tr.replay.push(_T((1, 2, 3), 0, pad_mask=(False, False, True)))
+        tr.replay.push(_T((1, 2, 3), 0))
     out = tr._update()
     assert tr._order_seen_fringes > 0
     st = tr.order_stats()
-    # eligible slots per fringe = ids 1,2 (d*=2,1) -> 1 usable pair, 0 skips
+    # eligible slots = ids 1,2,3 (d*=2,1,sentinel) -> usable pairs > 0, 0 skips
     assert st["order_usable_pairs"] > 0
     assert st["order_skipped_fringes"] == 0
     assert "order_loss" in out

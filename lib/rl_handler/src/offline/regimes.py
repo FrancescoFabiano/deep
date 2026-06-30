@@ -320,59 +320,30 @@ class RedrawFringeEnv(FringeEnv):
     (fresh ∪ reservoir) is re-composed every expansion — no children-first
     privilege.
 
-    AUTO-PADDING (self-activating when ``pad_to_F`` is set, i.e. F > the
-    instance's bfs_frontier_max): on instances whose live frontier can never
-    reach F, the regimes would be indistinguishable (below F all five return the
-    whole pool). Padding tops the beam up to F from CLOSED (already-expanded)
-    nodes — drawn by the SAME regime rule, after the live pool — so each regime
-    composes a real F-slot beam. Closed nodes are reachable, non-goal, may be
-    unreachable-to-goal (allowed, floored downstream); GOALS NEVER enter a beam
-    (they terminate at generation, are never expanded, so never closed). Re-
-    expanding a closed pad node yields no fresh children but is charged a normal
-    expansion / -1 reward (node economy), tracked as a pad expansion.
+    NO PADDING (decided): the beam is composed from the LIVE pool only. When the
+    instance's live frontier cannot reach F (F > bfs_frontier_max), the regime
+    returns a SHORT beam (whole live pool) rather than fabricating slots from
+    closed/already-expanded nodes. Below F the regimes are identical (all return
+    the whole pool) — that is an honest non-result on that instance, not papered
+    over. Deployment runs short beams too, so training matches it.
     """
 
     def __init__(self, instance, fringe_size, seed, regime, dfs_rank,
-                 expansion_cap=None, hfs_diag=None, pad_to_F=False):
+                 expansion_cap=None, hfs_diag=None):
         super().__init__(instance, fringe_size=fringe_size, seed=seed,
                          expansion_cap=expansion_cap, refill_mode="random")
         self.regime = regime
         self.dfs_rank = dfs_rank
         self.hfs_diag = hfs_diag
-        self.pad_to_F = bool(pad_to_F)
         self.last_pool_size = 0
-        # closed = already-expanded nodes (pad source); pad accounting (windowed).
-        self.closed: set[int] = set()
-        self.n_pad_slots_filled = 0
-        self.n_pad_expansions = 0
-        # per-slot pad flag, aligned with self.fringe (True = pad-filled slot).
-        self.pad_flags: List[bool] = []
-
-    def reset(self, seed=None) -> "StepResult":
-        # root is expansion 1 => it is closed before the first beam is built.
-        self.closed = {self.instance.root_id}
-        self.pad_flags = []
-        return super().reset(seed)
-
-    def step(self, action: int) -> "StepResult":
-        # Charge pad accounting BEFORE delegating: peek the chosen slot, mark it
-        # closed (or count a re-expansion of an already-closed pad node). On
-        # faithful (non-padding) envs this is inert other than bookkeeping that
-        # never affects dynamics. super().step pops the slot + calls _rebuild_beam.
-        if self.pad_to_F and 0 <= action < len(self.fringe):
-            chosen = self.fringe[action]
-            if chosen in self.closed:
-                self.n_pad_expansions += 1
-            else:
-                self.closed.add(chosen)
-        return super().step(action)
-
-    def reset_pad_counters(self) -> None:
-        self.n_pad_slots_filled = 0
-        self.n_pad_expansions = 0
 
     def _rebuild_beam(self, new_states: List[int]) -> None:
-        # old beam -> reservoir, then recompose the whole F-beam from the live pool.
+        # old beam -> reservoir, then recompose the whole F-beam from the LIVE
+        # pool only, by the regime rule. select_beam residual-fills from the live
+        # pool to F (regime-ordered) when it can, and returns a SHORT beam when
+        # the live pool is smaller than F (the fmax wall). No fabrication: closed
+        # (already-expanded) nodes are never re-seated; deployment runs short
+        # beams too, so training matches it.
         self.reservoir.extend(self.fringe)
         self.fringe = []
         pool = list(new_states) + self.reservoir   # both sides disjoint, unique
@@ -383,33 +354,10 @@ class RedrawFringeEnv(FringeEnv):
         )
         sel = set(beam)
         self.reservoir = [s for s in pool if s not in sel]
-        pad_flags = [False] * len(beam)            # live composition slots
-        if self.pad_to_F and len(beam) < self.fringe_size:
-            # Live frontier < F: top up from reservoir (live, normally empty here)
-            # then CLOSED nodes, selected by the regime rule so regimes still
-            # differ on the padded slots. No goal can be present in either source.
-            need = self.fringe_size - len(beam)
-            inbeam = set(beam)
-            pad_src = [s for s in self.reservoir if s not in inbeam]
-            pad_src += [s for s in self.closed if s not in inbeam]
-            if pad_src:
-                pad = select_beam(self.regime, pad_src, self.instance, need,
-                                  self.rng, self.dfs_rank, None)
-                beam = beam + pad
-                pad_flags += [True] * len(pad)     # appended slots are pad-filled
-                self.n_pad_slots_filled += len(pad)
-                padset = set(pad)
-                self.reservoir = [s for s in self.reservoir if s not in padset]
         self.fringe = beam
-        self.pad_flags = pad_flags
 
     def _info(self, goal_found: bool) -> Dict[str, object]:
         info = super()._info(goal_found)
         info["pool_size"] = self.last_pool_size
         info["regime"] = self.regime
-        info["padded"] = self.pad_to_F
-        # pad_flags aligned with the CURRENT self.fringe (= the StepResult.fringe
-        # captured alongside this info), so the trainer attaches a slot-aligned
-        # pad_mask at push without any timing hazard.
-        info["pad_flags"] = list(self.pad_flags)
         return info
