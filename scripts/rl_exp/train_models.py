@@ -9,11 +9,16 @@ single-seed run — installs the exported ONNX where the eval consumer
 
     <exp_dir>/_models/<domain>/frontier_policy_<F>.onnx
 
-Domain/data convention (same as gnn_exp):
+Domain/data convention:
     <exp_dir>/_models/<domain>/training_data/<instance>/<instance>_depth_*.csv
+    <exp_dir>/_models/<domain>/test_data/<instance>/<instance>_depth_*.csv
 
-Train/val split: instances are sorted; the last one is held out as validation,
-the rest are training (single-instance domains use it as both, with a warning).
+Split: NO auto-split. TRAIN = all of training_data (kept whole); held-out TEST =
+all of test_data (diagnostic only — never selects; selection is TRAIN-based in
+offline_main's regime path). The script never carves a val set out of train and
+never passes --val-csv. Sweep axes (--gamma/--lambda-ord/--target-centering/
+--fringe-sizes) and --use-regimes/--regimes are forwarded verbatim to
+offline_main; run one invocation per arm (single-cell contract).
 
 KWARGS PASS-THROUGH: this script owns orchestration flags (exp dir, --domains,
 --seeds, --fringe-sizes, output root).  Every other offline_main.py flag
@@ -78,15 +83,16 @@ def _extract_flags(forwarded: list[str], names: set[str]) -> list[str]:
 
 def run_sensitive_analysis(
     models_root: Path, domain: str, seeds: list[int],
-    fringe_sizes: list[int], forwarded: list[str], n_val: int,
+    fringe_sizes: list[int], forwarded: list[str],
 ) -> None:
     """Delegate to the d*-signal sensitivity harness for one domain, writing into
-    <models_root>/<domain>/sensitive_analysis/. Uses the first fringe size."""
-    csvs = domain_instance_csvs(models_root, domain)
-    if not csvs:
-        print(f"[WARNING] No instance CSVs for domain '{domain}', skipping.")
+    <models_root>/<domain>/sensitive_analysis/. Uses the first fringe size.
+    train = training_data; val = held-out test_data (NO last-train-as-val split)."""
+    train_csvs = domain_train_csvs(models_root, domain)
+    if not train_csvs:
+        print(f"[WARNING] No training_data CSVs for domain '{domain}', skipping.")
         return
-    train_csvs, val_csvs = split_train_val(csvs, n_val)
+    val_csvs = domain_test_csvs(models_root, domain) or train_csvs
     F = int(fringe_sizes[0])
     print(f"[sensitive-analysis] domain '{domain}' F={F} "
           f"train={[p.parent.name for p in train_csvs]} "
@@ -118,11 +124,12 @@ def find_domains(models_root: Path) -> list[str]:
     return domains
 
 
-def domain_instance_csvs(models_root: Path, domain: str) -> list[Path]:
-    """All per-instance generation tables for a domain, sorted by instance name."""
-    training_data = models_root / domain / "training_data"
+def _instance_csvs(subdir: Path) -> list[Path]:
+    """All per-instance generation tables under a data subdir, sorted by name."""
     csvs: list[Path] = []
-    for inst_dir in sorted(p for p in training_data.iterdir() if p.is_dir()):
+    if not subdir.is_dir():
+        return csvs
+    for inst_dir in sorted(p for p in subdir.iterdir() if p.is_dir()):
         matches = sorted(inst_dir.glob(f"{inst_dir.name}_depth_*.csv"))
         if not matches:
             matches = sorted(inst_dir.glob("*_depth_*.csv"))
@@ -131,26 +138,16 @@ def domain_instance_csvs(models_root: Path, domain: str) -> list[Path]:
     return csvs
 
 
-def split_train_val(
-    csvs: list[Path], n_val: int = 1
-) -> tuple[list[Path], list[Path]]:
-    """Hold out the last ``n_val`` sorted instances as validation; rest train.
-
-    Degenerate guard: if there are not strictly more than ``n_val`` instances,
-    there is no room for a disjoint split, so every instance is used as both
-    train and val (caller warns)."""
-    n_val = max(1, int(n_val))
-    if len(csvs) <= n_val:
-        return csvs, csvs  # caller warns
-    return csvs[:-n_val], csvs[-n_val:]
+def domain_train_csvs(models_root: Path, domain: str) -> list[Path]:
+    """TRAIN instances = everything under <domain>/training_data, kept whole.
+    NO auto-split: the script never carves a val set out of train."""
+    return _instance_csvs(models_root / domain / "training_data")
 
 
-def user_supplied_csvs(forwarded: list[str]) -> bool:
-    return any(
-        tok == "--train-csv" or tok == "--val-csv"
-        or tok.startswith("--train-csv=") or tok.startswith("--val-csv=")
-        for tok in forwarded
-    )
+def domain_test_csvs(models_root: Path, domain: str) -> list[Path]:
+    """Held-out diagnostic TEST instances = everything under <domain>/test_data
+    (never feeds selection; only the per-regime diagnostic plots / final numbers)."""
+    return _instance_csvs(models_root / domain / "test_data")
 
 
 def run_one(cmd: list[str], prefix: str) -> int:
@@ -191,26 +188,24 @@ def train_domain(
     seeds: list[int],
     fringe_sizes: list[int],
     forwarded: list[str],
-    n_val: int = 1,
+    no_goal: bool = False,
 ) -> None:
-    csvs = domain_instance_csvs(models_root, domain)
-    if not csvs:
-        print(f"[WARNING] No instance CSVs for domain '{domain}', skipping.")
+    # NO auto-split: TRAIN = all training_data (kept whole); held-out TEST = all
+    # test_data (diagnostic only). Selection is TRAIN-based in offline_main's
+    # regime path; the script never supplies --val-csv.
+    train_csvs = domain_train_csvs(models_root, domain)
+    test_csvs = domain_test_csvs(models_root, domain)
+    if not train_csvs:
+        print(f"[WARNING] No training_data CSVs for domain '{domain}', skipping.")
         return
-
-    auto_split = not user_supplied_csvs(forwarded)
-    train_csvs, val_csvs = split_train_val(csvs, n_val)
-    if auto_split and len(csvs) <= n_val:
-        print(
-            f"[WARNING] domain '{domain}' has {len(csvs)} instance(s) <= "
-            f"--n-val {n_val}; using all of them as both train and val."
-        )
-    if auto_split:
-        print(
-            f"[split] domain '{domain}' (n_val={n_val}): "
-            f"train={[p.parent.name for p in train_csvs]} "
-            f"val={[p.parent.name for p in val_csvs]}"
-        )
+    print(
+        f"[split] domain '{domain}': "
+        f"train={[p.parent.name for p in train_csvs]} "
+        f"test(diagnostic)={[p.parent.name for p in test_csvs]}"
+    )
+    if not test_csvs:
+        print(f"[INFO] domain '{domain}' has no test_data; running train-only "
+              "(selection is train-based; no held-out diagnostic plots).")
 
     domain_model_dir = models_root / domain
 
@@ -226,10 +221,12 @@ def train_domain(
             str(seed),
             "--dir-save-model",
             str(seed_dir),
+            "--train-csv", *(str(p.resolve()) for p in train_csvs),
         ]
-        if auto_split:
-            cmd += ["--train-csv", *(str(p.resolve()) for p in train_csvs)]
-            cmd += ["--val-csv", *(str(p.resolve()) for p in val_csvs)]
+        if test_csvs:
+            cmd += ["--test-csv", *(str(p.resolve()) for p in test_csvs)]
+        if no_goal:
+            cmd += ["--kind-of-data", "separated"]
         cmd += forwarded
         # --fringe-sizes is a known flag here, so parse_known_args strips it
         # from the forwarded remainder; pass it through deliberately.
@@ -320,11 +317,17 @@ def main() -> None:
         "Each F installs its own frontier_policy_<F>.onnx. Default: 32 64.",
     )
     parser.add_argument(
-        "--n-val",
-        type=int,
-        default=1,
-        help="Hold out the last N sorted instances as validation; the rest "
-        "train (auto-split only). Default: 1 (preserves prior behavior).",
+        "--model",
+        choices=["dqn", "cql"],
+        default="dqn",
+        help="Offline RL algorithm. 'dqn' (default) = the current Double-DQN "
+        "path. 'cql' is not yet wired (separate phase) and exits immediately.",
+    )
+    parser.add_argument(
+        "--no_goal",
+        action="store_true",
+        help="Pass '--kind-of-data separated' to offline_main.py (normal "
+        "training only; ignored for --sensitive-analysis).",
     )
     parser.add_argument(
         "--sensitive-analysis",
@@ -337,6 +340,9 @@ def main() -> None:
     # Allow an explicit `--` separator before the forwarded block.
     if forwarded and forwarded[0] == "--":
         forwarded = forwarded[1:]
+
+    if args.model == "cql":
+        raise SystemExit("--model cql not yet wired (separate phase)")
 
     exp_dir = Path(args.exp_dir)
     models_root = exp_dir / "_models"
@@ -353,8 +359,8 @@ def main() -> None:
         sys.exit(1)
 
     print(
-        f"[INFO] exp_dir={exp_dir} domains={domains} seeds={args.seeds} "
-        f"fringe_sizes={args.fringe_sizes} n_val={args.n_val}"
+        f"[INFO] exp_dir={exp_dir} model={args.model} domains={domains} "
+        f"seeds={args.seeds} fringe_sizes={args.fringe_sizes}"
     )
     if forwarded:
         print(f"[INFO] forwarding to offline_main.py: {' '.join(forwarded)}")
@@ -362,13 +368,12 @@ def main() -> None:
     for domain in domains:
         if args.sensitive_analysis:
             run_sensitive_analysis(
-                models_root, domain, args.seeds, args.fringe_sizes,
-                forwarded, args.n_val,
+                models_root, domain, args.seeds, args.fringe_sizes, forwarded,
             )
         else:
             train_domain(
                 exp_dir, models_root, domain, args.seeds, args.fringe_sizes,
-                forwarded, args.n_val,
+                forwarded, args.no_goal,
             )
 
 

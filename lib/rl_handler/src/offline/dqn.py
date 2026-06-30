@@ -81,6 +81,7 @@ class OfflineDQNTrainer:
         rank_variant: Optional[str] = None,
         lambda_ord: float = 0.0,
         goal_graphs: Optional[Sequence[Optional["StateGraph"]]] = None,
+        select_on_train: bool = False,
     ):
         self.device = torch.device(
             device or ("cuda" if torch.cuda.is_available() else "cpu")
@@ -117,6 +118,11 @@ class OfflineDQNTrainer:
             )
         self.train_ids = list(train_ids)
         self.val_ids = list(val_ids)
+        # Selection set: when select_on_train is set (the regime/study default),
+        # checkpoints are picked on the TRAIN deploy-faithful metric regardless of
+        # whether a val set was supplied — the held-out instances are diagnostic
+        # only. Otherwise selection uses val if present, else falls back to train.
+        self.select_on_train = bool(select_on_train)
         self.fringe_size = int(fringe_size)
         self.gamma = float(gamma)
         # Maximally-bad finite return floor = -1/(1-gamma) (all -1 forever): the
@@ -847,15 +853,15 @@ class OfflineDQNTrainer:
         per_instance: Dict[str, Dict[str, object]] = {}
         val_total = 0.0
         val_occ = OccupancyCounter(self.fringe_size)
-        # SELECTION eval set: the held-out val instances when provided, else fall
-        # back to the TRAIN instances. Train-based selection is WEAKER — it picks
-        # the checkpoint on the FIT set, so it cannot see val/test generalization
-        # and is only correct when no held-out instance exists at all. It is
-        # flagged (selection_on_train) in the summary so no downstream reader
-        # mistakes a fit-set selection for a held-out one. (train is always non-
-        # empty, so eval_ids is never empty.)
-        select_on_train = not self.val_ids
-        eval_ids = self.val_ids if self.val_ids else self.train_ids
+        # SELECTION eval set. Train-based selection (the regime/study default,
+        # self.select_on_train) picks the checkpoint on the TRAIN deploy-faithful
+        # metric regardless of any val set — held-out instances are diagnostic
+        # only (the test per-regime plots are the sole overfitting detector).
+        # Otherwise: use val if supplied, else fall back to train. Train-based
+        # selection is BLIND to generalization, so it is flagged loudly
+        # (selection_on_train) in the summary. (train is always non-empty.)
+        select_on_train = self.select_on_train or not self.val_ids
+        eval_ids = self.train_ids if select_on_train else self.val_ids
         # Average each instance's greedy rollout over K refill seeds so the
         # convergence curve and best_by_expansions selection are robust to
         # reservoir-refill noise (a single seed per checkpoint made the v1 curve

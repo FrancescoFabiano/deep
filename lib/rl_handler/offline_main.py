@@ -31,18 +31,16 @@ DEFAULT_TRAIN = [
     "out/NN/Training/CC_2_2_4__pl_7/CC_2_2_4__pl_7_depth_25.csv",
     "out/NN/Training/CC_3_2_3__pl_6/CC_3_2_3__pl_6_depth_25.csv",
 ]
-DEFAULT_VAL = [
-    "out/NN/Training/CC_3_2_3__pl_7/CC_3_2_3__pl_7_depth_25.csv",
-]
 
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Offline DQN fringe-ranking trainer")
     p.add_argument("--train-csv", nargs="+", default=DEFAULT_TRAIN)
-    # nargs="*": `--val-csv` with no values -> empty -> model selection falls
-    # back to TRAIN performance (see OfflineDQNTrainer.evaluate; weaker, fit-set
-    # selection). Omitting the flag entirely still uses DEFAULT_VAL.
-    p.add_argument("--val-csv", nargs="*", default=DEFAULT_VAL)
+    # Default EMPTY: with no val, selection falls back to TRAIN (and is forced to
+    # train in the regime/study path regardless). nargs="*" so `--val-csv` with
+    # no values is also empty. A val set is no longer the study's selection
+    # signal — held-out instances go to --test-csv (diagnostic only).
+    p.add_argument("--val-csv", nargs="*", default=[])
     p.add_argument(
         "--test-csv",
         nargs="+",
@@ -384,9 +382,15 @@ def main() -> None:
     train_ids = list(range(n_train))
     val_ids = list(range(n_train, n_train + n_val))
     test_ids = list(range(n_train + n_val, len(instances)))  # diagnostic only
+    sel = "TRAIN (deploy-faithful; held-out is diagnostic-only)" if args.use_regimes \
+        else ("val" if val_ids else "TRAIN (no val supplied)")
     print(f"[split] train={[instances[i].name for i in train_ids]} "
           f"val={[instances[i].name for i in val_ids]} "
-          f"diag_test={[instances[i].name for i in test_ids]}")
+          f"diag_test={[instances[i].name for i in test_ids]} | selection={sel}")
+    if args.use_regimes and val_ids:
+        print("[warn] --val-csv given with --use-regimes; val is NOT the selection "
+              "set here (selection is train-based) and is not in the diagnostic "
+              "surface — it is parsed but unused. Prefer --test-csv for held-out.")
     if test_ids and not args.use_regimes:
         print("[warn] --test-csv given without --use-regimes; the diagnostic "
               "per-regime surface is regime-only, so test instances are ignored.")
@@ -434,6 +438,10 @@ def main() -> None:
             eval_refill_seeds=args.eval_refill_seeds,
             lambda_ord=lambda_ord,
             goal_graphs=goal_graphs if use_goal_separate_input else None,
+            # Regime/study path: selection is TRAIN-based regardless of any val
+            # set (held-out instances are diagnostic only). Plain path keeps the
+            # prior val-based selection (falls back to train only if no val).
+            select_on_train=args.use_regimes,
         )
         if args.use_regimes:
             from src.offline.regime_trainer import RegimeDQNTrainer  # noqa: E402

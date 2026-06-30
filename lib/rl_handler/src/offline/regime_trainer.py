@@ -101,6 +101,20 @@ class RegimeStats:
         }
 
 
+def _iqm(xs: Sequence[float]) -> Optional[float]:
+    """Interquartile mean: mean of the values within [p25, p75]. None if empty;
+    plain mean when too few (<4) to trim a quartile from each tail."""
+    ys = sorted(float(x) for x in xs)
+    n = len(ys)
+    if n == 0:
+        return None
+    if n < 4:
+        return round(sum(ys) / n, 4)
+    lo = n // 4
+    mid = ys[lo:n - lo] or ys
+    return round(sum(mid) / len(mid), 4)
+
+
 @dataclass
 class _Env:
     inst: int
@@ -368,25 +382,41 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
         # the Q-values, per environment".
         rf_scores: List[float] = []
         rf_neg_dstar: List[float] = []
+        # Top-1 regret per beam (pooled OVER BEAMS), same eligibility as the
+        # order loss (every live slot; unreachable -> worst sentinel).
+        regret_beams: List[float] = []
         while not res.done:
             fringe = res.fringe
-            c, u, skipped = self._order_pair_counts(inst_idx, fringe)
-            cand_pairs += c
-            usable_pairs += u
+            # d* per slot for the order-eligible set (mirrors dqn._order_eligible
+            # _slots / the order loss exactly, so regret and the loss agree on
+            # which slots count).
+            dvals = self._eligible_dvals(inst_idx, fringe)
+            m = len(dvals)
+            cand_pairs += m * (m - 1) // 2
             seen_fr += 1
-            skip_fr += skipped
-            # One forward serves BOTH the rank-fidelity slot scores and the
-            # greedy action (argmax) — no extra forward; behaviour is identical
-            # to greedy_action.
+            distinct = len(set(dvals)) >= 2
+            if not distinct:
+                skip_fr += 1                       # <2 distinct -> no order signal
+            else:
+                usable_pairs += sum(
+                    1 for a in range(m) for b in range(m) if dvals[a] < dvals[b]
+                )
+            # One forward serves the rank-fidelity scores, the top-1 regret, AND
+            # the greedy action (argmax) — no extra forward; identical behaviour.
             logits, _ = self._forward(self.model, [(inst_idx, fringe)])
             slot_scores = logits.detach().cpu()
+            amax = int(torch.argmax(slot_scores).item())
             for k, s in enumerate(fringe):
                 d = inst.distance[s]
                 if d >= UNREACHABLE_DISTANCE:
                     continue
                 rf_scores.append(float(slot_scores[k]))
                 rf_neg_dstar.append(-float(d))
-            res = env.step(int(torch.argmax(slot_scores).item()))
+            # Regret = d*(model's argmax slot) - min eligible d*. 0 = oracle.
+            # Skip beams with <2 distinct eligible d* (no choice to get wrong).
+            if distinct:
+                regret_beams.append(float(dvals[amax] - min(dvals)))
+            res = env.step(amax)
             ret += res.reward
         expansions = int(res.info["expansions"])
         goal = bool(res.info["goal_found"])
@@ -405,26 +435,22 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
             "rank_spearman": rank_spearman,
             "order_usable_pair_frac": round(usable_pairs / max(1, cand_pairs), 4),
             "order_skip_frac": round(skip_fr / max(1, seen_fr), 4),
+            # Raw per-beam regrets (for the over-beams IQM±IQR-std plot) + a scalar
+            # IQM for the CSV. None when no beam had a choice.
+            "top1_regret_beams": regret_beams,
+            "top1_regret_iqm": _iqm(regret_beams),
         }
 
-    def _order_pair_counts(self, inst_idx: int, fringe: Sequence[int]) -> tuple:
-        """(candidate_pairs, usable_pairs, skipped) over the ORDER-ELIGIBLE slots
-        of one fringe, mirroring dqn._order_eligible_slots: unreachable d* maps to
-        a worst-sorting sentinel; <2 distinct eligible values -> skipped (no
-        ordering signal). Usable pairs = strictly-ordered (d_i<d_j) pairs."""
-        inst = self.instances[inst_idx]
-        raw = [inst.distance[s] for s in fringe]
-        positions = list(range(len(raw)))
-        finite = [raw[k] for k in positions if raw[k] < UNREACHABLE_DISTANCE]
+    def _eligible_dvals(self, inst_idx: int, fringe: Sequence[int]) -> List[float]:
+        """d* per slot over the ORDER-ELIGIBLE set, mirroring dqn._order_eligible
+        _slots exactly: beams are live-pool only so every slot is eligible, and
+        unreachable d* maps to a sentinel strictly above every finite d* (worst).
+        Shared by the order-pair instrumentation and the top-1 regret so they can
+        never disagree on which slots count."""
+        raw = [self.instances[inst_idx].distance[s] for s in fringe]
+        finite = [d for d in raw if d < UNREACHABLE_DISTANCE]
         sentinel = (max(finite) + 1.0) if finite else 1.0
-        dvals = [raw[k] if raw[k] < UNREACHABLE_DISTANCE else sentinel
-                 for k in positions]
-        m = len(positions)
-        cand = m * (m - 1) // 2
-        if len(set(dvals)) < 2:
-            return cand, 0, 1
-        usable = sum(1 for a in range(m) for b in range(m) if dvals[a] < dvals[b])
-        return cand, usable, 0
+        return [d if d < UNREACHABLE_DISTANCE else sentinel for d in raw]
 
     def _diagnostic_surface(self, frame: int) -> Dict[str, List[Dict[str, object]]]:
         """At one checkpoint, run every (regime × problem) diagnostic rollout and
@@ -447,6 +473,10 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
                     "node_economy": ne,
                     "node_economy_ratio": (round(ne / opt, 4) if opt else None),
                     "rank_spearman": roll["rank_spearman"],
+                    "top1_regret_iqm": roll["top1_regret_iqm"],
+                    # raw per-beam regrets feed the over-beams IQM±IQR-std plot;
+                    # excluded from the scalar CSV (see _DIAG_COLS).
+                    "top1_regret_beams": roll["top1_regret_beams"],
                     "goal_found": roll["goal_found"],
                     "goal_rate": roll["goal_rate"],
                     "ret": roll["ret"],
@@ -460,7 +490,7 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
     _DIAG_COLS = (
         "frame", "split", "regime", "problem", "fmax",
         "optimal_expansions", "node_economy", "node_economy_ratio",
-        "rank_spearman", "goal_found",
+        "rank_spearman", "top1_regret_iqm", "goal_found",
         "goal_rate", "ret", "ret_ratio", "capped", "order_usable_pair_frac",
         "order_skip_frac",
     )
