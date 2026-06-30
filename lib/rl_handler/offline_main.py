@@ -564,11 +564,15 @@ def main() -> None:
             print(f"[plots] WARN failed to render per-run plots: {exc}")
 
         # Release this fringe's GPU memory before the next fringe builds its own
-        # model/trainer. Without this the allocator cache from F=32 persists into
-        # F=64 (a 2x-wider beam needs more), OOMing on a small GPU even though
-        # each fringe alone fits. The flat cache is host-resident (encoder), so
-        # this frees the model/target/optimizer/activation pools.
-        del trainer, model
+        # model/trainer. Without this F=32's model/target/optimizer/activation
+        # pools persist into F=64 (a 2x-wider beam needs more) and OOM the GPU
+        # even though each fringe alone fits. ALL references must drop: the local
+        # `model`, `trainer` (holds model+target), AND `common` (the kwargs dict
+        # still references `model`). gc.collect() breaks any model<->trainer
+        # cycle so the refcount actually hits zero before empty_cache().
+        del trainer, model, common
+        import gc
+        gc.collect()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
