@@ -16,7 +16,7 @@ class Transition:
     next_fringe: Tuple[int, ...]  # empty when done
     done: bool
     # Optional provenance tag = the fringe-composition regime that produced this
-    # transition (P1: dfs/bfs/hfs_m0/hfs_m1/random). None for the single-source
+    # transition (P1: dfs/bfs/hfs/random). None for the single-source
     # pipeline, so existing constructions are unchanged. Never read by training
     # (_update is regime-agnostic) — it exists only for per-regime audits.
     regime: Optional[str] = None

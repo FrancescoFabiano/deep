@@ -129,13 +129,13 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         default=False,
         help="Train from FIVE parallel full-beam-redraw composition regimes "
-        "(dfs/bfs/hfs_m0/hfs_m1/random) into one shared replay+model, instead of "
+        "(dfs/bfs/hfs/random) into one shared replay+model, instead of "
         "the single-source pipeline. Off by default (existing path unchanged).",
     )
     p.add_argument(
         "--regimes",
         nargs="+",
-        default=["dfs", "bfs", "hfs_m0", "hfs_m1", "random"],
+        default=["dfs", "bfs", "hfs", "random"],
         help="Which composition regimes to run (subset of the five). "
         "--mixture-weights, if given, must align with this order.",
     )

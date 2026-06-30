@@ -72,8 +72,8 @@ def _plot_metric_two_panel(
     diag_rows: Dict[str, List[Dict[str, object]]], out_path: Path,
     metric_key: str, ylabel: str, suptitle: str, fringe: Optional[int],
 ) -> bool:
-    """One figure, TWO panels (train | eval=test), FIVE regime lines (dfs/bfs/
-    hfs_m0/hfs_m1 kept SEPARATE/random) = per-regime aggregate of `metric_key`
+    """One figure, TWO panels (train | eval=test), FOUR regime lines (dfs/bfs/
+    hfs/random) = per-regime aggregate of `metric_key`
     (mean over problems, None dropped) vs frame. structural_nonresult groups
     excluded. Returns True if any line was drawn."""
     fig, axes = plt.subplots(1, 2, figsize=(13, 4.5), dpi=200)

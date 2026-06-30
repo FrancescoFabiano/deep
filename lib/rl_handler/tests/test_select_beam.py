@@ -1,10 +1,10 @@
 """Unit tests for src/offline/regimes.select_beam (P1 Task 1).
 
-Guarantees the beam-size invariant across all five regimes in all three pool
+Guarantees the beam-size invariant across all four regimes in all three pool
 regimes (|P| < F, |P| == F, |P| > F):
   - returns EXACTLY min(F, |P|) ids, unique, all drawn from the pool;
   - when |P| <= F every regime returns the WHOLE pool (no selection) — this is
-    the hfs_m1 small-pool regression guard;
+    the hfs small-pool regression guard;
   - when |P| > F the regime rule is honored (DFS preorder front-window, BFS
     (depth,id) front-window, HFS exact count, random = uniform F-subset).
 
@@ -77,7 +77,7 @@ def test_all_regimes_all_pool_regimes():
 
 
 def test_subF_returns_whole_pool_for_every_regime():
-    """|P| <= F: every regime (incl. hfs_m1) returns the WHOLE pool."""
+    """|P| <= F: every regime (incl. hfs) returns the WHOLE pool."""
     for F in (8, 32, 64):
         for n in (1, 2, F // 2, F - 1, F):
             inst, pool, rank = _make(n, seed=100 + n + F)
@@ -89,13 +89,13 @@ def test_subF_returns_whole_pool_for_every_regime():
                 assert len(beam) == n
 
 
-def test_hfs_m1_subF_equals_whole_pool_explicit():
-    """Targeted regression: hfs_m1 == whole pool when |P| <= F (the reported bug)."""
+def test_hfs_subF_equals_whole_pool_explicit():
+    """Targeted regression: hfs == whole pool when |P| <= F (the reported bug)."""
     F = 32
     for n in (1, 5, 17, 31, 32):
         inst, pool, rank = _make(n, seed=7 * n)
-        beam = select_beam("hfs_m1", pool, inst, F, random.Random(0), rank, HFSDiag())
-        assert sorted(beam) == sorted(pool), f"hfs_m1 short/altered pool at |P|={n}"
+        beam = select_beam("hfs", pool, inst, F, random.Random(0), rank, HFSDiag())
+        assert sorted(beam) == sorted(pool), f"hfs short/altered pool at |P|={n}"
 
 
 def test_dfs_rule_front_window():
@@ -137,9 +137,8 @@ def test_hfs_emits_exactly_F_with_heavy_unreachable():
     inst = _FakeInstance(distance, depth)
     pool = list(range(n))
     rank = list(range(n))
-    for regime in ("hfs_m0", "hfs_m1"):
-        beam = select_beam(regime, pool, inst, F, random.Random(0), rank, HFSDiag())
-        _check_basic(beam, pool, F)
+    beam = select_beam("hfs", pool, inst, F, random.Random(0), rank, HFSDiag())
+    _check_basic(beam, pool, F)
 
 
 def test_hfs_diag_records_when_pool_binds():
@@ -147,7 +146,7 @@ def test_hfs_diag_records_when_pool_binds():
     F = 32
     inst, pool, rank = _make(4 * F, seed=23)
     diag = HFSDiag()
-    select_beam("hfs_m0", pool, inst, F, random.Random(0), rank, diag)
+    select_beam("hfs", pool, inst, F, random.Random(0), rank, diag)
     assert diag.n_steps == 1 and diag.present_total > 0
 
 

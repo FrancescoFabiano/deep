@@ -26,7 +26,7 @@ from typing import Dict, List, Optional, Sequence
 
 from src.offline.tree_env import UNREACHABLE_DISTANCE, FringeEnv, TreeInstance
 
-REGIMES = ("dfs", "bfs", "hfs_m0", "hfs_m1", "random")
+REGIMES = ("dfs", "bfs", "hfs", "random")
 _BIG = 1 << 60
 
 
@@ -198,9 +198,9 @@ def select_beam(
     min(F, |pool|) unique state ids (the pool is unique by construction).
 
     Post-condition guard: when |P| <= F every regime returns the whole pool (no
-    selection — DFS/BFS/HFS_m0/HFS_m1/random are identical there); when |P| > F
+    selection — DFS/BFS/HFS/random are identical there); when |P| > F
     the regime emits F slots. The trailing top-up is a defensive net so a future
-    regime-rule edit can never silently emit a short beam (the hfs_m1 small-pool
+    regime-rule edit can never silently emit a short beam (the hfs small-pool
     regression class) — it is a no-op on every current path (test_select_beam)."""
     P = list(pool)
     target = min(F, len(P))
@@ -212,7 +212,7 @@ def select_beam(
         beam = sorted(P, key=lambda s: (inst.depth[s], s))[:F]
     elif regime == "random":
         beam = rng.sample(P, F)
-    elif regime in ("hfs_m0", "hfs_m1"):
+    elif regime == "hfs":
         beam = _hfs_select(regime, P, inst, F, rng, hfs_diag)
     else:
         raise ValueError(f"unknown regime {regime!r}; expected one of {REGIMES}")
@@ -229,16 +229,17 @@ def select_beam(
 
 
 def _hfs_select(regime, P, inst, F, rng, diag) -> List[int]:
-    """Histogram-matched beam over exact d* buckets.
+    """Histogram-matched beam over exact d* buckets (floored / tail-covering).
 
-    m0: slots_b = round(p_b*F); starved buckets (round->0) get nothing.
-    m1: min-1-slot floor on every non-empty bucket (prioritise the F nearest-goal
-        buckets when #buckets > F); remaining slots proportional to p_b.
-    Both: clamp by availability, reconcile to F (trim largest-mass buckets m1 /
-    largest-slot buckets m0), sample without replacement, then residual-fill to F
-    from the remaining pool (ascending-d* finite first, then anything). Single
-    draw per beam, so 'nearest-bucket borrow on depletion' reduces to the
-    residual fill (no cross-fringe depletion within one beam)."""
+    hfs: min-1-slot floor on every non-empty bucket (prioritise the F nearest-goal
+        buckets when #buckets > F); remaining slots proportional to p_b. This
+        ASSERTS near-goal tail coverage over strict histogram fidelity — a starved
+        rare bucket (which a round->0 histogram rule would drop) keeps a slot.
+    Then: clamp by availability, reconcile to F (trim largest-mass buckets, never
+    below the floor), sample without replacement, then residual-fill to F from the
+    remaining pool (ascending-d* finite first, then anything). Single draw per
+    beam, so 'nearest-bucket borrow on depletion' reduces to the residual fill
+    (no cross-fringe depletion within one beam)."""
     finite = [s for s in P if 1.0 <= inst.distance[s] < UNREACHABLE_DISTANCE]
     if not finite:
         return rng.sample(P, min(F, len(P)))
@@ -249,16 +250,13 @@ def _hfs_select(regime, P, inst, F, rng, diag) -> List[int]:
     n = len(finite)
     p = {b: len(buckets[b]) / n for b in bkeys}
 
-    if regime == "hfs_m0":
-        slots = {b: _round_hu(p[b] * F) for b in bkeys}
-    else:  # hfs_m1
-        slots = {b: 0 for b in bkeys}
-        if len(bkeys) > F:
-            for b in sorted(bkeys)[:F]:           # F nearest-goal buckets get the floor
-                slots[b] = 1
-        else:
-            for b in bkeys:
-                slots[b] = max(1, _round_hu(p[b] * F))
+    slots = {b: 0 for b in bkeys}
+    if len(bkeys) > F:
+        for b in sorted(bkeys)[:F]:               # F nearest-goal buckets get the floor
+            slots[b] = 1
+    else:
+        for b in bkeys:
+            slots[b] = max(1, _round_hu(p[b] * F))
 
     for b in bkeys:                               # clamp by availability
         slots[b] = min(slots[b], len(buckets[b]))
@@ -266,12 +264,8 @@ def _hfs_select(regime, P, inst, F, rng, diag) -> List[int]:
     # reconcile to exactly F (finite pool permitting)
     total = sum(slots.values())
     if total > F:
-        trim_order = (
-            sorted(bkeys, key=lambda b: (-len(buckets[b]), b))   # m1: trim largest mass
-            if regime == "hfs_m1"
-            else sorted(bkeys, key=lambda b: (-slots[b], b))     # m0: trim largest slot
-        )
-        floor_b = 1 if (regime == "hfs_m1" and len(bkeys) <= F) else 0
+        trim_order = sorted(bkeys, key=lambda b: (-len(buckets[b]), b))  # trim largest mass
+        floor_b = 1 if len(bkeys) <= F else 0
         i = 0
         guard = 0
         while total > F and guard < 100000:

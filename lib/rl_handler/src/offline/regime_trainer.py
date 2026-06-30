@@ -221,7 +221,7 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
                 bfs_excluded.append(inst.name)
             for r in avail:
                 diag = None
-                if r in ("hfs_m0", "hfs_m1"):
+                if r == "hfs":
                     diag = self.hfs_diags.setdefault(r, HFSDiag())
                 env = RedrawFringeEnv(
                     inst, fringe_size=F, seed=self.seed + 1000 * i + hash(r) % 997,
@@ -272,7 +272,7 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
     # ---- windowed instrumentation ----
     def _reset_regime_window(self) -> None:
         self.regime_stats = {r: RegimeStats() for r in self.regimes}
-        for r in ("hfs_m0", "hfs_m1"):
+        for r in ("hfs",):
             if r in self.hfs_diags:
                 new = HFSDiag()
                 self.hfs_diags[r] = new
@@ -341,7 +341,7 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
                 rank = dfs_preorder_rank(inst)
                 envs: Dict[str, RedrawFringeEnv] = {}
                 for ri, r in enumerate(self.regimes):
-                    diag = HFSDiag() if r in ("hfs_m0", "hfs_m1") else None
+                    diag = HFSDiag() if r == "hfs" else None
                     # fixed per (problem, regime) seed -> the curve over
                     # checkpoints reflects the MODEL changing, not env noise.
                     dseed = self.seed + 70_000 + 131 * i + 7 * ri
@@ -772,7 +772,7 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
                 f"{s['mean_ep_len']:>7.1f}{s['mean_ep_return']:>8.1f}{s['goal_rate']:>6.2f}"
             )
         if instr["hfs"]:
-            pbar.write("  HFS tail (m0 vs m1): "
+            pbar.write("  HFS tail: "
                        + " | ".join(
                            f"{r}: stv_true={d['stv_true']} stv_real={d['stv_real']} "
                            f"unsmp_mass={d['unsampled_mass']}"
