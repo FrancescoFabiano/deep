@@ -335,6 +335,37 @@ Doc-only, committed before any `collected_*.csv` exists.
   40k frames for the real study (the shakedown is 10k); train-based selection;
   honest-short beams; the three per-regime diagnostics.
 
+### AMENDMENT 6 — CQL conservative-Q term + alpha as a sweep axis (2026-07-01, PRE-results)
+Doc-only, committed before any `collected_*.csv` exists.
+
+- **CHANGE:** added **CQL** (Conservative Q-Learning) as a loss-term ADD on the
+  proven DQN base, behind `--model cql`:
+  `L_cql = L_dqn + alpha * ( logsumexp_{eligible slots}(Q_slot) - Q(taken slot) )`
+  per transition, averaged over the batch. The logsumexp is over the **same
+  order-eligible slots** the order loss and the top-1-regret diagnostic use
+  (shared `_order_eligible_slots`), so all three agree on which slots count.
+  `--model {dqn,cql}` + `--cql-alpha`; **alpha=0 is byte-identical to DQN**
+  (hard-guarded skip, verified bit-for-bit on CPU). Model graph and ONNX export
+  are **unchanged** — CQL is a loss term only.
+- **WHY:** CQL is the **overfitting mitigation**. Train-based selection (Amendment
+  4) is blind to the train-good/test-degrading gap; conservatism directly fights
+  it by penalising over-confident Q on non-dataset (non-taken) actions, pulling
+  the policy toward what the data actually supports. It is the mechanism-level
+  answer to the deferred internal-slice early-stop.
+- **alpha becomes a new sweep axis:** the study grid is now **a→b→c × alpha**
+  (alpha ∈ {0, 0.5, 1.0, ...}); alpha=0 via `--model cql` reproduces DQN exactly,
+  so the DQN arms sit inside the CQL sweep as the alpha=0 slice.
+- **HONEST CAVEAT (pre-registered):** on the current **1-binding-train-instance**
+  pool, CQL vs DQN will **NOT separate cleanly** — conservatism needs enough
+  in-distribution data to be conservative *about*, and one binding train instance
+  does not supply the coverage. This is the right mechanism, implemented and
+  wired now (equivalence + activity proven); it becomes **adjudicable only when
+  the binding pool grows** (more bushy-CC generation). Do not read a null CQL-vs-
+  DQN result on this pool as "CQL doesn't help."
+- **Unchanged (reaffirmed):** batch-64 (single value across F and arms); 4 regimes
+  {dfs,bfs,hfs,random}; the a→b→c falsifiers; 40k frames for the real study;
+  train-based selection; honest-short beams; the three per-regime diagnostics.
+
 ### Why this run exists (the prior failure)
 The earlier CC run was **structurally inert on the train side**: auto-split
 (`train_models.py`) held out the only training-side binder (`CC_2_3_4__pl_7`,
