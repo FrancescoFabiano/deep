@@ -308,6 +308,33 @@ Committed (code + this doc, separate commits) while no `collected_*.csv` exists.
   (`--model dqn`, train=training_data, held-out test=test_data, no val,
   one invocation per arm) — no hand-built driver, no silent-broken-split trap.
 
+### AMENDMENT 5 — batch size pinned to 64 (dynamics change; 2026-07-01, PRE-results)
+Doc-only, committed before any `collected_*.csv` exists.
+
+- **CHANGE:** the study runs at **`--batch-size 64`**, a **single value across all F
+  (32 and 64) and all a→b→c arms** — passed via the study command
+  (`train_models.py ... --batch-size 64`), which forwards it to `offline_main`.
+  The library default in `offline_main.py` stays **512** (untouched; other paths
+  use it); only the study command pins 64.
+- **WHY:** the 8 GiB dev GPU cannot hold the batch-512 separated-mode forward
+  (two GNNs — state + goal encoder — × 3 GINE layers). Verified capacity ladder
+  on a clean GPU: F=32 completes at batch-128; **F=64 OOMs at batch-128 but
+  completes at batch-64** (its 2×-wider beam doubles the forward). 64 is the
+  largest single value that fits **both** fringes.
+- **This is a DYNAMICS change, not just a resource knob.** Batch 64 is an **8×
+  reduction from the 512 the arms were originally conceived at** — it raises
+  gradient variance and changes the effective step size. It is held **CONSTANT
+  across the F axis and across arms**, so within-study comparisons (a→b→c, F=32
+  vs F=64) are **not** confounded by batch. But the study's absolute dynamics
+  differ from anything conceived at 512: **do not compare these numbers to earlier
+  512-batch results** without accounting for it.
+- **Recorded memory fixes** (all necessary, none changing the objective): flat
+  cache is host-resident; GPU is freed between fringe sizes (`del`+`gc.collect`+
+  `empty_cache`); `PYTORCH_CUDA_ALLOC_CONF=expandable_segments` is defaulted on.
+- **Unchanged (reaffirmed):** 4 regimes {dfs,bfs,hfs,random}; a→b→c falsifiers;
+  40k frames for the real study (the shakedown is 10k); train-based selection;
+  honest-short beams; the three per-regime diagnostics.
+
 ### Why this run exists (the prior failure)
 The earlier CC run was **structurally inert on the train side**: auto-split
 (`train_models.py`) held out the only training-side binder (`CC_2_3_4__pl_7`,
