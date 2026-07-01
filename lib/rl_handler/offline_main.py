@@ -269,6 +269,22 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--device", type=str, default=None)
     p.add_argument("--export-onnx", action="store_true", default=True)
     p.add_argument("--no-export-onnx", dest="export_onnx", action="store_false")
+    # ---- CQL (conservative-Q loss term; contract-free, model graph unchanged) ----
+    p.add_argument(
+        "--model",
+        choices=["dqn", "cql"],
+        default="dqn",
+        help="Offline RL loss. 'dqn' (default) = Double-DQN. 'cql' ADDS the "
+        "conservative-Q penalty (--cql-alpha) on top of the same DQN loss.",
+    )
+    p.add_argument(
+        "--cql-alpha",
+        type=float,
+        default=None,
+        help="CQL conservative weight: L = L_dqn + alpha*(logsumexp_elig(Q) - "
+        "Q_taken). Sweep axis. With --model cql and unset -> 1.0; alpha=0 is "
+        "byte-identical to DQN. Ignored (forced 0) under --model dqn.",
+    )
     return p.parse_args()
 
 
@@ -303,6 +319,15 @@ def _build_model(
 
 def main() -> None:
     args = parse_args()
+
+    # Resolve CQL: 'dqn' forces alpha=0 (byte-identical to DQN); 'cql' uses
+    # --cql-alpha, defaulting to 1.0 when the flag is unset. alpha=0 under 'cql'
+    # is still exactly DQN (the equivalence test).
+    if args.model == "cql":
+        cql_alpha = 1.0 if args.cql_alpha is None else float(args.cql_alpha)
+    else:
+        cql_alpha = 0.0
+    print(f"[model] {args.model} (cql_alpha={cql_alpha})")
 
     # Resolve the separate-goal switch: explicit flag wins, else it tracks
     # kind_of_data (separated => on). Guard the contradictory combo early.
@@ -476,6 +501,7 @@ def main() -> None:
             # on the TRAIN deploy-faithful metric, held-out instances are
             # diagnostic only. There is no val-based selection path anymore.
             select_on_train=True,
+            cql_alpha=cql_alpha,
         )
         if args.use_regimes:
             from src.offline.regime_trainer import RegimeDQNTrainer  # noqa: E402

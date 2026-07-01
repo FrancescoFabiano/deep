@@ -82,6 +82,7 @@ class OfflineDQNTrainer:
         lambda_ord: float = 0.0,
         goal_graphs: Optional[Sequence[Optional["StateGraph"]]] = None,
         select_on_train: bool = False,
+        cql_alpha: float = 0.0,
     ):
         self.device = torch.device(
             device or ("cuda" if torch.cuda.is_available() else "cpu")
@@ -136,6 +137,10 @@ class OfflineDQNTrainer:
         # the order-eligible slots) on the SAME logits. 0 => the order term is
         # never even computed (byte-identical to the value-only path).
         self.lambda_ord = float(lambda_ord)
+        # CQL conservative-Q weight: L = L_dqn + cql_alpha * (logsumexp_elig(Q) -
+        # Q_taken). 0 => the term is never computed (byte-identical to DQN), same
+        # guard pattern as lambda_ord.
+        self.cql_alpha = float(cql_alpha)
         # Windowed order-aux instrumentation (reset by reset_order_stats): pairs
         # actually formed vs candidate pairs, and fringes skipped by the
         # post-mask <2-distinct guard, all over order-eligible slots only.
@@ -293,6 +298,7 @@ class OfflineDQNTrainer:
 
         aux_loss = 0.0
         order_loss = 0.0
+        cql_loss = 0.0
         targets = None  # set by the value-based branches; None for rank-sup
         if self.signal_mode == "rank-sup":
             # SUPERVISED, NO BOOTSTRAP (beside exact-return). The loss is purely
@@ -364,6 +370,14 @@ class OfflineDQNTrainer:
                 order_loss = self._order_aux_loss(batch, cur_logits, cur_ptr)
                 loss = loss + self.lambda_ord * order_loss
 
+        # CQL conservative-Q penalty on the SAME logits, added to whatever loss
+        # the mode produced. Computed (and back-propagated) ONLY when cql_alpha>0,
+        # so cql_alpha==0 is byte-identical to the DQN path (same guard as the
+        # order aux). Never touches the target / Double-DQN action selection.
+        if self.cql_alpha > 0.0:
+            cql_loss = self._cql_conservative_loss(batch, cur_logits, cur_ptr, q_sa)
+            loss = loss + self.cql_alpha * cql_loss
+
         self.optimizer.zero_grad()
         loss.backward()
         if self.max_grad_norm > 0:
@@ -388,6 +402,9 @@ class OfflineDQNTrainer:
             "aux_loss": float(aux_loss) if self.signal_mode == "aux" else 0.0,
             "order_loss": (
                 float(order_loss.detach()) if torch.is_tensor(order_loss) else 0.0
+            ),
+            "cql_loss": (
+                float(cql_loss.detach()) if torch.is_tensor(cql_loss) else 0.0
             ),
         }
 
@@ -482,6 +499,33 @@ class OfflineDQNTrainer:
             self._order_usable_pairs += npairs
             if term is not None:
                 terms.append(term)
+        if not terms:
+            return cur_logits.sum() * 0.0
+        return torch.stack(terms).mean()
+
+    def _cql_conservative_loss(
+        self, batch, cur_logits: torch.Tensor, cur_ptr: torch.Tensor,
+        q_sa: torch.Tensor,
+    ) -> torch.Tensor:
+        """CQL conservative-Q penalty on the SAME logits as the value loss:
+        mean over the batch of  logsumexp_{eligible slots}(Q_slot) - Q(taken slot).
+        Pushes Q DOWN on the fringe's non-dataset slots (the logsumexp) and UP on
+        the taken slot (subtracting q_sa), so the model stays conservative about
+        actions the data never took. Eligibility = the SAME order-eligible slots
+        the order loss / top-1 regret use (_order_eligible_slots), so the three
+        never disagree on which slots count. torch.logsumexp for stability.
+        Skips a transition with no eligible slots or whose taken slot is not
+        eligible (mirrors the order-loss skip)."""
+        terms: List[torch.Tensor] = []
+        for b, t in enumerate(batch):
+            lo, hi = int(cur_ptr[b].item()), int(cur_ptr[b + 1].item())
+            seg = cur_logits[lo:hi]
+            positions, _ = self._order_eligible_slots(t)
+            if len(positions) < 1 or t.action not in positions:
+                continue
+            idx = torch.tensor(positions, dtype=torch.long, device=self.device)
+            lse = torch.logsumexp(seg[idx], dim=0)     # soft-max over eligible Q
+            terms.append(lse - q_sa[b])                # - Q(dataset action)
         if not terms:
             return cur_logits.sum() * 0.0
         return torch.stack(terms).mean()
@@ -640,7 +684,8 @@ class OfflineDQNTrainer:
 
         history: Dict[str, list] = {
             "frame": [], "td_loss": [], "q_mean": [], "target_mean": [],
-            "aux_loss": [], "order_loss": [], "epsilon": [], "episode_return": [],
+            "aux_loss": [], "order_loss": [], "cql_loss": [], "epsilon": [],
+            "episode_return": [],
             "episode_frame": [], "episode_expansions": [], "episode_goal": [],
             "episode_inst": [],
         }

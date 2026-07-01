@@ -538,7 +538,8 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
             {int(math.ceil((k + 1) * frames / n_checkpoints)) for k in range(n_checkpoints)}
         )
         history: Dict[str, list] = {
-            "frame": [], "td_loss": [], "q_mean": [], "target_mean": [], "epsilon": [],
+            "frame": [], "td_loss": [], "q_mean": [], "target_mean": [],
+            "cql_loss": [], "epsilon": [],
         }
         checkpoints: List[Dict[str, object]] = []
         # DIAGNOSTIC, NON-SELECTING: per-(regime × problem) rows accumulated over
@@ -633,6 +634,9 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
                 history["epsilon"].append(eps)
                 for k in ("td_loss", "q_mean", "target_mean"):
                     history[k].append(avg[k])
+                # CQL term (0.0 on the DQN path); avg always carries it since
+                # _update returns cql_loss unconditionally.
+                history["cql_loss"].append(avg.get("cql_loss", 0.0))
                 loss_acc = []
                 last_td, last_q = avg["td_loss"], avg["q_mean"]
                 fps = frame / (time.time() - t0)

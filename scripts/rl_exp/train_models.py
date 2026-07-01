@@ -189,6 +189,7 @@ def train_domain(
     fringe_sizes: list[int],
     forwarded: list[str],
     no_goal: bool = False,
+    model: str = "dqn",
 ) -> None:
     # NO auto-split: TRAIN = all training_data (kept whole); held-out TEST = all
     # test_data (diagnostic only). Selection is TRAIN-based in offline_main's
@@ -227,6 +228,10 @@ def train_domain(
             cmd += ["--test-csv", *(str(p.resolve()) for p in test_csvs)]
         if no_goal:
             cmd += ["--kind-of-data", "separated"]
+        # Forward the offline RL model choice; offline_main reads --cql-alpha from
+        # the forwarded remainder (it is not a train_models flag), so the study
+        # can sweep alpha. --model dqn is the default and byte-identical to before.
+        cmd += ["--model", model]
         cmd += forwarded
         # --fringe-sizes is a known flag here, so parse_known_args strips it
         # from the forwarded remainder; pass it through deliberately.
@@ -320,8 +325,9 @@ def main() -> None:
         "--model",
         choices=["dqn", "cql"],
         default="dqn",
-        help="Offline RL algorithm. 'dqn' (default) = the current Double-DQN "
-        "path. 'cql' is not yet wired (separate phase) and exits immediately.",
+        help="Offline RL loss. 'dqn' (default) = Double-DQN. 'cql' adds the "
+        "conservative-Q penalty; sweep its weight by forwarding --cql-alpha "
+        "(e.g. -- --cql-alpha 0.5) to offline_main. alpha=0 == dqn.",
     )
     parser.add_argument(
         "--no_goal",
@@ -340,9 +346,6 @@ def main() -> None:
     # Allow an explicit `--` separator before the forwarded block.
     if forwarded and forwarded[0] == "--":
         forwarded = forwarded[1:]
-
-    if args.model == "cql":
-        raise SystemExit("--model cql not yet wired (separate phase)")
 
     exp_dir = Path(args.exp_dir)
     models_root = exp_dir / "_models"
@@ -373,7 +376,7 @@ def main() -> None:
         else:
             train_domain(
                 exp_dir, models_root, domain, args.seeds, args.fringe_sizes,
-                forwarded, args.no_goal,
+                forwarded, args.no_goal, args.model,
             )
 
 
