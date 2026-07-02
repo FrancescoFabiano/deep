@@ -68,6 +68,7 @@ def run_cpp_once(
         deep_exe,
         file_path,
         "-b",       # Bisimulation mode
+        "-c",
         "--dataset",
         "--dataset_depth", str(depth),
         "--dataset_discard_factor", str(discard_factor),
