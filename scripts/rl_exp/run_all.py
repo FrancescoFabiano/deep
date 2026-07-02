@@ -1,4 +1,4 @@
-import subprocess, shutil, sys, shlex
+import argparse, subprocess, shutil, shlex
 from pathlib import Path
 
 SCRIPT = "scripts/rl_exp/bulk_coverage_run.py"
@@ -6,8 +6,17 @@ BIN = "./cmake-build-release-nn/bin/deep"
 
 #print("[DEBUG] Script started")
 
-DATA = Path(sys.argv[1])
+parser = argparse.ArgumentParser()
+parser.add_argument("data", help="domain-level path, e.g. exp/rl_exp/batch0_train/CC")
+parser.add_argument("--separated", action="store_true",
+                    help="run in separated (goal-free) mode; adds --dataset_separated for the C++ binary")
+cli = parser.parse_args()
+
+DATA = Path(cli.data)
 #print(f"[DEBUG] DATA path: {DATA} (exists={DATA.exists()})")
+
+# separated (goal-free) mode is off by default -> merged behaviour, no extra flag
+SEP = " --dataset_separated" if cli.separated else ""
 
 OUT = Path("combined_results")
 OUT.mkdir(exist_ok=True)
@@ -15,7 +24,7 @@ OUT.mkdir(exist_ok=True)
 
 #FRINGES = [8, 16, 32, 64]
 #STRICT_FLAGS = [True, False]
-FRINGES = [32]
+FRINGES = [32, 64]
 STRICT_FLAGS = [True, False]
 
 def run(label, args, split_path, prefix, fringe, strict):
@@ -90,7 +99,7 @@ for strict in STRICT_FLAGS:
         prefix = "train" if split == "Training" else "test"
 
         # ---- BFS (once) ----
-        run("BFS", "--search BFS", split_path, prefix, fringe=0, strict=strict)
+        run("BFS", "--search BFS" + SEP, split_path, prefix, fringe=0, strict=strict)
 
         # ---- RL per fringe ----
         for fringe in FRINGES:
@@ -99,7 +108,7 @@ for strict in STRICT_FLAGS:
             for h in ["SUBGOALS","L_PG","C_PG","S_PG"]:
                 run(
                     f"RL-{h}",
-                    f"--search RL --heuristics {h}",
+                    f"--search RL --heuristics {h}" + SEP,
                     split_path,
                     prefix,
                     fringe,
@@ -109,7 +118,7 @@ for strict in STRICT_FLAGS:
             for h in ["MIN","MAX","AVG","RNG"]:
                 run(
                     f"RL-H-{h}",
-                    f"--search RL --heuristics RL_H --RL_heuristics {h}",
+                    f"--search RL --heuristics RL_H --RL_heuristics {h}" + SEP,
                     split_path,
                     prefix,
                     fringe,
