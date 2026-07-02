@@ -1,7 +1,9 @@
-import csv
+import csv, sys
 from pathlib import Path
 
-DIR = Path("combined_results")
+# optional positional arg: results dir (already batch+domain scoped when called
+# from pipeline.py, e.g. combined_results/batchX/CC). default = combined_results.
+DIR = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("combined_results")
 OUT = DIR / "aggregate.csv"
 
 

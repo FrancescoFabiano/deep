@@ -10,6 +10,10 @@ parser = argparse.ArgumentParser()
 parser.add_argument("data", help="domain-level path, e.g. exp/rl_exp/batch0_train/CC")
 parser.add_argument("--separated", action="store_true",
                     help="run in separated (goal-free) mode; adds --dataset_separated for the C++ binary")
+parser.add_argument("--out-dir", default=None,
+                    help="results dir. When given, it is already domain-scoped "
+                         "(e.g. combined_results/batchX/CC) and results are written directly here. "
+                         "When omitted (back-compat), defaults to combined_results/ with a per-domain subdir.")
 cli = parser.parse_args()
 
 DATA = Path(cli.data)
@@ -18,8 +22,11 @@ DATA = Path(cli.data)
 # separated (goal-free) mode is off by default -> merged behaviour, no extra flag
 SEP = " --dataset_separated" if cli.separated else ""
 
-OUT = Path("combined_results")
-OUT.mkdir(exist_ok=True)
+# --out-dir given -> path is already domain-scoped, write straight to OUT.
+# omitted -> legacy behaviour: combined_results/ with a per-domain subdir (OUT / domain).
+SCOPED = cli.out_dir is not None
+OUT = Path(cli.out_dir) if SCOPED else Path("combined_results")
+OUT.mkdir(parents=True, exist_ok=True)
 #print(f"[DEBUG] Output dir: {OUT.resolve()}")
 
 #FRINGES = [8, 16, 32, 64]
@@ -31,8 +38,8 @@ def run(label, args, split_path, prefix, fringe, strict):
     #print("\n[DEBUG] ===== RUN START =====")
 
     domain = split_path.parent.name
-    OUT_check = OUT / domain
-    OUT_check.mkdir(exist_ok=True)
+    OUT_check = OUT if SCOPED else OUT / domain
+    OUT_check.mkdir(parents=True, exist_ok=True)
     split = split_path.name
 
     uses_rl = "--search RL" in args

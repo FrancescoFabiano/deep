@@ -39,29 +39,42 @@ if __name__ == "__main__":
         sys.exit(f"[PIPELINE] no domains (subdir with Training/) found under {batch_root}")
 
     sep = " --separated" if opts.separated else ""
+    batch_name = batch_root.stem
 
     print(f"[PIPELINE] batch_root = {batch_root}")
+    print(f"[PIPELINE] batch_name = {batch_name}")
     print(f"[PIPELINE] separated  = {opts.separated}")
     print(f"[PIPELINE] domains    = {[d.name for d in domains]}")
 
-    # ---- per-domain simulation ----
+    # ---- per-domain: run the FULL chain scoped to combined_results/<batch>/<domain> ----
+    # Each domain is fully self-contained: its own simulation CSVs, aggregate.csv,
+    # analysis/, and plots. Running batchX then batchY never overwrites; CC and SC
+    # never mix.
     for domain_path in domains:
-        cmd = f"python3 scripts/rl_exp/run_all.py {domain_path}{sep}"
+        domain = domain_path.name
+        scoped = f"combined_results/{batch_name}/{domain}"
+
+        chain = [
+            f"python3 scripts/rl_exp/run_all.py {domain_path}{sep} --out-dir {scoped}",
+            f"python3 scripts/rl_exp/aggregate.py {scoped}",
+            f"python3 scripts/rl_exp/analyze_results.py {scoped}",
+            f"python3 scripts/rl_exp/advanced_analysis.py {scoped}",
+            f"python3 scripts/rl_exp/plot_results.py {scoped}",
+            f"python3 scripts/rl_exp/plot_results_best.py {scoped}",
+            f"python3 scripts/rl_exp/plot_results_best_isolated.py {scoped}",
+        ]
+
         if opts.dry_run:
-            print(f"[PIPELINE][DRY-RUN] would run: {cmd}")
+            print(f"[PIPELINE][DRY-RUN] domain={domain} -> {scoped}")
+            for c in chain:
+                print(f"[PIPELINE][DRY-RUN]   {c}")
         else:
-            run(cmd)
+            print(f"[PIPELINE] ===== domain={domain} -> {scoped} =====")
+            for c in chain:
+                run(c)
 
     if opts.dry_run:
-        print("=== DRY-RUN COMPLETE (no simulation, no aggregate) ===")
+        print("=== DRY-RUN COMPLETE (no simulation) ===")
         sys.exit(0)
-
-    # ---- aggregate + analysis + plots (once, over the full combined_results/ tree) ----
-    run("python3 scripts/rl_exp/aggregate.py")
-    run("python3 scripts/rl_exp/analyze_results.py")
-    run("python3 scripts/rl_exp/advanced_analysis.py")
-    run("python3 scripts/rl_exp/plot_results.py")
-    run("python3 scripts/rl_exp/plot_results_best.py")
-    run("python3 scripts/rl_exp/plot_results_best_isolated.py")
 
     print("=== PIPELINE COMPLETE ===")
