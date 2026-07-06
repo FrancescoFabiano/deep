@@ -184,6 +184,16 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
         w = mixture_weights or {r: 1.0 for r in self.regimes}
         self.mixture_weights = {r: float(w.get(r, 0.0)) for r in self.regimes}
 
+        # Structured-first + random augmentation readout (raw weights, pre
+        # per-instance renormalisation). random_pct is recovered from the random
+        # weight (= 3*random_pct); random_share is the global normalised fraction.
+        _wsum = sum(self.mixture_weights.values()) or 1.0
+        _wr = self.mixture_weights.get("random", 0.0)
+        _raw = " ".join(f"{r}={self.mixture_weights[r]:g}" for r in self.regimes)
+        print(f"[regime_alloc] raw weights: {_raw}")
+        print(f"[regime_alloc] random_pct={_wr / 3.0:.2f} -> "
+              f"random_share={100.0 * _wr / _wsum:.1f}%")
+
         # Fringe-level dedup: a member-SET never enters replay twice (per
         # instance). Keyed by (inst, hash(frozenset(fringe))); persists for the run.
         self._seen_fringes: set = set()

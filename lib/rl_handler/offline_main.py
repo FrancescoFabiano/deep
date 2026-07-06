@@ -156,12 +156,13 @@ def parse_args() -> argparse.Namespace:
         "all four. --mixture-weights, if given, must align with this order.",
     )
     p.add_argument(
-        "--mixture-weights",
-        nargs="+",
+        "--random-pct",
         type=float,
-        default=None,
-        help="Per-regime mixture weights aligned with --regimes (default uniform). "
-        "Renormalised per instance over that instance's available regimes.",
+        default=0.5,
+        help="Random regime augmentation ratio. Structured regimes (bfs, hfs, "
+        "dfs) each get weight 1.0; random gets weight 3*random_pct. So "
+        "bfs:hfs:dfs:random = 1:1:1:3*random_pct, S/F-independent. Default 0.5 "
+        "-> 1:1:1:1.5 -> random share ~33.3%%. 0.0 disables the random regime.",
     )
     p.add_argument(
         "--target-centering",
@@ -285,7 +286,10 @@ def parse_args() -> argparse.Namespace:
         "Q_taken). Sweep axis. With --model cql and unset -> 1.0; alpha=0 is "
         "byte-identical to DQN. Ignored (forced 0) under --model dqn.",
     )
-    return p.parse_args()
+    args = p.parse_args()
+    if args.random_pct < 0:
+        p.error("--random-pct must be >= 0")
+    return args
 
 
 def _resolve(path: str) -> Path:
@@ -506,14 +510,16 @@ def main() -> None:
         if args.use_regimes:
             from src.offline.regime_trainer import RegimeDQNTrainer  # noqa: E402
 
-            mix = None
-            if args.mixture_weights is not None:
-                if len(args.mixture_weights) != len(args.regimes):
-                    raise SystemExit(
-                        "--mixture-weights must align 1:1 with --regimes "
-                        f"({len(args.mixture_weights)} vs {len(args.regimes)})."
-                    )
-                mix = dict(zip(args.regimes, args.mixture_weights))
+            # Structured-first + random augmentation: structured regimes each
+            # get weight 1.0, random gets 3*random_pct, so the mix is
+            # bfs:hfs:dfs:random = 1:1:1:3*random_pct (S/F cancels). Keys the
+            # trainer doesn't run (regimes subset) are ignored by its w.get().
+            mix = {
+                "bfs": 1.0,
+                "hfs": 1.0,
+                "dfs": 1.0,
+                "random": 3.0 * float(args.random_pct),
+            }
             trainer = RegimeDQNTrainer(
                 **common,
                 regimes=args.regimes,
