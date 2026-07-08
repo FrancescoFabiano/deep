@@ -46,6 +46,11 @@ METRIC_SHORT = {
     "SuccessRate": "success_rate",
 }
 
+# Distinct marker per heuristic in the trend plots (cycled if >10 heuristics).
+MARKERS = ['o', 's', '^', 'D', 'v', '<', '>', 'p', '*', 'h']
+# Metrics whose trend y-axis uses a log scale (symlog fallback if any value <= 0).
+LOG_METRICS = ("NodesExpanded", "TotalExecutionTime")
+
 
 def num(s):
     """Parse a metric cell to float; return None for blank / '-' / non-numeric."""
@@ -276,6 +281,166 @@ def make_figure(records, methods, fringe_sizes, metric, mode, domain, out):
     print(f"[OK] saved {fname} ({len(ordered)} methods, {n_fringes} fringes)")
 
 
+def _median_iqr(pool, metric):
+    vals = [r[metric] for r in pool if r[metric] is not None]
+    if not vals:
+        return (None, None, None)
+    return (float(np.median(vals)),
+            float(np.percentile(vals, 25)),
+            float(np.percentile(vals, 75)))
+
+
+def aggregate_percentile(records, split_variant, mode):
+    """method -> fringe -> {metric: (median, q25, q75)} for one split variant + mode.
+
+    Same solved/common-set logic as aggregate(), but carries median + IQR instead
+    of mean + std. SuccessRate is stored as (ratio, None, None) in 'all' mode."""
+    subset = [r for r in records
+              if split_variant == "all" or r["split"] == split_variant]
+    result = {}
+    for method in sorted(set(r["method"] for r in subset)):
+        mrecs = [r for r in subset if r["method"] == method]
+        fringes = sorted(set(r["fringe"] for r in mrecs))
+        result[method] = {}
+
+        common = None
+        if mode == "common":
+            solved_sets = {
+                fr: set(r["instance"] for r in mrecs
+                        if r["fringe"] == fr and r["solved"])
+                for fr in fringes
+            }
+            if len(fringes) <= 1:
+                common = solved_sets[fringes[0]] if fringes else set()
+            else:
+                common = set.intersection(*(solved_sets[fr] for fr in fringes))
+
+        for fr in fringes:
+            frecs = [r for r in mrecs if r["fringe"] == fr]
+            entry = {}
+            if mode == "all":
+                n_total = len(frecs)
+                n_solved = sum(1 for r in frecs if r["solved"])
+                entry["SuccessRate"] = (
+                    (n_solved / n_total) if n_total else None, None, None)
+                pool = [r for r in frecs if r["solved"]]
+            else:  # common
+                pool = [r for r in frecs
+                        if r["solved"] and r["instance"] in common]
+            for metric in ("NodesExpanded", "PlanLength", "TotalExecutionTime"):
+                entry[metric] = _median_iqr(pool, metric)
+            result[method][fr] = entry
+    return result
+
+
+def make_trend_figure(records, fringe_sizes, metric, mode, domain, out):
+    """2x3 (or 1x3) trend figure: rows = strictness, cols = split; lines per heuristic.
+
+    Median metric vs fringe size with IQR bands. BFS is a horizontal dashed
+    reference (single fringe=0 point). Log y-scale for nodes / time."""
+    methods = sorted(set(r["method"] for r in records))
+    heuristics = sorted(set(
+        m[:-len("_strict")] if m.endswith("_strict") else m[:-len("_nostrict")]
+        for m in methods))
+    strictnesses = [s for s in ("strict", "nostrict")
+                    if any(m.endswith("_" + s) for m in methods)]
+
+    palette = plt.cm.tab10(np.linspace(0, 1, max(1, len(heuristics))))
+    color_map = {h: palette[i] for i, h in enumerate(heuristics)}
+    marker_map = {h: MARKERS[i % len(MARKERS)] for i, h in enumerate(heuristics)}
+
+    aggs = {sv: aggregate_percentile(records, sv, mode) for sv in SPLITS}
+
+    # Decide the y-scale once for the whole figure (sharey='row' forbids mixing).
+    use_symlog = False
+    if metric in LOG_METRICS:
+        allvals = [
+            entry.get(metric, (None,))[0]
+            for a in aggs.values() for byfr in a.values() for entry in byfr.values()
+            if entry.get(metric, (None,))[0] is not None
+        ]
+        use_symlog = any(v <= 0 for v in allvals)
+
+    nrows = len(strictnesses)
+    fig, axes = plt.subplots(nrows, 3, figsize=(20, 5 * nrows), sharey="row")
+    axes = np.atleast_2d(axes)
+
+    for row, strictness in enumerate(strictnesses):
+        for col, sv in enumerate(SPLITS):
+            ax = axes[row, col]
+            a = aggs[sv]
+            plotted = 0
+            for heur in heuristics:
+                byfr = a.get(f"{heur}_{strictness}")
+                if not byfr:
+                    continue
+                if heur == "BFS":
+                    e = byfr.get(0)
+                    med = e.get(metric, (None,))[0] if e else None
+                    if med is not None:
+                        ax.axhline(y=med, color="gray", linestyle="--",
+                                   linewidth=1.2, label="BFS", alpha=0.7)
+                        plotted += 1
+                    continue
+                xs, meds, q25s, q75s = [], [], [], []
+                for f in sorted(fr for fr in byfr if fr != 0):
+                    med, lo, hi = byfr[f].get(metric, (None, None, None))
+                    if med is None:
+                        continue
+                    xs.append(f)
+                    meds.append(med)
+                    q25s.append(lo if lo is not None else med)
+                    q75s.append(hi if hi is not None else med)
+                if not xs:
+                    continue
+                plotted += 1
+                ax.plot(xs, meds, marker=marker_map[heur], color=color_map[heur],
+                        label=heur, linewidth=1.5, markersize=6)
+                if metric != "SuccessRate":
+                    ax.fill_between(xs, q25s, q75s, color=color_map[heur], alpha=0.15)
+
+            if metric in LOG_METRICS:
+                if use_symlog:
+                    ax.set_yscale("symlog", linthresh=1)
+                else:
+                    ax.set_yscale("log")
+
+            ax.set_xticks(fringe_sizes)
+            ax.set_xticklabels(["BFS" if f == 0 else str(f) for f in fringe_sizes])
+            ax.grid(True, alpha=0.3)
+            if row == 0:
+                ax.set_title(sv)
+            if col == 0:
+                ax.set_ylabel(f"{strictness}\n{metric}")
+            if row == nrows - 1:
+                ax.set_xlabel("Fringe size")
+            if plotted == 0:
+                ax.text(0.5, 0.5, "no data", ha="center", va="center",
+                        transform=ax.transAxes, fontsize=12, alpha=0.6)
+
+    # One shared legend (deduped across subplots so every heuristic + BFS appears).
+    handles, labels, seen = [], [], set()
+    for ax in axes.flat:
+        for h, l in zip(*ax.get_legend_handles_labels()):
+            if l not in seen:
+                seen.add(l)
+                handles.append(h)
+                labels.append(l)
+    fig.legend(handles, labels, loc="center right",
+               bbox_to_anchor=(1.12, 0.5), fontsize=9)
+
+    fig.suptitle(f"{metric} trend by fringe size ({mode} solved) — {domain}",
+                 fontsize=14)
+    fig.tight_layout(rect=[0, 0, 0.90, 0.95])
+
+    fname = f"fringe_trend_{METRIC_SHORT[metric]}_{mode}.png"
+    # bbox_inches='tight' so the out-of-axes legend (x=1.12) is not clipped.
+    fig.savefig(out / fname, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    print(f"[OK] saved {fname} ({len(heuristics)} heuristics, "
+          f"{len(strictnesses)} strictness groups, {len(fringe_sizes)} fringes)")
+
+
 def main():
     if len(sys.argv) < 2:
         sys.exit("usage: plot_fringe_comparison.py <results_dir>")
@@ -296,6 +461,12 @@ def main():
             make_figure(records, methods, fringe_sizes, metric, mode, domain, out)
 
     print(f"[OK] fringe comparison complete for domain={domain}")
+
+    for mode, metrics in (("all", METRICS_ALL), ("common", METRICS_COMMON)):
+        for metric in metrics:
+            make_trend_figure(records, fringe_sizes, metric, mode, domain, out)
+
+    print(f"[OK] fringe trend plots complete for domain={domain}")
 
 
 if __name__ == "__main__":
