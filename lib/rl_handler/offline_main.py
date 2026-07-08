@@ -270,6 +270,16 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--device", type=str, default=None)
     p.add_argument("--export-onnx", action="store_true", default=True)
     p.add_argument("--no-export-onnx", dest="export_onnx", action="store_false")
+    # ---- Pad-to-F: fill free beam slots in the MODEL INPUT with closed (already-
+    # expanded) states so the GNN sees ~F states of context on instances whose
+    # natural frontier never binds. Closed padding is CONTEXT-ONLY (excluded from
+    # action selection and the bootstrap max); training-side only, eval stays
+    # deploy-faithful. Default on; --no-pad-closed reverts to live-pool-only. ----
+    p.add_argument("--pad-closed", action="store_true", default=True,
+                   help="Pad training model-input fringes to F with closed states "
+                   "(context-only). Default on.")
+    p.add_argument("--no-pad-closed", dest="pad_closed", action="store_false",
+                   help="Disable closed-state padding (live-pool-only fringes).")
     # ---- CQL (conservative-Q loss term; contract-free, model graph unchanged) ----
     p.add_argument(
         "--model",
@@ -506,6 +516,7 @@ def main() -> None:
             # diagnostic only. There is no val-based selection path anymore.
             select_on_train=True,
             cql_alpha=cql_alpha,
+            pad_closed=args.pad_closed,
         )
         if args.use_regimes:
             from src.offline.regime_trainer import RegimeDQNTrainer  # noqa: E402

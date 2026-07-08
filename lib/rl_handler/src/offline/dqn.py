@@ -34,6 +34,7 @@ from src.offline.tree_env import (
     OccupancyCounter,
     TreeInstance,
     bfs_expansions,
+    pad_with_closed,
 )
 
 
@@ -83,6 +84,7 @@ class OfflineDQNTrainer:
         goal_graphs: Optional[Sequence[Optional["StateGraph"]]] = None,
         select_on_train: bool = False,
         cql_alpha: float = 0.0,
+        pad_closed: bool = False,
     ):
         self.device = torch.device(
             device or ("cuda" if torch.cuda.is_available() else "cpu")
@@ -179,6 +181,15 @@ class OfflineDQNTrainer:
             raise ValueError(f"signal_mode must be one of {sorted(valid)}, got {signal_mode!r}")
         self.signal_mode = signal_mode
         self.aux_lambda = float(aux_lambda)
+        # Pad-to-F: fill free beam slots in the MODEL INPUT with closed (already-
+        # expanded) states so the GNN always sees ~F states. Padded closed states
+        # are treated IDENTICALLY to open states — fully selectable, in the Q-loss,
+        # and in the bootstrap max. Selecting a closed state wastes a step (its
+        # children are already visited -> no new states, reward -1), so the model
+        # learns to avoid it through ordinary Q-learning (self-correcting; no
+        # masking, no special target). Works with any signal mode because a padded
+        # slot is just a regular state with a valid d*. See _input_fringe / step().
+        self.pad_closed = bool(pad_closed)
         # Per-mode variant. None -> the mode's default (pairwise / reward).
         _RANK_VARIANTS = {
             "rank-sup": {"pairwise", "listwise"},
@@ -277,6 +288,21 @@ class OfflineDQNTrainer:
         )
         return logits, packed["fringe_ptr"]
 
+    def _input_fringe(self, env: FringeEnv, open_fringe: Sequence[int]):
+        """Model-input fringe + n_open. Pads the open beam up to F with closed
+        (already-expanded) states when self.pad_closed; identity otherwise.
+
+        Returns ``(padded_fringe, n_open)`` where ``n_open`` is the count of open
+        states — kept for OCCUPANCY DIAGNOSTICS ONLY. Closed padding is treated as
+        regular candidates: the model may act on ANY slot. Selecting a closed slot
+        wastes a step (its children are already visited -> no new states, reward
+        -1), so the model learns to avoid it via ordinary Q-learning — no masking.
+        """
+        if not self.pad_closed:
+            f = list(open_fringe)
+            return f, len(f)
+        return pad_with_closed(open_fringe, env.closed, self.fringe_size)
+
     @torch.no_grad()
     def greedy_action(self, inst_idx: int, fringe: Sequence[int]) -> int:
         self.model.eval()
@@ -345,6 +371,9 @@ class OfflineDQNTrainer:
                     on_logits, on_ptr = self._forward(self.model, [], packed=next_packed)
                     tg_logits, _ = self._forward(self.target, [], packed=next_packed)
                     self.model.train()
+                    # Bootstrap over ALL next-state slots, including closed padding:
+                    # a closed slot is a legal (if wasteful) pick, so its value must
+                    # be part of the max the target bootstraps from.
                     a_star = segment_argmax(on_logits, on_ptr)  # global positions
                     q_next = tg_logits[a_star]
                 idx = torch.tensor(live, device=self.device)
@@ -418,6 +447,8 @@ class OfflineDQNTrainer:
         (= worst), per Task 1a. The <2-distinct-eligible-d* skip still applies
         downstream (a short beam with no d* spread carries no order signal)."""
         inst = self.instances[t.inst]
+        # ALL slots are real candidates (padded closed states carry valid d* just
+        # like open states), so order/CQL rank and penalise every slot uniformly.
         raw = [inst.distance[s] for s in t.fringe]
         positions = list(range(len(raw)))
         finite = [d for d in raw if d < UNREACHABLE_DISTANCE]
@@ -727,21 +758,32 @@ class OfflineDQNTrainer:
             eps = epsilon(frame)
             fringe = res.fringe
             train_occ.record(len(fringe), len(env.reservoir))
+            # Model input = open beam padded to F with closed states when
+            # pad_closed; identity otherwise. Padded closed slots are regular,
+            # fully-selectable candidates -> act over ALL slots. env.step()
+            # resolves a closed-slot pick from padded_fringe (wasted step, -1).
+            in_fringe, n_open = self._input_fringe(env, fringe)
             if torch.rand((), generator=ep_rng).item() < eps:
-                action = int(torch.randint(len(fringe), (1,), generator=ep_rng))
+                action = int(torch.randint(len(in_fringe), (1,), generator=ep_rng))
             else:
-                action = self.greedy_action(inst_idx, fringe)
+                action = self.greedy_action(inst_idx, in_fringe)
 
-            nxt = env.step(action)
+            nxt = env.step(action, padded_fringe=in_fringe)
+            # Pad next fringe AFTER the step (closed now includes the just-expanded
+            # state) so the stored next_fringe context matches how it will be
+            # re-encoded in _update.
+            next_in, next_n_open = self._input_fringe(env, nxt.fringe)
             ep_return += nxt.reward
             self.replay.push(
                 Transition(
                     inst=inst_idx,
-                    fringe=tuple(fringe),
+                    fringe=tuple(in_fringe),
                     action=action,
                     reward=nxt.reward,
-                    next_fringe=tuple(nxt.fringe),
+                    next_fringe=tuple(next_in),
                     done=nxt.done,
+                    n_open=n_open,
+                    next_n_open=next_n_open,
                 )
             )
 
@@ -867,7 +909,11 @@ class OfflineDQNTrainer:
         res = env.reset(seed=seed)
         while not res.done:
             occ.record(len(res.fringe), len(env.reservoir))
-            res = env.step(self.greedy_action(inst_idx, res.fringe))
+            # Same pad-to-F procedure as training: pad with closed, act on any
+            # slot, and let env.step resolve a closed-slot pick from padded_fringe.
+            in_fringe, _ = self._input_fringe(env, res.fringe)
+            res = env.step(self.greedy_action(inst_idx, in_fringe),
+                           padded_fringe=in_fringe)
         if occ_accum is not None:
             occ_accum.merge(occ)
         return {

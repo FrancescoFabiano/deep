@@ -244,3 +244,40 @@ def plot_diag_curves(
     if _plot_regret_two_panel(diag_rows, out_dir / rg_name, fringe):
         written.append(rg_name)
     return written
+
+
+def plot_fringe_occupancy_histogram(occ_diag, out_path, fringe, pad_closed):
+    """Stacked bar chart of model-input fringe occupancy (n_fringe), by regime.
+
+    x = occupancy 1..F, y = #fringes at that occupancy, stacked one colour per
+    regime. With pad_closed=True the mass concentrates at F (padding fills the
+    beam); with pad_closed=False it spreads low (the natural, mostly-sparse
+    distribution). `occ_diag` is a tree_env.OccupancyDiagnostics. Returns the path
+    written, or None when there is nothing to plot.
+    """
+    F = int(fringe)
+    hist = getattr(occ_diag, "hist", {}) or {}
+    regimes = sorted(hist)
+    if not regimes:
+        return None
+    # bins 1..F (occupancy 0 is only a transient empty-fringe artefact; keep the
+    # readable 1..F range the brief asks for).
+    xs = list(range(1, F + 1))
+    out_path = Path(out_path)
+
+    fig, ax = plt.subplots(figsize=(max(6.0, F * 0.22), 4.0))
+    bottom = [0.0] * len(xs)
+    for rg in regimes:
+        h = hist[rg]
+        ys = [h[k] if k < len(h) else 0 for k in xs]
+        ax.bar(xs, ys, bottom=bottom, width=0.9, label=rg)
+        bottom = [b + y for b, y in zip(bottom, ys)]
+    ax.set_xlabel("fringe occupancy (n_fringe = open + closed-padding)")
+    ax.set_ylabel("count of fringes")
+    ax.set_title(f"Fringe occupancy (F={F}, pad_closed={pad_closed})")
+    ax.axvline(F, color="k", linestyle=":", linewidth=1, alpha=0.6)
+    ax.legend(title="regime", fontsize=8)
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=120)
+    plt.close(fig)
+    return str(out_path)

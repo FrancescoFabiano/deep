@@ -51,6 +51,7 @@ from src.offline.tree_env import (
     UNREACHABLE_DISTANCE,
     FringeEnv,
     OccupancyCounter,
+    OccupancyDiagnostics,
     bfs_frontier_max,
 )
 
@@ -324,7 +325,11 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
         res = env.reset(seed=seed)
         while not res.done:
             occ.record(len(res.fringe), len(env.reservoir))
-            res = env.step(self.greedy_action(inst_idx, res.fringe))
+            # Same pad-to-F procedure as training: pad with closed, act on any
+            # slot, and let env.step resolve a closed-slot pick from padded_fringe.
+            in_fringe, _ = self._input_fringe(env, res.fringe)
+            res = env.step(self.greedy_action(inst_idx, in_fringe),
+                           padded_fringe=in_fringe)
         if occ_accum is not None:
             occ_accum.merge(occ)
         return {
@@ -544,6 +549,11 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
     def train(self, frames, n_checkpoints, epsilon, out_dir):
         out_dir = Path(out_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
+        # Pad-to-F occupancy diagnostics over the whole run (per regime): what the
+        # MODEL INPUT fringe looks like after closed padding. Verifies the fix
+        # (frac_full_F -> ~1.0 with pad_closed); records raw occupancy (open vs
+        # closed-used) with pad_closed=False too, for A/B.
+        self.occ_diag = OccupancyDiagnostics(self.fringe_size)
         ckpt_frames = sorted(
             {int(math.ceil((k + 1) * frames / n_checkpoints)) for k in range(n_checkpoints)}
         )
@@ -580,17 +590,20 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
         while frame < frames:
             frame += 1
             eps = epsilon(frame)
-            fringe = res.fringe
-            # slot-aligned pad mask for THIS state fringe (captured from res.info
+            fringe = res.fringe  # OPEN beam (live pool); metrics/filters use this
             inst = self.instances[cur_i]
             st = self.regime_stats[cur_r]
+            # Existing per-regime instrumentation stays on the LIVE beam (the
+            # natural-binding metric); it is NOT affected by pad-to-F.
             st.observe(fringe, inst, self.fringe_size, env.last_pool_size)
 
             drop = (not self.same_distance_keep) and single_distinct_dstar(inst, fringe)
             if drop:
                 st.n_dropped += 1
             # fringe-level dedup: the identical member SET must not enter replay
-            # twice (intra-beam dedup already holds). Keyed per instance.
+            # twice (intra-beam dedup already holds). Keyed per instance. Keyed on
+            # the OPEN set (closed padding is deterministic given the open beam +
+            # episode history, so it adds no new dedup information).
             dkey = (cur_i, hash(frozenset(fringe)))
             is_dup = dkey in self._seen_fringes
             if is_dup:
@@ -598,19 +611,30 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
             else:
                 self._seen_fringes.add(dkey)
 
-            if torch.rand((), generator=ep_rng).item() < eps:
-                action = int(torch.randint(len(fringe), (1,), generator=ep_rng))
-            else:
-                action = self.greedy_action(cur_i, fringe)
+            # Model-input fringe = open beam padded to F with closed states when
+            # pad_closed; identity otherwise. Padded closed slots are regular,
+            # fully-selectable candidates -> act over ALL slots; env.step()
+            # resolves a closed-slot pick from padded_fringe (wasted step, -1).
+            # n_open is recorded for occupancy diagnostics only.
+            in_fringe, n_open = self._input_fringe(env, fringe)
+            self.occ_diag.record(cur_r, n_open, len(in_fringe) - n_open,
+                                 len(in_fringe))
 
-            nxt = env.step(action)
+            if torch.rand((), generator=ep_rng).item() < eps:
+                action = int(torch.randint(len(in_fringe), (1,), generator=ep_rng))
+            else:
+                action = self.greedy_action(cur_i, in_fringe)
+
+            nxt = env.step(action, padded_fringe=in_fringe)
+            next_in, next_n_open = self._input_fringe(env, nxt.fringe)
             ep_return += nxt.reward
             ep_len += 1
             if not drop and not is_dup:
                 self.replay.push(Transition(
-                    inst=cur_i, fringe=tuple(fringe), action=action,
-                    reward=nxt.reward, next_fringe=tuple(nxt.fringe),
+                    inst=cur_i, fringe=tuple(in_fringe), action=action,
+                    reward=nxt.reward, next_fringe=tuple(next_in),
                     done=nxt.done, regime=cur_r,
+                    n_open=n_open, next_n_open=next_n_open,
                 ))
 
             if nxt.done:
@@ -690,6 +714,20 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
                        "config": self._regime_config(),
                        "diag_per_regime": self._diag_payload(diag_rows)},
                       fh, indent=1)
+        # Pad-to-F occupancy diagnostics: CSV always; PNG best-effort (a plotting
+        # failure must never cost the trained model).
+        try:
+            self.occ_diag.to_csv(out_dir / "fringe_occupancy_diagnostics.csv")
+            from src.offline.diag_plots import plot_fringe_occupancy_histogram
+            png = plot_fringe_occupancy_histogram(
+                self.occ_diag, out_dir / "fringe_occupancy_histogram.png",
+                fringe=self.fringe_size, pad_closed=self.pad_closed,
+            )
+            if png:
+                tqdm.write(f"[occupancy-diag] wrote {out_dir}: "
+                           f"fringe_occupancy_diagnostics.csv, {Path(png).name}")
+        except Exception as exc:  # non-fatal
+            tqdm.write(f"[occupancy-diag] WARN failed to render: {exc}")
         # Per-run diagnostic plots (normalized aggregate per regime, per split).
         # Wrapped: a plotting failure must never cost the trained model.
         try:

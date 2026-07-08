@@ -281,6 +281,111 @@ class OccupancyCounter:
         }
 
 
+def pad_with_closed(
+    open_states: Sequence[int],
+    closed: Sequence[int],
+    fringe_size: int,
+) -> Tuple[List[int], int]:
+    """Build the model-input fringe by padding the OPEN beam up to ``fringe_size``
+    with most-recently-expanded CLOSED states (LIFO), and report how many leading
+    slots are open (real actions).
+
+    Returns ``(fringe, n_open)`` where ``fringe[:n_open]`` are the open states (in
+    their original order) and ``fringe[n_open:]`` are closed padding — real graph
+    states with valid d* labels, deduped against the open set and each other.
+    When ``|open| + |closed| < fringe_size`` the fringe stays short (the caller's
+    encoder zero-pads / uses the true length); this self-resolves within a few
+    expansions. When ``|open| >= fringe_size`` no padding is added.
+    """
+    F = int(fringe_size)
+    fringe = list(open_states)[:F]
+    n_open = len(fringe)
+    if n_open < F and closed:
+        seen = set(fringe)
+        for s in reversed(closed):  # most-recently-expanded first
+            if s not in seen:
+                fringe.append(s)
+                seen.add(s)
+                if len(fringe) >= F:
+                    break
+    return fringe, n_open
+
+
+class OccupancyDiagnostics:
+    """Per-regime fringe-occupancy accumulator for the pad-to-F diagnostics.
+
+    Records, per model-input fringe, how many slots were open (real actions) vs
+    filled from the closed set, so the CSV/PNG can show that padding drives the
+    live-input occupancy to F (``frac_full_F`` -> ~1.0) even on instances whose
+    natural frontier never binds. Distinct from OccupancyCounter (which tracks the
+    live-beam-only occupancy used by the deploy-faithful eval); this one measures
+    the PADDED training input.
+    """
+
+    def __init__(self, fringe_size: int):
+        self.fringe_size = int(fringe_size)
+        self.n_fringes: Dict[str, int] = {}
+        self.sum_open: Dict[str, int] = {}
+        self.sum_closed: Dict[str, int] = {}
+        self.sum_fringe: Dict[str, int] = {}
+        self.n_full: Dict[str, int] = {}
+        # Per-regime occupancy histogram: hist[regime][k] = #fringes with
+        # n_fringe == k, for k in 0..fringe_size (the PNG's bars).
+        self.hist: Dict[str, List[int]] = {}
+
+    def record(self, regime: str, n_open: int, n_closed_used: int,
+               n_fringe: int) -> None:
+        r = str(regime)
+        self.n_fringes[r] = self.n_fringes.get(r, 0) + 1
+        self.sum_open[r] = self.sum_open.get(r, 0) + int(n_open)
+        self.sum_closed[r] = self.sum_closed.get(r, 0) + int(n_closed_used)
+        self.sum_fringe[r] = self.sum_fringe.get(r, 0) + int(n_fringe)
+        if int(n_fringe) == self.fringe_size:
+            self.n_full[r] = self.n_full.get(r, 0) + 1
+        h = self.hist.setdefault(r, [0] * (self.fringe_size + 1))
+        k = min(max(int(n_fringe), 0), self.fringe_size)
+        h[k] += 1
+
+    def rows(self) -> List[Dict[str, object]]:
+        """One dict per regime plus an aggregate 'ALL' row (CSV column order)."""
+        regimes = sorted(self.n_fringes)
+        out: List[Dict[str, object]] = []
+
+        def _row(name: str, n, so, sc, sf, nf) -> Dict[str, object]:
+            n = max(1, n)
+            return {
+                "regime": name,
+                "n_fringes": self.n_fringes.get(name, 0) if name != "ALL" else n_all,
+                "mean_n_open": round(so / n, 3),
+                "mean_n_closed_used": round(sc / n, 3),
+                "mean_n_fringe": round(sf / n, 3),
+                "frac_full_F": round(nf / n, 3),
+                "mean_deficit": round((self.fringe_size * n - sf) / n, 3),
+            }
+
+        n_all = sum(self.n_fringes.values())
+        for r in regimes:
+            out.append(_row(r, self.n_fringes[r], self.sum_open[r],
+                            self.sum_closed[r], self.sum_fringe[r],
+                            self.n_full.get(r, 0)))
+        if regimes:
+            out.append(_row("ALL", n_all, sum(self.sum_open.values()),
+                            sum(self.sum_closed.values()),
+                            sum(self.sum_fringe.values()),
+                            sum(self.n_full.values())))
+        return out
+
+    def to_csv(self, path) -> None:
+        rows = self.rows()
+        cols = ["regime", "n_fringes", "mean_n_open", "mean_n_closed_used",
+                "mean_n_fringe", "frac_full_F", "mean_deficit"]
+        with Path(path).open("w", newline="") as fh:
+            w = csv.DictWriter(fh, fieldnames=cols)
+            w.writeheader()
+            for row in rows:
+                w.writerow(row)
+
+
 class FringeEnv:
     """Gym-style fringe MDP over one reconstructed tree (state ids only).
 
@@ -318,6 +423,13 @@ class FringeEnv:
         self.fringe: List[int] = []
         self.reservoir: List[int] = []
         self.visited: set[int] = set()
+        # Ordered CLOSED list (most-recently-expanded LAST) of states popped for
+        # expansion this episode. Distinct from `visited` (the *generated* set):
+        # `closed` holds only states actually expanded, and is the padding source
+        # for pad_with_closed (fill free beam slots LIFO with real, d*-labelled
+        # states). Reset per episode; the root is closed at reset() (it is the
+        # first expansion). Pure bookkeeping — never changes episode dynamics.
+        self.closed: List[int] = []
         self.expansions = 0
         self.done = True
 
@@ -388,6 +500,8 @@ class FringeEnv:
         self.fringe = []
         self.reservoir = []
         self.visited = {self.instance.root_id}
+        # Root is expanded here (expansions=1) -> it is the first closed state.
+        self.closed = [self.instance.root_id]
         self.expansions = 1
         fresh, goal = self._generate_children(
             self.instance.children[self.instance.root_id]
@@ -401,13 +515,38 @@ class FringeEnv:
             list(self.fringe), 0.0, self.done, self._info(goal_found=False)
         )
 
-    def step(self, action: int) -> StepResult:
+    def step(self, action: int, padded_fringe: Optional[Sequence[int]] = None) -> StepResult:
+        """Expand slot ``action``.
+
+        With pad-to-F the caller acts on the PADDED fringe (open beam + closed
+        padding), so ``action`` indexes ``padded_fringe`` when given. An action
+        into the open beam (``action < len(self.fringe)``) is a normal expansion.
+        An action beyond it selects a CLOSED (already-expanded) state — a legal but
+        wasteful pick: its children are already visited, so no new states are
+        generated (beam only reshuffles) and the reward is -1. This is the self-
+        correcting signal that teaches the model to avoid closed slots; no masking.
+        """
         if self.done:
             raise RuntimeError("step() on a finished episode; call reset().")
-        if not (0 <= action < len(self.fringe)):
-            raise IndexError(f"action {action} out of fringe range {len(self.fringe)}")
 
-        chosen = self.fringe.pop(action)
+        n_open = len(self.fringe)
+        if padded_fringe is not None and action >= n_open:
+            # CLOSED-state re-expansion: resolve from the padded fringe. Do NOT pop
+            # self.fringe (the state is not in the open beam) and do NOT re-append
+            # to self.closed (already there). Children are already visited ->
+            # _generate_children returns empty, no goal.
+            if not (0 <= action < len(padded_fringe)):
+                raise IndexError(
+                    f"action {action} out of padded-fringe range {len(padded_fringe)}"
+                )
+            chosen = padded_fringe[action]
+        else:
+            if not (0 <= action < n_open):
+                raise IndexError(f"action {action} out of fringe range {n_open}")
+            chosen = self.fringe.pop(action)
+            self.closed.append(chosen)  # most-recently-expanded last (LIFO padding)
+
+        # ---- shared post-expansion flow (both branches converge here) ----
         self.expansions += 1
         fresh, goal = self._generate_children(self.instance.children[chosen])
         if goal:

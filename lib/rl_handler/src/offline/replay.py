@@ -20,6 +20,14 @@ class Transition:
     # pipeline, so existing constructions are unchanged. Never read by training
     # (_update is regime-agnostic) — it exists only for per-regime audits.
     regime: Optional[str] = None
+    # Pad-to-F support: number of LEADING slots in `fringe` / `next_fringe` that
+    # are OPEN (live beam). Slots at index >= n_open are closed padding. DIAGNOSTIC
+    # ONLY — nothing in the loss path reads these: padded closed states are treated
+    # identically to open states (selectable, in the Q-loss, in the bootstrap max),
+    # so no code masks or excludes by n_open. Kept so the occupancy CSV can report
+    # open-vs-padded composition. None means "no padding" (every slot open).
+    n_open: Optional[int] = None
+    next_n_open: Optional[int] = None
 
 
 class ReplayBuffer:
