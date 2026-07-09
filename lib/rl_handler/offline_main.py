@@ -300,6 +300,21 @@ def parse_args() -> argparse.Namespace:
                    help="Disable mean-pool context — score each state as "
                    "MLP([node_emb | goal]). Eliminates the train/deploy context "
                    "distribution shift from padding.")
+    # ---- Frontier-context mode: how each state's score sees its fringe-mates.
+    # mean_pool (default) = concat mean-pool context; self_attention = multi-head
+    # self-attention over the fringe (head_in matches mean_pool for a fair A/B);
+    # none = independent per-state scoring. Supersedes --use-global-context; the
+    # old flags still work (mapped below). ----
+    p.add_argument("--context-mode", type=str, default="mean_pool",
+                   choices=["mean_pool", "self_attention", "none"],
+                   help="Fringe-level context: mean_pool (default), self_attention "
+                   "(multi-head over fringe states), or none (independent scoring).")
+    p.add_argument("--attn-heads", type=int, default=4,
+                   help="Number of attention heads (only used with "
+                   "--context-mode self_attention).")
+    p.add_argument("--attn-layers", type=int, default=1,
+                   help="Number of self-attention layers (only used with "
+                   "--context-mode self_attention).")
     # ---- CQL (conservative-Q loss term; contract-free, model graph unchanged) ----
     p.add_argument(
         "--model",
@@ -319,6 +334,10 @@ def parse_args() -> argparse.Namespace:
     args = p.parse_args()
     if args.random_pct < 0:
         p.error("--random-pct must be >= 0")
+    # Back-compat bridge: --no-global-context (use_global_context=False) maps the
+    # default context_mode to "none". An explicit --context-mode always wins.
+    if args.context_mode == "mean_pool" and not args.use_global_context:
+        args.context_mode = "none"
     return args
 
 
@@ -329,7 +348,8 @@ def _resolve(path: str) -> Path:
 
 def _build_model(
     dataset_type: str, use_goal_separate_input: bool,
-    use_global_context: bool = True,
+    context_mode: str = "mean_pool",
+    attn_heads: int = 4, attn_layers: int = 1,
 ) -> FrontierPolicyNetwork:
     """A fresh model with the production architecture (matches deployed
     frontier_policy exports). The architecture is fringe-size-agnostic: F only
@@ -346,7 +366,9 @@ def _build_model(
         edge_emb_dim=32,
         num_edge_labels=128,
         num_node_labels=4096,
-        use_global_context=use_global_context,
+        context_mode=context_mode,
+        attn_heads=attn_heads,
+        attn_layers=attn_layers,
         mlp_depth=2,
         use_goal_separate_input=use_goal_separate_input,
     )
@@ -512,7 +534,9 @@ def main() -> None:
         # Fresh model + trainer per fringe; instances/caches are reused.
         model = _build_model(
             args.dataset_type, use_goal_separate_input,
-            use_global_context=args.use_global_context,
+            context_mode=args.context_mode,
+            attn_heads=args.attn_heads,
+            attn_layers=args.attn_layers,
         )
         common = dict(
             model=model,
