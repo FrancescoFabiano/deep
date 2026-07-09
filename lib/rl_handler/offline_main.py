@@ -280,6 +280,26 @@ def parse_args() -> argparse.Namespace:
                    "(context-only). Default on.")
     p.add_argument("--no-pad-closed", dest="pad_closed", action="store_false",
                    help="Disable closed-state padding (live-pool-only fringes).")
+    # ---- d*-stratified replay: draw an equal share of each batch from every d*
+    # bucket (ceiling = max reachable d* across training instances, adaptive; no
+    # hardcoded constant). Counters the near-goal data skew. Default off. ----
+    p.add_argument("--stratified-replay", action="store_true", default=False,
+                   help="d*-stratified replay sampling: equal transitions per d* "
+                   "bucket. Bucket ceiling is adaptive (max reachable d* across "
+                   "training instances).")
+    p.add_argument("--no-stratified-replay", dest="stratified_replay",
+                   action="store_false",
+                   help="Uniform replay sampling (default).")
+    # ---- Global context toggle: mean-pool frontier context in the policy head.
+    # Off => score each state as MLP([node_emb | goal]); removes the train/deploy
+    # context distribution shift that padding introduces. Default on. ----
+    p.add_argument("--use-global-context", action="store_true", default=True,
+                   help="Use mean-pool global context in the policy head (default on).")
+    p.add_argument("--no-global-context", dest="use_global_context",
+                   action="store_false",
+                   help="Disable mean-pool context — score each state as "
+                   "MLP([node_emb | goal]). Eliminates the train/deploy context "
+                   "distribution shift from padding.")
     # ---- CQL (conservative-Q loss term; contract-free, model graph unchanged) ----
     p.add_argument(
         "--model",
@@ -308,7 +328,8 @@ def _resolve(path: str) -> Path:
 
 
 def _build_model(
-    dataset_type: str, use_goal_separate_input: bool
+    dataset_type: str, use_goal_separate_input: bool,
+    use_global_context: bool = True,
 ) -> FrontierPolicyNetwork:
     """A fresh model with the production architecture (matches deployed
     frontier_policy exports). The architecture is fringe-size-agnostic: F only
@@ -325,7 +346,7 @@ def _build_model(
         edge_emb_dim=32,
         num_edge_labels=128,
         num_node_labels=4096,
-        use_global_context=True,
+        use_global_context=use_global_context,
         mlp_depth=2,
         use_goal_separate_input=use_goal_separate_input,
     )
@@ -489,7 +510,10 @@ def main() -> None:
             torch.cuda.manual_seed_all(args.seed)
 
         # Fresh model + trainer per fringe; instances/caches are reused.
-        model = _build_model(args.dataset_type, use_goal_separate_input)
+        model = _build_model(
+            args.dataset_type, use_goal_separate_input,
+            use_global_context=args.use_global_context,
+        )
         common = dict(
             model=model,
             instances=instances,
@@ -517,6 +541,7 @@ def main() -> None:
             select_on_train=True,
             cql_alpha=cql_alpha,
             pad_closed=args.pad_closed,
+            stratified_replay=args.stratified_replay,
         )
         if args.use_regimes:
             from src.offline.regime_trainer import RegimeDQNTrainer  # noqa: E402

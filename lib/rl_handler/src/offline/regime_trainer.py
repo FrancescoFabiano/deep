@@ -327,8 +327,10 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
             occ.record(len(res.fringe), len(env.reservoir))
             # Same pad-to-F procedure as training: pad with closed, act on any
             # slot, and let env.step resolve a closed-slot pick from padded_fringe.
-            in_fringe, _ = self._input_fringe(env, res.fringe)
-            res = env.step(self.greedy_action(inst_idx, in_fringe),
+            in_fringe, n_open = self._input_fringe(env, res.fringe)
+            # Eval/deploy: pad for GNN context but restrict the argmax to open
+            # slots so the greedy pick can never land on closed padding.
+            res = env.step(self.greedy_action(inst_idx, in_fringe, n_open=n_open),
                            padded_fringe=in_fringe)
         if occ_accum is not None:
             occ_accum.merge(occ)
@@ -635,6 +637,7 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
                     reward=nxt.reward, next_fringe=tuple(next_in),
                     done=nxt.done, regime=cur_r,
                     n_open=n_open, next_n_open=next_n_open,
+                    dstar=self._expanded_dstar(cur_i, in_fringe, action),
                 ))
 
             if nxt.done:

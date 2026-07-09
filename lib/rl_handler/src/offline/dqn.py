@@ -85,6 +85,7 @@ class OfflineDQNTrainer:
         select_on_train: bool = False,
         cql_alpha: float = 0.0,
         pad_closed: bool = False,
+        stratified_replay: bool = False,
     ):
         self.device = torch.device(
             device or ("cuda" if torch.cuda.is_available() else "cpu")
@@ -222,7 +223,23 @@ class OfflineDQNTrainer:
             ).to(self.device)
 
         torch.manual_seed(seed)
-        self.replay = ReplayBuffer(replay_capacity, seed=seed)
+        # Adaptive d* ceiling = max REACHABLE d* across all training instances
+        # (distance is a per-instance List[float]; UNREACHABLE_DISTANCE marks
+        # unreachable). Buckets d* in [0, max_dstar]; unreachable/missing -> ceiling.
+        self.stratified_replay = bool(stratified_replay)
+        reachable = [
+            d
+            for inst in self.instances
+            for d in inst.distance
+            if d < UNREACHABLE_DISTANCE
+        ]
+        self.max_dstar = int(max(reachable)) if reachable else 0
+        self.replay = ReplayBuffer(
+            replay_capacity,
+            seed=seed,
+            stratified=self.stratified_replay,
+            max_dstar=self.max_dstar,
+        )
         params = list(self.model.parameters())
         if self.aux_head is not None:
             params += list(self.aux_head.parameters())
@@ -304,9 +321,34 @@ class OfflineDQNTrainer:
         return pad_with_closed(open_fringe, env.closed, self.fringe_size)
 
     @torch.no_grad()
-    def greedy_action(self, inst_idx: int, fringe: Sequence[int]) -> int:
+    def _expanded_dstar(
+        self, inst_idx: int, fringe: Sequence[int], action: int
+    ) -> int:
+        """d* of the expanded state ``fringe[action]``, capped to ``max_dstar``.
+        Unreachable / out-of-range states fall back to the ceiling so every
+        transition carries a valid bucket key for stratified replay."""
+        dist = self.instances[inst_idx].distance
+        if 0 <= action < len(fringe):
+            sid = int(fringe[action])
+            if 0 <= sid < len(dist):
+                d = dist[sid]
+                if d < UNREACHABLE_DISTANCE:
+                    return min(int(d), self.max_dstar)
+        return self.max_dstar
+
+    def greedy_action(
+        self, inst_idx: int, fringe: Sequence[int], n_open: Optional[int] = None
+    ) -> int:
+        """Greedy slot pick. The GNN always scores the full (padded) fringe for
+        context; ``n_open`` restricts the argmax to the leading open slots
+        ``[:n_open]`` (eval/deploy behaviour). ``n_open=None`` (default) keeps the
+        full-fringe argmax used during training — the action space is unchanged
+        there, so closed-slot picks stay possible and the open-state Q-values are
+        learned as before."""
         self.model.eval()
         logits, _ = self._forward(self.model, [(inst_idx, fringe)])
+        if n_open is not None and 0 < int(n_open) < logits.numel():
+            logits = logits[: int(n_open)]
         return int(torch.argmax(logits).item())
 
     # ---------- training ----------
@@ -784,6 +826,7 @@ class OfflineDQNTrainer:
                     done=nxt.done,
                     n_open=n_open,
                     next_n_open=next_n_open,
+                    dstar=self._expanded_dstar(inst_idx, in_fringe, action),
                 )
             )
 
@@ -911,8 +954,10 @@ class OfflineDQNTrainer:
             occ.record(len(res.fringe), len(env.reservoir))
             # Same pad-to-F procedure as training: pad with closed, act on any
             # slot, and let env.step resolve a closed-slot pick from padded_fringe.
-            in_fringe, _ = self._input_fringe(env, res.fringe)
-            res = env.step(self.greedy_action(inst_idx, in_fringe),
+            in_fringe, n_open = self._input_fringe(env, res.fringe)
+            # Eval/deploy: pad for GNN context but restrict the argmax to open
+            # slots so the greedy pick can never land on closed padding.
+            res = env.step(self.greedy_action(inst_idx, in_fringe, n_open=n_open),
                            padded_fringe=in_fringe)
         if occ_accum is not None:
             occ_accum.merge(occ)
