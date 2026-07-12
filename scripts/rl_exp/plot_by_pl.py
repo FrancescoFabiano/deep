@@ -29,7 +29,7 @@ import matplotlib.pyplot as plt
 
 # An approach line is shown only if its OVERALL success rate across all pl values
 # in that split is >= this threshold. Filters entire lines, not individual points.
-SUCCESS_RATE_THRESHOLD = 0.98
+SUCCESS_RATE_THRESHOLD = 0.999
 
 # (column in the CSV / y-axis label, output filename prefix)
 METRICS = [
