@@ -658,11 +658,14 @@ class RegimeDQNTrainer(OfflineDQNTrainer):
                 res = nxt
 
             pbar.update(1)
-            pbar.set_postfix({"eps": f"{eps:.3f}", "td": f"{last_td:.4f}", "q": f"{last_q:.2f}"})
+            pbar.set_postfix({"eps": f"{eps:.3f}", "td": f"{last_td:.4f}", "q": f"{last_q:.2f}",
+                              "lr": f"{self.optimizer.param_groups[0]['lr']:.2e}"})
 
             if len(self.replay) >= self.warmup and frame % self.update_every == 0:
                 loss_acc.append(self._update())
-            if frame % self.target_sync == 0:
+            # Hard target sync ONLY when Polyak is off (target_tau == 0); when
+            # tau > 0 the base _update() applies the EMA soft update instead.
+            if self.target_tau == 0.0 and frame % self.target_sync == 0:
                 self.target.load_state_dict(self.model.state_dict())
 
             if frame % n_checkpoints == 0 and loss_acc:

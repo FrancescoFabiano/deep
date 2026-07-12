@@ -87,6 +87,18 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--replay-capacity", type=int, default=50_000)
     p.add_argument("--warmup", type=int, default=1_000)
     p.add_argument("--target-sync", type=int, default=1_000)
+    p.add_argument("--target-tau", type=float, default=0.0,
+                   help="Polyak soft target update coefficient. 0 = hard sync every "
+                   "--target-sync frames (default, backward compat). >0 = exponential "
+                   "moving average: target = tau*online + (1-tau)*target at each "
+                   "_update() step. Typical value: 0.005.")
+    p.add_argument("--lr-schedule", type=str, default="constant",
+                   choices=["constant", "cosine", "linear"],
+                   help="LR schedule. constant = no decay (default). "
+                   "cosine = CosineAnnealingLR to --lr-min. "
+                   "linear = LinearLR from --lr to --lr-min over training.")
+    p.add_argument("--lr-min", type=float, default=1e-5,
+                   help="Minimum LR for cosine/linear schedules (default 1e-5).")
     # 1 gradient update per 4 env frames (classic DQN ratio); the GNN forward
     # is kernel-launch-bound on these tiny graphs, so this sets the fps.
     p.add_argument("--update-every", type=int, default=4)
@@ -566,6 +578,12 @@ def main() -> None:
             cql_alpha=cql_alpha,
             pad_closed=args.pad_closed,
             stratified_replay=args.stratified_replay,
+            target_tau=args.target_tau,
+            lr_schedule=args.lr_schedule,
+            lr_min=args.lr_min,
+            # Total frames for the scheduler's T_max (updates ~= frames/update_every).
+            # frames is a train() arg, not stored, so it must reach __init__ here.
+            total_frames=args.frames,
         )
         if args.use_regimes:
             from src.offline.regime_trainer import RegimeDQNTrainer  # noqa: E402

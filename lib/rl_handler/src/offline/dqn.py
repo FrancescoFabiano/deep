@@ -86,6 +86,10 @@ class OfflineDQNTrainer:
         cql_alpha: float = 0.0,
         pad_closed: bool = False,
         stratified_replay: bool = False,
+        target_tau: float = 0.0,
+        lr_schedule: str = "constant",
+        lr_min: float = 1e-5,
+        total_frames: int = 0,
     ):
         self.device = torch.device(
             device or ("cuda" if torch.cuda.is_available() else "cpu")
@@ -246,6 +250,34 @@ class OfflineDQNTrainer:
         if self.aux_head is not None:
             params += list(self.aux_head.parameters())
         self.optimizer = torch.optim.Adam(params, lr=lr)
+
+        # Polyak soft target updates: when target_tau > 0, the hard sync (every
+        # target_sync frames) is DISABLED and the target instead follows an
+        # exponential moving average target <- (1-tau)*target + tau*online at each
+        # _update() step. 0.0 (default) => hard sync, byte-identical to before.
+        self.target_tau = float(target_tau)
+        # Optional LR decay over the run. Scheduler steps once per _update() call,
+        # so T_max is the number of updates ~= total_frames / update_every. The
+        # 'constant' default builds no scheduler => LR fixed, byte-identical.
+        self.lr_schedule_name = str(lr_schedule)
+        self.scheduler = None
+        if self.lr_schedule_name in ("cosine", "linear"):
+            total_updates = max(1, int(total_frames) // self.update_every)
+            if self.lr_schedule_name == "cosine":
+                self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+                    self.optimizer, T_max=total_updates, eta_min=float(lr_min)
+                )
+            else:  # linear decay from lr to lr_min over the run
+                end_factor = (float(lr_min) / lr) if lr > 0 else 0.0
+                self.scheduler = torch.optim.lr_scheduler.LinearLR(
+                    self.optimizer, start_factor=1.0, end_factor=end_factor,
+                    total_iters=total_updates,
+                )
+        elif self.lr_schedule_name != "constant":
+            raise ValueError(
+                f"lr_schedule must be one of constant/cosine/linear, got "
+                f"{self.lr_schedule_name!r}"
+            )
         self.flat = GlobalFlatCache(
             self.caches,
             device=self.device,
@@ -354,6 +386,16 @@ class OfflineDQNTrainer:
         return int(torch.argmax(logits).item())
 
     # ---------- training ----------
+
+    @torch.no_grad()
+    def _soft_update_target(self):
+        """Polyak averaging: target_param = (1 - tau) * target_param + tau *
+        online_param, applied to every target parameter each _update() step.
+        Iterating self.target.parameters() covers exactly the params the hard sync
+        copies (self.model.state_dict()); the training-only aux head is on neither.
+        """
+        for p_t, p_o in zip(self.target.parameters(), self.model.parameters()):
+            p_t.data.mul_(1.0 - self.target_tau).add_(self.target_tau * p_o.data)
 
     def _update(self) -> Dict[str, float]:
         batch = self.replay.sample(self.batch_size)
@@ -466,6 +508,13 @@ class OfflineDQNTrainer:
                 0.98 * self._grad_norm_ema + 0.02 * g
             )
         self.optimizer.step()
+        # Polyak soft target update (per _update() step) when enabled; the hard
+        # sync in the train loop is gated OFF whenever target_tau > 0, so the two
+        # mechanisms never mix. Scheduler steps once per update if configured.
+        if self.target_tau > 0.0:
+            self._soft_update_target()
+        if self.scheduler is not None:
+            self.scheduler.step()
         return {
             "td_loss": float(loss.item()),
             "q_mean": float(q_sa.mean().item()),
@@ -853,7 +902,8 @@ class OfflineDQNTrainer:
 
             pbar.update(1)
             pbar.set_postfix(
-                {"eps": f"{eps:.3f}", "td": f"{last_td:.4f}", "q": f"{last_q:.2f}"}
+                {"eps": f"{eps:.3f}", "td": f"{last_td:.4f}", "q": f"{last_q:.2f}",
+                 "lr": f"{self.optimizer.param_groups[0]['lr']:.2e}"}
             )
 
             if len(self.replay) >= self.warmup and frame % self.update_every == 0:
@@ -865,7 +915,9 @@ class OfflineDQNTrainer:
                     except Exception:
                         self._probe_batch = None
                 loss_acc.append(self._update())
-            if frame % self.target_sync == 0:
+            # Hard target sync ONLY when Polyak is off (target_tau == 0); when
+            # tau > 0 the target follows the EMA inside _update() instead.
+            if self.target_tau == 0.0 and frame % self.target_sync == 0:
                 self.target.load_state_dict(self.model.state_dict())
 
             if frame % n_checkpoints == 0 and loss_acc:
