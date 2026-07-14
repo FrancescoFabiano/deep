@@ -1,159 +1,124 @@
-"""Tests 2 and 3 — the reward fix, and the gamma/K_max separation assertion.
+"""Test 2 + 3 — the reward, at gamma = 1.
 
-THE BUG BEING FIXED
-The previous env gave a dead end "terminal with no bonus", so a failure returned
--m where m is however many steps you survived: fail after 3 -> -3, succeed after
-20 -> -20. Under that reward FAILING FAST IS OPTIMAL, and offline there is no
-exploration to discover that this is an artifact -- the critic learns exactly it.
+WHY GAMMA = 1
+The completeness proposition says every policy reaches a goal on a solvable
+instance, i.e. EVERY POLICY IS PROPER. Costs are strictly positive (-1 per
+expansion), the process terminates w.p. 1 under any policy, and there is no
+absorbing failure state to escape into. That is the stochastic shortest path
+setting (Bertsekas & Tsitsiklis): the undiscounted Bellman operator has a unique
+fixed point. Discounting exists to make NON-terminating processes well-posed;
+ours terminates.
 
-    r(s,a) = 0            if SUCC
-           = -1/(1-gamma) if DOOM   (absorbing, done=True)
-           = -1           otherwise
+    r(s,a) = 0     if SUCC
+           = -1    otherwise
+    V*(s)  = -delta(s)   exactly
+    G_succ(k) = -k       linear in k, no saturation, ever
+
+DOOM keeps a finite absorbing penalty but is UNREACHABLE: doom <=> delta(root) =
+inf, and unsolvable instances are filtered at load.
+
+THE BUG THAT WAS FIXED
+The previous env made the cap terminal with reward -1, so a truncation returned
+-m: stopping early scored better than searching. The fix is the terminated /
+truncated split (see test_env_transition), not a discount.
 """
 
 from __future__ import annotations
 
-import math
+import warnings
 
 import pytest
 
-from src.offline.env import (
-    assert_gamma_spans_cap,
-    doom_penalty,
-    g_doom,
-    g_succ,
-)
+from src.offline.env import assert_gamma, doom_penalty, g_succ
 from src.offline.tree import max_success_expansions
 
-GAMMAS = (0.9, 0.95, 0.99, 0.995)
+
+# ------------------------------------------------- gamma = 1: the objective ---
+
+def test_g_succ_is_linear_at_gamma_one():
+    """-k exactly: the return IS the negative expansion count."""
+    for k in range(1, 500):
+        assert g_succ(k, 1.0) == -float(k)
 
 
-def _horizon(gamma: float) -> int:
-    """1/(1-gamma) -- the longest K_max this gamma is allowed to be used with."""
-    return int(1.0 / (1.0 - gamma))
+def test_g_succ_strictly_decreasing_at_gamma_one():
+    """The objective is fewest expansions, at every scale -- no horizon."""
+    for k in range(1, 5000):
+        assert g_succ(k + 1, 1.0) < g_succ(k, 1.0)
 
 
-def _return_of_doom_after(m: int, gamma: float, reward_mode: str) -> float:
-    """Exactly the reward sequence the env emits for an episode that dooms on
-    its m-th transition: (m-1) steps of -1, then the terminal doom reward."""
-    g = 0.0
-    disc = 1.0
-    for _ in range(m - 1):
-        g += disc * -1.0
-        disc *= gamma
-    return g + disc * doom_penalty(gamma, reward_mode)
+def test_gamma_one_never_saturates():
+    """The property gamma<1 cannot have: a 1000-expansion search and a
+    2000-expansion one differ by exactly 1000, not by ~0."""
+    assert g_succ(2000, 1.0) - g_succ(1000, 1.0) == -1000.0
 
 
-@pytest.mark.parametrize("gamma", GAMMAS)
-def test_g_doom_independent_of_when_it_happens(gamma):
-    """The whole point: no incentive to fail early."""
-    ref = g_doom(gamma)
-    for m in range(1, 60):
-        got = _return_of_doom_after(m, gamma, "absorbing")
-        assert math.isclose(got, ref, rel_tol=1e-9), (
-            f"gamma={gamma} m={m}: doom return {got} != {ref}; the return of a "
-            f"failure must not depend on how long you survived."
-        )
-    assert math.isclose(ref, -1.0 / (1.0 - gamma))
+def test_gamma_one_is_accepted_silently():
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        assert_gamma(1.0)
 
 
-@pytest.mark.parametrize("gamma", GAMMAS)
-def test_any_success_beats_any_failure(gamma):
-    """G_succ(k) > G_doom for every k within the horizon this gamma is valid for.
+def test_discounting_truncates_the_objective():
+    """The distortion gamma=1 avoids, made concrete.
 
-    Mathematically the strict inequality holds for ANY finite k, since
-    G_succ(k) - G_doom = gamma^k/(1-gamma) > 0. In float it holds only while
-    gamma^k has not underflowed relative to 1 -- see the saturation test below,
-    which is exactly why assert_gamma_separates exists.
+    At gamma=0.99 the effective horizon is 100 expansions. A 1000-expansion
+    search and a 2000-expansion one both return ~-100: the critic is
+    STRUCTURALLY unable to represent the difference between a slow search and a
+    hopeless one. We are minimising expansions; gamma<1 stops counting them.
     """
-    for k in range(1, _horizon(gamma) + 1):
-        assert g_succ(k, gamma) > g_doom(gamma), f"gamma={gamma} k={k}"
+    slow = g_succ(1000, 0.99)
+    hopeless = g_succ(2000, 0.99)
+    assert abs(slow - hopeless) < 0.01, "expected discounted returns to collapse"
+    # ...whereas undiscounted they are 1000 apart.
+    assert abs(g_succ(1000, 1.0) - g_succ(2000, 1.0)) == 1000.0
+
+    # And the real baseline spread on CC (oracle 34 ... bfs 231) is compressed:
+    assert abs(g_succ(231, 0.99) - g_succ(1000, 0.99)) < 10.0
 
 
-@pytest.mark.parametrize("gamma", GAMMAS)
-def test_g_succ_strictly_decreasing_in_k(gamma):
-    """The objective is fewest expansions."""
-    for k in range(1, _horizon(gamma) + 1):
-        assert g_succ(k + 1, gamma) < g_succ(k, gamma), f"gamma={gamma} k={k}"
+def test_gamma_below_one_warns_loudly():
+    with pytest.warns(RuntimeWarning, match="TRUNCATES the objective"):
+        assert_gamma(0.99)
+    with pytest.warns(RuntimeWarning):
+        assert_gamma(0.999)
 
 
-@pytest.mark.parametrize("gamma", GAMMAS)
-def test_returns_saturate_beyond_the_horizon(gamma):
-    """WHY 1/(1-gamma) > K_max is required.
-
-    Far beyond the horizon, gamma^k underflows against 1 and G_succ(k) becomes
-    float-INDISTINGUISHABLE from G_doom: a success and a failure carry the same
-    return, and the critic cannot tell them apart. The requirement is about this
-    numerical separation, not about ordering (which never breaks in exact math).
-    """
-    k = 50 * _horizon(gamma)
-    assert g_succ(k, gamma) == g_doom(gamma), (
-        f"expected float saturation at k={k} for gamma={gamma}"
-    )
-    # ...and it does NOT saturate inside the horizon, which is the point.
-    assert g_succ(_horizon(gamma), gamma) > g_doom(gamma)
+def test_gamma_out_of_range_is_rejected():
+    for bad in (0.0, -0.5, 1.5):
+        with pytest.raises(ValueError, match="gamma must be in"):
+            assert_gamma(bad)
 
 
-@pytest.mark.parametrize("gamma", GAMMAS)
-def test_doom_penalty_is_the_delta_to_infinity_limit(gamma):
-    """The penalty is not a free hyperparameter: it is the value of never
-    reaching a goal, i.e. lim_{k->inf} G_succ(k) under gamma^inf = 0."""
-    assert math.isclose(g_succ(10_000, gamma), doom_penalty(gamma), rel_tol=1e-6)
+# ----------------------------------------------------------- doom penalty ----
+
+def test_doom_penalty_is_finite_and_budget_shaped():
+    """-1/(1-gamma) is +inf at gamma=1 and is gone with the discounting it
+    belonged to. -expansion_cap is finite, defensible as 'the worst cost the
+    budget admits', and unreachable by construction."""
+    assert doom_penalty(2000) == -2000.0
+    assert doom_penalty(500) == -500.0
 
 
-@pytest.mark.parametrize("gamma", GAMMAS)
-def test_legacy_reward_makes_failing_fast_optimal(gamma):
-    """F6's premise, asserted rather than asserted-in-a-comment: under legacy the
-    return of a failure is -m, so dooming sooner scores strictly better."""
-    returns = [_return_of_doom_after(m, gamma, "legacy") for m in range(1, 20)]
-    assert all(a > b for a, b in zip(returns, returns[1:])), (
-        "legacy doom return must strictly decrease in m -- that IS the bug"
-    )
-    with pytest.raises(ValueError, match="m-dependent"):
-        g_doom(gamma, "legacy")
+def test_doom_penalty_is_worse_than_any_admissible_success():
+    """Any success within the budget must beat doom."""
+    cap = 2000
+    for k in range(1, cap):
+        assert g_succ(k, 1.0) > doom_penalty(cap)
 
 
-# --------------------------------------------- test 3: gamma spans the cap ---
-#
-# RESTATED after the completeness proposition: DOOM cannot fire on a solvable
-# instance, so there is nothing to separate success FROM. What matters is that
-# success returns span the longest episode we admit (the cap) without the
-# discount saturating.
+def test_legacy_reward_mode_is_the_known_broken_one():
+    assert doom_penalty(2000, "legacy") == -1.0
+    with pytest.raises(ValueError, match="reward_mode"):
+        doom_penalty(2000, "nonsense")
 
 
-def test_gamma_assertion_fails_loudly_when_horizon_is_below_the_cap():
-    with pytest.raises(ValueError, match="too small"):
-        assert_gamma_spans_cap(gamma=0.99, eval_expansion_cap=3000)
-    try:
-        assert_gamma_spans_cap(gamma=0.99, eval_expansion_cap=3000)
-    except ValueError as e:
-        assert "Fix: gamma >" in str(e) and "lower" in str(e)
-
-
-def test_gamma_assertion_passes_when_horizon_clears_the_cap():
-    assert_gamma_spans_cap(gamma=0.99, eval_expansion_cap=99)
-    assert_gamma_spans_cap(gamma=0.999, eval_expansion_cap=500)
-    with pytest.raises(ValueError):
-        assert_gamma_spans_cap(gamma=0.99, eval_expansion_cap=100)  # not strict
-
-
-def test_gamma_and_cap_are_coupled(capsys):
-    """The consequence worth stating: gamma and the cap are no longer
-    independent knobs. gamma=0.99 admits a cap of at most 99."""
-    for gamma, max_cap in ((0.99, 99), (0.995, 199), (0.999, 999)):
-        assert_gamma_spans_cap(gamma, max_cap)
-        with pytest.raises(ValueError):
-            assert_gamma_spans_cap(gamma, max_cap + 1)
-    with capsys.disabled():
-        print("\n  gamma -> max admissible eval cap: "
-              "0.99 -> 99, 0.995 -> 199, 0.999 -> 999")
-
+# ---------------------------------------------------------- K_max from data ---
 
 def test_k_max_is_measured_from_data_not_worst_case(shipped_instances):
-    """max delta(root) over the shipped tables. The worst-case internal-node
-    count (~4.5k) would force gamma ~ 0.9998 and is deliberately not used."""
-    insts = list(shipped_instances.values())
-    assert max_success_expansions(insts) == 34
+    """max delta(root) over the shipped tables. At gamma=1 this no longer
+    constrains anything -- it is reported as a data statistic only."""
+    assert max_success_expansions(list(shipped_instances.values())) == 34
 
 
 def test_k_max_undefined_without_a_solvable_instance():

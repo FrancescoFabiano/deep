@@ -56,89 +56,117 @@ Consequence: the transition is stochastic and V* is an OPTIMISTIC BOUND.
 from __future__ import annotations
 
 import random
+import warnings
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Sequence
+from typing import Dict, Iterable, List, Optional, Sequence
 
 from .planner_config import assert_one_expansion_per_call, exploitation_for
 from .tree import INF_DELTA, TreeInstance
 
+# The rollout ceiling is a GENEROUS backstop, not a semantic threshold. Any
+# single cap is an arbitrary line through the spread of policy costs (measured at
+# F=32 on CC: hfs_oracle 34, dfs 81, random 199, bfs 231), and whichever we pick
+# decides which baselines "fail". So the cap only bounds compute; the reported
+# quantity is a COVERAGE CURVE over budget (a cactus plot), which makes the
+# budget a parameter of the reader rather than of the experiment.
+CAP_FLOOR = 2000
+CAP_DELTA_MULTIPLIER = 50
+
+# Selection budget: difficulty-relative, so an easy instance does not get the
+# same absolute slack as a hard one. Declared once in the manifest, never tuned.
+REFERENCE_BUDGET_MULTIPLIER = 10
+
+
+def default_expansion_cap(instances: Iterable[TreeInstance]) -> int:
+    """max(CAP_FLOOR, 50 * max delta(root)). Log it; never tune it."""
+    deltas = [int(i.delta_root) for i in instances if i.solvable()]
+    if not deltas:
+        return CAP_FLOOR
+    return max(CAP_FLOOR, CAP_DELTA_MULTIPLIER * max(deltas))
+
+
+def reference_budget(instance: TreeInstance) -> int:
+    """The declared budget coverage is measured at: 10 * delta(root)."""
+    return int(REFERENCE_BUDGET_MULTIPLIER * instance.delta_root)
+
 REWARD_MODES = ("absorbing", "legacy")
+
+# THE OBJECTIVE IS UNDISCOUNTED. See assert_gamma().
+DEFAULT_GAMMA = 1.0
 
 
 # ---------------------------------------------------------------- reward ----
 
-def doom_penalty(gamma: float, reward_mode: str = "absorbing") -> float:
+def doom_penalty(expansion_cap: int, reward_mode: str = "absorbing") -> float:
     """Terminal reward on DOOM.
 
-    absorbing: -1/(1-gamma). This is NOT a free hyperparameter — it is the
-    delta->inf limit of V* under gamma^inf = 0, i.e. the value of never
-    reaching a goal. It makes the return of a failure independent of when it
-    happens (see G_doom below).
+    absorbing: -expansion_cap -- "the worst cost the budget admits". Finite, and
+    UNREACHABLE by construction: the completeness proposition makes DOOM
+    equivalent to delta(root)=inf, and unsolvable instances are filtered out at
+    load. (The old -1/(1-gamma) form is +inf at gamma=1 and is gone with the
+    discounting it belonged to.)
 
-    legacy: -1, the known-broken reward kept only for the F6 ablation.
+    legacy: -1, the known-broken reward kept only for the reward ablation.
     """
     if reward_mode == "legacy":
         return -1.0
     if reward_mode != "absorbing":
         raise ValueError(f"reward_mode must be one of {REWARD_MODES}, got {reward_mode!r}")
-    return -1.0 / (1.0 - gamma)
+    return -float(expansion_cap)
 
 
-def g_succ(k: int, gamma: float) -> float:
-    """Return of a success after k expansions: -(1 - gamma^k)/(1-gamma)."""
+def g_succ(k: int, gamma: float = DEFAULT_GAMMA) -> float:
+    """Return of a success after k expansions.
+
+    gamma = 1:  -k                       linear, no saturation, ever
+    gamma < 1:  -(1 - gamma^k)/(1-gamma)
+    """
+    if gamma == 1.0:
+        return -float(k)
     return -(1.0 - gamma ** k) / (1.0 - gamma)
 
 
-def g_doom(gamma: float, reward_mode: str = "absorbing") -> float:
-    """Return of a failure that dooms after m expansions.
+def assert_gamma(gamma: float) -> None:
+    """The objective is undiscounted, and the completeness proposition is why.
 
-    Under `absorbing` this is exactly -1/(1-gamma) for EVERY m:
+    Every policy reaches a goal on a solvable instance (see FringeEnv._doom), so
+    EVERY POLICY IS PROPER. Costs are strictly positive (-1 per expansion), the
+    process terminates with probability 1 under any policy, and there is no
+    absorbing failure state to escape into. That is exactly the stochastic
+    shortest path setting (Bertsekas & Tsitsiklis): the undiscounted Bellman
+    operator has a unique fixed point and value iteration converges.
 
-        G = -(1-gamma^m)/(1-gamma) + gamma^m * (-1/(1-gamma))
-          = -[1 - gamma^m + gamma^m]/(1-gamma)
-          = -1/(1-gamma)
+    Discounting exists to make NON-TERMINATING processes well-posed. Ours
+    terminates. So at gamma = 1:
 
-    which is the whole point: there is no incentive to fail early. Under
-    `legacy` the return is -m, so failing sooner scores better and the optimal
-    policy is to fail as fast as possible.
+        V*(s)     = -delta(s)   exactly
+        G_succ(k) = -k          linear in k
+        no horizon constraint, no cap coupling
+
+    and, more importantly, no distortion. At gamma=0.99 a 1000-expansion search
+    and a 2000-expansion one both return ~-100: a discounted critic is
+    STRUCTURALLY unable to represent the difference between a slow search and a
+    hopeless one. We are minimising expansions; gamma < 1 stops counting them
+    past the horizon. That is the wrong objective, not a numerical nuisance.
+
+    gamma stays a flag so it can be an ABLATION AXIS, not a tuning knob.
     """
-    if reward_mode == "legacy":
-        raise ValueError(
-            "g_doom is m-dependent under legacy (that is the bug): G = -m."
-        )
-    return -1.0 / (1.0 - gamma)
-
-
-def assert_gamma_spans_cap(gamma: float, eval_expansion_cap: int) -> None:
-    """Require 1/(1-gamma) > eval_expansion_cap.
-
-    RESTATED after the completeness proposition. This was originally about
-    separating success from doom, but DOOM cannot fire on a solvable instance, so
-    there is nothing to separate it from. What matters now is that SUCCESS
-    returns span the whole range of episode lengths we admit -- i.e. up to the
-    cap -- without the discount saturating:
-
-        G_succ(k) = -(1 - gamma^k)/(1-gamma)
-
-    Once gamma^k underflows against 1, every k beyond that point maps to the same
-    float and the critic cannot tell a 200-expansion success from a 2000-
-    expansion one. The effective horizon must therefore exceed the longest
-    episode we score, which is the cap.
-
-    NOTE the coupling this creates: gamma and eval_expansion_cap are no longer
-    independent knobs. gamma=0.99 admits a cap of at most 99.
-    """
-    horizon = 1.0 / (1.0 - gamma)
-    if not horizon > eval_expansion_cap:
-        raise ValueError(
-            f"gamma={gamma} is too small for eval_expansion_cap={eval_expansion_cap}.\n"
-            f"  effective horizon 1/(1-gamma) = {horizon:.2f}\n"
-            f"  Success returns must span the full admitted episode length without\n"
-            f"  the discount saturating, or a long success is numerically\n"
-            f"  indistinguishable from a much longer one.\n"
-            f"  Fix: gamma > {1.0 - 1.0 / (eval_expansion_cap + 1):.6f}, or lower\n"
-            f"  the cap below {int(horizon)}."
-        )
+    if gamma == 1.0:
+        return
+    if not (0.0 < gamma < 1.0):
+        raise ValueError(f"gamma must be in (0, 1], got {gamma}")
+    warnings.warn(
+        f"gamma={gamma} < 1 TRUNCATES the objective. Every policy is proper here "
+        f"(completeness proposition), so this is a stochastic shortest path "
+        f"problem and the undiscounted operator is well-posed. Discounting makes "
+        f"the critic unable to distinguish a slow search from a hopeless one: at "
+        f"gamma={gamma}, a {int(1/(1-gamma))*10}-expansion success and a "
+        f"{int(1/(1-gamma))*20}-expansion one differ by "
+        f"{abs(g_succ(int(1/(1-gamma))*10, gamma) - g_succ(int(1/(1-gamma))*20, gamma)):.3g}. "
+        f"Use gamma=1 unless you are running the discounting ablation.",
+        RuntimeWarning,
+        stacklevel=2,
+    )
 
 
 # ------------------------------------------------------------ step result ----
@@ -191,16 +219,24 @@ class FringeEnv:
         instance: TreeInstance,
         fringe_size: int = 32,
         seed: int = 0,
-        gamma: float = 0.99,
+        gamma: float = DEFAULT_GAMMA,
         reward_mode: str = "absorbing",
         expansion_cap: Optional[int] = None,
         exploitation: Optional[int] = None,
     ):
         if reward_mode not in REWARD_MODES:
             raise ValueError(f"reward_mode must be one of {REWARD_MODES}, got {reward_mode!r}")
+        if not instance.solvable():
+            raise ValueError(
+                f"instance {instance.name!r} has delta(root)=inf (no reachable "
+                f"goal). Unsolvable instances must be filtered at load time "
+                f"(tree.partition_solvable) -- they contribute one immediate-doom "
+                f"transition and teach nothing about ranking."
+            )
         self.instance = instance
         self.fringe_size = int(fringe_size)
         self.gamma = float(gamma)
+        assert_gamma(self.gamma)
         self.reward_mode = reward_mode
         self.rng = random.Random(seed)
         self.seed = seed
@@ -214,9 +250,10 @@ class FringeEnv:
         assert_one_expansion_per_call(self.fringe_size, self.exploitation)
 
         self.expansion_cap = (
-            int(expansion_cap) if expansion_cap is not None else 4 * instance.n_states
+            int(expansion_cap) if expansion_cap is not None
+            else default_expansion_cap([instance])
         )
-        self.doom_reward = doom_penalty(self.gamma, self.reward_mode)
+        self.doom_reward = doom_penalty(self.expansion_cap, self.reward_mode)
 
         self.fringe: List[int] = []
         self.order: List[int] = []      # state ids, best first (the priority queue)
@@ -555,20 +592,47 @@ def rollout(
     }
 
 
-def aggregate_rollouts(rollouts) -> Dict[str, object]:
-    """Coverage-first aggregation. Never average expansions over unsolved runs."""
+def coverage_at(rollouts, budget: int) -> float:
+    """% solved within `budget` expansions. One point on the cactus plot."""
+    rs = list(rollouts)
+    if not rs:
+        return 0.0
+    return sum(1 for r in rs if r["solved"] and r["expansions"] <= budget) / len(rs)
+
+
+def coverage_curve(rollouts, budgets: Sequence[int]) -> List[Dict[str, float]]:
+    """The F1' cactus plot's data: coverage as a function of budget.
+
+    This is what planner papers compare on, and it is the honest answer to "which
+    cap?": report the whole curve and let the reader pick the budget.
+    """
+    return [{"budget": int(b), "coverage": coverage_at(rollouts, b)} for b in budgets]
+
+
+def aggregate_rollouts(rollouts, reference_budget: Optional[int] = None) -> Dict[str, object]:
+    """Coverage-first aggregation. Never averages expansions over unsolved runs.
+
+    `coverage` (at the declared reference budget when given, else at the rollout
+    cap) is the PRIMARY selection metric; regret over solved instances is the
+    tie-break. doom_rate is reported but is provably 0 on solvable data.
+    """
     rs = list(rollouts)
     n = max(1, len(rs))
     solved = [r for r in rs if r["solved"]]
-    regrets = [r["regret"] for r in solved]
-    exps = [r["expansions"] for r in solved]
+    if reference_budget is not None:
+        scored = [r for r in solved if r["expansions"] <= reference_budget]
+    else:
+        scored = solved
+    regrets = [r["regret"] for r in scored]
+    exps = [r["expansions"] for r in scored]
     return {
         "n": len(rs),
-        "coverage": len(solved) / n,
+        "coverage": len(scored) / n,
+        "reference_budget": reference_budget,
         "doom_rate": sum(1 for r in rs if r["outcome"] == "doom") / n,
         "timeout_rate": sum(1 for r in rs if r["truncated"]) / n,
-        # over SOLVED only
+        # over SOLVED-WITHIN-BUDGET only
         "regret_mean": (sum(regrets) / len(regrets)) if regrets else None,
         "expansions_mean": (sum(exps) / len(exps)) if exps else None,
-        "n_solved": len(solved),
+        "n_solved": len(scored),
     }

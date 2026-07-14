@@ -18,7 +18,8 @@ from conftest import T19_DEAD, T19_GOALS, make_tree
 
 
 def _env(inst, F, **kw):
-    return FringeEnv(inst, fringe_size=F, gamma=0.99, **kw)
+    kw.setdefault("gamma", 1.0)
+    return FringeEnv(inst, fringe_size=F, **kw)
 
 
 # ------------------------------------------- test 5: golden (B, R) traces -----
@@ -142,32 +143,31 @@ def test_unscored_reservoir_pull_is_reachable(capsys):
         print(f"\n  unscored pulls reachable: {env.n_unscored_pulls} on a 5-node tree")
 
 
-def test_doom_only_when_beam_and_reservoir_are_both_empty():
-    """DOOM = the whole reachable space is exhausted, not 'the beam ran out'."""
-    inst = make_tree([[1, 2], [], []], goals=[], name="doomed")
-    env = _env(inst, 2)
-    r = env.reset()
-    assert env.fringe == [1, 2] and env.reservoir == []
-    r = env.step(0, ranking=[0, 1])           # dead end, B=[2] left
-    assert not r.done and env.forced
-    r = env.step(0)                            # dead end, B and R both empty
-    assert r.done and r.info["outcome"] == "doom"
-    assert r.reward == pytest.approx(-1.0 / (1.0 - 0.99))
+def test_doom_is_unreachable_by_construction():
+    """The theorem's operational form.
+
+    DOOM <=> delta(root) = inf, and the env refuses to construct on an unsolvable
+    instance (they are filtered at load). So the doom branch is DEAD CODE on
+    every env that can exist -- which is the point, not an oversight. What
+    remains live is the ASSERT: if doom ever fires on a solvable instance, the
+    transition is dropping nodes and we want to hear about it immediately.
+    """
+    unsolvable = make_tree([[1, 2], [], []], goals=[], name="doomed")
+    assert not unsolvable.solvable()
+    with pytest.raises(ValueError, match="filtered at load"):
+        _env(unsolvable, 2)
 
 
-def test_doom_reward_is_absorbing_not_minus_one():
-    inst = make_tree([[1], []], goals=[], name="d2")
+def test_a_beam_that_runs_out_is_not_doom_on_a_solvable_instance(t19):
+    """Consecutive dead ends drain the beam, but the reservoir hands a node back
+    (peek()'s unscored pull) -- so the search continues rather than dooming."""
+    inst = make_tree([[1, 2, 3], [], [], [4], []], goals=[4], name="drain")
     env = _env(inst, 2)
     env.reset()
-    r = env.step(0, ranking=[0])
-    assert r.info["outcome"] == "doom"
-    assert r.reward == pytest.approx(-100.0)
-
-    legacy = FringeEnv(inst, fringe_size=2, gamma=0.99, reward_mode="legacy")
-    legacy.reset()
-    r = legacy.step(0, ranking=[0])
-    assert r.info["outcome"] == "doom"
-    assert r.reward == -1.0, "legacy is the known-broken reward kept for F6"
+    env.step(0, ranking=[0, 1])
+    r = env.step(0)
+    assert r.info["outcome"] != "doom"
+    assert env.n_unscored_pulls == 1
 
 
 def test_root_is_never_goal_tested():
@@ -446,7 +446,7 @@ def test_truncation_is_not_termination_and_returns_a_successor():
     ch = [[i + 1] for i in range(N - 1)] + [[]]
     inst = make_tree(ch, goals=[N - 1], name="deep")
     assert inst.delta_root == N - 1
-    env = FringeEnv(inst, fringe_size=4, gamma=0.999, seed=0, expansion_cap=5)
+    env = FringeEnv(inst, fringe_size=4, gamma=1.0, seed=0, expansion_cap=5)
     res = env.reset(seed=0)
     while not res.done:
         rk = list(range(len(env.fringe)))
@@ -459,15 +459,11 @@ def test_truncation_is_not_termination_and_returns_a_successor():
     assert res.info["outcome"] == "timeout"
 
 
-def test_success_and_doom_are_terminated():
-    env = FringeEnv(make_tree([[1], []], goals=[1], name="s"), fringe_size=2, gamma=0.99)
+def test_success_is_terminated():
+    env = FringeEnv(make_tree([[1], []], goals=[1], name="s"), fringe_size=2)
     r = env.reset()
     assert r.terminated and not r.truncated and r.info["outcome"] == "success"
-
-    env = FringeEnv(make_tree([[1], []], goals=[], name="d"), fringe_size=2, gamma=0.99)
-    env.reset()
-    r = env.step(0, ranking=[0])
-    assert r.terminated and not r.truncated and r.info["outcome"] == "doom"
+    assert r.reward == 0.0
 
 
 def test_doom_on_a_solvable_instance_is_an_env_bug(t19, monkeypatch):
@@ -505,7 +501,7 @@ def test_hfs_oracle_hits_delta_root_on_real_data(shipped_instances, capsys):
     from src.offline.env import rollout
     from src.offline.policies import make_policy
     for seed in range(10):
-        env = FringeEnv(inst, fringe_size=32, seed=seed, gamma=0.999,
+        env = FringeEnv(inst, fringe_size=32, seed=seed, gamma=1.0,
                         expansion_cap=900)
         r = rollout(env, make_policy(inst, "hfs_oracle", seed=seed), seed=seed)
         assert r["solved"], f"seed {seed}: pi* failed on real data"
@@ -524,7 +520,7 @@ def test_doom_is_zero_on_real_data_for_every_policy(shipped_instances, capsys):
     for name in BEHAVIOUR_POLICIES:
         rs = [
             rollout(
-                FringeEnv(inst, fringe_size=32, seed=s, gamma=0.999, expansion_cap=900),
+                FringeEnv(inst, fringe_size=32, seed=s, gamma=1.0, expansion_cap=900),
                 make_policy(inst, name, seed=s), seed=s,
             )
             for s in range(8)
