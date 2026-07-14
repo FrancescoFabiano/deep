@@ -669,7 +669,7 @@ class FrontierPolicyNetwork(nn.Module):
         ctx = ctx_per_frontier[candidate_batch]
         return torch.cat([z, ctx], dim=-1)
 
-    def forward(
+    def head_features(
         self,
         node_features: torch.Tensor,
         edge_index: torch.Tensor,
@@ -684,6 +684,12 @@ class FrontierPolicyNetwork(nn.Module):
         pool_node_index: Optional[torch.Tensor] = None,
         pool_membership: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
+        """Per-candidate features fed to `policy_head`.
+
+        Extracted from forward() so a variant can swap the HEAD while sharing
+        this encoder + context stack byte-for-byte. That identity is what makes
+        the two-head baseline a fair comparison: only the loss differs.
+        """
         node_emb = self.encoder(node_features, edge_index, edge_attr)
         expected_num_candidates = (
             int(candidate_batch.numel()) if candidate_batch is not None else None
@@ -728,6 +734,30 @@ class FrontierPolicyNetwork(nn.Module):
                     dtype=h.dtype,
                 )
             h = torch.cat([h, goal_per_candidate], dim=-1)
+        return h
+
+    def forward(
+        self,
+        node_features: torch.Tensor,
+        edge_index: torch.Tensor,
+        edge_attr: torch.Tensor,
+        membership: torch.Tensor,
+        candidate_batch: Optional[torch.Tensor] = None,
+        mask: Optional[torch.Tensor] = None,
+        goal_node_features: Optional[torch.Tensor] = None,
+        goal_edge_index: Optional[torch.Tensor] = None,
+        goal_edge_attr: Optional[torch.Tensor] = None,
+        goal_batch: Optional[torch.Tensor] = None,
+        pool_node_index: Optional[torch.Tensor] = None,
+        pool_membership: Optional[torch.Tensor] = None,
+    ) -> torch.Tensor:
+        h = self.head_features(
+            node_features, edge_index, edge_attr, membership,
+            candidate_batch=candidate_batch, mask=mask,
+            goal_node_features=goal_node_features, goal_edge_index=goal_edge_index,
+            goal_edge_attr=goal_edge_attr, goal_batch=goal_batch,
+            pool_node_index=pool_node_index, pool_membership=pool_membership,
+        )
         logits = self.policy_head(h).squeeze(-1)
         if mask is not None:
             logits = logits.masked_fill(~mask.to(torch.bool), -1e9)
