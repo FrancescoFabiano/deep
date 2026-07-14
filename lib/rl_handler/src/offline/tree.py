@@ -314,12 +314,102 @@ def load_tree_instance(
     )
 
 
+def bfs_open_max(instance: TreeInstance) -> int:
+    """Max |open list| along an uncapped BFS trajectory.
+
+    NOT A BOUND ON OTHER POLICIES -- and the previous implementation's docstring
+    claiming it was "a policy-free UPPER BOUND on how many states can be
+    simultaneously live" is wrong. The search stops when a goal is GENERATED, so
+    a policy that finds a goal later expands more nodes and (because the
+    reservoir discards nothing) accumulates a LARGER open set. Measured on
+    CC_2_3_4__pl_7: this function returns 105, while the env's actual max |B u R|
+    is 117 under bfs and only 17-18 under hfs_oracle/dfs -- which finish sooner.
+
+    Keep this as a cheap screening statistic only. The honest occupancy figure is
+    diagnostics.measure_occupancy(), which rolls out the real behaviour policies
+    in the real env.
+
+    Goal test at generation, mirroring the planner.
+    """
+    visited = {instance.root_id}
+    queue: deque[int] = deque()
+    fmax = 0
+    for c in instance.children[instance.root_id]:
+        if c in visited:
+            continue
+        visited.add(c)
+        queue.append(c)
+        if instance.is_goal[c]:
+            return max(fmax, len(queue))
+    fmax = max(fmax, len(queue))
+    while queue:
+        v = queue.popleft()
+        for c in instance.children[v]:
+            if c in visited:
+                continue
+            visited.add(c)
+            queue.append(c)
+            if instance.is_goal[c]:
+                return max(fmax, len(queue))
+        fmax = max(fmax, len(queue))
+    return fmax
+
+
+def bfs_binds_at(instance: TreeInstance, fringe_size: int) -> bool:
+    """Cheap screen only -- see bfs_open_max on why this is not authoritative.
+    Use diagnostics.measure_occupancy() for the real binds/inert verdict."""
+    return bfs_open_max(instance) > int(fringe_size)
+
+
 def max_success_expansions(instances: Sequence[TreeInstance]) -> int:
     """K_max = the longest reachable success across the data = max delta(root)."""
     ks = [int(i.delta_root) for i in instances if i.solvable()]
     if not ks:
         raise ValueError("no solvable instance: K_max is undefined.")
     return max(ks)
+
+
+def load_instances(
+    csv_paths: Sequence[str | Path],
+    kind_of_data: str = "merged",
+    verbose: bool = True,
+) -> tuple[List[TreeInstance], List[Dict[str, object]]]:
+    """Load many instances and GATE OUT the unsolvable ones.
+
+    Nothing downstream may see an unsolvable tree: by the completeness
+    proposition it produces exactly one transition (immediate doom) and teaches
+    nothing about ranking, while diluting every coverage and regret aggregate.
+
+    Returns (solvable, excluded_records). Callers MUST put `excluded_records`
+    in the run manifest -- an instance silently dropped is an instance nobody
+    knows was dropped.
+    """
+    loaded = [
+        load_tree_instance(p, name=Path(p).parent.name, kind_of_data=kind_of_data)
+        for p in csv_paths
+    ]
+    ok, bad = partition_solvable(loaded)
+    excluded = [
+        {
+            "instance": i.name,
+            "csv_path": i.csv_path,
+            "reason": "delta(root)=inf: no goal reachable in the reconstructed tree",
+            "n_states": i.n_states,
+            "h_star_root": i.h_star[i.root_id],
+        }
+        for i in bad
+    ]
+    if verbose and excluded:
+        print(
+            f"[tree] EXCLUDED {len(excluded)} unsolvable instance(s) of "
+            f"{len(loaded)}: {', '.join(e['instance'] for e in excluded)}"
+        )
+    if not ok:
+        raise ValueError(
+            f"every one of the {len(loaded)} instances is unsolvable "
+            f"(delta(root)=inf); nothing to train on."
+        )
+    return ok, excluded
 
 
 def partition_solvable(
