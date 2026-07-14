@@ -25,9 +25,47 @@ from .metrics import beam_metrics, mean_ignoring_none
 from .tree import INF_DELTA, TreeInstance
 
 
+def default_device() -> str:
+    return "cuda" if torch.cuda.is_available() else "cpu"
+
+
 def _pack(cache: InstanceCache, beam: Sequence[int], F: int, device) -> Dict[str, torch.Tensor]:
     p = pack_fringe(cache, list(beam), F)
     return {k: v.to(device) for k, v in p.items()}
+
+
+def pack_beams_batch(
+    caches: Dict[str, InstanceCache],
+    picks: Sequence[tuple],           # (instance_name, beam)
+    device,
+) -> Dict[str, torch.Tensor]:
+    """Pack many beams into ONE graph: membership continues across beams and
+    `candidate_batch` says which beam each pooled slot belongs to.
+
+    One forward for the whole minibatch instead of one per beam. The batched and
+    single-fringe paths are different code paths in `_contextualize` (and in
+    FringeAttention: forward vs forward_single) -- they are asserted equal to
+    1e-5 by test_batched_path_matches_single_path, which is what makes this
+    substitution safe.
+    """
+    nf, ei, ea, mem, cb = [], [], [], [], []
+    node_off, slot_off = 0, 0
+    for i, (name, beam) in enumerate(picks):
+        p = pack_fringe(caches[name], list(beam), len(beam))
+        nf.append(p["node_features"])
+        ei.append(p["edge_index"] + node_off)
+        ea.append(p["edge_attr"])
+        mem.append(p["membership"] + slot_off)
+        cb.append(torch.full((len(beam),), i, dtype=torch.int64))
+        node_off += int(p["node_features"].numel())
+        slot_off += len(beam)
+    return {
+        "node_features": torch.cat(nf).to(device),
+        "edge_index": torch.cat(ei, dim=1).to(device),
+        "edge_attr": torch.cat(ea).to(device),
+        "membership": torch.cat(mem).to(device),
+        "candidate_batch": torch.cat(cb).to(device),
+    }
 
 
 def score_beam(
@@ -61,64 +99,62 @@ def train_two_head_baseline(
     beams: Sequence[tuple],          # (instance_name, beam) -- on-distribution states
     fringe_size: int,
     steps: int = 2000,
-    batch_beams: int = 8,
+    batch_beams: int = 32,
     lr: float = 1e-3,
-    device: str = "cpu",
+    device: Optional[str] = None,
     seed: int = 0,
     hidden_dim: int = 64,
     context_mode: str = "mean_pool",
     verbose: bool = True,
 ) -> tuple[TwoHeadBaselineNetwork, List[Dict[str, float]]]:
+    device = device or default_device()
     torch.manual_seed(seed)
     rng = random.Random(seed)
     by_name = {i.name: i for i in instances}
+    # max_delta is DATA-DERIVED: the largest finite delta in the training
+    # instances. It bounds the distance head so viability strictly dominates
+    # distance in the score (see TwoHeadBaselineNetwork.forward). Not tuned.
+    max_delta = max(
+        (d for i in instances for d in i.delta if d != INF_DELTA), default=64.0
+    )
     model = TwoHeadBaselineNetwork(
         node_input_dim=1, hidden_dim=hidden_dim, gnn_layers=2,
         dataset_type="HASHED", context_mode=context_mode,
+        max_delta=float(max_delta),
     ).to(device)
+    if verbose:
+        print(f"  [baseline] max_delta (data-derived) = {max_delta:.0f}")
     opt = torch.optim.AdamW(model.parameters(), lr=lr)
     hist: List[Dict[str, float]] = []
 
     for step in range(int(steps)):
         picks = [beams[rng.randrange(len(beams))] for _ in range(batch_beams)]
+        # ONE forward for the whole minibatch (batched == single to 1e-5).
+        p = pack_beams_batch(caches, picks, device)
+        deltas = [by_name[n].delta[v] for n, beam in picks for v in beam]
+        viable = torch.tensor(
+            [0.0 if d == INF_DELTA else 1.0 for d in deltas],
+            dtype=torch.float32, device=device,
+        )
+        dt = torch.tensor(
+            [0.0 if d == INF_DELTA else float(d) for d in deltas],
+            dtype=torch.float32, device=device,
+        )
         opt.zero_grad()
-        total = None
-        logs = []
-        for name, beam in picks:
-            inst = by_name[name]
-            cache = caches[name]
-            p = _pack(cache, beam, len(beam), device)
-            p_logit, d_hat = model.heads(
-                p["node_features"], p["edge_index"], p["edge_attr"], p["membership"],
-                candidate_batch=None, mask=p["mask"],
-            )
-            deltas = [inst.delta[v] for v in beam]
-            viable = torch.tensor(
-                [0.0 if d == INF_DELTA else 1.0 for d in deltas],
-                dtype=torch.float32, device=device,
-            )
-            dt = torch.tensor(
-                [0.0 if d == INF_DELTA else float(d) for d in deltas],
-                dtype=torch.float32, device=device,
-            )
-            loss, log = two_head_loss(p_logit, d_hat, viable, dt)
-            total = loss if total is None else total + loss
-            logs.append(log)
-        total = total / len(picks)
-        total.backward()
+        p_logit, d_hat = model.heads(
+            p["node_features"], p["edge_index"], p["edge_attr"], p["membership"],
+            candidate_batch=p["candidate_batch"], mask=None,
+        )
+        loss, log = two_head_loss(p_logit, d_hat, viable, dt)
+        loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), 10.0)
         opt.step()
-        if step % max(1, steps // 10) == 0 or step == steps - 1:
-            rec = {
-                "step": step,
-                "loss": sum(l["loss"] for l in logs) / len(logs),
-                "bce": sum(l["bce"] for l in logs) / len(logs),
-                "mse": sum(l["mse"] for l in logs) / len(logs),
-            }
+        if step % max(1, steps // 15) == 0 or step == steps - 1:
+            rec = {"step": step, **{k: log[k] for k in ("loss", "bce", "mse")}}
             hist.append(rec)
             if verbose:
                 print(f"  [baseline] step {step:5d}  loss={rec['loss']:.4f} "
-                      f"bce={rec['bce']:.4f} mse={rec['mse']:.3f}")
+                      f"bce={rec['bce']:.4f} mse={rec['mse']:.3f}", flush=True)
     return model, hist
 
 
@@ -129,13 +165,14 @@ def evaluate_in_env(
     fringe_size: int,
     seeds: int = 3,
     expansion_cap: int = 2000,
-    device: str = "cpu",
+    device: Optional[str] = None,
 ) -> Dict[str, object]:
     """Roll the greedy policy in the REAL env -- reservoir, random refill and all.
 
     Also collects the ranking diagnostics per visited state so the baseline is
     reported on the same axes as the RL policy.
     """
+    device = device or default_device()
     rows = []
     per_instance = {}
     auc, top1, sp = [], [], []
