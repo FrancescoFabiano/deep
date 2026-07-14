@@ -181,3 +181,88 @@ def test_sterile_expansion_rate_separates_oracle_from_bfs(shipped_instances, cap
     with capsys.disabled():
         print(f"\n  CC F=32 expansions_sterile_frac: hfs_oracle="
               f"{out['hfs_oracle']:.3f}  bfs={out['bfs']:.3f}")
+
+
+# --------------------------------- Q* asymmetry / calibration reference (F4) --
+
+def test_eviction_is_not_sterile_specific():
+    """eviction <=> (expanded != argmin) AND (the beam binds). NOT sterility.
+
+    Expanding a VIABLE but non-argmin node evicts the argmin just the same:
+    push_vector dumps the whole unexpanded beam into R regardless of what v was.
+    """
+    #   0 -> 1(delta 1, argmin), 2(delta 2, viable, NOT argmin)
+    #   2 has two viable children, so expanding it floods B at F=2 and evicts 1.
+    ch = [[1, 2], [3], [4, 5], [], [6], [7], [], []]
+    inst = make_tree(ch, goals=[3, 6, 7], name="viable_evict")
+    assert inst.delta[1] == 1.0 and inst.delta[2] == 2.0
+    assert inst.delta[2] != INF_DELTA, "node 2 is VIABLE, not sterile"
+
+    env = FringeEnv(inst, fringe_size=2, seed=0, expansion_cap=50)
+    env.reset(seed=0)                       # B=[1,2]
+    env.step(1, ranking=[0, 1])             # expand VIABLE non-argmin node 2
+    assert env.n_sterile_expansions == 0, "no sterile expansion happened"
+    assert 1 in env.reservoir, "the argmin was evicted by a VIABLE expansion"
+    assert len(env.evictions) + len(env._pending_eviction) > 0
+
+
+def test_no_eviction_when_the_argmin_is_expanded(t19):
+    """v == argmin -> ch(v) carries the delta-1 node into B', the chain
+    continues, nothing is lost. This is why pi* evicts zero times."""
+    from src.offline.policies import oracle_ranking
+    env = FringeEnv(t19, fringe_size=19, seed=0, expansion_cap=200)
+    res = env.reset(seed=0)
+    while not res.done:
+        if env.forced:
+            res = env.step(env.forced_action)
+        else:
+            rk = oracle_ranking(t19, env.fringe)
+            res = env.step(rk[0], rk)
+    assert env.evictions == [], "pi* must never evict"
+
+
+def test_q_star_is_exact_on_argmin_and_a_bound_elsewhere(t19):
+    from src.offline.metrics import is_argmin_action, q_star_naive
+    env = FringeEnv(t19, fringe_size=19, seed=0)
+    env.reset(seed=0)
+    beam, res = env.fringe, env.reservoir
+    d = -t19.v_star(beam, res)
+    a_star = min(range(len(beam)), key=lambda k: t19.delta[beam[k]])
+    assert is_argmin_action(t19, beam, res, a_star)
+    assert q_star_naive(t19, beam, res, a_star) == -d
+    other = [k for k in range(len(beam)) if k != a_star][0]
+    assert not is_argmin_action(t19, beam, res, other)
+    assert q_star_naive(t19, beam, res, other) == -1.0 - d
+
+
+def test_qstar_residual_is_none_on_the_argmin(t19):
+    from src.offline.metrics import qstar_naive_residual
+    env = FringeEnv(t19, fringe_size=19, seed=0)
+    env.reset(seed=0)
+    a_star = min(range(len(env.fringe)), key=lambda k: t19.delta[env.fringe[k]])
+    assert qstar_naive_residual(-4.0, t19, env.fringe, env.reservoir, a_star) is None
+
+
+def test_per_state_exactness_beats_the_per_instance_bmax_test(shipped_instances, capsys):
+    """The per-instance `F >= b_max` condition is far too conservative: b_max is
+    driven by a few high-branching nodes, while the delta-decreasing child almost
+    always sits early in the child order."""
+    from src.offline.metrics import best_child_index, q_star_argmin_is_exact
+    inst = shipped_instances["CC_2_3_4__pl_7"]
+    reach = inst._reachable()
+    internal = [v for v in reach if best_child_index(inst, v) is not None]
+    for F in (8, 16, 32):
+        ok = sum(1 for v in internal if q_star_argmin_is_exact(inst, v, F))
+        assert ok == len(internal), f"F={F}: only {ok}/{len(internal)} exact"
+    ok4 = sum(1 for v in internal if q_star_argmin_is_exact(inst, v, 4))
+    with capsys.disabled():
+        print(f"\n  CC b_max=8: per-state Q*(argmin) exactness "
+              f"F=4 -> {100*ok4/len(internal):.1f}%, F>=8 -> 100.0%")
+    assert ok4 / len(internal) > 0.95
+
+
+def test_r2_and_pearson():
+    from src.offline.metrics import pearson, r2
+    assert r2([1.0, 2.0, 3.0], [1.0, 2.0, 3.0]) == pytest.approx(1.0)
+    assert pearson([1.0, 2.0, 3.0], [2.0, 4.0, 6.0]) == pytest.approx(1.0)
+    assert r2([1.0, 1.0], [1.0, 1.0]) is None      # zero variance -> undefined
