@@ -18,7 +18,7 @@ import math
 import pytest
 
 from src.offline.env import (
-    assert_gamma_separates,
+    assert_gamma_spans_cap,
     doom_penalty,
     g_doom,
     g_succ,
@@ -113,38 +113,47 @@ def test_legacy_reward_makes_failing_fast_optimal(gamma):
         g_doom(gamma, "legacy")
 
 
-# ------------------------------------------------------ test 3: gamma/K_max ---
+# --------------------------------------------- test 3: gamma spans the cap ---
+#
+# RESTATED after the completeness proposition: DOOM cannot fire on a solvable
+# instance, so there is nothing to separate success FROM. What matters is that
+# success returns span the longest episode we admit (the cap) without the
+# discount saturating.
 
-def test_gamma_assertion_fails_loudly_when_too_small():
+
+def test_gamma_assertion_fails_loudly_when_horizon_is_below_the_cap():
     with pytest.raises(ValueError, match="too small"):
-        assert_gamma_separates(gamma=0.9, k_max=34)   # horizon 10 < 34
-    # and the message tells you what to do about it
+        assert_gamma_spans_cap(gamma=0.99, eval_expansion_cap=3000)
     try:
-        assert_gamma_separates(gamma=0.9, k_max=34)
+        assert_gamma_spans_cap(gamma=0.99, eval_expansion_cap=3000)
     except ValueError as e:
-        assert "K_max" in str(e) and "Fix: gamma >" in str(e)
+        assert "Fix: gamma >" in str(e) and "lower" in str(e)
 
 
-def test_gamma_assertion_passes_when_horizon_clears_k_max():
-    assert_gamma_separates(gamma=0.99, k_max=34)      # horizon 100 > 34
-    assert_gamma_separates(gamma=0.99, k_max=99)
+def test_gamma_assertion_passes_when_horizon_clears_the_cap():
+    assert_gamma_spans_cap(gamma=0.99, eval_expansion_cap=99)
+    assert_gamma_spans_cap(gamma=0.999, eval_expansion_cap=500)
     with pytest.raises(ValueError):
-        assert_gamma_separates(gamma=0.99, k_max=100)  # horizon 100, not > 100
+        assert_gamma_spans_cap(gamma=0.99, eval_expansion_cap=100)  # not strict
 
 
-def test_gamma_assertion_against_real_k_max(shipped_instances):
-    """K_max measured from the data, NOT from a worst-case node count.
+def test_gamma_and_cap_are_coupled(capsys):
+    """The consequence worth stating: gamma and the cap are no longer
+    independent knobs. gamma=0.99 admits a cap of at most 99."""
+    for gamma, max_cap in ((0.99, 99), (0.995, 199), (0.999, 999)):
+        assert_gamma_spans_cap(gamma, max_cap)
+        with pytest.raises(ValueError):
+            assert_gamma_spans_cap(gamma, max_cap + 1)
+    with capsys.disabled():
+        print("\n  gamma -> max admissible eval cap: "
+              "0.99 -> 99, 0.995 -> 199, 0.999 -> 999")
 
-    max delta(root) over the shipped tables is 34 (CC). The worst-case internal
-    node count is ~4.5k, which would force gamma ~ 0.9998 for no benefit -- that
-    bound is useless and is deliberately not what we assert.
-    """
+
+def test_k_max_is_measured_from_data_not_worst_case(shipped_instances):
+    """max delta(root) over the shipped tables. The worst-case internal-node
+    count (~4.5k) would force gamma ~ 0.9998 and is deliberately not used."""
     insts = list(shipped_instances.values())
-    k_max = max_success_expansions(insts)
-    assert k_max == 34, f"expected K_max=34 (CC delta(root)), got {k_max}"
-    assert_gamma_separates(gamma=0.99, k_max=k_max)   # the default gamma clears it
-    with pytest.raises(ValueError):
-        assert_gamma_separates(gamma=0.95, k_max=k_max)  # horizon 20 < 34
+    assert max_success_expansions(insts) == 34
 
 
 def test_k_max_undefined_without_a_solvable_instance():

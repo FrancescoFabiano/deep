@@ -109,30 +109,35 @@ def g_doom(gamma: float, reward_mode: str = "absorbing") -> float:
     return -1.0 / (1.0 - gamma)
 
 
-def assert_gamma_separates(gamma: float, k_max: int) -> None:
-    """Require 1/(1-gamma) > K_max, with K_max measured from the data.
+def assert_gamma_spans_cap(gamma: float, eval_expansion_cap: int) -> None:
+    """Require 1/(1-gamma) > eval_expansion_cap.
 
-    This is NOT about ordering — G_succ(k) > G_doom holds for any gamma in
-    (0,1) and any finite k. It is about NUMERICAL SEPARATION: G_succ(k) ->
-    G_doom as k grows, so once the discount saturates over the horizon the data
-    actually contains, successes become indistinguishable from failures in
-    float. Requiring the effective horizon 1/(1-gamma) to exceed the longest
-    observed success keeps the gap meaningful.
+    RESTATED after the completeness proposition. This was originally about
+    separating success from doom, but DOOM cannot fire on a solvable instance, so
+    there is nothing to separate it from. What matters now is that SUCCESS
+    returns span the whole range of episode lengths we admit -- i.e. up to the
+    cap -- without the discount saturating:
 
-    K_max is max delta(root) over the solvable instances — the longest observed
-    success. It is deliberately NOT the worst-case internal-node count, which
-    would be a useless bound forcing gamma ~ 0.998.
+        G_succ(k) = -(1 - gamma^k)/(1-gamma)
+
+    Once gamma^k underflows against 1, every k beyond that point maps to the same
+    float and the critic cannot tell a 200-expansion success from a 2000-
+    expansion one. The effective horizon must therefore exceed the longest
+    episode we score, which is the cap.
+
+    NOTE the coupling this creates: gamma and eval_expansion_cap are no longer
+    independent knobs. gamma=0.99 admits a cap of at most 99.
     """
     horizon = 1.0 / (1.0 - gamma)
-    if not horizon > k_max:
+    if not horizon > eval_expansion_cap:
         raise ValueError(
-            f"gamma={gamma} is too small for this data.\n"
+            f"gamma={gamma} is too small for eval_expansion_cap={eval_expansion_cap}.\n"
             f"  effective horizon 1/(1-gamma) = {horizon:.2f}\n"
-            f"  K_max (longest observed success, max delta(root)) = {k_max}\n"
-            f"  Require 1/(1-gamma) > K_max so the discount has not saturated\n"
-            f"  over the horizon the data contains; otherwise G_succ(K_max) is\n"
-            f"  numerically indistinguishable from G_doom.\n"
-            f"  Fix: gamma > {1.0 - 1.0 / (k_max + 1):.5f}."
+            f"  Success returns must span the full admitted episode length without\n"
+            f"  the discount saturating, or a long success is numerically\n"
+            f"  indistinguishable from a much longer one.\n"
+            f"  Fix: gamma > {1.0 - 1.0 / (eval_expansion_cap + 1):.6f}, or lower\n"
+            f"  the cap below {int(horizon)}."
         )
 
 
@@ -140,10 +145,28 @@ def assert_gamma_separates(gamma: float, k_max: int) -> None:
 
 @dataclass
 class StepResult:
+    """Gymnasium-style terminated/truncated split. The distinction is NOT
+    cosmetic -- it decides whether the critic bootstraps:
+
+        y = r + gamma * (1 - terminated) * max_a' Q(s', a')      # NOT (1 - done)
+
+    `truncated` means we stopped watching, not that the search failed. By the
+    completeness proposition the planner would have kept going and eventually
+    succeeded, so a capped state is worth -E[remaining expansions], not -1.
+    Treating it as terminal leaks that -1 backwards and makes the critic
+    systematically optimistic about deep searches (Pardo et al. 2018).
+    """
+
     fringe: List[int]           # the beam, in ONNX packing order; action indexes this
     reward: float
-    done: bool
+    terminated: bool            # SUCC, or genuine DOOM on an unsolvable instance
+    truncated: bool             # expansion cap only
     info: Dict[str, object] = field(default_factory=dict)
+
+    @property
+    def done(self) -> bool:
+        """Loop control only. NEVER use this in a Bellman target."""
+        return self.terminated or self.truncated
 
 
 # -------------------------------------------------------------------- env ----
@@ -289,9 +312,34 @@ class FringeEnv:
         self.forced = True
         self.forced_action = self.fringe.index(self.order[0])
 
-    def _terminal(self, reward: float, kind: str) -> StepResult:
+    def _terminated(self, reward: float, kind: str) -> StepResult:
         self.done = True
-        return StepResult([], reward, True, self._info(outcome=kind))
+        return StepResult([], reward, terminated=True, truncated=False,
+                          info=self._info(outcome=kind))
+
+    def _doom(self) -> StepResult:
+        """Genuine exhaustion. On a SOLVABLE instance this is unreachable.
+
+        PROPOSITION (completeness of the wrapper). If delta(root) < inf then some
+        root child has delta = d-1; it is either a goal (success) or it enters
+        B u R. The reservoir never discards it, so it stays open until expanded,
+        and expanding it exposes a delta = d-2 node. By induction B u R always
+        contains a viable node, so it can be neither empty nor entirely
+        non-viable. Hence DOOM <=> delta(root) = inf.
+
+        So reaching here on a solvable instance is an ENV BUG, not a bad episode:
+        fail loudly rather than absorb it into a reward.
+        """
+        if self.instance.solvable():
+            raise AssertionError(
+                f"DOOM fired on SOLVABLE instance {self.instance.name!r} "
+                f"(delta(root)={self.instance.delta_root}) at expansion "
+                f"{self.expansions}. The reservoir guarantees B u R always holds "
+                f"a viable node, so this is an environment bug -- the transition "
+                f"is dropping nodes. |B|={len(self.fringe)} |R|={len(self.reservoir)} "
+                f"|visited|={len(self.visited)}"
+            )
+        return self._terminated(self.doom_reward, "doom")
 
     def reset(self, seed: Optional[int] = None) -> StepResult:
         """Expand the root (forced, counts as expansion 1).
@@ -315,11 +363,12 @@ class FringeEnv:
 
         fresh, goal = self._generate_children(self.instance.root_id)
         if goal:
-            return self._terminal(0.0, "success")
+            return self._terminated(0.0, "success")
         self._rebuild_beam(fresh)
         if not self.fringe:
-            return self._terminal(self.doom_reward, "doom")
-        return StepResult(list(self.fringe), 0.0, False, self._info(outcome="running"))
+            return self._doom()
+        return StepResult(list(self.fringe), 0.0, terminated=False, truncated=False,
+                          info=self._info(outcome="running"))
 
     def step(
         self,
@@ -367,7 +416,7 @@ class FringeEnv:
 
         fresh, goal = self._generate_children(v)
         if goal:
-            return self._terminal(0.0, "success")
+            return self._terminated(0.0, "success")
 
         if fresh:
             # RESCORE PATH: push_vector fires (RL_node_to_add == 1).
@@ -380,19 +429,25 @@ class FringeEnv:
             # the planner pops the next node by the ranks it already holds.
             if not self.fringe:
                 if not self.reservoir:
-                    return self._terminal(self.doom_reward, "doom")
+                    return self._doom()
                 self._pull_unscored()
             self._set_forced()
 
         if not self.fringe:
-            return self._terminal(self.doom_reward, "doom")
+            return self._doom()
         if self.expansions >= self.expansion_cap:
-            # Truncation, NOT doom: the search space is not exhausted, we simply
-            # stopped looking. Bootstrapping (not the absorbing penalty) is the
-            # correct backup here, so it is reported separately.
+            # TRUNCATION, not failure. The cap has no deployment counterpart as a
+            # terminal state: the planner does not stop and declare failure at our
+            # training budget, and by the completeness proposition it would
+            # eventually succeed. So this is a rollout we stopped watching.
+            # The successor fringe IS returned: the critic must bootstrap
+            # max_a' Q(s',a') from it, otherwise the -1 leaks backwards and the
+            # critic becomes optimistic about deep searches.
             self.done = True
-            return StepResult([], -1.0, True, self._info(outcome="timeout"))
-        return StepResult(list(self.fringe), -1.0, False, self._info(outcome="running"))
+            return StepResult(list(self.fringe), -1.0, terminated=False, truncated=True,
+                              info=self._info(outcome="timeout"))
+        return StepResult(list(self.fringe), -1.0, terminated=False, truncated=False,
+                          info=self._info(outcome="running"))
 
     def _info(self, outcome: str) -> Dict[str, object]:
         return {
@@ -479,16 +534,41 @@ def rollout(
         total += res.reward
         disc += g * res.reward
         g *= env.gamma
+    solved = res.info["outcome"] == "success"
     return {
         "expansions": res.info["expansions"],
         "outcome": res.info["outcome"],
-        "goal_found": res.info["goal_found"],
+        # `solved` is the coverage indicator: % of instances solved within the
+        # cap. It is the PRIMARY selection metric -- a policy that solves 60% at
+        # regret 2 is not better than one that solves 100% at regret 8, and a
+        # mean regret over solved instances alone would hide exactly that.
+        "solved": solved,
+        "terminated": res.terminated,
+        "truncated": res.truncated,
+        # regret and expansions are meaningful only on SOLVED instances; None
+        # here so an aggregator cannot silently average a truncation in.
+        "regret": env.instance.regret(int(res.info["expansions"])) if solved else None,
         "return": total,
         "discounted_return": disc,
-        "regret": (
-            env.instance.regret(int(res.info["expansions"]))
-            if res.info["outcome"] == "success" else None
-        ),
         "n_forced_steps": res.info["n_forced_steps"],
         "n_unscored_pulls": res.info["n_unscored_pulls"],
+    }
+
+
+def aggregate_rollouts(rollouts) -> Dict[str, object]:
+    """Coverage-first aggregation. Never average expansions over unsolved runs."""
+    rs = list(rollouts)
+    n = max(1, len(rs))
+    solved = [r for r in rs if r["solved"]]
+    regrets = [r["regret"] for r in solved]
+    exps = [r["expansions"] for r in solved]
+    return {
+        "n": len(rs),
+        "coverage": len(solved) / n,
+        "doom_rate": sum(1 for r in rs if r["outcome"] == "doom") / n,
+        "timeout_rate": sum(1 for r in rs if r["truncated"]) / n,
+        # over SOLVED only
+        "regret_mean": (sum(regrets) / len(regrets)) if regrets else None,
+        "expansions_mean": (sum(exps) / len(exps)) if exps else None,
+        "n_solved": len(solved),
     }

@@ -315,13 +315,25 @@ def load_tree_instance(
 
 
 def max_success_expansions(instances: Sequence[TreeInstance]) -> int:
-    """K_max = the longest *observed success* across the data = max delta(root).
-
-    This is the bound gamma must clear (see env.assert_gamma_separates): it is
-    the real horizon of a successful episode. The worst-case internal-node count
-    is a useless bound here — it would force gamma ~ 0.998 for no benefit.
-    """
+    """K_max = the longest reachable success across the data = max delta(root)."""
     ks = [int(i.delta_root) for i in instances if i.solvable()]
     if not ks:
         raise ValueError("no solvable instance: K_max is undefined.")
     return max(ks)
+
+
+def partition_solvable(
+    instances: Sequence[TreeInstance],
+) -> tuple[List[TreeInstance], List[TreeInstance]]:
+    """Split into (solvable, unsolvable). Unsolvable = delta(root) = inf.
+
+    An unsolvable instance has no reachable goal, so by the completeness
+    proposition (see env._doom) it produces exactly ONE useful transition -- an
+    immediate doom -- and teaches nothing about ranking. Including it would
+    dilute coverage and regret aggregates with an instance no policy can ever
+    solve. Callers must log the excluded names and count them in the manifest
+    rather than dropping them silently.
+    """
+    ok = [i for i in instances if i.solvable()]
+    bad = [i for i in instances if not i.solvable()]
+    return ok, bad

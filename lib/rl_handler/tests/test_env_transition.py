@@ -432,6 +432,113 @@ def test_every_node_expanded_at_most_once(t19):
         assert len(seen) == len(set(seen)), "a node was expanded twice"
 
 
+# ------------------------------------- terminated vs truncated (bootstrap) ---
+
+def test_truncation_is_not_termination_and_returns_a_successor():
+    """The cap must NOT be terminal.
+
+    A capped rollout is one we stopped watching, not a search that failed: by the
+    completeness proposition the planner would have kept going and eventually
+    succeeded. So the critic must bootstrap, which means the successor fringe has
+    to come back -- an empty one would leave nothing to bootstrap from.
+    """
+    N = 40                                   # 0 -> 1 -> ... -> 39 (goal)
+    ch = [[i + 1] for i in range(N - 1)] + [[]]
+    inst = make_tree(ch, goals=[N - 1], name="deep")
+    assert inst.delta_root == N - 1
+    env = FringeEnv(inst, fringe_size=4, gamma=0.999, seed=0, expansion_cap=5)
+    res = env.reset(seed=0)
+    while not res.done:
+        rk = list(range(len(env.fringe)))
+        res = env.step(rk[0], rk)
+    assert res.truncated is True
+    assert res.terminated is False, "the cap must never set terminated"
+    assert res.done is True, "but the loop must still stop"
+    assert res.fringe, "truncation must return the successor beam to bootstrap from"
+    assert res.reward == -1.0, "a truncated step is an ordinary step"
+    assert res.info["outcome"] == "timeout"
+
+
+def test_success_and_doom_are_terminated():
+    env = FringeEnv(make_tree([[1], []], goals=[1], name="s"), fringe_size=2, gamma=0.99)
+    r = env.reset()
+    assert r.terminated and not r.truncated and r.info["outcome"] == "success"
+
+    env = FringeEnv(make_tree([[1], []], goals=[], name="d"), fringe_size=2, gamma=0.99)
+    env.reset()
+    r = env.step(0, ranking=[0])
+    assert r.terminated and not r.truncated and r.info["outcome"] == "doom"
+
+
+def test_doom_on_a_solvable_instance_is_an_env_bug(t19, monkeypatch):
+    """The completeness proposition made executable: if DOOM ever fires on an
+    instance with delta(root) < inf, the transition is dropping nodes. Fail
+    loudly rather than absorb it into a reward."""
+    env = _env(t19, 2)
+    env.reset()
+    # Simulate a transition that loses the reservoir (the bug this guards).
+    env.fringe = []
+    env.reservoir = []
+    with pytest.raises(AssertionError, match="DOOM fired on SOLVABLE"):
+        env._doom()
+
+
+def test_coverage_aggregation_never_averages_unsolved_runs():
+    from src.offline.env import aggregate_rollouts
+    rs = [
+        {"solved": True, "regret": 2.0, "expansions": 10, "outcome": "success", "truncated": False},
+        {"solved": False, "regret": None, "expansions": 99, "outcome": "timeout", "truncated": True},
+    ]
+    agg = aggregate_rollouts(rs)
+    assert agg["coverage"] == 0.5
+    assert agg["timeout_rate"] == 0.5
+    assert agg["regret_mean"] == 2.0, "the truncated run must not enter the mean"
+    assert agg["expansions_mean"] == 10.0
+
+
+# ------------------------------------------- real-data regression (test 4) ----
+
+def test_hfs_oracle_hits_delta_root_on_real_data(shipped_instances, capsys):
+    """The strongest validation the env has: on the real CC tree, pi* spends
+    exactly delta(root) = 34 expansions with regret 0, at the deployed F=32."""
+    inst = shipped_instances["CC_2_3_4__pl_7"]
+    from src.offline.env import rollout
+    from src.offline.policies import make_policy
+    for seed in range(10):
+        env = FringeEnv(inst, fringe_size=32, seed=seed, gamma=0.999,
+                        expansion_cap=900)
+        r = rollout(env, make_policy(inst, "hfs_oracle", seed=seed), seed=seed)
+        assert r["solved"], f"seed {seed}: pi* failed on real data"
+        assert r["expansions"] == inst.delta_root == 34
+        assert r["regret"] == 0.0
+    with capsys.disabled():
+        print(f"\n  CC_2_3_4__pl_7 F=32: hfs_oracle = {inst.delta_root:.0f} "
+              f"expansions, regret 0 on 10/10 seeds")
+
+
+def test_doom_is_zero_on_real_data_for_every_policy(shipped_instances, capsys):
+    """The completeness proposition, checked on the real tree rather than argued."""
+    from src.offline.env import aggregate_rollouts, rollout
+    from src.offline.policies import make_policy
+    inst = shipped_instances["CC_2_3_4__pl_7"]
+    for name in BEHAVIOUR_POLICIES:
+        rs = [
+            rollout(
+                FringeEnv(inst, fringe_size=32, seed=s, gamma=0.999, expansion_cap=900),
+                make_policy(inst, name, seed=s), seed=s,
+            )
+            for s in range(8)
+        ]
+        agg = aggregate_rollouts(rs)
+        assert agg["doom_rate"] == 0.0, (
+            f"{name} doomed on a solvable instance -- the reservoir should make "
+            f"that impossible"
+        )
+        with capsys.disabled():
+            print(f"    {name:11s} coverage={agg['coverage']:.2f} "
+                  f"doom={agg['doom_rate']:.2f} regret={agg['regret_mean']}")
+
+
 def test_dead_end_rate_on_t19_is_representative(t19):
     """The fixture deliberately mirrors the real data's hot dead-end path
     (CC_2_3_4__pl_7 is 17.5% dead ends)."""
