@@ -266,6 +266,12 @@ class FringeEnv:
         # Diagnostics
         self.n_forced_steps = 0
         self.n_unscored_pulls = 0
+        # Eviction tracking -- see _track_eviction.
+        self.evictions: List[Dict[str, object]] = []
+        self._pending_eviction: Dict[int, int] = {}   # node -> expansion evicted at
+        self.reservoir_sizes: List[int] = []
+        self.beam_sizes: List[int] = []
+        self.n_sterile_expansions = 0
 
     # ---- observation helpers ----
 
@@ -281,8 +287,26 @@ class FringeEnv:
         return len(self.available_actions())
 
     def v_star(self) -> float:
-        """Optimistic bound (reservoir included, random refill not controllable)."""
+        """OPTIMISTIC BOUND, and now we know how loose.
+
+        -min delta over B u R assumes a reservoir node comes back for free. It
+        does not: it returns only by a random draw against a growing reservoir
+        (see _track_eviction). So regret = k - delta(root) is a LOWER BOUND on
+        true regret -- every figure using it must say so on the axis, not in a
+        caption. Never a training target.
+        """
         return self.instance.v_star(self.fringe, self.reservoir)
+
+    def _record_occupancy(self) -> None:
+        self.reservoir_sizes.append(len(self.reservoir))
+        self.beam_sizes.append(len(self.fringe))
+
+    def beam_sterile_frac(self) -> float:
+        """Fraction of the current beam whose subtree contains no goal."""
+        if not self.fringe:
+            return 0.0
+        n = sum(1 for v in self.fringe if self.instance.delta[v] == INF_DELTA)
+        return n / len(self.fringe)
 
     # ---- core mechanics ----
 
@@ -349,6 +373,60 @@ class FringeEnv:
         self.forced = True
         self.forced_action = self.fringe.index(self.order[0])
 
+    def _best_viable(self, nodes: Sequence[int]) -> Optional[int]:
+        best, bd = None, INF_DELTA
+        for v in nodes:
+            if self.instance.delta[v] < bd:
+                best, bd = v, self.instance.delta[v]
+        return best
+
+    def _track_eviction(self, best_before: Optional[int], expanded: int) -> None:
+        """Record the beam's best viable node being pushed out into the reservoir.
+
+        THE COMPOUNDING LOOP. push_vector does not keep the beam: it dumps the
+        whole unexpanded beam into R, fills B with ch(v), and refills leftover
+        slots AT RANDOM from R. So expanding a sterile v both floods B with v's
+        sterile children AND EVICTS the good node into R, from which it returns
+        only by a random draw -- against a reservoir that just grew.
+
+        The cost of a sterile expansion is therefore NOT -1: it is -1 plus the
+        expected wait to draw the good node back, and that wait grows with |R|.
+        This is why Q*(s,v) for sterile v has no closed form (it depends on the
+        refill process) and must be LEARNED by bootstrapping through real
+        stochastic transitions -- the first thing here a regressor on delta
+        cannot do.
+        """
+        if best_before is None or best_before == expanded:
+            return
+        if best_before in self.fringe:
+            return                       # survived the rebuild; no eviction
+        if best_before in self.reservoir and best_before not in self._pending_eviction:
+            self._pending_eviction[best_before] = self.expansions
+
+    def _resolve_recoveries(self) -> None:
+        for node in list(self._pending_eviction):
+            if node in self.fringe:
+                at = self._pending_eviction.pop(node)
+                self.evictions.append({
+                    "node": node,
+                    "evicted_at": at,
+                    "recovered_at": self.expansions,
+                    "recovery_steps": self.expansions - at,
+                    "recovered": True,
+                })
+
+    def _finalize_evictions(self) -> None:
+        """Never-recovered evictions are the expensive ones; count them."""
+        for node, at in self._pending_eviction.items():
+            self.evictions.append({
+                "node": node,
+                "evicted_at": at,
+                "recovered_at": None,
+                "recovery_steps": self.expansions - at,
+                "recovered": False,
+            })
+        self._pending_eviction = {}
+
     def _terminated(self, reward: float, kind: str) -> StepResult:
         self.done = True
         return StepResult([], reward, terminated=True, truncated=False,
@@ -397,11 +475,17 @@ class FringeEnv:
         self.n_forced_steps = 0
         self.n_unscored_pulls = 0
         self.done = False
+        self.evictions = []
+        self._pending_eviction = {}
+        self.reservoir_sizes = []
+        self.beam_sizes = []
+        self.n_sterile_expansions = 0
 
         fresh, goal = self._generate_children(self.instance.root_id)
         if goal:
             return self._terminated(0.0, "success")
         self._rebuild_beam(fresh)
+        self._record_occupancy()
         if not self.fringe:
             return self._doom()
         return StepResult(list(self.fringe), 0.0, terminated=False, truncated=False,
@@ -447,17 +531,28 @@ class FringeEnv:
                 )
             self.order = [self.fringe[i] for i in ranking]
 
+        best_before = self._best_viable(self.fringe)
         v = self.fringe.pop(action)
         self.order.remove(v)
         self.expansions += 1
+        if self.instance.delta[v] == INF_DELTA:
+            # A sterile expansion: v's whole subtree contains no goal. This is
+            # node-level FAILURE -- the completeness proposition removed episode
+            # doom, it did not remove failure. ~35% of CC_2_3_4__pl_7's nodes are
+            # sterile, and the 197-expansion gap between bfs (231) and
+            # hfs_oracle (34) is almost entirely spent in them. Avoiding these is
+            # the primary thing the policy must learn.
+            self.n_sterile_expansions += 1
 
         fresh, goal = self._generate_children(v)
         if goal:
+            self._finalize_evictions()
             return self._terminated(0.0, "success")
 
         if fresh:
             # RESCORE PATH: push_vector fires (RL_node_to_add == 1).
             self._rebuild_beam(fresh)
+            self._track_eviction(best_before, v)
             self.forced = False
             self.forced_action = None
         else:
@@ -470,9 +565,13 @@ class FringeEnv:
                 self._pull_unscored()
             self._set_forced()
 
+        self._resolve_recoveries()
+        self._record_occupancy()
+
         if not self.fringe:
             return self._doom()
         if self.expansions >= self.expansion_cap:
+            self._finalize_evictions()
             # TRUNCATION, not failure. The cap has no deployment counterpart as a
             # terminal state: the planner does not stop and declare failure at our
             # training budget, and by the completeness proposition it would
@@ -529,6 +628,20 @@ class FringeEnv:
         c.done = self.done
         c.n_forced_steps = self.n_forced_steps
         c.n_unscored_pulls = self.n_unscored_pulls
+        c.evictions = [dict(e) for e in self.evictions]
+        c._pending_eviction = dict(self._pending_eviction)
+        c.reservoir_sizes = list(self.reservoir_sizes)
+        c.beam_sizes = list(self.beam_sizes)
+        c.n_sterile_expansions = self.n_sterile_expansions
+        # Guard against silent drift: this hand-rolled copy bypasses __init__, so
+        # any field added later is missing here and the clone diverges from the
+        # parent in a way that surfaces far from the cause.
+        missing = set(vars(self)) - set(vars(c))
+        if missing:
+            raise AssertionError(
+                f"FringeEnv.clone() does not copy {sorted(missing)}; add them "
+                f"above or the counterfactual successors will be wrong."
+            )
         return c
 
     # ---- invariant used by the reservoir test ----
@@ -561,7 +674,9 @@ def rollout(
     total = 0.0
     disc = 0.0
     g = 1.0
+    sterile_beam = []
     while not res.done:
+        sterile_beam.append(env.beam_sterile_frac())
         if env.forced:
             action, ranking = env.forced_action, None
         else:
@@ -572,6 +687,7 @@ def rollout(
         disc += g * res.reward
         g *= env.gamma
     solved = res.info["outcome"] == "success"
+    recs = [e for e in env.evictions if e["recovered"]]
     return {
         "expansions": res.info["expansions"],
         "outcome": res.info["outcome"],
@@ -589,6 +705,25 @@ def rollout(
         "discounted_return": disc,
         "n_forced_steps": res.info["n_forced_steps"],
         "n_unscored_pulls": res.info["n_unscored_pulls"],
+        # --- node-level FAILURE and the compounding loop (F10) ---
+        # expansions_sterile_frac is the single clearest measure of whether the
+        # policy learned anything: hfs_oracle should be ~0, bfs large.
+        "expansions_sterile_frac": env.n_sterile_expansions / max(1, env.expansions),
+        "n_sterile_expansions": env.n_sterile_expansions,
+        "beam_sterile_frac": (sum(sterile_beam) / len(sterile_beam)) if sterile_beam else 0.0,
+        "eviction_events": len(env.evictions),
+        "eviction_recovery_steps_mean": (
+            sum(e["recovery_steps"] for e in recs) / len(recs) if recs else None
+        ),
+        "eviction_never_recovered": sum(1 for e in env.evictions if not e["recovered"]),
+        "reservoir_size_mean": (
+            sum(env.reservoir_sizes) / len(env.reservoir_sizes) if env.reservoir_sizes else 0.0
+        ),
+        "reservoir_size_max": max(env.reservoir_sizes) if env.reservoir_sizes else 0,
+        "beam_size_mean": (
+            sum(env.beam_sizes) / len(env.beam_sizes) if env.beam_sizes else 0.0
+        ),
+        "beam_size_max": max(env.beam_sizes) if env.beam_sizes else 0,
     }
 
 
