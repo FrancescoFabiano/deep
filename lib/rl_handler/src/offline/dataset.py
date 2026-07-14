@@ -186,7 +186,7 @@ def generate_dataset(
             f"[dataset] F={fringe_size} n_rows={summary['n_rows']} "
             f"states={summary['n_states']} "
             f"actions/state={summary['actions_per_state']:.2f} "
-            f"forced_frac={summary['forced_frac']:.3f} "
+            f"forced_states={summary['forced_state_frac']:.3f} "
             f"truncated_frac={summary['truncated_frac']:.4f}"
         )
     return rows, summary
@@ -204,6 +204,14 @@ def dataset_summary(rows: Sequence[Transition], fringe_size: int,
     states = {(r.instance, r.policy, r.seed, r.t) for r in rows}
     n_states = max(1, len(states))
     forced = sum(1 for r in rows if r.forced)
+    # The ROW fraction badly understates how many STATES are non-decisions: a
+    # forced state emits 1 row while a decision state emits |B| ~ 5. Measured on
+    # CC at F=8: 3.4% of rows are forced but 17% of states are -- and 17% is the
+    # number that matters, because it is the share of visited states where the
+    # policy had no choice. It also tracks the 17.5% dead-end rate, as it should.
+    forced_states = {
+        (r.instance, r.policy, r.seed, r.t) for r in rows if r.forced
+    }
     on_traj = sum(1 for r in rows if r.on_trajectory)
     advs = [r.advantage for r in rows if not r.forced and not r.terminated]
     zero_adv = sum(1 for a in advs if abs(a) < 1e-9)
@@ -213,7 +221,11 @@ def dataset_summary(rows: Sequence[Transition], fringe_size: int,
         "fringe_size": fringe_size,
         "expansion_cap": expansion_cap,
         "actions_per_state": n / n_states,
-        "forced_frac": forced / max(1, n),
+        # forced_state_frac is the one to report: the share of visited STATES
+        # where the policy had no choice. forced_row_frac is kept only so the two
+        # cannot be confused.
+        "forced_state_frac": len(forced_states) / n_states,
+        "forced_row_frac": forced / max(1, n),
         "on_trajectory_frac": on_traj / max(1, n),
         "terminated_frac": sum(1 for r in rows if r.terminated) / max(1, n),
         "truncated_frac": sum(1 for r in rows if r.truncated) / max(1, n),

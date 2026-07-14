@@ -94,9 +94,14 @@ def test_terminated_and_truncated_are_carried_separately(t19):
 
 def test_forced_fraction_is_reported(t19):
     _, summary = generate_dataset([t19], 3, seeds_per_policy=3, verbose=False)
-    assert 0.0 <= summary["forced_frac"] <= 1.0
-    assert summary["forced_frac"] > 0, "t19 has dead ends, so some rows are forced"
-    for k in ("actions_per_state", "adv_hist", "zero_advantage_frac", "n_states"):
+    assert 0.0 <= summary["forced_state_frac"] <= 1.0
+    assert summary["forced_state_frac"] > 0, "t19 has dead ends, so some states are forced"
+    # the row fraction understates the state fraction: a forced state emits 1 row,
+    # a decision state emits |B|. Reporting the row fraction would hide how many
+    # visited states are non-decisions.
+    assert summary["forced_row_frac"] < summary["forced_state_frac"]
+    for k in ("actions_per_state", "adv_hist", "zero_advantage_frac", "n_states",
+              "forced_state_frac", "forced_row_frac"):
         assert k in summary
 
 
