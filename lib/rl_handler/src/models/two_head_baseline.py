@@ -35,6 +35,7 @@ from typing import Optional, Tuple
 import torch
 from torch import nn
 
+from ..offline.scoring import viability_dominant_score
 from .frontier_policy import FrontierPolicyNetwork, _build_mlp
 
 
@@ -70,33 +71,13 @@ class TwoHeadBaselineNetwork(FrontierPolicyNetwork):
     def forward(self, *args, **kwargs) -> torch.Tensor:
         """Combined score, masked -- the SAME contract as the RL model.
 
-            s(v) = (max_delta + 1) * p(v) - d_hat(v)
-
-        VIABILITY MUST STRICTLY DOMINATE DISTANCE, and getting this wrong is not
-        cosmetic. The first implementation used `s = -d_hat + logit p`, which
-        measured viability_auc = 0.048 -- near-perfect INVERSION, ranking sterile
-        above viable. The cause: the distance head is trained on viable slots
-        only (masked MSE -- the very thing that removes the clip), so d_hat on a
-        sterile slot never receives a gradient and sits at its init, ~0. Then
-
-            sterile:  -0  + (-5) = -5
-            viable:   -20 + (+5) = -15      (delta = 20)
-
-        and -5 > -15, so sterile wins whenever the delta range (0..34 on CC)
-        exceeds the p_logit gap (~10).
-
-        The fix keeps both heads on exact labels and adds no tuned constant:
-        d_hat is squashed to [0, max_delta], so
-            viable  (p~1): s in [1, max_delta+1]
-            sterile (p~0): s in [-max_delta, 0]
-        are DISJOINT by construction. Within the viable band -d_hat does the
-        ordering. This is the scalar form of ranking (p, -d_hat)
-        lexicographically, and it stays a single scalar per slot, so it exports
-        through the same ONNX contract.
+        Viability must strictly dominate distance; see offline/scoring.py for why
+        (this is one of THREE places the same inversion bug appeared, so the
+        arithmetic lives in exactly one helper and is not inlined here).
         """
         mask = kwargs.pop("mask", None)
         p_logit, d_hat = self.heads(*args, mask=mask, **kwargs)
-        score = (self.max_delta + 1.0) * torch.sigmoid(p_logit) - d_hat
+        score = viability_dominant_score(torch.sigmoid(p_logit), d_hat, self.max_delta)
         if mask is not None:
             score = score.masked_fill(~mask.to(torch.bool), -1e9)
         return score
