@@ -6,8 +6,12 @@ is reconstructed into the search tree the offline MDP moves inside.
 
 TWO DISTANCES, AND THEY ARE NOT THE SAME
 ----------------------------------------
-`h*(v)` is the CSV `Distance From Goal` column: the true distance in the
-*hash-deduplicated state DAG*.
+`h*(v)` is the CSV `Distance From Goal` column, as computed by the generator.
+\warning It is NOT "the true distance in the state DAG", despite what it looks
+like: the generator's memo is keyed by STATE ALONE inside a depth-bounded DFS
+(`TrainingDataset.tpp`), so a state locked as a 1e6 leaf on a deep first visit
+returns that stale verdict when later reached shallower with room to expand. `h*`
+is therefore a DFS-discovery artifact too, not a DAG shortest distance.
 
 `delta(v)` is the distance to the nearest goal *inside the reconstructed tree*:
 
@@ -27,6 +31,25 @@ and `delta >= h*` node-wise on both (0 violations).
 The MDP moves only within the reconstructed tree, so **delta is the correct
 reference for V* and for regret**. Using the CSV column instead would charge the
 policy 5 expansions of regret on CC that are an artifact of data generation.
+
+WHAT delta IS, AND WHAT IT IS NOT (state this before making any claim)
+----------------------------------------------------------------------
+`delta` is the EXACT shortest-path distance to the nearest goal WITHIN the
+generated tree -- `compute_delta` is a multi-source BFS from the goal set over
+reversed edges, correct on any graph. The MDP's action space IS that tree, so the
+labels are exact for the object the agent navigates.
+
+`delta` is NOT the planner's optimal plan length for the instance. The tree is a
+SEED-DEPENDENT DFS SAMPLE of the true state space, so root-to-goal distance in the
+tree is an upper bound on the true optimal, tight only where the DFS happened to
+sample a shortest path. Measured on CC_2_2_3__pl_4 (true optimal 4, identical flags,
+seed alone varied): delta_root = 14 (seed 42) / 6 (seed 43) / 7 (seed 44). None is 4.
+
+So: never read delta_root as "the optimal plan length", and never claim the data is
+shortest-path-faithful -- the generator's algorithm cannot deliver that (see
+`usability.py`, which retired the `delta_root == pl_N` criterion for this reason).
+A comparison between arms run on the SAME tree with the SAME labels stays valid
+regardless: relative ranking never needed absolute optimality.
 
 Both quantities are ENVIRONMENT-SIDE ONLY: diagnostics, oracle behaviour and
 model selection. Neither is ever a feature or a training target.

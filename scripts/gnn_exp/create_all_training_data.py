@@ -1,50 +1,57 @@
 """Generate training tables for every domain in a batch. THE one place generation
-parameters live -- depth, discard, max_creation, the deep flags. `final_launcher.sh`
-drives it and passes them explicitly. Nothing in lib/rl_handler re-specifies how to
-generate; rl_handler only CONSUMES trees and CHECKS them (the faithfulness gate:
-delta_root == optimal, poisoned_frac, fidelity floor). Scripts generate, the gate
-validates, and they share no parameter.
+parameters live -- depth, discard, max_creation, max_generation, the seed, the deep
+flags. `final_launcher.sh` drives it and passes them explicitly. Nothing in
+lib/rl_handler re-specifies how to generate; rl_handler only CONSUMES trees and CHECKS
+them (the USABILITY gate: delta_root finite, non-trivial, scorable -- see
+`src/offline/usability.py`). Scripts generate, the gate validates, and they share no
+parameter.
 
-DEPTH ALONE DOES NOT BOUND THE TREE  (measured 2026-07-15, CC_2_3_4__pl_7, depth 25)
+THE GENERATOR CANNOT PRODUCE SHORTEST-PATH DISTANCES  (settled 2026-07-15)
 
-Generating that instance at --depth 25 prints:
+Do not tune depth or budget hoping to make delta_root match the instance's optimal.
+It cannot be done, and the reason is structural, not a knob.
 
-    Approximate number of nodes (exp(log)) = 1.15477e+40
-    Threshold number of nodes = 100000
-    Decision: using SPARSE DFS.
+`TrainingDataset.tpp` runs a depth-bounded DFS whose memo is keyed by STATE ALONE:
 
-The tree is ~35 orders of magnitude past the ceiling, so the DFS is truncated. It
-burns its visit budget in the DEEP region, records a goal at depth 22, and never
-reaches the true optimal at depth 7. Result: delta_root=22 vs optimal 7 -- genuine
-unfaithfulness, not a measurement artifact. Confirmed two ways: strict BFS returns
-exactly 7 (combined_results/batch2/CC/bfs/train_BFS_strict.csv), and --strong_equality
-never moved the optimal on any rung pl_3..pl_6 (it does change the search -- pl_5
-expands 277 nodes weak vs 274 strict -- it just does not change the answer).
+    if (m_visited_states.contains(state)) { return m_states_scores[state]; }
 
-THE BINDING CEILING IS THE VISIT COUNT, NOT max_creation
-`TrainingDataset.tpp:677` poisons on EITHER counter:
+DFS dives first, so a state is typically discovered DEEP, where no depth budget
+remains -- it is recorded as a childless leaf scored 1e6. When the search later
+reaches that same state SHALLOW, with room to expand, the memo returns the stale deep
+verdict and its subtree is never explored. Each state is written once, at its
+DISCOVERY depth, and (because the file name is minted per VISIT, not per state) the
+recorded structure collapses to a DFS spanning tree. So delta_root >= the true
+optimal, equal only where the DFS happened to sample a shortest path first.
 
-    if (m_current_nodes >= m_threshold_node_generation ||   // VISITS, default 100000
-        m_added_to_dataset >= m_max_threshold_node_creation) {   // WRITES, 50000
-      if (state.is_goal()) { add_to_dataset(...); return 0; }
-      return m_failed_state;            // 1e6 = unreachable; does NOT recurse
-    }
+Measured on CC_2_2_3__pl_4 (true optimal 4; depth 40, discard 0, identical flags --
+seed alone varied): delta_root = 14 / 6 / 7 for seeds 42 / 43 / 44. The value tracks
+the RNG, not the instance.
 
-Past it a non-goal returns m_failed_state WITHOUT recursing, so any goal below it is
-never reached. `m_threshold_node_generation` is set by --dataset_max_generation
-(ArgumentParser.cpp:216) which NO caller passes -- it sits at its 100000 default while
-we carefully thread the non-binding max_creation through.
+BUDGET IS NOT THE LEVER -- the earlier "the 100k VISIT ceiling truncates the DFS"
+diagnosis was WRONG. On CC_2_3_4__pl_7 at depth 25, raising --dataset_max_generation
+100000 -> 250000 bought 4.2x the goals and 2.2x the states and moved delta_root by
+ZERO (22 both times) -- while poisoned_frac went DOWN (0.0056 -> 0.0042). A starved
+tree poisons MORE near its ceiling; this poisons less. There is no starvation
+signature. Nor is depth the lever: depth 9 -> delta_root 9, depth 8 and 7 -> no goal
+found AT ALL (23 states, vs the 7592 BFS needs to reach the depth-7 goal).
 
-Read a small dataset as the SYMPTOM, not the all-clear: hitting the 100k VISIT ceiling
-stops all further additions, which is precisely what leaves the table stranded under
-the 50k write cap. "Under 50k, so the ceiling did not bite" is exactly backwards.
+WHAT THE PARAMETERS ARE ACTUALLY FOR
+  --dataset_discard_factor 0  -- MUST be 0. At 0.4 the biased discard deletes shallow
+      goals outright; that is a different search problem, not noise.
+  --dataset_max_generation    -- VISIT ceiling (m_current_nodes, default 100000).
+      Hard-capped at ~290k in practice: the DOT file counter is incremented per VISIT
+      and its name is built with `std::string(6 - digits, '0')`, which underflows an
+      unsigned size_t at file #1,000,000 and aborts with std::length_error. Dots per
+      visit is depth-dependent (~3.3x at depth 25, ~1580x at depth 9), so watch the
+      file count rather than trusting a ratio.
+  --dataset_max_creation      -- WRITE cap (m_added_to_dataset).
+  --dataset_seed              -- LOAD-BEARING: the tree is a seed-dependent sample, so
+      the seed is part of the data's identity and is fingerprinted in DATASPEC.
 
-SO: depth must be tight enough that the REACHABLE set fits under 100k visits. That is
-a PER-INSTANCE property, not per-domain -- branching varies within a domain (CC_2_2_3
-survives depth 25 only because low branching lets DFS reach the shallow goal before
-the budget dies; CC_2_3_4, branching ~40, does not). --depth-map is per-domain and so
-cannot express this; the open question is what depth (or visit budget) makes CC_2_3_4
-faithful. The faithfulness gate is what tells you when you have it.
+Both ceilings poison identically (`TrainingDataset.tpp`, top of dfs_worker): past
+either, a non-goal returns m_failed_state (1e6) WITHOUT recursing. Note h*=1e6 does
+NOT imply a ceiling fired -- an ordinary non-goal leaf at the depth bound scores 1e6
+too, which is why the gate treats poisoned_frac as a diagnostic, not an exclusion.
 """
 
 import os
@@ -77,9 +84,9 @@ def _depth_for(domain_name: str, args) -> int:
     configuration for CC -- it is what blew past --dataset-max-creation and poisoned
     the tree (past the ceiling non-goals are dropped AND their parents inherit
     1e6 = unreachable). A new CC-like domain silently getting 40 would reintroduce
-    that artifact for that domain, and the faithfulness gate might not catch it if
-    the instance happens to enumerate. A loud failure beats a convenient default
-    that can silently be wrong.
+    that artifact for that domain, and the usability gate might not catch it if the
+    instance still reaches a goal. A loud failure beats a convenient default that can
+    silently be wrong.
     """
     dm = _parse_depth_map(args.depth_map)
     if not dm:
@@ -108,7 +115,7 @@ def main():
         "--discard_factor", type=float, default=0.4,
         help="Maximum discard factor (default: 0.4, unchanged -- this script is "
              "SHARED with gnn_exp and its default must not move under that "
-             "pipeline's feet; callers that want faithful trees pass 0 explicitly). "
+             "pipeline's feet; callers that want usable trees pass 0 explicitly). "
              "WARNING: the discard is BIASED, not uniform -- its probability rises "
              "with depth and gains +0.2 immediately after a goal is found "
              "(TrainingDataset.tpp:714-730), so it preferentially deletes the "

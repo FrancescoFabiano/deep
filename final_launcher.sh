@@ -84,11 +84,19 @@ DEPTH_MAP="${DEPTH_MAP:-CC:25,SC:40,SCRich:40}"
 TRAIN_MAX_CREATION=50000
 TEST_MAX_CREATION=5000
 # 100000 is the historical C++ default, set explicitly so it is visible and
-# fingerprinted. OPEN: whether raising this makes CC_2_3_4 faithful at depth 25 --
-# its reachable set to the true optimal is only ~7.6k nodes (strict BFS), so 100k
-# may simply be too LOW rather than the depth being wrong.
+# fingerprinted. SETTLED 2026-07-15: raising it does NOT buy a shortest-path tree.
+# On CC_2_3_4__pl_7 at depth 25, 100k -> 250k bought 4.2x the goals and moved
+# delta_root by ZERO (22 both), while poisoned_frac FELL (0.0056 -> 0.0042) -- there
+# is no starvation signature. Budget was never the lever; the generator's memo is
+# depth-blind, so its distances are DFS-discovery depths (see usability.py).
+# Also: do not raise this far. The DOT file counter increments per VISIT and
+# overflows at 999,999 (std::length_error), and dots-per-visit is depth-dependent
+# (~3.3x at depth 25, ~1580x at depth 9). Watch the file count, not a ratio.
 TRAIN_MAX_GENERATION="${TRAIN_MAX_GENERATION:-100000}"
 TEST_MAX_GENERATION="${TEST_MAX_GENERATION:-100000}"
+# The generation seed is LOAD-BEARING: the tree is a seed-dependent DFS sample, so a
+# different seed is different data. Fingerprinted for exactly that reason.
+SEED="${SEED:-42}"
 
 # The gamma=0.99 stability trio (--target-tau/--lr-schedule/--lr-min) is RETIRED.
 # The objective is undiscounted (gamma=1): every policy is proper (completeness
@@ -111,14 +119,15 @@ GEN_FLAG=""
 GEN_FLAG="${GEN_FLAG# }"
 
 # Data fingerprint: any run reusing this data must match it.
-# discard=, depth_map= and max_generation= are NOT optional. Without discard=, a
-# faithful run would happily symlink a discard=0.4 batch, pass this check, train on
+# discard=, depth_map=, max_generation= and seed= are NOT optional. Without discard=,
+# a discard=0 run would happily symlink a discard=0.4 batch, pass this check, train on
 # trees whose optimal path was deleted, and report clean self-consistent numbers --
 # the worst failure mode available here. Without depth_map=, a CC-25 run would reuse
 # CC-40 data. Without max_generation=, a run at one VISIT budget would reuse a batch
-# generated at another -- and since that ceiling decides WHICH goals the DFS ever
-# reaches, two batches at different visit budgets are genuinely different data.
-DATASPEC="mode=${MODE};strict=${STRICT};discard=${DISCARD_FACTOR};depth_map=${DEPTH_MAP};max_creation=${TRAIN_MAX_CREATION};max_generation=${TRAIN_MAX_GENERATION}"
+# generated at another. Without seed=, a run would reuse a DIFFERENT SAMPLE of the
+# state space: the tree is a seed-dependent DFS walk, and on CC_2_2_3__pl_4 the seed
+# alone moves delta_root 14/6/7 (seeds 42/43/44) on a fixed true optimal of 4.
+DATASPEC="mode=${MODE};strict=${STRICT};discard=${DISCARD_FACTOR};depth_map=${DEPTH_MAP};max_creation=${TRAIN_MAX_CREATION};max_generation=${TRAIN_MAX_GENERATION};seed=${SEED}"
 
 # ---- training flags ----
 TRAIN_FLAG=""
@@ -233,6 +242,7 @@ else
             --discard_factor "${DISCARD_FACTOR}" \
             --dataset-max-creation "${TRAIN_MAX_CREATION}" \
             --dataset-max-generation "${TRAIN_MAX_GENERATION}" \
+            --seed "${SEED}" \
             ${GEN_FLAG} \
             || fail "step 1 (generate train data)"
         [[ "${DRY_RUN}" == "true" ]] || { echo "${DATASPEC}" > "${BATCH_DIR}/.dataspec"; rm -rf out; }
@@ -253,6 +263,7 @@ else
             --discard_factor "${DISCARD_FACTOR}" \
             --dataset-max-creation "${TEST_MAX_CREATION}" \
             --dataset-max-generation "${TEST_MAX_GENERATION}" \
+            --seed "${SEED}" \
             ${GEN_FLAG} \
             || fail "step 1b (generate test data)"
         rm -rf out
@@ -267,14 +278,14 @@ fi
 # (delta_root 10 vs a true optimal of 4 on CC_2_2_3__pl_4), so a model trained on
 # them produces clean, self-consistent, meaningless numbers. Runs here so the gate
 # applies however the launcher is invoked.
-echo "[1c] faithfulness gate ..."
-if [[ "${DRY_RUN}" == "true" ]]; then echo "[DRY] faithfulness gate -> ${BATCH_DIR}/_models/<dom>/faithful_pool.json (refuses training if n_faithful==0)"; else
-python3 - "${BATCH_DIR}" "${MODE}" ${DOMAINS} <<'PYEOF' || fail "step 1c (faithfulness gate)"
+echo "[1c] usability gate ..."
+if [[ "${DRY_RUN}" == "true" ]]; then echo "[DRY] usability gate -> ${BATCH_DIR}/_models/<dom>/usable_pool.json (refuses training if n_usable==0)"; else
+python3 - "${BATCH_DIR}" "${MODE}" ${DOMAINS} <<'PYEOF' || fail "step 1c (usability gate)"
 import sys
 from pathlib import Path
 sys.path.insert(0, "lib/rl_handler")
-from src.offline.faithfulness import build_faithful_pool
 from src.offline.tree import load_tree_instance, partition_solvable
+from src.offline.usability import build_usable_pool
 
 batch_dir, mode, domains = sys.argv[1], sys.argv[2], sys.argv[3:]
 rc = 0
@@ -285,9 +296,9 @@ for dom in domains:
         print(f"[1c] {dom}: no generation tables under {root}"); rc = 1; continue
     insts = [load_tree_instance(p, name=p.parent.name, kind_of_data=mode) for p in csvs]
     ok, _ = partition_solvable(insts)
-    pool = build_faithful_pool(ok, out_path=Path(batch_dir) / "_models" / dom / "faithful_pool.json")
-    if pool["n_faithful"] == 0:
-        print(f"[1c] {dom}: NO FAITHFUL INSTANCE -- refusing to train."); rc = 1
+    pool = build_usable_pool(ok, out_path=Path(batch_dir) / "_models" / dom / "usable_pool.json")
+    if pool["n_usable"] == 0:
+        print(f"[1c] {dom}: NO USABLE INSTANCE -- refusing to train."); rc = 1
     if pool["n_usable_for_fidelity"] == 0:
         print(f"[1c] {dom}: WARNING no instance reaches 20 expansions; the "
               f"env-fidelity gate cannot score anything and will report NOT ARMED.")

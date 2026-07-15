@@ -19,13 +19,13 @@ import pytest
 
 from src.offline.dataspec import compatible, make_dataspec, parse_dataspec
 
-# What a faithful run generates with. Stated here, not imported -- these tests pin
-# the GUARD's behaviour, not the generator's current settings.
-FAITHFUL = dict(discard_factor=0, max_creation=50000, max_generation=100000)
+# What a real run generates with. Stated here, not imported -- these tests pin the
+# GUARD's behaviour, not the generator's current settings.
+CLEAN = dict(discard_factor=0, max_creation=50000, max_generation=100000, seed=42)
 
 
 def spec(mode="merged", strict="yes", depth_map="CC:25", **kw):
-    return make_dataspec(mode, strict, depth_map, **{**FAITHFUL, **kw})
+    return make_dataspec(mode, strict, depth_map, **{**CLEAN, **kw})
 
 
 # ------------------------------------- THE test: cross-discard reuse ---------
@@ -60,7 +60,8 @@ def test_make_dataspec_has_no_defaults_for_generation_params():
     was generated -- exactly the drift that let DEPTH_BY_DOMAIN=25 outlive the
     generator's real setting. The caller that generated the data must say."""
     sig = inspect.signature(make_dataspec)
-    for name in ("depth_map", "discard_factor", "max_creation", "max_generation"):
+    for name in ("depth_map", "discard_factor", "max_creation", "max_generation",
+                 "seed"):
         assert sig.parameters[name].default is inspect.Parameter.empty, (
             f"{name} must be required: this module fingerprints data, it does not "
             f"decide how data is made"
@@ -121,25 +122,46 @@ def test_max_creation_guards():
 # ------------------------------------- the VISIT ceiling guards --------------
 
 def test_max_generation_guards():
-    """The VISIT ceiling decides WHICH goals the DFS reaches before it starts
-    poisoning, so two batches at different visit budgets are different data even at
-    identical depth/discard. Measured: CC_2_3_4__pl_7 at depth 25 under a 100k visit
-    budget yields delta_root 22 vs a true optimal of 7."""
-    ok, why = compatible(spec(max_generation=100000), spec(max_generation=1000000))
+    """Two batches at different visit budgets are different data even at identical
+    depth/discard: the budget changes how much of the space the DFS walks (measured
+    on CC_2_3_4__pl_7 at depth 25, 100k -> 250k: 2.2x the states, 4.2x the goals)."""
+    ok, why = compatible(spec(max_generation=100000), spec(max_generation=250000))
     assert not ok and "max_generation" in why
 
 
 def test_a_spec_predating_the_visit_ceiling_is_refused():
-    """Old specs carry no max_generation. They were generated at whatever the C++
-    default happened to be, which is exactly the invisible-knob problem -- a missing
+    """Old specs carry no max_generation -- the invisible-knob problem. A missing
     field is a mismatch, never an 'assume it's fine'."""
     legacy = "mode=separated;strict=yes;discard=0;depth_map=CC:25;max_creation=50000"
     ok, why = compatible(legacy, spec("separated", "yes", depth_map="CC:25"))
     assert not ok and "max_generation" in why
 
 
+# ------------------------------------- the SEED guards -----------------------
+
+def test_seed_guards():
+    """THE seed test. The generated tree is a seed-dependent DFS SAMPLE of the state
+    space, so a different seed is a DIFFERENT SUBGRAPH with different labels on it --
+    not a cosmetic difference. Measured on CC_2_2_3__pl_4 (true optimal 4, identical
+    flags, seed alone varied): delta_root = 14 (seed 42) / 6 (43) / 7 (44). Reusing
+    another seed's data is reusing different data."""
+    ok, why = compatible(spec(seed=42), spec(seed=43))
+    assert not ok, "a run MUST NOT reuse a batch generated at another seed"
+    assert "seed" in why
+
+
+def test_a_spec_predating_the_seed_is_refused():
+    """Specs written before the seed was fingerprinted cannot say which sample they
+    are. Absent means unknown, and unknown must never read as compatible."""
+    legacy = ("mode=separated;strict=yes;discard=0;depth_map=CC:25;"
+              "max_creation=50000;max_generation=100000")
+    ok, why = compatible(legacy, spec("separated", "yes", depth_map="CC:25"))
+    assert not ok and "seed" in why
+
+
 def test_roundtrip_parse():
     d = parse_dataspec(spec("separated", "no", depth_map="CC:25,SC:40"))
     assert d["mode"] == "separated" and d["strict"] == "no" and d["discard"] == "0"
     assert d["max_creation"] == "50000"
-    assert d["max_generation"] == "100000", "the last field must still parse"
+    assert d["max_generation"] == "100000"
+    assert d["seed"] == "42", "the last field must still parse"

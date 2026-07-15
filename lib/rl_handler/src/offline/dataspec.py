@@ -51,6 +51,7 @@ def make_dataspec(
     discard_factor: float,
     max_creation: int,
     max_generation: int,
+    seed: int,
 ) -> str:
     """The fingerprint. Any run reusing this data must match it EXACTLY.
 
@@ -58,13 +59,20 @@ def make_dataspec(
     `strict`         : yes | no             (--strong_equality)
     `depth_map`      : `CC:25,SC:40` or {"CC": 25, "SC": 40} -- what the GENERATOR used
     `max_creation`   : the WRITE ceiling (--dataset_max_creation)
-    `max_generation` : the VISIT ceiling (--dataset_max_generation) -- the BINDING one
+    `max_generation` : the VISIT ceiling (--dataset_max_generation)
+    `seed`           : the GENERATION seed (--dataset_seed)
 
-    BOTH ceilings are fingerprinted. The visit ceiling decides WHICH goals the DFS
-    ever reaches before it starts poisoning, so two batches generated at different
-    visit budgets are genuinely different data even at identical depth and discard.
-    It is also the one that was invisible: it sat at its 100000 C++ default while
-    only max_creation was threaded through.
+    BOTH ceilings are fingerprinted, because two batches generated at different
+    budgets are genuinely different data even at identical depth and discard. The
+    visit ceiling is also the one that was invisible: it sat at its 100000 C++
+    default while only max_creation was threaded through.
+
+    THE SEED IS PART OF THE DATA'S IDENTITY, not a nuisance parameter. The generated
+    tree is a SEED-DEPENDENT DFS SAMPLE of the state space -- a different seed walks a
+    different subgraph and yields different labels on it. Measured on CC_2_2_3__pl_4
+    (identical flags, seed alone varied): delta_root = 14 / 6 / 7 for seeds 42/43/44.
+    So a run reusing data generated at another seed is reusing a DIFFERENT SAMPLE, and
+    the guard must refuse it exactly as it refuses a different depth or discard.
     """
     # "," inside the map, NOT ";" -- ";" is the FIELD separator, and using it here
     # made parse_dataspec truncate `depth_map=CC:25;SC:40` to `CC:25`, so a CC-only
@@ -73,7 +81,7 @@ def make_dataspec(
     dm = _render_depth_map(depth_map)
     return (f"mode={mode};strict={strict};discard={discard_factor};"
             f"depth_map={dm};max_creation={max_creation};"
-            f"max_generation={max_generation}")
+            f"max_generation={max_generation};seed={seed}")
 
 
 def parse_dataspec(spec: str) -> Dict[str, str]:

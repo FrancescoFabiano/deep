@@ -5,7 +5,7 @@ difference, so the comparison cannot drift into two harnesses.
 
 REPRESENTATION-AGNOSTIC: nothing here branches on the dataset type.
 WITHIN-CONFIG ONLY: `assert_within_config` raises otherwise.
-FAITHFUL DATA ONLY: instances absent from `faithful_pool.json` never enter.
+USABLE DATA ONLY: instances absent from `usable_pool.json` never enter.
 """
 
 from __future__ import annotations
@@ -25,7 +25,7 @@ from .dataset import generate_dataset
 from .determinism import determinism_report, set_determinism
 from .encoder import InstanceCache
 from .env import default_expansion_cap, reference_budget
-from .faithfulness import build_faithful_pool, faithful_names, fidelity_names
+from .usability import build_usable_pool, fidelity_names, usable_names
 from .planner_config import exploitation_for, planner_flags
 from .policies import BEHAVIOUR_POLICIES, make_policy
 from .qlearning import QTrainer, TrainConfig, default_reward_scale
@@ -96,12 +96,15 @@ def _net(cfg: RunConfig, max_delta: float):
 
 
 def load_pool(cfg: RunConfig, repo_root: Path) -> tuple[List, Dict[str, InstanceCache], Dict]:
-    """Load ONLY faithful instances from the CSVs train_models.py handed us.
+    """Load ONLY usable instances from the CSVs train_models.py handed us.
 
-    The gatekeeper stands between generation and training: an unfaithful tree is a
-    WRONG PROBLEM, not noisy data. The shipped discard=0.4 tables have their
-    shallow goals deleted (delta_root 10 vs a true optimal of 4), so training on
-    them produces clean, self-consistent, meaningless numbers.
+    The gatekeeper stands between generation and training: a tree whose root cannot
+    reach a goal is a WRONG PROBLEM, not noisy data. The shipped discard=0.4 tables
+    have their shallow goals deleted, so training on them produces clean,
+    self-consistent, meaningless numbers.
+
+    The gate certifies USABILITY (root reaches a goal, tree is non-trivial and
+    scorable), NOT that distances are the planner's optimal -- see `usability.py`.
     """
     csvs = [Path(p) for p in cfg.train_csvs]
     missing = [str(p) for p in csvs if not p.exists()]
@@ -110,18 +113,17 @@ def load_pool(cfg: RunConfig, repo_root: Path) -> tuple[List, Dict[str, Instance
     loaded = [load_tree_instance(p, name=p.parent.name, kind_of_data=cfg.kind_of_data)
               for p in csvs]
     solvable, unsolvable = partition_solvable(loaded)
-    pool_path = _fringe_dir(cfg).parent / "faithful_pool.json"
+    pool_path = _fringe_dir(cfg).parent / "usable_pool.json"
     pool = (json.loads(pool_path.read_text()) if pool_path.exists()
-            else build_faithful_pool(solvable, out_path=pool_path))
-    keep = set(faithful_names(pool))
+            else build_usable_pool(solvable, out_path=pool_path))
+    keep = set(usable_names(pool))
     insts = [i for i in solvable if i.name in keep]
     if not insts:
         raise ValueError(
-            f"no FAITHFUL instance among {[p.parent.name for p in csvs]}. "
+            f"no USABLE instance among {[p.parent.name for p in csvs]}. "
             f"Regenerate at --dataset_discard_factor 0 -- the shipped discard=0.4 "
-            f"tables have their shallow goals deleted (delta_root 10 vs a true "
-            f"optimal of 4 on CC_2_2_3__pl_4) and are a DIFFERENT search problem. "
-            f"See faithful_pool.json for the per-instance reason."
+            f"tables have their shallow goals deleted and are a DIFFERENT search "
+            f"problem. See usable_pool.json for the per-instance reason."
         )
     caches = {i.name: InstanceCache.from_paths(
         i.state_paths_abs(repo_root),
@@ -151,7 +153,7 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
 
     print(f"[run] F={cfg.fringe_size} model={cfg.model} "
           f"{cfg.kind_of_data}/{cfg.context_mode} device={device} -> {run_dir}")
-    print(f"[run] faithful: train={train_n} val={val_n}  cap={cap} scale={scale:.4f}")
+    print(f"[run] usable: train={train_n} val={val_n}  cap={cap} scale={scale:.4f}")
 
     rows, dsum = generate_dataset(train_i, cfg.fringe_size,
                                   policies=cfg.behaviour_policies or BEHAVIOUR_POLICIES,
@@ -268,7 +270,7 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
             gates.append(type(gate_beats_baselines(1.0, {}))(
                 "env_fidelity", False,
                 "NOT ARMED: no --deep-exe given" if not cfg.deep_exe
-                else "NOT ARMED: no faithful instance reaches 20 expansions"))
+                else "NOT ARMED: no usable instance reaches 20 expansions"))
         gates.append(gate_beats_baselines(best.regret, baselines))
         for g in gates:
             print(f"[gate] {g.name}: {'PASS' if g.passed else 'FAIL'} -- {g.detail}")
