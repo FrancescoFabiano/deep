@@ -19,7 +19,8 @@ from typing import Dict, List, Optional, Sequence
 import torch
 
 from ..models.two_head_baseline import TwoHeadBaselineNetwork, two_head_loss
-from .encoder import InstanceCache, pack_fringe
+from .batching import default_device, pack_batch, pack_single
+from .encoder import InstanceCache
 from .env import FringeEnv, rollout
 from .metrics import beam_metrics, mean_ignoring_none
 from .tree import INF_DELTA, TreeInstance
