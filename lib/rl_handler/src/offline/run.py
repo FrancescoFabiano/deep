@@ -48,12 +48,22 @@ MODELS = ("dqn", "cql", "two_head")
 
 @dataclass
 class RunConfig:
-    exp_dir: Path
-    domain: str
+    """One (domain, seed, F) cell. `final_launcher.sh` owns the cell iteration;
+    `train_models.py` owns domain/seed; this owns one cell."""
+    train_csvs: List[Path]
+    dir_save_model: Path
+    test_csvs: List[Path] = None
     fringe_size: int = 4
     model: str = "dqn"
     kind_of_data: str = "merged"
     context_mode: str = "mean_pool"
+    attn_heads: int = 4
+    attn_layers: int = 1
+    counterfactual: str = "all"
+    n_refill_samples: int = 1
+    behaviour_policies: Optional[List[str]] = None
+    target_sync: int = 500
+    max_grad_norm: float = 10.0
     frames: int = 2000
     n_checkpoints: int = 5
     seed: int = 0
@@ -86,29 +96,36 @@ def _net(cfg: RunConfig, max_delta: float):
 
 
 def load_pool(cfg: RunConfig, repo_root: Path) -> tuple[List, Dict[str, InstanceCache], Dict]:
-    """Load ONLY faithful instances. The gatekeeper stands between generation and
-    training; an unfaithful tree is a wrong problem, not noisy data."""
-    root = cfg.exp_dir / "_models" / cfg.domain / "training_data"
-    csvs = sorted(root.glob("*/*_depth_*.csv"))
-    if not csvs:
-        raise FileNotFoundError(f"no generation tables under {root}")
+    """Load ONLY faithful instances from the CSVs train_models.py handed us.
+
+    The gatekeeper stands between generation and training: an unfaithful tree is a
+    WRONG PROBLEM, not noisy data. The shipped discard=0.4 tables have their
+    shallow goals deleted (delta_root 10 vs a true optimal of 4), so training on
+    them produces clean, self-consistent, meaningless numbers.
+    """
+    csvs = [Path(p) for p in cfg.train_csvs]
+    missing = [str(p) for p in csvs if not p.exists()]
+    if missing:
+        raise FileNotFoundError(f"missing generation tables: {missing}")
     loaded = [load_tree_instance(p, name=p.parent.name, kind_of_data=cfg.kind_of_data)
               for p in csvs]
     solvable, unsolvable = partition_solvable(loaded)
-    pool_path = cfg.exp_dir / "_models" / cfg.domain / "faithful_pool.json"
+    pool_path = _fringe_dir(cfg).parent / "faithful_pool.json"
     pool = (json.loads(pool_path.read_text()) if pool_path.exists()
             else build_faithful_pool(solvable, out_path=pool_path))
     keep = set(faithful_names(pool))
     insts = [i for i in solvable if i.name in keep]
     if not insts:
         raise ValueError(
-            f"no FAITHFUL instances in {root}. Regenerate with "
-            f"scripts/rl_exp/generate_faithful.py -- the shipped discard=0.4 tables "
-            f"delete the shallow goals and are a different search problem."
+            f"no FAITHFUL instance among {[p.parent.name for p in csvs]}. "
+            f"Regenerate at --dataset_discard_factor 0 -- the shipped discard=0.4 "
+            f"tables have their shallow goals deleted (delta_root 10 vs a true "
+            f"optimal of 4 on CC_2_2_3__pl_4) and are a DIFFERENT search problem. "
+            f"See faithful_pool.json for the per-instance reason."
         )
     caches = {i.name: InstanceCache.from_paths(
         i.state_paths_abs(repo_root),
-        cache_file=cfg.exp_dir / "_models" / cfg.domain / "cache" / f"{i.name}.pt",
+        cache_file=_fringe_dir(cfg).parent / "cache" / f"{i.name}.pt",
         verbose=False) for i in insts}
     return insts, caches, {"pool": pool, "unsolvable": [u.name for u in unsolvable]}
 
@@ -118,7 +135,7 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
         raise ValueError(f"model must be one of {MODELS}, got {cfg.model!r}")
     set_determinism(cfg.seed, strict=True)
     device = cfg.device or default_device()
-    run_dir = cfg.exp_dir / "_models" / cfg.domain / f"run_F{cfg.fringe_size}_{cfg.model}_{cfg.kind_of_data}"
+    run_dir = _fringe_dir(cfg)
     run_dir.mkdir(parents=True, exist_ok=True)
 
     insts, caches, meta = load_pool(cfg, repo_root)
@@ -132,13 +149,16 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
     scale = cfg.reward_scale if cfg.reward_scale is not None else default_reward_scale(train_i)
     max_delta = max((d for i in train_i for d in i.delta if d != float("inf")), default=64.0)
 
-    print(f"[run] {cfg.domain} F={cfg.fringe_size} model={cfg.model} "
-          f"{cfg.kind_of_data}/{cfg.context_mode} device={device}")
+    print(f"[run] F={cfg.fringe_size} model={cfg.model} "
+          f"{cfg.kind_of_data}/{cfg.context_mode} device={device} -> {run_dir}")
     print(f"[run] faithful: train={train_n} val={val_n}  cap={cap} scale={scale:.4f}")
 
     rows, dsum = generate_dataset(train_i, cfg.fringe_size,
+                                  policies=cfg.behaviour_policies or BEHAVIOUR_POLICIES,
                                   seeds_per_policy=cfg.seeds_per_policy,
-                                  expansion_cap=cap)
+                                  expansion_cap=cap,
+                                  counterfactual=cfg.counterfactual,
+                                  n_refill_samples=cfg.n_refill_samples)
     tel = TelemetryWriter(run_dir / "telemetry.jsonl")
 
     # ---- baselines, reported on their OWN before any comparison ----
@@ -222,7 +242,10 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
 
     # ---- export ONLY the selected checkpoint ----
     gates = []
-    onnx = onnx_path_for(cfg.exp_dir, cfg.domain, cfg.fringe_size)
+    # THE CONTRACT: train_models.py copies this to
+    # <exp_dir>/_models/<domain>/frontier_policy_<F>.onnx, which
+    # bulk_coverage_run.py reads and the C++ checks logits-length against.
+    onnx = run_dir / f"frontier_policy_{cfg.fringe_size}_best_by_expansions.onnx"
     if cfg.export_onnx:
         RLFrontierTrainer(model=net, device="cpu", kind_of_data=cfg.kind_of_data).to_onnx(
             onnx, node_input_dim=1, onnx_frontier_size=cfg.fringe_size)
@@ -237,7 +260,7 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
                                      expansion_cap=cap)
                 off.append(int(out["expansions_mean"] or 0))
                 live.append(run_planner_expansions(
-                    cfg.deep_exe, _problem_for(repo_root, cfg.domain, n), onnx,
+                    cfg.deep_exe, _problem_for(repo_root, n), onnx,
                     cfg.fringe_size, separated=(cfg.kind_of_data == "separated"),
                     repo_root=repo_root))
             gates.append(gate_env_fidelity(off, live))
@@ -271,8 +294,15 @@ def _mk(p: Path) -> Path:
     return p
 
 
-def _problem_for(repo_root: Path, domain: str, instance: str) -> Path:
-    for c in repo_root.glob(f"exp/rl_exp/*/{domain}/Training/{instance}.txt"):
+def _fringe_dir(cfg: RunConfig) -> Path:
+    """`_fringe<F>` appended to --dir-save-model: the contract train_models.py
+    installs from (`<dir>_fringe<F>/frontier_policy_<F>_best_by_expansions.onnx`)."""
+    d = Path(cfg.dir_save_model)
+    return d.with_name(d.name + f"_fringe{cfg.fringe_size}")
+
+
+def _problem_for(repo_root: Path, instance: str) -> Path:
+    for c in repo_root.glob(f"exp/rl_exp/*/*/Training/{instance}.txt"):
         return c
     for c in repo_root.glob(f"exp/all/**/{instance}.txt"):
         return c

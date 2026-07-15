@@ -56,131 +56,6 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 OFFLINE_MAIN = REPO_ROOT / "lib" / "rl_handler" / "offline_main.py"
-SENSITIVITY = REPO_ROOT / "lib" / "rl_handler" / "sensitivity_analysis.py"
-# offline_main flags the sensitivity harness also understands (forwarded through).
-_SA_PASSTHROUGH = {
-    "--frames", "--batch-size", "--n-checkpoints", "--eval-refill-seeds",
-    "--device", "--aux-lambda",
-}
-
-
-def _extract_flags(forwarded: list[str], names: set[str]) -> list[str]:
-    """Pull recognized single-value flags (and their value) out of the forwarded
-    block, ignoring the rest (so the harness never sees a flag it can't parse)."""
-    out: list[str] = []
-    i = 0
-    while i < len(forwarded):
-        tok = forwarded[i]
-        key = tok.split("=", 1)[0]
-        if key in names:
-            out.append(tok)
-            if "=" not in tok and i + 1 < len(forwarded):
-                out.append(forwarded[i + 1])
-                i += 1
-        i += 1
-    return out
-
-
-def run_sensitive_analysis(
-    models_root: Path, domain: str, seeds: list[int],
-    fringe_sizes: list[int], forwarded: list[str],
-) -> None:
-    """Delegate to the d*-signal sensitivity harness for one domain, writing into
-    <models_root>/<domain>/sensitive_analysis/. Uses the first fringe size.
-    train = training_data; val = held-out test_data (NO last-train-as-val split)."""
-    train_csvs = domain_train_csvs(models_root, domain)
-    if not train_csvs:
-        print(f"[WARNING] No training_data CSVs for domain '{domain}', skipping.")
-        return
-    val_csvs = domain_test_csvs(models_root, domain) or train_csvs
-    F = int(fringe_sizes[0])
-    print(f"[sensitive-analysis] domain '{domain}' F={F} "
-          f"train={[p.parent.name for p in train_csvs]} "
-          f"val={[p.parent.name for p in val_csvs]}")
-    cmd = [
-        sys.executable, str(SENSITIVITY),
-        "--train-csv", *(str(p.resolve()) for p in train_csvs),
-        "--val-csv", *(str(p.resolve()) for p in val_csvs),
-        "--dir-save-model", str(models_root / domain),
-        "--fringe-size", str(F),
-        "--seeds", *(str(s) for s in seeds),
-        *_extract_flags(forwarded, _SA_PASSTHROUGH),
-    ]
-    rc = run_one(cmd, f"[{domain}/SA]".ljust(22))
-    if rc != 0:
-        print(f"[{domain}/SA] [ERROR] sensitivity_analysis.py exited {rc}")
-        sys.exit(rc)
-    print(f"[{domain}/SA] [SUCCESS]")
-
-
-def find_domains(models_root: Path) -> list[str]:
-    """Domains = subdirs of <exp_dir>/_models that contain a training_data dir."""
-    if not models_root.is_dir():
-        return []
-    domains = []
-    for child in sorted(p for p in models_root.iterdir() if p.is_dir()):
-        if (child / "training_data").is_dir():
-            domains.append(child.name)
-    return domains
-
-
-def _instance_csvs(subdir: Path) -> list[Path]:
-    """All per-instance generation tables under a data subdir, sorted by name."""
-    csvs: list[Path] = []
-    if not subdir.is_dir():
-        return csvs
-    for inst_dir in sorted(p for p in subdir.iterdir() if p.is_dir()):
-        matches = sorted(inst_dir.glob(f"{inst_dir.name}_depth_*.csv"))
-        if not matches:
-            matches = sorted(inst_dir.glob("*_depth_*.csv"))
-        if matches:
-            csvs.append(matches[0])
-    return csvs
-
-
-def domain_train_csvs(models_root: Path, domain: str) -> list[Path]:
-    """TRAIN instances = everything under <domain>/training_data, kept whole.
-    NO auto-split: the script never carves a val set out of train."""
-    return _instance_csvs(models_root / domain / "training_data")
-
-
-def domain_test_csvs(models_root: Path, domain: str) -> list[Path]:
-    """Held-out diagnostic TEST instances = everything under <domain>/test_data
-    (never feeds selection; only the per-regime diagnostic plots / final numbers)."""
-    return _instance_csvs(models_root / domain / "test_data")
-
-
-def run_one(cmd: list[str], prefix: str) -> int:
-    """Run offline_main.py, streaming one log line every ~15s; return exit code.
-
-    The 15s throttle keeps long training runs readable, but would hide a
-    fast-failing error (e.g. a rejected kwarg).  So the most recent lines are
-    kept in a ring buffer and dumped verbatim on a non-zero exit — kwargs
-    errors are never silent.
-    """
-    print(" ".join(cmd), flush=True)
-    process = subprocess.Popen(
-        cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1
-    )
-    last_print = 0.0
-    recent: deque[str] = deque(maxlen=40)
-    assert process.stdout is not None
-    for line in iter(process.stdout.readline, ""):
-        recent.append(line.rstrip())
-        now = time.time()
-        if now - last_print >= 15:
-            print(f"{prefix} {recent[-1]}", flush=True)
-            last_print = now
-    process.stdout.close()
-    rc = process.wait()
-    if rc != 0:
-        print(f"{prefix} ---- offline_main.py output (last {len(recent)} lines) ----")
-        for line in recent:
-            print(f"{prefix} {line}", flush=True)
-        print(f"{prefix} ---- end output ----", flush=True)
-    return rc
-
-
 def train_domain(
     exp_dir: Path,
     models_root: Path,
@@ -333,14 +208,7 @@ def main() -> None:
         "--no_goal",
         action="store_true",
         help="Pass '--kind-of-data separated' to offline_main.py (normal "
-        "training only; ignored for --sensitive-analysis).",
-    )
-    parser.add_argument(
-        "--sensitive-analysis",
-        action="store_true",
-        help="Instead of normal training, run the d*-signal sensitivity harness "
-        "(methods x seeds) per domain into <domain>/sensitive_analysis/. Uses the "
-        "first --fringe-sizes value. Default behaviour unchanged when absent.",
+        "training only).",
     )
     args, forwarded = parser.parse_known_args()
     # Allow an explicit `--` separator before the forwarded block.
@@ -369,15 +237,10 @@ def main() -> None:
         print(f"[INFO] forwarding to offline_main.py: {' '.join(forwarded)}")
 
     for domain in domains:
-        if args.sensitive_analysis:
-            run_sensitive_analysis(
-                models_root, domain, args.seeds, args.fringe_sizes, forwarded,
-            )
-        else:
-            train_domain(
-                exp_dir, models_root, domain, args.seeds, args.fringe_sizes,
-                forwarded, args.no_goal, args.model,
-            )
+        train_domain(
+            exp_dir, models_root, domain, args.seeds, args.fringe_sizes,
+            forwarded, args.no_goal, args.model,
+        )
 
 
 if __name__ == "__main__":

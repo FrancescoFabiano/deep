@@ -11,6 +11,20 @@ def find_domains_with_training(batch_dir, training_folder):
             domains.append(rel_path)
     return sorted(domains)
 
+def _parse_depth_map(spec: str) -> dict:
+    out = {}
+    for part in (spec or "").split(","):
+        if ":" in part:
+            k, v = part.split(":", 1)
+            out[k.strip()] = int(v)
+    return out
+
+
+def _depth_for(domain_name: str, args) -> int:
+    """Per-domain depth; falls back to --depth."""
+    return _parse_depth_map(args.depth_map).get(domain_name, args.depth)
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Run the per-domain training-data generator on all domain folders inside a batch folder."
@@ -20,7 +34,26 @@ def main():
     parser.add_argument("--no_goal", action="store_true", help="Add --dataset_separated to the C++ execution")
     parser.add_argument("--strong_equality", action="store_true", help="Add --strong_equality to the C++ execution")
     parser.add_argument("--depth", type=int, default=25, help="Depth for dataset generation (default: 25)")
-    parser.add_argument("--discard_factor", type=float, default=0.4, help="Maximum discard factor (default: 0.4)")
+    parser.add_argument(
+        "--discard_factor", type=float, default=0.4,
+        help="Maximum discard factor (default: 0.4, unchanged -- this script is "
+             "SHARED with gnn_exp and its default must not move under that "
+             "pipeline's feet; callers that want faithful trees pass 0 explicitly). "
+             "WARNING: the discard is BIASED, not uniform -- its probability rises "
+             "with depth and gains +0.2 immediately after a goal is found "
+             "(TrainingDataset.tpp:714-730), so it preferentially deletes the "
+             "SHALLOW GOALS that make an instance easy, while writing the discarded "
+             "states to the CSV as childless leaves. Measured on CC_2_2_3__pl_4 "
+             "(planner BFS true optimal = 4): 0.4 -> delta_root 10, sterile 30 pct; "
+             "0 -> delta_root 4, sterile 2.9 pct. Bound the tree with --depth/"
+             "--depth-map instead, which keeps the solution path.")
+    parser.add_argument(
+        "--depth-map", dest="depth_map", default="",
+        help="per-domain depth override, e.g. 'CC:25,SC:40,SCRich:40'. Falls back "
+             "to --depth for domains not listed. Depth is what keeps generation "
+             "under --dataset-max-creation (a HARD stop that also POISONS: past it "
+             "non-goals are dropped AND their parents inherit 1e6 = unreachable), "
+             "so it is per-domain: CC optimals are ~4-7, SC needs 40.")
     # Forwarded to the per-domain script (which generates per-instance random seeds)
     parser.add_argument("--seed", type=int, default=42, help="Base RNG seed used to generate per-instance seeds (default: 42)")
     parser.add_argument("--max_retries", type=int, default=15, help="Maximum attempts per instance in the called script (default: 15)")
@@ -91,7 +124,7 @@ def main():
             batch_path,             # base_folder
             domain_name,            # domain_name
             args.deep_exe,          # deep_exe
-            "--depth", str(args.depth),
+            "--depth", str(_depth_for(domain_name, args)),
             "--discard_factor", str(args.discard_factor),
             "--seed", str(args.seed),
             "--max_retries", str(args.max_retries),
