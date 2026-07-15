@@ -67,7 +67,9 @@ DISCARD_FACTOR="${DISCARD_FACTOR:-0}"
 # depth bound that CONTAINS the optimal keeps the whole solution path while cutting
 # the tree where it no longer matters. CC optimals are ~4-7; SC needs the depth.
 DEPTH_MAP="${DEPTH_MAP:-CC:25,SC:40,SCRich:40}"
-MAX_DEPTH=40                              # fallback for domains absent from DEPTH_MAP
+# No MAX_DEPTH fallback: DEPTH_MAP is AUTHORITATIVE. A domain absent from it fails
+# loudly rather than silently inheriting 40 -- which is the UNFAITHFUL setting for
+# CC and is what blew past the ceiling and poisoned the tree.
 TRAIN_MAX_CREATION=50000
 TEST_MAX_CREATION=5000
 
@@ -207,7 +209,6 @@ else
         echo "[1/3] generating training data ..."
         run_stage python3 scripts/gnn_exp/create_all_training_data.py "${BATCH_DIR}" \
             --deep_exe "${DEEP_EXE}" \
-            --depth "${MAX_DEPTH}" \
             --depth-map "${DEPTH_MAP}" \
             --discard_factor "${DISCARD_FACTOR}" \
             --dataset-max-creation "${TRAIN_MAX_CREATION}" \
@@ -227,7 +228,6 @@ else
             --deep_exe "${DEEP_EXE}" \
             --dataset-name "test_data" \
             --training-folder "Test" \
-            --depth "${MAX_DEPTH}" \
             --depth-map "${DEPTH_MAP}" \
             --discard_factor "${DISCARD_FACTOR}" \
             --dataset-max-creation "${TEST_MAX_CREATION}" \

@@ -21,8 +21,29 @@ def _parse_depth_map(spec: str) -> dict:
 
 
 def _depth_for(domain_name: str, args) -> int:
-    """Per-domain depth; falls back to --depth."""
-    return _parse_depth_map(args.depth_map).get(domain_name, args.depth)
+    """Per-domain depth. AUTHORITATIVE when --depth-map is given: a domain absent
+    from the map FAILS LOUDLY rather than silently inheriting --depth.
+
+    Why no fallback: --depth's historical value is 40, which is the UNFAITHFUL
+    configuration for CC -- it is what blew past --dataset-max-creation and poisoned
+    the tree (past the ceiling non-goals are dropped AND their parents inherit
+    1e6 = unreachable). A new CC-like domain silently getting 40 would reintroduce
+    that artifact for that domain, and the faithfulness gate might not catch it if
+    the instance happens to enumerate. A loud failure beats a convenient default
+    that can silently be wrong.
+    """
+    dm = _parse_depth_map(args.depth_map)
+    if not dm:
+        return args.depth          # no map given at all -> legacy single-depth mode
+    if domain_name not in dm:
+        raise SystemExit(
+            f"[FATAL] domain '{domain_name}' has no depth in --depth-map "
+            f"({args.depth_map!r}). Add one (CC-like ~25, SC-like ~40) -- refusing "
+            f"to guess. Depth is what keeps generation under "
+            f"--dataset-max-creation, and the historical default 40 is the "
+            f"UNFAITHFUL setting for CC."
+        )
+    return dm[domain_name]
 
 
 def main():
