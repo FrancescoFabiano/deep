@@ -89,3 +89,65 @@ The **gap** between `oracle[wl]` and `oracle[id_knn]` says which channel carries
 the signal for that family — and therefore whether a model can win before any GPU
 is spent. The RL question only bites where `id_knn << wl` (signal in the
 valuation) AND the beam binds AND `delta-hat` error is moderate.
+
+---
+
+# OUTCOME (appended after the run; the above is unedited)
+
+**Both criteria FAIL. The hypothesis is dead.** n=22, not 29 — seven instances
+(Assemble x3, Grapevine x4) were skipped because their RawFiles no longer exist on
+disk (rotated away by the running launcher), not for any statistical reason.
+
+```
+PRIMARY   Spearman(mixing, oracle_wl_self/delta_root) = 0.415   (needed >0.6)  FAIL
+          after dropping the 3 most extreme points    = 0.308                  FAIL
+
+CONFOUND  Spearman(mixing, random_regret/delta_root)  = 0.601
+          PARTIAL (mixing, oracle_wl | difficulty)    = -0.109  (needed >0.4)  FAIL
+                                                                sign FLIPPED
+```
+
+## Verdict
+
+`mixing_fraction` is a **difficulty proxy**. It correlates 0.60 with `random`'s
+normalised regret, and controlling for that leaves a partial rho of -0.11 with the
+sign inverted. The n=3 monotonicity (13.1% -> 1.0, 14.3% -> 6.0, 28.9% -> 123.7)
+was a lever, not a trend. PRIMARY fails on its own terms even before the confound.
+
+Do not report the mixing-fraction as a predictor. Do not resurrect it without a
+new pre-registration and a fixed oracle (below).
+
+## A flaw in the oracle, recorded because it cuts against the measurement
+
+`oracle_wl_self` used `1e6` as the sterile stand-in inside a class's MEAN delta.
+One sterile state in a class of ten viable ones gives a mean of ~90909: the
+sentinel dominates and every mixed class is ranked last wholesale. That is not the
+Bayes-optimal predictor given the representation; it is a broken estimator.
+
+Visible in the data: `CC_2_3_4__pl_7` scores 79.0 in-sample here but 6.0 under the
+sibling-trained transfer oracle. An in-sample oracle can never legitimately lose to
+a transfer oracle, so the estimator is wrong, not the instance.
+
+This is the SAME mistake as the two-head baseline's score inversion: an unbounded
+sterile value swamping a distance term. The correct form is the one that fix used —
+viability must strictly dominate distance:
+
+    score(class) = (max_delta + 1) * P(viable | class) - E[delta | class, viable]
+
+What survives the flaw: PRIMARY fails independently of oracle calibration, and
+`Spearman(mixing, random_regret) = 0.601` never touches the oracle at all. The
+partial correlation does depend on it, so treat -0.109 as suggestive rather than
+decisive. The verdict does not rest on it.
+
+## Consequences
+
+- The 1-WL work is NOT a centerpiece. It is a set of measurements
+  (DESIGN 1.1.1) whose interpretation did not survive n=22.
+- The SCRich inversion (frame 1.00 beats ids 9.00) stands — it is a direct
+  measurement, not a correlation, and remains the honest counterexample: the
+  discriminating channel differs by domain.
+- The transfer results (DESIGN 1.1) stand: 0.0% cross-configuration id overlap is
+  a structural fact, not a statistic.
+- The per-family pre-flight table (oracle[wl] vs oracle[id_knn] vs baselines)
+  remains worth having, but MUST be rebuilt on the corrected oracle before any
+  claim rests on it.
