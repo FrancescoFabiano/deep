@@ -39,6 +39,37 @@ def test_within_configuration_splits_are_accepted():
     assert_within_config(["CC_2_3_4__pl_3"], ["CC_2_3_4__pl_7"])
 
 
+def test_cross_config_is_opt_in_and_the_default_is_still_a_hard_raise():
+    """The opt-in must not weaken the default. A caller that says nothing still
+    gets the raise -- the trap is real and silent, so it stays default-on."""
+    with pytest.raises(ValueError, match="cross-configuration"):
+        assert_within_config(["CC_2_2_3__pl_4"], ["CC_2_3_4__pl_7"])
+    with pytest.raises(ValueError, match="--allow-cross-config"):
+        assert_within_config(["CC_2_2_3__pl_4"], ["CC_2_3_4__pl_7"])
+
+
+def test_allow_cross_config_permits_the_split_and_warns_loudly(capsys):
+    """Opting in is allowed but must never be quiet: the run is a STRUCTURE-ONLY
+    FLOOR on HASHED (node channel = hash, 0.0% cross-config overlap), and the
+    warning is what stops the number being reported as transfer."""
+    assert_within_config(["CC_2_2_3__pl_4"], ["CC_2_3_4__pl_7"],
+                         allow_cross_config=True)
+    out = capsys.readouterr().out
+    assert "CROSS-CONFIG RUN" in out and "exploratory" in out
+    assert "FLOOR" in out, "the floor framing must be stated, not implied"
+
+
+def test_split_instances_forwards_the_opt_in():
+    """The flag must reach the split, not just the bare assert -- split_instances
+    calls the guard itself."""
+    names = ["CC_2_2_3__pl_4", "CC_2_3_4__pl_7", "CC_3_2_3__pl_5"]
+    with pytest.raises(ValueError, match="cross-configuration"):
+        split_instances(names, val_frac=0.34, seed=0)
+    train, val = split_instances(names, val_frac=0.34, seed=0,
+                                 allow_cross_config=True)
+    assert sorted(train + val) == sorted(names)
+
+
 def test_split_instances_is_instance_level_and_within_config():
     tr, va = split_instances(
         ["CC_2_3_4__pl_3", "CC_2_3_4__pl_5", "CC_2_3_4__pl_6", "CC_2_3_4__pl_7"],

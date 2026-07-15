@@ -115,6 +115,14 @@ def build_parser() -> argparse.ArgumentParser:
     # ---- split / eval ----
     p.add_argument("--val-frac", type=float, default=0.34)
     p.add_argument("--val-instances", nargs="*", default=None)
+    p.add_argument(
+        "--allow-cross-config", action="store_true",
+        help="Opt into a cross-configuration (global) split. OFF by default: the "
+             "guard hard-raises, because node ids are fluent-set hashes and "
+             "configurations share 0.0%% of them. On HASHED this buys a "
+             "STRUCTURE-ONLY FLOOR -- the node channel contributes nothing, so any "
+             "gap comes from topology + edge labels alone. The run is stamped "
+             "exploratory=true, cross_config=true. Not a transfer result.")
     p.add_argument("--eval-seeds", type=int, default=5)
     p.add_argument("--eval-expansion-cap", type=int, default=None)
     p.add_argument("--device", default=None)
@@ -146,7 +154,8 @@ def main(argv=None) -> int:
             counterfactual=a.counterfactual_actions,
             n_refill_samples=a.n_refill_samples,
             eval_seeds=a.eval_seeds, val_frac=a.val_frac,
-            val_instances=a.val_instances, hidden_dim=a.hidden_dim,
+            val_instances=a.val_instances,
+            allow_cross_config=a.allow_cross_config, hidden_dim=a.hidden_dim,
             gnn_layers=a.gnn_layers, lr=a.lr, batch_size=a.batch_size,
             target_sync=a.target_sync, max_grad_norm=a.max_grad_norm,
             cql_alpha=a.cql_alpha, gamma=a.gamma, reward_scale=a.reward_scale,

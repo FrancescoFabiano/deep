@@ -143,6 +143,12 @@ fi
 TRAIN_EXTRA="${STABILITY_FLAGS}"
 TRAIN_EXTRA+=" --context-mode ${CTX}"
 [[ "$ALGO"  == "cql" ]] && TRAIN_EXTRA+=" --cql-alpha ${CQL_ALPHA}"
+# ALLOW_CROSS_CONFIG=true opts into a GLOBAL (multi-configuration) model. Default
+# false: the guard hard-raises, because node ids are fluent-set hashes and two
+# configurations share 0.0% of them. On HASHED this run is a STRUCTURE-ONLY FLOOR --
+# the node channel contributes nothing, so any RL-vs-baseline gap comes from topology
+# and edge labels alone. Stamped exploratory=true in the selection sidecar.
+[[ "${ALLOW_CROSS_CONFIG:-false}" == "true" ]] && TRAIN_EXTRA+=" --allow-cross-config"
 TRAIN_EXTRA="${TRAIN_EXTRA# }"
 
 # ============================================================

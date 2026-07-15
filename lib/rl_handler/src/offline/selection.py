@@ -38,26 +38,56 @@ def config_of(instance_name: str) -> str:
 
 
 def assert_within_config(train: Sequence[str], val: Sequence[str],
-                         test: Sequence[str] = ()) -> None:
-    """The guardrail. A cross-configuration split makes the node channel noise.
+                         test: Sequence[str] = (),
+                         *, allow_cross_config: bool = False) -> None:
+    """The guardrail. A cross-configuration split makes the NODE CHANNEL noise.
 
     Measured: 0.0% node-id overlap across configurations (they share no fluent
     vocabulary); 15-46% within one. Training on CC_2_2_x and testing on CC_2_3_x is
     the trap that produced a whole day of unreadable numbers.
+
+    WHY 0.0%, PRECISELY (measured 2026-07-15): on HASHED the node id IS the feature
+    -- `_prepare_node_features` feeds `hash / 2^63` to input_proj, and
+    `node_label_embedding` takes `hash % 4096`. BOTH node channels are pure functions
+    of the hash, and `boost::hash_range` destroys fluent structure by construction.
+    The underlying domains actually share 50-87% of their FLUENTS (10 common to all 5
+    CC configs); it is the hashing, not the domain, that removes the signal.
+
+    SCOPE OF THE CLAIM: only the node channel is noise. The model also consumes
+    `edge_attr` (agent/edge labels, shared vocabulary) and `edge_index` (topology),
+    which are config-independent. A cross-config run is therefore a STRUCTURE-ONLY
+    FLOOR -- weak, but not meaningless. `allow_cross_config=True` opts into exactly
+    that, deliberately and labelled; the default stays a hard raise because the trap
+    above is real and silent.
+
+    (On BITMASK the node feature is the fluent bitmask, so cross-config transfer is
+    genuinely available there -- that is the real test, not this floor.)
     """
     cfgs = {config_of(n) for n in list(train) + list(val) + list(test)}
-    if len(cfgs) > 1:
-        raise ValueError(
-            f"cross-configuration split: {sorted(cfgs)}. Node ids are hashes of the "
-            f"fluent set, so different configurations share NO vocabulary (0.0% id "
-            f"overlap measured) and the node channel is provably pure noise. Splits "
-            f"must stay within one configuration."
+    if len(cfgs) <= 1:
+        return
+    if allow_cross_config:
+        print(
+            f"[WARNING] CROSS-CONFIG RUN (exploratory): {sorted(cfgs)}. On HASHED the "
+            f"node channel carries ZERO cross-config signal -- the id is a hash and "
+            f"configurations share 0.0% of ids. Any gap measured here comes from "
+            f"TOPOLOGY + EDGE LABELS alone; this is a STRUCTURE-ONLY FLOOR, not a "
+            f"transfer result. Do not report it as one."
         )
+        return
+    raise ValueError(
+        f"cross-configuration split: {sorted(cfgs)}. Node ids are hashes of the "
+        f"fluent set, so different configurations share NO vocabulary (0.0% id "
+        f"overlap measured) and the node channel is provably pure noise. Splits "
+        f"must stay within one configuration. Pass --allow-cross-config to opt in "
+        f"deliberately (the run is then stamped exploratory)."
+    )
 
 
 def split_instances(
     names: Sequence[str], val_frac: float = 0.2, seed: int = 0,
     val_instances: Optional[Sequence[str]] = None,
+    *, allow_cross_config: bool = False,
 ) -> Tuple[List[str], List[str]]:
     """Instance-level split with a fixed seed, recorded in the manifest."""
     import random
@@ -72,7 +102,7 @@ def split_instances(
         val, train = shuf[:k], shuf[k:]
     if not train or not val:
         raise ValueError(f"degenerate split: train={train} val={val}")
-    assert_within_config(train, val)
+    assert_within_config(train, val, allow_cross_config=allow_cross_config)
     return sorted(train), sorted(val)
 
 

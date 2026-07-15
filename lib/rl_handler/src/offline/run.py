@@ -71,6 +71,11 @@ class RunConfig:
     eval_seeds: int = 5
     val_frac: float = 0.34
     val_instances: Optional[List[str]] = None
+    # Opt into a cross-configuration (global) split. Default OFF: the hard raise is
+    # the right default (see selection.assert_within_config). On HASHED this buys a
+    # STRUCTURE-ONLY FLOOR -- the node channel is a hash and carries 0.0% cross-config
+    # signal, so any gap comes from topology + edge labels alone. Stamped exploratory.
+    allow_cross_config: bool = False
     hidden_dim: int = 64
     gnn_layers: int = 2
     lr: float = 1e-4
@@ -143,8 +148,10 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
     insts, caches, meta = load_pool(cfg, repo_root)
     by_name = {i.name: i for i in insts}
     train_n, val_n = split_instances([i.name for i in insts], cfg.val_frac,
-                                     cfg.seed, cfg.val_instances)
-    assert_within_config(train_n, val_n)                     # the guardrail
+                                     cfg.seed, cfg.val_instances,
+                                     allow_cross_config=cfg.allow_cross_config)
+    assert_within_config(train_n, val_n,                     # the guardrail
+                         allow_cross_config=cfg.allow_cross_config)
     train_i = [by_name[n] for n in train_n]
     val_i = [by_name[n] for n in val_n]
     cap = cfg.eval_expansion_cap or default_expansion_cap(insts)
@@ -284,6 +291,14 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
             extra={"determinism": determinism_report(),
                    "context_mode": cfg.context_mode,
                    "dataset_type": cfg.dataset_type,
+                   "cross_config": cfg.allow_cross_config,
+                   "exploratory": cfg.allow_cross_config,
+                   "cross_config_note": (
+                       "Cross-configuration (global) run. On HASHED the node channel "
+                       "is a hash and carries 0.0% cross-config signal, so any gap "
+                       "here comes from TOPOLOGY + EDGE LABELS alone -- a "
+                       "STRUCTURE-ONLY FLOOR, not a transfer result."
+                   ) if cfg.allow_cross_config else None,
                    "refill_note": ("The offline env models refill as its own "
                                    "stochastic transition; it does not pin a C++ "
                                    "RefillMode. Whoever deploys should confirm the "
