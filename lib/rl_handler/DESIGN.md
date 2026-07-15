@@ -98,33 +98,50 @@ true and achievable on the frozen C++.
 Do NOT build cross-family features hoping to beat the hash. The hash is not the
 obstacle; the missing BITMASK path is, and it is not this trainer's to add.
 
-### 1.1.1 Why topology cannot substitute — the frame is nearly uninformative
+### 1.1.1 1-WL frame resolution — measurements, and a hypothesis that FAILED
 
-The obvious fallback is to ignore the id and rank on graph structure alone. It has
-a hard, **model-free** ceiling. The net scores STATES (one Kripke frame per beam
-slot), so with node features constant, two states whose frames are 1-WL-equivalent
-get identical pooled embeddings — identical score, unrankable, whatever the loss.
-Bucketing reachable states by a 1-WL hash of the frame (edge labels used, ids not):
+The net scores STATES (one Kripke frame per beam slot), so with node features
+constant, two states whose frames are 1-WL-equivalent get identical pooled
+embeddings — identical score, unrankable, whatever the loss. Bucketing reachable
+states by a 1-WL hash of the frame (edge labels used, ids ignored):
 
-| | `CC_2_3_4__pl_7` | `CC_2_2_3__pl_4` |
-|---|---|---|
-| reachable states | 4382 | 2759 |
-| distinct 1-WL frame classes | **371** | **23** |
-| states in a colliding class | **96.4%** | **99.9%** |
-| largest class | 466 | **862** |
-| classes mixing viable + sterile | 14.3% | **56.5%** |
-| mean finite `delta` span within a class | 2.14 | 7.21 |
+| | `CC_2_3_4__pl_7` | `CC_2_2_3__pl_4` | `CC_2_2_3__pl_6` | `SC_R_10_10__pl_10` |
+|---|---|---|---|---|
+| reachable states | 4382 | 2759 | 20062 | 35107 |
+| 1-WL frame classes | 371 | **23** | 350 | 329 |
+| states in a colliding class | 96.4% | 99.9% | 99.5% | 99.8% |
+| classes mixing viable + sterile | 14.3% | 56.5% | 28.9% | 13.1% |
 
-2759 states collapse into 23 frame classes. In 56.5% of them a **viable and a
-sterile state must receive the same score**. (Fully-connected frames — every world
-reaching every world under every agent — are only 0.1–2.0%, so this is not an
-edge case about symmetric frames; it is the general case.)
+Collision is near-universal (96–99.9%), and fully-connected frames — every world
+reaching every world under every agent — are only 0.1–2.0%, so this is not an edge
+case about symmetric frames. Note also that `CC_2_2_3__pl_4` and `__pl_6` are the
+**same configuration** and differ by 23 vs 350 classes: WL resolution is a property
+of the instance, not the domain.
 
-So the discriminating signal is almost entirely in the **valuation**, and §1.1 is
-why the RL path cannot reach it. This retro-explains both arms exactly:
-`with_hash` separates all 4382 states (lookup table → train regret 0.00) but only
-in-sample; `topology_only` separates 371 (→ lower variance, hard ceiling, loses to
-`dfs`). Neither can do what the frozen C++ requires.
+**Two interpretations of this were tested and BOTH FAILED. Do not restate either.**
+
+1. *"The frame is nearly uninformative; the signal is in the valuation."* **False as
+   a general claim.** On `SC_R_10_10` the frame BEATS the ids: `oracle[wl]` regret
+   **1.00** vs `oracle[id_knn]` **9.00**. The discriminating channel differs by
+   domain — valuation for CC, frame for SC. That inversion is a direct measurement
+   and is the honest counterexample; it is *why* one fixed encoder struggles, and
+   why the BITMASK gap (§1.1) matters — a model needs both channels and the frozen
+   RL path reliably has only one.
+2. *"The viable/sterile mixing-fraction predicts whether topology can rank."*
+   **Failed a pre-registered test at n=22** (see `PREREGISTRATION.md`): Spearman
+   0.415 against a required 0.6, falling to 0.308 when the 3 extreme points are
+   dropped. It is a **difficulty proxy** — it tracks `random`'s normalised regret at
+   0.601, and controlling for that leaves a partial rho of **-0.11 with the sign
+   inverted**. The motivating n=3 monotonicity was a lever, not a trend.
+
+The WL **class count** predicts nothing either: 329 / 371 / 350 classes map to
+oracle regrets of 1.0 / 6.0 / 123.7.
+
+**What stands:** the table above is a set of measurements. Collision is real and
+near-universal, so a topology-only model provably cannot separate 96–99.9% of
+states from *some* other state. What that costs, and whether it is the binding
+constraint, is **not** established — it varies by instance and is confounded with
+difficulty.
 
 ### 1.2 The DOT is lossy
 
