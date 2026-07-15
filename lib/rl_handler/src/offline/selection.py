@@ -117,10 +117,66 @@ def gate_onnx_parity(check: Callable[[], Tuple[bool, str]]) -> GateResult:
     return GateResult("onnx_parity", ok, detail)
 
 
+PLANNER_EXPANSIONS_RE = r"Nodes expanded:\s*(\d+)"
+
+
+def run_planner_expansions(
+    deep_exe: str | Path,
+    problem_file: str | Path,
+    onnx_path: str | Path,
+    fringe_size: int,
+    separated: bool,
+    repo_root: str | Path = ".",
+    strong_equality: bool = True,
+    timeout_s: int = 600,
+) -> Optional[int]:
+    """Invoke the REAL planner and parse its expansion count.
+
+    Returns None if the planner failed or printed no count — the caller must treat
+    that as a gate failure, never as "no data".
+
+    The ONNX must match the encoding: a merged export takes 5 inputs and a
+    separated one 9, and `FringeEvalRL.tpp:413` rejects a mismatch outright
+    ("model expects 5 input tensors but C++ prepared 9"). `--dataset_separated`
+    is what makes the C++ append the goal tensors.
+    """
+    if not Path(deep_exe).exists():
+        raise FileNotFoundError(
+            f"planner binary not found: {deep_exe}. The env-fidelity gate cannot be "
+            f"armed without it -- build it (cmake-build-release-nn) or the gate is "
+            f"scaffolding. A MISSING BINARY IS A SETUP ERROR, not a model failure: "
+            f"returning 'no count' here would silently fail the gate and hide the "
+            f"real cause."
+        )
+    if not Path(problem_file).exists():
+        raise FileNotFoundError(f"problem file not found: {problem_file}")
+    cmd = [str(deep_exe), str(problem_file), "-b", "-c",
+           "--search", "RL",
+           "--RL_model", str(Path(onnx_path).resolve()),
+           "--RL_fringe_size", str(int(fringe_size)),
+           "--RL_exploitation", str(planner_flags(fringe_size)["RL_exploitation"]),
+           "--RL_exploration", "0"]
+    if separated:
+        cmd.append("--dataset_separated")
+    if strong_equality:
+        cmd.append("--strong_equality")
+    try:
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout_s,
+                           cwd=str(repo_root))
+    except (subprocess.TimeoutExpired, OSError):
+        # A crash or a timeout IS a gate failure (unlike a missing binary, which is
+        # a setup error and raises above).
+        return None
+    import re
+    m = re.search(PLANNER_EXPANSIONS_RE, r.stdout or "")
+    return int(m.group(1)) if m else None
+
+
 def gate_env_fidelity(
     offline_expansions: Sequence[int],
     planner_expansions: Sequence[int],
     tolerance_frac: float = 0.10,
+    min_expansions: int = 20,
 ) -> GateResult:
     """Gate 2: THE most important test.
 
@@ -139,14 +195,33 @@ def gate_env_fidelity(
         return GateResult("env_fidelity", False,
                           f"nothing to compare: offline={len(offline_expansions)} "
                           f"planner={len(planner_expansions)}")
-    devs = [abs(a - b) / max(1, b) for a, b in zip(offline_expansions, planner_expansions)]
-    devs_sorted = sorted(devs)
-    med = devs_sorted[len(devs_sorted) // 2]
+    if any(p is None for p in planner_expansions):
+        return GateResult("env_fidelity", False,
+                          f"the planner produced no expansion count for "
+                          f"{sum(1 for p in planner_expansions if p is None)} instance(s); "
+                          f"a missing count is a FAILURE, never 'no data'")
+    # A fractional tolerance is meaningless on tiny searches: at 7 expansions a
+    # +-1 difference is 14%. Instances below `min_expansions` cannot discriminate
+    # tree-replay drift from a real modelling error, so they must not be scored --
+    # silently averaging them in would let a trivial instance pass or fail the gate
+    # for arithmetic reasons.
+    usable = [(a, b) for a, b in zip(offline_expansions, planner_expansions)
+              if b >= min_expansions]
+    if not usable:
+        return GateResult(
+            "env_fidelity", False,
+            f"no instance reaches {min_expansions} planner expansions "
+            f"(largest={max(planner_expansions)}); a fractional tolerance cannot "
+            f"discriminate at this scale. Use harder fidelity instances. "
+            f"offline={list(offline_expansions)} planner={list(planner_expansions)}")
+    devs = [abs(a - b) / max(1, b) for a, b in usable]
+    med = sorted(devs)[len(devs) // 2]
     ok = med <= tolerance_frac
     return GateResult(
         "env_fidelity", ok,
-        f"median |offline-planner|/planner = {med:.3f} (tolerance {tolerance_frac:.3f}); "
-        f"per-instance {[round(d,3) for d in devs]}; "
+        f"median |offline-planner|/planner = {med:.3f} over {len(usable)}/"
+        f"{len(offline_expansions)} instances with >= {min_expansions} expansions "
+        f"(tolerance {tolerance_frac:.3f}); per-instance {[round(d,3) for d in devs]}; "
         f"offline={list(offline_expansions)} planner={list(planner_expansions)}",
     )
 

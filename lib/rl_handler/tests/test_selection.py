@@ -166,3 +166,67 @@ def test_sidecar_records_the_planner_flags_and_gates(tmp_path):
     assert "regret" not in doc, "unqualified regret must not appear"
     assert doc["excluded_unsolvable_instances"]
     assert doc["git_sha"]
+
+
+# ------------------------------------- the fidelity gate, armed for real -----
+
+def test_a_missing_planner_count_is_a_failure_not_no_data():
+    """If the planner crashed or printed nothing, that is a FAILED gate. Treating
+    it as 'no data' would let a broken invocation pass silently."""
+    g = gate_env_fidelity([100, 50], [100, None])
+    assert not g.passed and "never 'no data'" in g.detail
+
+
+def test_tiny_searches_cannot_score_the_gate():
+    """A fractional tolerance is meaningless at 7 expansions: +-1 is 14%. Measured
+    on the regenerated CC_2_2_3__pl_4: offline 5 vs planner 7 -> 28.6%, which says
+    nothing about whether the env models the planner."""
+    g = gate_env_fidelity([5], [7], min_expansions=20)
+    assert not g.passed
+    assert "cannot discriminate at this scale" in g.detail
+    assert "harder fidelity instances" in g.detail
+
+
+def test_only_instances_above_the_floor_are_scored():
+    # the 5-vs-7 pair must be EXCLUDED, not averaged in
+    g = gate_env_fidelity([5, 105], [7, 100], min_expansions=20, tolerance_frac=0.10)
+    assert g.passed, "the trivial pair must not drag the median"
+    assert "1/2 instances" in g.detail
+
+
+def test_missing_binary_is_a_setup_error_not_a_silent_gate_failure(tmp_path):
+    """A missing `deep` binary must RAISE. Returning "no count" would fail the gate
+    and hide the real cause -- an unarmed gate must be visibly unarmed."""
+    from src.offline.selection import run_planner_expansions
+    with pytest.raises(FileNotFoundError, match="planner binary not found"):
+        run_planner_expansions(tmp_path / "nope", tmp_path / "p.txt",
+                               tmp_path / "m.onnx", 8, separated=True,
+                               repo_root=tmp_path, timeout_s=5)
+
+
+def test_missing_problem_file_raises(tmp_path):
+    from src.offline.selection import run_planner_expansions
+    (tmp_path / "deep").write_text("#!/bin/sh\n"); (tmp_path / "deep").chmod(0o755)
+    with pytest.raises(FileNotFoundError, match="problem file not found"):
+        run_planner_expansions(tmp_path / "deep", tmp_path / "nope.txt",
+                               tmp_path / "m.onnx", 8, separated=True,
+                               repo_root=tmp_path, timeout_s=5)
+
+
+def test_planner_that_prints_no_count_fails_the_gate(tmp_path):
+    """A crash (e.g. the 5-vs-9 input mismatch) yields no count -> gate FAILS."""
+    from src.offline.selection import run_planner_expansions
+    exe = tmp_path / "deep"; exe.write_text("#!/bin/sh\necho '[ERROR] boom'\n"); exe.chmod(0o755)
+    prob = tmp_path / "p.txt"; prob.write_text("x")
+    assert run_planner_expansions(exe, prob, tmp_path / "m.onnx", 8, separated=True,
+                                  repo_root=tmp_path, timeout_s=10) is None
+
+
+def test_planner_count_is_parsed(tmp_path):
+    from src.offline.selection import run_planner_expansions
+    exe = tmp_path / "deep"
+    exe.write_text("#!/bin/sh\necho 'Goal found :)'\necho '  Nodes expanded: 9031'\n")
+    exe.chmod(0o755)
+    prob = tmp_path / "p.txt"; prob.write_text("x")
+    assert run_planner_expansions(exe, prob, tmp_path / "m.onnx", 8, separated=True,
+                                  repo_root=tmp_path, timeout_s=10) == 9031
