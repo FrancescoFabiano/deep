@@ -56,6 +56,81 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 OFFLINE_MAIN = REPO_ROOT / "lib" / "rl_handler" / "offline_main.py"
+
+
+# fe3d2a9 ("dead paths") deleted these four while leaving every call site, so this
+# module raised NameError before training a single frame and final_launcher.sh's
+# step 2 had never once executed. Restored verbatim from fe3d2a9^ -- no redesign.
+
+
+def find_domains(models_root: Path) -> list[str]:
+    """Domains = subdirs of <exp_dir>/_models that contain a training_data dir."""
+    if not models_root.is_dir():
+        return []
+    domains = []
+    for child in sorted(p for p in models_root.iterdir() if p.is_dir()):
+        if (child / "training_data").is_dir():
+            domains.append(child.name)
+    return domains
+
+
+def _instance_csvs(subdir: Path) -> list[Path]:
+    """All per-instance generation tables under a data subdir, sorted by name."""
+    csvs: list[Path] = []
+    if not subdir.is_dir():
+        return csvs
+    for inst_dir in sorted(p for p in subdir.iterdir() if p.is_dir()):
+        matches = sorted(inst_dir.glob(f"{inst_dir.name}_depth_*.csv"))
+        if not matches:
+            matches = sorted(inst_dir.glob("*_depth_*.csv"))
+        if matches:
+            csvs.append(matches[0])
+    return csvs
+
+
+def domain_train_csvs(models_root: Path, domain: str) -> list[Path]:
+    """TRAIN instances = everything under <domain>/training_data, kept whole.
+    NO auto-split: the script never carves a val set out of train."""
+    return _instance_csvs(models_root / domain / "training_data")
+
+
+def domain_test_csvs(models_root: Path, domain: str) -> list[Path]:
+    """Held-out diagnostic TEST instances = everything under <domain>/test_data
+    (never feeds selection; only the per-regime diagnostic plots / final numbers)."""
+    return _instance_csvs(models_root / domain / "test_data")
+
+
+def run_one(cmd: list[str], prefix: str) -> int:
+    """Run offline_main.py, streaming one log line every ~15s; return exit code.
+
+    The 15s throttle keeps long training runs readable, but would hide a
+    fast-failing error (e.g. a rejected kwarg).  So the most recent lines are
+    kept in a ring buffer and dumped verbatim on a non-zero exit — kwargs
+    errors are never silent.
+    """
+    print(" ".join(cmd), flush=True)
+    process = subprocess.Popen(
+        cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1
+    )
+    last_print = 0.0
+    recent: deque[str] = deque(maxlen=40)
+    assert process.stdout is not None
+    for line in iter(process.stdout.readline, ""):
+        recent.append(line.rstrip())
+        now = time.time()
+        if now - last_print >= 15:
+            print(f"{prefix} {recent[-1]}", flush=True)
+            last_print = now
+    process.stdout.close()
+    rc = process.wait()
+    if rc != 0:
+        print(f"{prefix} ---- offline_main.py output (last {len(recent)} lines) ----")
+        for line in recent:
+            print(f"{prefix} {line}", flush=True)
+        print(f"{prefix} ---- end output ----", flush=True)
+    return rc
+
+
 def train_domain(
     exp_dir: Path,
     models_root: Path,

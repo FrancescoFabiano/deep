@@ -496,16 +496,24 @@ def test_coverage_aggregation_never_averages_unsolved_runs():
 
 def test_hfs_oracle_hits_delta_root_on_real_data(shipped_instances, capsys):
     """The strongest validation the env has: on the real CC tree, pi* spends
-    exactly delta(root) = 34 expansions with regret 0, at the deployed F=32."""
+    exactly delta(root) expansions with regret 0, at the deployed F=32.
+
+    The claim is `expansions == delta_root`, NOT `== 34`. 34 was one seed's
+    delta_root on one discard=0.4-era table -- the tree is a seed-dependent DFS
+    sample, so pinning the value made this fail on any regenerated data while saying
+    nothing about the oracle. The oracle achieving delta_root with zero regret is
+    the invariant, whatever delta_root is.
+    """
     inst = shipped_instances["CC_2_3_4__pl_7"]
     from src.offline.env import rollout
     from src.offline.policies import make_policy
+    assert inst.solvable(), "the oracle needs a reachable goal"
     for seed in range(10):
         env = FringeEnv(inst, fringe_size=32, seed=seed, gamma=1.0,
                         expansion_cap=900)
         r = rollout(env, make_policy(inst, "hfs_oracle", seed=seed), seed=seed)
         assert r["solved"], f"seed {seed}: pi* failed on real data"
-        assert r["expansions"] == inst.delta_root == 34
+        assert r["expansions"] == inst.delta_root
         assert r["regret"] == 0.0
     with capsys.disabled():
         print(f"\n  CC_2_3_4__pl_7 F=32: hfs_oracle = {inst.delta_root:.0f} "

@@ -116,9 +116,20 @@ def test_legacy_reward_mode_is_the_known_broken_one():
 # ---------------------------------------------------------- K_max from data ---
 
 def test_k_max_is_measured_from_data_not_worst_case(shipped_instances):
-    """max delta(root) over the shipped tables. At gamma=1 this no longer
-    constrains anything -- it is reported as a data statistic only."""
-    assert max_success_expansions(list(shipped_instances.values())) == 34
+    """K_max is MEASURED from the tables, not assumed. At gamma=1 it constrains
+    nothing -- it is reported as a data statistic only.
+
+    Asserted as an invariant, not a literal: this pinned 34, which is one seed's
+    delta_root on one discard=0.4-era table, not a property of the instances (the
+    tree is a seed-dependent DFS sample -- delta_root moved 14/6/7 across seeds on
+    CC_2_2_3__pl_4). What must hold is that K_max IS the max delta_root over the
+    solvable instances, whatever the tables happen to be.
+    """
+    insts = list(shipped_instances.values())
+    k = max_success_expansions(insts)
+    expected = max(i.delta_root for i in insts if i.solvable())
+    assert k == expected, "K_max must be the max delta_root over solvable instances"
+    assert float(k).is_integer() and k >= 0
 
 
 def test_k_max_undefined_without_a_solvable_instance():
