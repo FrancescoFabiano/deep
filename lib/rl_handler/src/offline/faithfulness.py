@@ -1,9 +1,17 @@
 """The gatekeeper between generation and training. Nothing trains on data that
 fails this.
 
+THIS MODULE VALIDATES OUTPUT; IT DOES NOT GENERATE
+It reads a tree and judges it. It owns NO generation parameter -- no depth, no
+discard, no ceiling -- and deliberately does not know them. Those live in exactly one
+place, `scripts/gnn_exp/create_all_training_data.py`, which the launcher drives. The
+independence is the point: the generator picks the knobs, this asks only whether the
+RESULT is faithful, so a wrong knob cannot also silence its own alarm.
+
 THE DISCARD-ARTIFACT TEST, AUTOMATED
 The instances are constructed with a known optimal plan length (`__pl_N`), and the
-planner confirms it (BFS returns exactly N). So a faithful table MUST satisfy
+planner confirms it (strict BFS returns exactly N -- 26/26 CC rows in
+combined_results/<batch>/CC/bfs/*_BFS_strict.csv). So a faithful table MUST satisfy
 `delta_root == N`. On the shipped `discard_factor 0.4` data it did not:
 
     CC_2_2_3__pl_4   delta_root 10  vs true optimal 4
@@ -12,11 +20,20 @@ planner confirms it (BFS returns exactly N). So a faithful table MUST satisfy
 That is the biased discard having deleted the shallow goals. This check turns that
 diagnosis into an automatic exclusion so the artifact can never silently return.
 
+It earns its keep beyond the discard, too: at discard 0 it still caught
+`CC_2_3_4__pl_7` at depth 25 with delta_root 22 vs optimal 7 -- there the DFS was
+truncated by the VISIT ceiling and never reached the shallow goal. Same symptom, a
+different cause, and the check did not need to know which.
+
 THREE CRITERIA
   1. delta_root == expected optimal      -> the solution path is PRESENT
-  2. poisoned fraction below threshold   -> the max_creation ceiling did not bite
-                                            (past it, non-goals are dropped AND
-                                            parents inherit 1e6 = "unreachable")
+  2. poisoned fraction below threshold   -> the generator's ceiling did not bite.
+                                            Past it, non-goals are dropped AND
+                                            parents inherit 1e6 = "unreachable".
+                                            (Two ceilings can do this; the binding
+                                            one is the 100k VISIT count. Which one
+                                            fired is the generator's problem, not
+                                            this module's -- 1e6 is 1e6.)
   3. BFS reaches >= min_expansions       -> the fidelity gate can actually SCORE it;
                                             at 7 expansions a +-1 difference is 14%,
                                             so a fractional tolerance is meaningless
@@ -28,17 +45,33 @@ they just cannot discriminate for fidelity.
 from __future__ import annotations
 
 import json
+import re
 from collections import deque
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence
 
-from .generation import depth_for, expected_optimal
 from .tree import INF_DELTA, UNREACHABLE_DISTANCE, TreeInstance
 
-# Past the max_creation ceiling the generator drops non-goals and poisons their
-# parents to 1e6. A little is tolerable (0.1% measured on the pl_4 regen); a lot
-# means the tree is truncated and the instance is not faithful.
+
+def expected_optimal(instance_name: str) -> Optional[int]:
+    """`CC_2_3_4__pl_7` -> 7. The instances are CONSTRUCTED with a known optimal
+    plan length, and the planner confirms it: strict BFS returns exactly `pl_N` on
+    every CC instance measured (combined_results/<batch>/CC/bfs/*_BFS_strict.csv,
+    26/26 rows). `--strong_equality` does not move it either -- verified pl_3..pl_6
+    on CC_2_3_4, where the flag demonstrably changes the search (pl_5: 277 nodes
+    weak vs 274 strict) without changing the answer.
+
+    This is what lets the check know its target WITHOUT probing the planner, and
+    without knowing anything about how the tree was generated.
+    """
+    m = re.search(r"__pl_(\d+)", str(instance_name))
+    return int(m.group(1)) if m else None
+
+
+# Past a generation ceiling the generator drops non-goals and poisons their parents
+# to 1e6. A little is tolerable (0.1% measured on the pl_4 regen); a lot means the
+# tree is truncated and the instance is not faithful.
 MAX_POISONED_FRAC = 0.01
 # Below this the fidelity gate cannot discriminate tree-replay drift from a real
 # modelling error.
@@ -57,7 +90,6 @@ class InstanceVerdict:
     n_states: int = 0
     bfs_expansions: Optional[int] = None
     usable_for_fidelity: bool = False
-    dataset_depth: Optional[int] = None
 
 
 def bfs_expansions(instance: TreeInstance, cap: int = 200000) -> Optional[int]:
@@ -107,7 +139,6 @@ def check_instance(
         poisoned_frac=poisoned / n,
         sterile_frac=sterile / n,
         n_states=len(reach),
-        dataset_depth=depth_for(inst.name),
     )
 
     if not inst.solvable():
@@ -130,8 +161,8 @@ def check_instance(
     if v.poisoned_frac > max_poisoned_frac:
         v.faithful = False
         v.reasons.append(
-            f"poisoned fraction {v.poisoned_frac:.3f} > {max_poisoned_frac}: the "
-            f"max_creation ceiling truncated the tree and marked live nodes "
+            f"poisoned fraction {v.poisoned_frac:.3f} > {max_poisoned_frac}: a "
+            f"generation ceiling truncated the tree and marked live nodes "
             f"unreachable (h*=1e6)"
         )
 

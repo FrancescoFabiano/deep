@@ -11,20 +11,29 @@ set -uo pipefail
 source .venv/bin/activate
 
 DEEP_EXE="cmake-build-release-nn/bin/deep"
-FRINGE_SIZES="32 64"
-BATCH_SIZE=64
-FRAMES=100000
-N_CHECKPOINTS=20
+FRINGE_SIZES="1 4 8 16 32 64"
+BATCH_SIZE=24
+FRAMES=50000
+N_CHECKPOINTS=10
 CQL_ALPHA=1.0
 RANDOM_PCT=0.5
 TRAIN_MAX_CREATION=50000
+MAX_DEPTH=40
 TEST_MAX_CREATION=5000
+# The VISIT ceiling (--dataset_max_generation). 100000 is the historical C++
+# default, now set explicitly because it is the BINDING one: past it non-goals are
+# dropped and their parents poisoned to 1e6 WITHOUT recursing, so goals below are
+# never reached. See scripts/gnn_exp/create_all_training_data.py's docstring.
+TRAIN_MAX_GENERATION=100000
+TEST_MAX_GENERATION=100000
 
+IF_GENERATE_DATA=true
+IF_TRAIN_MODEL=true
 GENERATE_TEST_DATA=false
 
-ALGOS=("dqn") # "dqn" 
-MODES=("separated" "merged")
-STRICTS=("strict" "no_strict")
+ALGOS=("dqn") # "cql" 
+MODES=("separated")
+STRICTS=("strict")
 
 # ---- tracking ----
 PASSED=()
@@ -52,37 +61,42 @@ for algo in "${ALGOS[@]}"; do
 		
 		if [[ "$strict" == "strict" ]]; then
 		    GEN_FLAG+=" --strong_equality"
-		    PIPE_FLAG+=" --strong_equality"
 		fi
 
 		# ---- algo-dependent flags ----
 		MODEL_FLAG="--model ${algo}"
-		ALGO_FWD=""
+		ALGO_FWD="--target-tau 0.005 --lr-schedule cosine --lr-min 1e-5"
 		if [[ "$algo" == "cql" ]]; then
-		    ALGO_FWD="--cql-alpha ${CQL_ALPHA}"
+		    ALGO_FWD=" --cql-alpha ${CQL_ALPHA}"
 		fi
 
 		# ---- run all 4 steps; break to next batch on any failure ----
 		ok=true
 
 		# 1. GENERATE TRAINING DATA
-		echo "[1/4] generating training data ..."
-		if ! python3 scripts/gnn_exp/create_all_training_data.py "${BATCH}" \
-		        --deep_exe "${DEEP_EXE}" \
-		        --dataset-max-creation "${TRAIN_MAX_CREATION}" \
-		        ${GEN_FLAG}; then
-		    echo "[FAIL] ${BATCH} step 1 (generate train)"
-		    FAILED+=("${BATCH}:generate_train")
-		    ok=false
+		if $IF_GENERATE_DATA; then
+		    echo "[1/4] generating training data ..."
+		    if ! python3 scripts/gnn_exp/create_all_training_data.py "${BATCH}" \
+		            --deep_exe "${DEEP_EXE}" \
+		            ---depth 40 "${MAX_DEPTH}" \
+		            --dataset-max-creation "${TRAIN_MAX_CREATION}" \
+		            --dataset-max-generation "${TRAIN_MAX_GENERATION}" \
+		            ${GEN_FLAG}; then
+		        echo "[FAIL] ${BATCH} step 1 (generate train)"
+		        FAILED+=("${BATCH}:generate_train")
+		        ok=false
+		    fi
 		fi
 		
 		# 2. GENERATE TEST DATA
-		if $GENERATE_TEST_DATA && $ok; then
+		if $IF_GENERATE_DATA && $GENERATE_TEST_DATA && $ok; then
 		    echo "[2/4] generating test data ..."
 		    if ! python3 scripts/gnn_exp/create_all_training_data.py "${BATCH}" \
 			    --deep_exe "${DEEP_EXE}" \
 			    --dataset-name "test_data" \
+			    ---depth 40 "${MAX_DEPTH}" \
 			    --dataset-max-creation "${TEST_MAX_CREATION}" \
+			    --dataset-max-generation "${TEST_MAX_GENERATION}" \
 			    --training-folder "Test" \
 			    ${GEN_FLAG}; then
 			echo "[FAIL] ${BATCH} step 2 (generate test)"
@@ -90,9 +104,11 @@ for algo in "${ALGOS[@]}"; do
 			ok=false
 		    fi
 		fi
+		
+		rm -rf out
 
 		# 3. TRAIN MODELS
-		if $ok; then
+		if $ok && $IF_TRAIN_MODEL; then
 		    echo "[3/4] training models (algo=${algo}, F=${FRINGE_SIZES}) ..."
 		    if ! python3 scripts/rl_exp/train_models.py "${BATCH}" \
 		            --fringe-sizes ${FRINGE_SIZES} \
@@ -108,8 +124,6 @@ for algo in "${ALGOS[@]}"; do
 		        ok=false
 		    fi
 		fi
-		
-		rm -rf out
 
 		# 4. EVALUATION PIPELINE
 		if $ok; then
@@ -121,6 +135,8 @@ for algo in "${ALGOS[@]}"; do
 		        ok=false
 		    fi
 		fi
+		
+		rm -rf out
 
 		if $ok; then
 		    echo "[DONE] ${BATCH}"
@@ -128,8 +144,6 @@ for algo in "${ALGOS[@]}"; do
 		else
 		    echo "[SKIPPED] ${BATCH} — failed at step above, moving on"
 		fi
-		
-		rm -rf out
 
         done
     done

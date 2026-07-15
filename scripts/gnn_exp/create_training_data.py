@@ -62,8 +62,18 @@ def run_cpp_once(
         seed,
         dataset_type,
         dataset_max_creation,
+        dataset_max_generation,
 ):
-    """Run the C++ tool once with a given seed. Returns (exit_code, output_string)."""
+    """Run the C++ tool once with a given seed. Returns (exit_code, output_string).
+
+    BOTH ceilings are passed explicitly. TrainingDataset.tpp:677 poisons on EITHER
+    `m_current_nodes >= --dataset_max_generation` (VISITS) or
+    `m_added_to_dataset >= --dataset_max_creation` (WRITES), and the VISIT one is
+    the binding one in practice -- it used to sit at its invisible 100000 C++
+    default while only the write cap was threaded through. A visit budget that bites
+    stops all further additions, which strands the table UNDER the write cap and
+    makes a truncated tree look like it never hit a ceiling at all.
+    """
     command = [
         deep_exe,
         file_path,
@@ -74,6 +84,7 @@ def run_cpp_once(
         "--dataset_discard_factor", str(discard_factor),
         "--dataset_seed", str(seed),
         "--dataset_max_creation", str(dataset_max_creation),
+        "--dataset_max_generation", str(dataset_max_generation),
         "--dataset_type", str(dataset_type),
     ]
     if no_goal:
@@ -214,6 +225,7 @@ def process_file_with_retries(
         depth,
         discard_factor,
         dataset_max_creation,
+        dataset_max_generation,
         base_seed,
         max_retries,
         dataset_type,
@@ -244,6 +256,7 @@ def process_file_with_retries(
                 seed,
                 dataset_type,
                 dataset_max_creation,
+                dataset_max_generation,
             )
 
         except Exception as e:
@@ -318,6 +331,7 @@ def run_cpp_on_training_files_multithreaded(
         depth,
         discard_factor,
         dataset_max_creation,
+        dataset_max_generation,
         base_seed,
         max_retries,
         dataset_type,
@@ -347,6 +361,7 @@ def run_cpp_on_training_files_multithreaded(
             depth,
             discard_factor,
             dataset_max_creation,
+            dataset_max_generation,
             base_seed,
             max_retries,
             dataset_type,
@@ -431,8 +446,23 @@ def main():
         "--dataset-max-creation",
         dest="dataset_max_creation",
         type=int,
-        default=60000,
-        help="Maximum number of creations for dataset generation (default: 60000)",
+        required=True,
+        help="REQUIRED. Max nodes WRITTEN to the dataset (--dataset_max_creation). "
+             "No default: a default here is a second opinion about how data was "
+             "generated, and it drifts from what the caller actually passes.",
+    )
+    parser.add_argument(
+        "--dataset-max-generation",
+        dest="dataset_max_generation",
+        type=int,
+        required=True,
+        help="REQUIRED. Max nodes VISITED (--dataset_max_generation). This is the "
+             "BINDING ceiling and it used to sit unseen at its 100000 C++ default "
+             "while only max-creation was threaded through. Past either ceiling, "
+             "non-goals are dropped AND their parents inherit 1e6 = unreachable, "
+             "WITHOUT recursing -- so goals below them are never reached. Note a "
+             "table stranded under max-creation is the SYMPTOM of the visit ceiling "
+             "biting, not evidence that no ceiling bit.",
     )
     parser.add_argument(
         "--training-folder",
@@ -460,6 +490,7 @@ def main():
         args.depth,
         args.discard_factor,
         args.dataset_max_creation,
+        args.dataset_max_generation,
         args.seed,
         args.max_retries,
         args.dataset_type,

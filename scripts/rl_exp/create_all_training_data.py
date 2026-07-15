@@ -10,11 +10,19 @@ and output dataset name differ). Domains without a Test/ folder are skipped
 silently by the generator (it only walks domains that contain the input folder).
 Test data is for held-out measurement only -- never gradients/selection.
 
+Every other flag passes through to the gnn_exp generator, which REQUIRES both
+ceilings explicitly (--dataset-max-creation, the WRITE cap, and
+--dataset-max-generation, the VISIT cap -- the binding one). They have no defaults
+on purpose: a default is a second opinion about how data was generated and drifts
+from what callers actually pass.
+
 Examples (run from project root):
   python3 scripts/rl_exp/create_all_training_data.py exp/rl_exp/batch0 \\
-      --deep_exe cmake-build-release-nn/bin/deep
+      --deep_exe cmake-build-release-nn/bin/deep \\
+      --dataset-max-creation 50000 --dataset-max-generation 100000
   python3 scripts/rl_exp/create_all_training_data.py exp/rl_exp/batch0 \\
-      --deep_exe cmake-build-release-nn/bin/deep --test-data
+      --deep_exe cmake-build-release-nn/bin/deep \\
+      --dataset-max-creation 5000 --dataset-max-generation 100000 --test-data
 """
 
 import subprocess

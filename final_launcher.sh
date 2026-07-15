@@ -61,17 +61,34 @@ CQL_ALPHA=1.0
 # default must not move under that pipeline's feet.
 DISCARD_FACTOR="${DISCARD_FACTOR:-0}"
 
-# Depth is what keeps generation under the ceiling -- do NOT raise the ceiling.
-# --dataset_max_creation is a hard stop that POISONS (TrainingDataset.tpp:677-684):
-# past it non-goals are dropped AND their parents inherit 1e6 = unreachable. A
-# depth bound that CONTAINS the optimal keeps the whole solution path while cutting
+# A depth bound that CONTAINS the optimal keeps the whole solution path while cutting
 # the tree where it no longer matters. CC optimals are ~4-7; SC needs the depth.
 DEPTH_MAP="${DEPTH_MAP:-CC:25,SC:40,SCRich:40}"
 # No MAX_DEPTH fallback: DEPTH_MAP is AUTHORITATIVE. A domain absent from it fails
 # loudly rather than silently inheriting 40 -- which is the UNFAITHFUL setting for
 # CC and is what blew past the ceiling and poisoned the tree.
+#
+# DEPTH ALONE DOES NOT BOUND THE TREE. TrainingDataset.tpp:677 poisons on EITHER
+# ceiling -- m_current_nodes >= max_generation (VISITS) OR m_added_to_dataset >=
+# max_creation (WRITES) -- and past it non-goals are dropped AND their parents
+# inherit 1e6 = unreachable, WITHOUT recursing, so goals below them are never
+# reached. Measured 2026-07-15: CC_2_3_4__pl_7 at depth 25 estimates 1.15e40 nodes
+# -> "Decision: using SPARSE DFS" -> the DFS burns the VISIT budget in the deep
+# region, records a goal at depth 22, and never reaches the true optimal at 7
+# (delta_root 22 vs 7; strict BFS confirms 7).
+#
+# So BOTH ceilings are set HERE and fingerprinted, not left at a C++ default nobody
+# sees. The VISIT ceiling is the binding one and it is the one that was invisible.
+# Beware: a table stranded UNDER max_creation is the SYMPTOM of the visit ceiling
+# biting (it stops all further additions), not evidence that no ceiling bit.
 TRAIN_MAX_CREATION=50000
 TEST_MAX_CREATION=5000
+# 100000 is the historical C++ default, set explicitly so it is visible and
+# fingerprinted. OPEN: whether raising this makes CC_2_3_4 faithful at depth 25 --
+# its reachable set to the true optimal is only ~7.6k nodes (strict BFS), so 100k
+# may simply be too LOW rather than the depth being wrong.
+TRAIN_MAX_GENERATION="${TRAIN_MAX_GENERATION:-100000}"
+TEST_MAX_GENERATION="${TEST_MAX_GENERATION:-100000}"
 
 # The gamma=0.99 stability trio (--target-tau/--lr-schedule/--lr-min) is RETIRED.
 # The objective is undiscounted (gamma=1): every policy is proper (completeness
@@ -94,11 +111,14 @@ GEN_FLAG=""
 GEN_FLAG="${GEN_FLAG# }"
 
 # Data fingerprint: any run reusing this data must match it.
-# discard= and depth_map= are NOT optional. Without discard=, a faithful run would
-# happily symlink a discard=0.4 batch, pass this check, train on trees whose optimal
-# path was deleted, and report clean self-consistent numbers -- the worst failure
-# mode available here. Without depth_map=, a CC-25 run would reuse CC-40 data.
-DATASPEC="mode=${MODE};strict=${STRICT};discard=${DISCARD_FACTOR};depth_map=${DEPTH_MAP};max_creation=${TRAIN_MAX_CREATION}"
+# discard=, depth_map= and max_generation= are NOT optional. Without discard=, a
+# faithful run would happily symlink a discard=0.4 batch, pass this check, train on
+# trees whose optimal path was deleted, and report clean self-consistent numbers --
+# the worst failure mode available here. Without depth_map=, a CC-25 run would reuse
+# CC-40 data. Without max_generation=, a run at one VISIT budget would reuse a batch
+# generated at another -- and since that ceiling decides WHICH goals the DFS ever
+# reaches, two batches at different visit budgets are genuinely different data.
+DATASPEC="mode=${MODE};strict=${STRICT};discard=${DISCARD_FACTOR};depth_map=${DEPTH_MAP};max_creation=${TRAIN_MAX_CREATION};max_generation=${TRAIN_MAX_GENERATION}"
 
 # ---- training flags ----
 TRAIN_FLAG=""
@@ -212,6 +232,7 @@ else
             --depth-map "${DEPTH_MAP}" \
             --discard_factor "${DISCARD_FACTOR}" \
             --dataset-max-creation "${TRAIN_MAX_CREATION}" \
+            --dataset-max-generation "${TRAIN_MAX_GENERATION}" \
             ${GEN_FLAG} \
             || fail "step 1 (generate train data)"
         [[ "${DRY_RUN}" == "true" ]] || { echo "${DATASPEC}" > "${BATCH_DIR}/.dataspec"; rm -rf out; }
@@ -231,6 +252,7 @@ else
             --depth-map "${DEPTH_MAP}" \
             --discard_factor "${DISCARD_FACTOR}" \
             --dataset-max-creation "${TEST_MAX_CREATION}" \
+            --dataset-max-generation "${TEST_MAX_GENERATION}" \
             ${GEN_FLAG} \
             || fail "step 1b (generate test data)"
         rm -rf out

@@ -29,7 +29,7 @@ in the `_models` folder.
 This creates training datasets for each domain:
 
 ``` console
-python3 scripts/gnn_exp/create_all_training_data.py exp/gnn_exp/batch1 --deep_exe cmake-build-release-nn/bin/deep
+python3 scripts/gnn_exp/create_all_training_data.py exp/gnn_exp/batch1 --deep_exe cmake-build-release-nn/bin/deep --dataset-max-creation 60000 --dataset-max-generation 100000
 ```
 
 Replace --deep_exe with the path to your compiled deep binary.
@@ -56,7 +56,7 @@ can try adjusting the following options:
 Example command with adjusted parameters:
 
 ``` console
-python3 scripts/gnn_exp/create_all_training_data.py exp/gnn_exp/batch1 --deep_exe cmake-build-release-nn/bin/deep --depth 40 --discard_factor 0.2
+python3 scripts/gnn_exp/create_all_training_data.py exp/gnn_exp/batch1 --deep_exe cmake-build-release-nn/bin/deep --dataset-max-creation 60000 --dataset-max-generation 100000 --depth 40 --discard_factor 0.2
 ```
 
 Similarly, if you want to generate training data with a different
@@ -70,7 +70,7 @@ same `dataset_type` in the training and execution phases
 Example command with a different dataset type:
 
 ``` console
-python3 scripts/gnn_exp/create_all_training_data.py exp/gnn_exp/batch1 --deep_exe cmake-build-release-nn/bin/deep --dataset_type BITMASK
+python3 scripts/gnn_exp/create_all_training_data.py exp/gnn_exp/batch1 --deep_exe cmake-build-release-nn/bin/deep --dataset-max-creation 60000 --dataset-max-generation 100000 --dataset_type BITMASK
 ```
 
 ### 2. Train GNN models

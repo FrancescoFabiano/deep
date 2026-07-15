@@ -17,18 +17,22 @@ source .venv/bin/activate
 
 REPO="$(pwd)"
 DEEP_EXE="cmake-build-release-nn/bin/deep"
-FRINGE_SIZES="16"
+FRINGE_SIZES="4 16"
 BATCH_SIZE=64
+MAX_DEPTH_GEN=40
 FRAMES=50000
 N_CHECKPOINTS=20
 RANDOM_PCT=0.3
 TRAIN_MAX_CREATION=50000
+# The VISIT ceiling (--dataset_max_generation). 100000 is the historical C++
+# default, now set explicitly because it is the BINDING one.
+TRAIN_MAX_GENERATION=100000
 
 # ---- grid ----
-PADS=("no_pad" "pad") #  "pad"
-STRATS=("no_strat" "no_strat")  # add "strat" to test stratified replay
-CTXS=("self_attention" "mean") # "mean" 
-MODES=("separated" "merged")  # "merged"
+PADS=("no_pad") #  "pad"
+STRATS=("no_strat")  # add "strat" to test stratified replay
+CTXS=("self_attention") # "mean" 
+MODES=("separated")  # "merged"
 
 # ---- tracking ----
 PASSED=()
@@ -42,7 +46,7 @@ FAILED=()
 for mode in "${MODES[@]}"; do
 
     # First batch folder for this mode = canonical data source
-    DATA_BATCH="exp/rl_exp/dqn_${PADS[0]}_${STRATS[0]}_${CTXS[0]}_${mode}"
+    DATA_BATCH="exp/rl_exp/batch1_${PADS[0]}_${STRATS[0]}_${CTXS[0]}_${mode}"
 
     # Mode-dependent generation flags
     GEN_FLAG="--strong_equality"
@@ -62,6 +66,8 @@ for mode in "${MODES[@]}"; do
         if ! python3 scripts/gnn_exp/create_all_training_data.py "${DATA_BATCH}" \
                 --deep_exe "${DEEP_EXE}" \
                 --dataset-max-creation "${TRAIN_MAX_CREATION}" \
+                --dataset-max-generation "${TRAIN_MAX_GENERATION}" \
+                --depth "${MAX_DEPTH_GEN}" \
                 ${GEN_FLAG}; then
             echo "[FATAL] data generation failed for ${mode} — cannot continue."
             exit 1
@@ -108,7 +114,7 @@ for mode in "${MODES[@]}"; do
         for strat in "${STRATS[@]}"; do
             for ctx in "${CTXS[@]}"; do
 
-                BATCH="exp/rl_exp/dqn_${pad}_${strat}_${ctx}_${mode}"
+                BATCH="exp/rl_exp/batch1_${pad}_${strat}_${ctx}_${mode}"
                 echo ""
                 echo "============================================================"
                 echo "  BATCH: ${BATCH}"
