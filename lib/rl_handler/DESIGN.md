@@ -56,6 +56,90 @@ In-model encoding stays inside the graph: HASHED signed normalisation
 File naming `<exp_dir>/_models/<domain>/frontier_policy_<F>.onnx`
 (`bulk_coverage_run.py` depends on it).
 
+### 1.1 LIMITATION — the RL path is HASHED-only, so cross-configuration transfer is blocked upstream
+
+The RL consumer (`FringeEvalRL`) accepts only `HASHED` node ids
+(`FringeEvalRL.tpp:199-213` exits with *"This datatypes for FringeTensor have not
+been implemented yet"* for `BITMASK` and `MAPPED`).
+
+A hash **removes the metric structure of the valuation space**. `KripkeWorld`'s id
+is `boost::hash_range` over the world's fluent set
+(`KripkeWorld.cpp:43`, `FormulaHelper.cpp:279`), so two worlds differing in a
+single fluent get completely unrelated ids. No node feature derived from that id
+can transfer across fluent vocabularies — there is nothing for a model to
+generalise over, only a lookup table to memorise.
+
+The transferable channel already exists: `--dataset_type BITMASK` encodes each id
+as a fluent bitstring (`MAX_FLUENT_NUMBER = 18`, `Define.h:61`), where two worlds
+differing in one fluent are Hamming distance 1. It is implemented for `GraphNN`
+(`GraphNN.tpp:316,565,611`) and **unimplemented for `FringeEvalRL`**.
+`frontier_policy.py` already carries the matching `DATASET_TYPE_BITMASK` branch,
+unused.
+
+**Cross-configuration transfer is therefore blocked upstream of anything this
+trainer can do**, and the C++ is frozen. Measured consequences:
+
+- node-id overlap across configurations (`CC_2_3_4` vs `CC_2_2_3`): **0.0%** —
+  they have no shared fluent vocabulary, so the ids cannot collide even in
+  principle. Edge labels (agents) are instance-local too (`{12,13}` vs `{7,8}`).
+- a cross-configuration split therefore makes the node channel **provably pure
+  noise**: the two-head baseline memorises perfectly (train regret **0.00** on
+  5/5 seeds) and does not transfer (held-out regret 98.3 ± 76.1, vs `dfs` 56.0 and
+  `random` 69.3 — it loses to both).
+- zeroing the node channel does not fix it (77.0 ± 25.3, still losing to `dfs`).
+  The gain there is **variance reduction**, not de-poisoning.
+
+**We therefore evaluate WITHIN configuration**, where the HASHED id collides
+**15–46%** (`CC_2_3_4__pl_7` vs `__pl_3`: 45.9%; `CC_2_2_3__pl_4` vs `__pl_6`:
+14.8%) and the channel is legitimate. The claim is *"learned heuristics transfer
+across problems within a domain configuration"* — smaller than cross-domain, but
+true and achievable on the frozen C++.
+
+Do NOT build cross-family features hoping to beat the hash. The hash is not the
+obstacle; the missing BITMASK path is, and it is not this trainer's to add.
+
+### 1.1.1 Why topology cannot substitute — the frame is nearly uninformative
+
+The obvious fallback is to ignore the id and rank on graph structure alone. It has
+a hard, **model-free** ceiling. The net scores STATES (one Kripke frame per beam
+slot), so with node features constant, two states whose frames are 1-WL-equivalent
+get identical pooled embeddings — identical score, unrankable, whatever the loss.
+Bucketing reachable states by a 1-WL hash of the frame (edge labels used, ids not):
+
+| | `CC_2_3_4__pl_7` | `CC_2_2_3__pl_4` |
+|---|---|---|
+| reachable states | 4382 | 2759 |
+| distinct 1-WL frame classes | **371** | **23** |
+| states in a colliding class | **96.4%** | **99.9%** |
+| largest class | 466 | **862** |
+| classes mixing viable + sterile | 14.3% | **56.5%** |
+| mean finite `delta` span within a class | 2.14 | 7.21 |
+
+2759 states collapse into 23 frame classes. In 56.5% of them a **viable and a
+sterile state must receive the same score**. (Fully-connected frames — every world
+reaching every world under every agent — are only 0.1–2.0%, so this is not an
+edge case about symmetric frames; it is the general case.)
+
+So the discriminating signal is almost entirely in the **valuation**, and §1.1 is
+why the RL path cannot reach it. This retro-explains both arms exactly:
+`with_hash` separates all 4382 states (lookup table → train regret 0.00) but only
+in-sample; `topology_only` separates 371 (→ lower variance, hard ceiling, loses to
+`dfs`). Neither can do what the frozen C++ requires.
+
+### 1.2 The DOT is lossy
+
+State DOTs contain **only edges** — `digraph G {`, 89 edge lines, `}`. There are no
+node attribute lines: the three that would emit them are commented out in
+`TrainingDataset.tpp:434,449,501`, and even re-enabled they emit
+`current_node_id`, not fluent names. So the valuation **cannot be reconstructed in
+Python** from the shipped data.
+
+Consequently the "does this world satisfy the goal" bit is **not** available, even
+in merged mode: merged inlines the goal *formula tree* as a subgraph with its own
+id space (`goal_tree.dot` uses small ids `1,51,13…` and labels `5-9`, vs states'
+hashes and labels `12,13`); it never marks which worlds satisfy it. Under HASHED
+there is no way to compute it. Under BITMASK it would be near-trivial.
+
 ---
 
 ## 2. THE DEPLOYMENT CONFIG IS PART OF THE MODEL
