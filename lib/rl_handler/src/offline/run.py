@@ -51,6 +51,11 @@ from .tree import load_tree_instance, partition_solvable
 
 SELECTION_WINDOW = 3       # checkpoints averaged in the smoothed selector
 HELDOUT_TRAJ_FRAC = 0.10   # fraction of each instance's rollouts held out for eval
+# Bump when the telemetry gains a new per-checkpoint metric. regenerate_figures.py
+# reads it to detect a run that predates a metric and trigger the self-validated
+# backfill (rather than silently emitting a blank figure). 1: coverage/regret only.
+# 2: +heldout_top1/train_top1. 3: +return_mean +full ranking family (ndcg/js/...).
+METRICS_SCHEMA = 3
 
 MODELS = ("dqn", "cql", "two_head")
 
@@ -331,6 +336,7 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
                 out.update(trainer.q_vs_qstar(train_rows[:200]))
             out["dataset"] = dsum
             out["coverage_is_transfer"] = (eval_mode == "test_instances")
+            out["metrics_schema"] = METRICS_SCHEMA
 
             # THE SELECTION SIGNAL. FALLBACK: held-out-frontier top1 (low variance,
             # leak-free, matched-n with baselines). PRIMARY: coverage on held-out

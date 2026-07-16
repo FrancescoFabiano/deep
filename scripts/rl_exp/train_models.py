@@ -327,6 +327,15 @@ def main() -> None:
             forwarded, args.no_goal, args.model,
         )
 
+    # BELT-AND-SUSPENDERS: regenerate figures for EVERY run in the batch, unconditionally,
+    # after all training. run() already plots per-run at its end, but a crash before that
+    # (e.g. an export failure) leaves complete telemetry unplotted -- this walks the
+    # telemetry on disk and plots regardless, backfilling any missing metric from the
+    # saved checkpoints (self-validated). CPU only; never fails the run.
+    regen = REPO_ROOT / "scripts" / "rl_exp" / "regenerate_figures.py"
+    print(f"[INFO] regenerating figures for all runs under {exp_dir}")
+    subprocess.run([sys.executable, str(regen), str(exp_dir)], check=False)
+
 
 if __name__ == "__main__":
     main()
