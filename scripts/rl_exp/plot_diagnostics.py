@@ -130,6 +130,50 @@ def fig_train_vs_heldout_top1(val, out: Path, F: int):
     fig.tight_layout(); fig.savefig(out, dpi=150); plt.close(fig)
 
 
+def fig_metric_curve(val, base, out: Path, F: int, field: str, ylabel: str,
+                     lower_better: bool = False):
+    """A held-out ranking metric vs frames, baselines as reference lines (matched-n)."""
+    if field not in val[-1] or val[-1][field] is None:
+        return
+    frames = [r.get("frames", r["step"]) for r in val]
+    ys = [r.get(field) for r in val]
+    fig, ax = plt.subplots(figsize=(9, 5))
+    for name, (c, ls, label) in BASE_STYLE.items():
+        if name in base and base[name].get(field) is not None:
+            ax.axhline(base[name][field], color=c, ls=ls, lw=1.5,
+                       label=f"{label}={base[name][field]:.3g}")
+    ax.plot(frames, ys, "o-", color=RL_C, lw=1.8, ms=4, label="model")
+    ax.set_xlabel("frames (step x batch_size)"); ax.set_ylabel(ylabel)
+    tag = " (lower better)" if lower_better else ""
+    ax.set_title(f"{ylabel} vs frames{tag}  (F={F})", fontsize=11)
+    ax.grid(alpha=.25); ax.legend(fontsize=8, loc="best", framealpha=.95)
+    fig.tight_layout(); fig.savefig(out, dpi=150); plt.close(fig)
+
+
+def fig_ranking_bars(val, base, out: Path, F: int):
+    """Matched-n bars, model (selected) vs baselines, for top1 AND ndcg side by side."""
+    if "heldout_ndcg" not in val[-1]:
+        return
+    steps = [r["step"] for r in val]
+    ndv = [r["heldout_ndcg"] for r in val]
+    best_i = max(range(len(ndv)), key=lambda i: (_win_mean(ndv, i), -steps[i]))
+    names = [n for n in ("hfs_oracle", "bfs", "random", "dfs")
+             if n in base and base[n].get("heldout_ndcg") is not None]
+    import numpy as np
+    x = np.arange(len(names) + 1)
+    top1 = [base[n]["heldout_top1"] for n in names] + [val[best_i]["heldout_top1"]]
+    ndcg = [base[n]["heldout_ndcg"] for n in names] + [val[best_i]["heldout_ndcg"]]
+    labels = names + ["model"]
+    fig, ax = plt.subplots(figsize=(9, 5))
+    ax.bar(x - 0.2, top1, 0.4, label="top1", color="#0072B2")
+    ax.bar(x + 0.2, ndcg, 0.4, label="ndcg", color="#CC79A7")
+    ax.set_xticks(x); ax.set_xticklabels(labels)
+    ax.set_ylabel("held-out ranking score"); ax.set_ylim(0, 1.05)
+    ax.set_title(f"Held-out top1 and NDCG: model vs baselines, matched-n  (F={F})", fontsize=11)
+    ax.grid(alpha=.2, axis="y"); ax.legend(fontsize=8)
+    fig.tight_layout(); fig.savefig(out, dpi=150); plt.close(fig)
+
+
 def fig_line(val, base, out: Path, F: int, field: str, ylabel: str):
     steps = [r["step"] for r in val]
     ys = [r.get(field) for r in val]
@@ -219,6 +263,10 @@ def main():
     fig_return_vs_frames(val, base, out / "return_vs_frames.png", F,
                          transfer=bool(val[-1].get("coverage_is_transfer")))
     fig_train_vs_heldout_top1(val, out / "train_vs_heldout_top1.png", F)
+    fig_metric_curve(val, base, out / "ndcg_vs_frames.png", F, "heldout_ndcg", "NDCG")
+    fig_metric_curve(val, base, out / "js_divergence_vs_frames.png", F, "heldout_js",
+                     "JS divergence (model vs oracle)", lower_better=True)
+    fig_ranking_bars(val, base, out / "ranking_bars.png", F)
     fig_line(val, base, out / "coverage_vs_checkpoint.png", F,
              "coverage_at_reference_budget", "coverage @ reference budget")
     fig_line(val, base, out / "regret_vs_checkpoint.png", F,

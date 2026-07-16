@@ -278,6 +278,130 @@ def heldout_top1(
     return (hits / n if n else 0.0), n
 
 
+# ----------------------------------------- full-ranking metrics --------------
+# top1 asks only "is the best first?". But the policy also DISCARDS the worst kappa,
+# so the WHOLE ordering matters. We have ground-truth delta for every node, so measure
+# the full ranking. TIE-SAFETY is load-bearing: delta has massive ties (many nodes
+# share inf = dead subtree, several share a finite value), and two GENUINELY
+# EQUIVALENT nodes ordered either way must score the SAME -- a strict-order metric
+# would invent a phantom penalty. NDCG-with-gains and the softmax divergence are
+# tie-safe by construction; Kendall is reported tie-aware (tau-b) and never headlined.
+
+def _gain(d: float) -> float:
+    """delta -> gain, decreasing, tie-safe, inf-safe. A dead node (inf) has gain 0;
+    equal delta -> equal gain (so any order within a tie scores identically)."""
+    return 0.0 if d >= INF_DELTA else 1.0 / (1.0 + d)
+
+
+def _ndcg(ranking: Sequence[int], gains: Sequence[float]) -> float:
+    """NDCG of the ranking against delta-based gains -- rank correlation WEIGHTED
+    TOWARD THE EXTREMES (a mistake at top/bottom hurts more than one in the middle,
+    matching a task that acts on the ends). Tie-safe: swapping two equal-gain nodes
+    leaves DCG unchanged (equal numerators). All-zero gains (all dead) -> 1.0."""
+    dcg = sum(gains[ranking[i]] / math.log2(i + 2) for i in range(len(ranking)))
+    ideal = sorted(gains, reverse=True)
+    idcg = sum(ideal[i] / math.log2(i + 2) for i in range(len(ideal)))
+    return (dcg / idcg) if idcg > 0 else 1.0
+
+
+def _softmax(xs: Sequence[float]) -> List[float]:
+    m = max(xs)
+    e = [math.exp(x - m) for x in xs]
+    s = sum(e)
+    return [v / s for v in e]
+
+
+def _js_divergence(logits: Sequence[float], deltas: Sequence[float],
+                   temp: float = 1.0) -> float:
+    """Jensen-Shannon divergence (bits, symmetric, in [0,1]) between the model's
+    preference distribution softmax(logits) and the ORACLE's softmax(-delta): where
+    the model puts its preference MASS vs where the oracle does. Tie-safe: equal delta
+    -> equal target mass. A dead node (inf) gets ~0 oracle mass. Oracle-vs-oracle = 0."""
+    P = _softmax([l / temp for l in logits])
+    negd = [(-(1e9) if d >= INF_DELTA else -d) / temp for d in deltas]
+    Q = _softmax(negd)
+    M = [(p + q) / 2.0 for p, q in zip(P, Q)]
+
+    def _kl(a, b):
+        return sum(ai * math.log2(ai / bi) for ai, bi in zip(a, b) if ai > 0)
+
+    return 0.5 * _kl(P, M) + 0.5 * _kl(Q, M)
+
+
+def ranking_metrics_for_frontier(
+    deltas: Sequence[float],
+    ranking: Optional[Sequence[int]] = None,
+    logits: Optional[Sequence[float]] = None,
+) -> Dict[str, Optional[float]]:
+    """All ranking metrics for ONE frontier. Pass `logits` (model: enables the
+    softmax divergence) or `ranking` (baseline). Returns per-frontier values; the
+    caller averages. `js` is None when only a ranking is available."""
+    if ranking is None:
+        if logits is None:
+            raise ValueError("need ranking or logits")
+        ranking = sorted(range(len(deltas)), key=lambda k: -logits[k])
+    best = min(deltas)
+    top = ranking[0]
+    gains = [_gain(d) for d in deltas]
+    # FAMILY 1 -- top-focused
+    top1 = 1.0 if deltas[top] == best else 0.0
+    top_finite = deltas[top] < INF_DELTA
+    picked_dead = 1.0 if (deltas[top] >= INF_DELTA and best < INF_DELTA) else 0.0
+    regret_at_decision = (deltas[top] - best) if (top_finite and best < INF_DELTA) else None
+    # FAMILY 2 -- full-ranking
+    ndcg = _ndcg(ranking, gains)
+    js = _js_divergence(logits, deltas) if logits is not None else None
+    tau = None
+    if len(deltas) > 2:
+        from scipy.stats import kendalltau       # tau-b: tie-aware
+        # model order as a score (higher = ranked earlier), vs -delta
+        order_score = [0.0] * len(ranking)
+        for pos, slot in enumerate(ranking):
+            order_score[slot] = -pos
+        t = kendalltau(order_score, [-d if d < INF_DELTA else -1e9 for d in deltas]).statistic
+        tau = float(t) if t == t else None       # nan -> None (all-tie)
+    return {"top1": top1, "regret_at_decision": regret_at_decision,
+            "picked_dead": picked_dead, "ndcg": ndcg, "js": js, "kendall_tau": tau}
+
+
+def heldout_ranking_metrics(
+    heldout_rows: Sequence,
+    instances_by_name: Dict[str, TreeInstance],
+    rank_for: Optional[Callable[[str, Sequence[int]], Sequence[int]]] = None,
+    logits_for: Optional[Callable[[str, Sequence[int]], Sequence[float]]] = None,
+) -> Dict[str, object]:
+    """Aggregate the full ranking-metric family over the UNIQUE held-out frontiers,
+    matched-n with baselines. Pass `logits_for` for the MODEL (enables js), or
+    `rank_for` for a baseline. Same frontiers, same skipping rules as heldout_top1."""
+    seen: set = set()
+    acc: Dict[str, list] = defaultdict(list)
+    n = 0
+    for r in heldout_rows:
+        if getattr(r, "forced", False):
+            continue
+        fkey = (r.instance, tuple(r.obs))
+        if fkey in seen:
+            continue
+        seen.add(fkey)
+        beam = list(r.obs)
+        inst = instances_by_name[r.instance]
+        deltas = [inst.delta[v] for v in beam]
+        if len(beam) < 2 or all(d >= INF_DELTA for d in deltas):
+            continue
+        if logits_for is not None:
+            m = ranking_metrics_for_frontier(deltas, logits=list(logits_for(r.instance, beam)))
+        else:
+            m = ranking_metrics_for_frontier(deltas, ranking=list(rank_for(r.instance, beam)))
+        for k, v in m.items():
+            if v is not None:
+                acc[k].append(v)
+        n += 1
+    out: Dict[str, object] = {"n": n}
+    for k in ("top1", "regret_at_decision", "picked_dead", "ndcg", "js", "kendall_tau"):
+        out[k] = (sum(acc[k]) / len(acc[k])) if acc[k] else None
+    return out
+
+
 # ----------------------------------------------------------- the gates ------
 
 @dataclass

@@ -470,3 +470,66 @@ def test_heldout_top1_scores_rankers_on_the_same_frontiers():
     b, nb = heldout_top1(held, bad, inst_by)
     assert ng == nb == 1
     assert g == 1.0 and b == 0.0
+
+
+# ------------------------------------------- full-ranking metrics ------------
+
+from src.offline.selection import ranking_metrics_for_frontier, heldout_ranking_metrics
+
+
+def test_oracle_scores_perfectly_on_every_ranking_metric():
+    """THE sanity check. A ranker that orders by delta (the oracle) must score
+    top1=1, regret_at_decision=0, picked_dead=0, ndcg=1, js=0, kendall_tau=1. If any
+    fails, the metric is wrong."""
+    deltas = [3.0, 1.0, 5.0, float("inf"), 2.0]
+    oracle_rank = sorted(range(len(deltas)), key=lambda k: deltas[k])   # by delta asc
+    m = ranking_metrics_for_frontier(deltas, ranking=oracle_rank)
+    assert m["top1"] == 1.0 and m["regret_at_decision"] == 0.0 and m["picked_dead"] == 0.0
+    assert m["ndcg"] == pytest.approx(1.0)
+    assert m["kendall_tau"] == pytest.approx(1.0)
+    # js: the oracle's OWN preference distribution (logits = -delta) vs the oracle
+    mo = ranking_metrics_for_frontier(deltas, logits=[-d if d != float("inf") else -1e9 for d in deltas])
+    assert mo["js"] == pytest.approx(0.0, abs=1e-9)
+
+
+def test_ranking_metrics_are_tie_invariant():
+    """CRITICAL: reordering two GENUINELY EQUIVALENT nodes (equal delta, incl two
+    dead inf nodes) must not change any tie-safe metric. A strict-order metric would
+    invent a phantom penalty here."""
+    deltas = [0.0, float("inf"), float("inf"), 2.0]      # slots 1,2 are equivalent (both dead)
+    r_a = [0, 3, 1, 2]     # dead nodes ordered 1 then 2
+    r_b = [0, 3, 2, 1]     # dead nodes ordered 2 then 1
+    ma = ranking_metrics_for_frontier(deltas, ranking=r_a)
+    mb = ranking_metrics_for_frontier(deltas, ranking=r_b)
+    for k in ("top1", "ndcg", "regret_at_decision", "picked_dead"):
+        assert ma[k] == mb[k], f"{k} is not tie-invariant"
+    # and two equal FINITE deltas
+    d2 = [1.0, 1.0, 5.0]
+    assert (ranking_metrics_for_frontier(d2, ranking=[0, 1, 2])["ndcg"]
+            == pytest.approx(ranking_metrics_for_frontier(d2, ranking=[1, 0, 2])["ndcg"]))
+    # js tie-invariance: swapping equal-delta target mass is identical
+    j1 = ranking_metrics_for_frontier(deltas, logits=[5.0, 0.0, 0.0, 1.0])["js"]
+    j2 = ranking_metrics_for_frontier(deltas, logits=[5.0, 0.0, 0.0, 1.0])["js"]
+    assert j1 == j2
+
+
+def test_ndcg_rewards_extremes_over_the_middle():
+    """A mistake at the top hurts more than one in the indistinguishable middle."""
+    deltas = [1.0, 2.0, 3.0, 4.0, 5.0]
+    ideal = [0, 1, 2, 3, 4]
+    swap_top = [1, 0, 2, 3, 4]     # swap the two best
+    swap_mid = [0, 1, 3, 2, 4]     # swap two middling
+    n_top = ranking_metrics_for_frontier(deltas, ranking=swap_top)["ndcg"]
+    n_mid = ranking_metrics_for_frontier(deltas, ranking=swap_mid)["ndcg"]
+    assert n_top < n_mid < 1.0, "a top swap must cost more NDCG than a middle swap"
+
+
+def test_regret_at_decision_is_graded_and_picked_dead_flags_catastrophe():
+    deltas = [5.0, 1.0, 3.0]
+    # model ranks slot 0 (delta 5) first -> regret 5-1=4
+    m = ranking_metrics_for_frontier(deltas, ranking=[0, 2, 1])
+    assert m["regret_at_decision"] == 4.0 and m["picked_dead"] == 0.0
+    # model ranks a DEAD node first while a viable one exists -> picked_dead, regret None
+    dd = [float("inf"), 1.0]
+    md = ranking_metrics_for_frontier(dd, ranking=[0, 1])
+    assert md["picked_dead"] == 1.0 and md["regret_at_decision"] is None

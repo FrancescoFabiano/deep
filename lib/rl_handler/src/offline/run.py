@@ -36,6 +36,7 @@ from .selection import (
     assert_within_config,
     gate_beats_baselines,
     gate_env_fidelity,
+    heldout_ranking_metrics,
     heldout_top1,
     onnx_path_for,
     run_planner_expansions,
@@ -245,18 +246,24 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
     #      the SAME held-out frontiers (fallback) or the SAME test instances (primary).
     baselines: Dict[str, Optional[float]] = {}
     baseline_top1: Dict[str, float] = {}
+    baseline_ndcg: Dict[str, float] = {}
     for b in BEHAVIOUR_POLICIES:
         out = evaluate_split(cov_instances, lambda n, _b=b: make_policy(by_name[n], _b, seed=0),
                              cfg.fringe_size, seeds=cfg.eval_seeds, expansion_cap=cap)
         baselines[b] = out["regret_mean_lower_bound"]
         if eval_mode == "held_out_trajectories":
-            t1, _ = heldout_top1(heldout_rows,
-                                 lambda n, beam, _b=b: rank_for_policy(n, beam, _b), by_name)
-            baseline_top1[b] = t1
-            out["heldout_top1"] = t1
+            # the FULL ranking-metric family, matched-n on the held-out frontiers
+            # (baselines expose a ranking, so no softmax divergence for them).
+            rm = heldout_ranking_metrics(
+                heldout_rows, by_name,
+                rank_for=lambda n, beam, _b=b: rank_for_policy(n, beam, _b))
+            baseline_top1[b] = rm["top1"]
+            baseline_ndcg[b] = rm["ndcg"]
+            out.update({f"heldout_{k}": rm[k] for k in
+                        ("top1", "ndcg", "regret_at_decision", "picked_dead", "kendall_tau")})
         tel.append(CheckpointRecord(step=-1, frames=0, split=f"baseline:{b}", payload=out))
     print(f"[run] baselines regret={baselines}"
-          + (f"  heldout_top1={baseline_top1}" if baseline_top1 else ""))
+          + (f"  top1={baseline_top1}  ndcg={baseline_ndcg}" if baseline_top1 else ""))
 
     net = _net(cfg, max_delta).to(device)
     if cfg.model == "two_head":
@@ -329,17 +336,28 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
             # leak-free, matched-n with baselines). PRIMARY: coverage on held-out
             # instances. Smoothed over a window at select time -- never argmax.
             if eval_mode == "held_out_trajectories":
-                t1, n_ho = heldout_top1(heldout_rows, rl_rank, by_name)
-                out["heldout_top1"] = t1
-                out["heldout_n"] = n_ho
-                # TRAIN-frontier top1, same metric, for the overfitting gap: if train
-                # top1 climbs while held-out top1 stalls, that IS overfitting, and here
-                # it is on the metric the fallback can actually split (return cannot be
-                # held out -- env.reset() is root-only, so the rollout return is a
-                # train-set estimate). A matched sample keeps the two comparable.
-                out["train_top1"], _ = heldout_top1(train_rows[:len(heldout_rows)],
-                                                    rl_rank, by_name)
-                sel_score = t1
+                # FULL ranking-metric family for the model (logits enable the softmax
+                # divergence). top1 asks only "best first?"; ndcg/js read the WHOLE
+                # ordering, which is what DISCARD needs (it removes the worst kappa).
+                rm = heldout_ranking_metrics(heldout_rows, by_name, logits_for=score_for)
+                out["heldout_n"] = rm["n"]
+                for k in ("top1", "ndcg", "js", "regret_at_decision", "picked_dead",
+                          "kendall_tau"):
+                    out[f"heldout_{k}"] = rm[k]
+                out["heldout_top1"] = rm["top1"]      # kept for back-compat / selection
+                # TRAIN-frontier metrics, same family, for the overfitting gap: train
+                # up while held-out flat = overfitting, on the metrics the fallback can
+                # split (return can't be held out -- env.reset() is root-only).
+                rm_tr = heldout_ranking_metrics(
+                    heldout_rows and train_rows[:len(heldout_rows)], by_name,
+                    logits_for=score_for)
+                out["train_top1"] = rm_tr["top1"]
+                out["train_ndcg"] = rm_tr["ndcg"]
+                # SELECTION on NDCG, not top1. A/B on F=4's saved checkpoints: NDCG is
+                # ~2.2x smoother across checkpoints (sd 0.011 vs 0.026) because it reads
+                # the WHOLE ranking, not just slot 1 -- a lower-variance, tie-safe
+                # selection signal. top1/ndcg picked different checkpoints (55k vs 100k).
+                sel_score = rm["ndcg"]
             else:
                 sel_score = out["coverage_at_reference_budget"]
 
@@ -418,8 +436,8 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
         # would PASS on the optimistic number selection was moved away from.
         if eval_mode == "held_out_trajectories":
             gates.append(gate_beats_baselines(
-                best.select_score, baseline_top1,
-                higher_is_better=True, metric="heldout_top1"))
+                best.select_score, baseline_ndcg,
+                higher_is_better=True, metric="heldout_ndcg"))
         else:
             gates.append(gate_beats_baselines(best.regret, baselines, metric="regret"))
         for g in gates:
@@ -439,11 +457,12 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
                    "dataset_type": cfg.dataset_type,
                    "eval_mode": eval_mode,
                    "selection_window": SELECTION_WINDOW,
-                   "selection_metric": ("heldout_top1"
+                   "selection_metric": ("heldout_ndcg"
                                         if eval_mode == "held_out_trajectories"
                                         else "coverage_at_reference_budget"),
                    "split_manifest": split_manifest,
                    "baseline_heldout_top1": baseline_top1 or None,
+                   "baseline_heldout_ndcg": baseline_ndcg or None,
                    "coverage_note": (
                        "coverage/regret is a TRAIN-SET rollout estimate (rolled from "
                        "root on trained instances), NOT held out. Selection used "
