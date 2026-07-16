@@ -107,7 +107,7 @@ def test_terminated_rows_are_never_packed_as_successors(t19):
     assert term, "t19 must produce terminated rows"
     tr.data = term
     log = tr.step()           # must not raise
-    assert log["td_loss"] >= 0.0
+    assert float(log["td_loss"]) >= 0.0    # step() returns on-device tensors now
 
 
 def test_a_step_runs_and_reports_the_telemetry_fields(t19):
@@ -138,15 +138,15 @@ def test_target_params_do_not_receive_gradients(t19):
 def test_cql_alpha_zero_reduces_to_double_dqn(t19):
     tr, _ = _setup(t19, model="cql", cql_alpha=0.0)
     log = tr.step()
-    assert log["cql"] == 0.0
-    assert log["loss"] == pytest.approx(log["td_loss"])
+    assert float(log["cql"]) == 0.0
+    assert float(log["loss"]) == pytest.approx(float(log["td_loss"]))
 
 
 def test_cql_adds_a_positive_conservatism_term(t19):
     tr, _ = _setup(t19, model="cql", cql_alpha=1.0)
     log = tr.step()
     # logsumexp_a Q >= Q(s,a) always, so the term is >= 0
-    assert log["cql"] >= -1e-5
+    assert float(log["cql"]) >= -1e-5
     assert log["loss"] >= log["td_loss"] - 1e-5
 
 
@@ -181,6 +181,38 @@ def test_scaling_does_not_change_the_ranking(t19):
 
 
 # --------------------------------------------------- divergence guard --------
+
+def test_perf_refactor_is_bit_identical(t19):
+    """THE regression guard for the sync-removal perf fix. step() now returns on-device
+    tensors (the 5 logging fields are float()'d by the caller only at checkpoints) and
+    the divergence guard materialises |Q| only every div_check_every steps. All of that
+    is READ-ONLY: the training math (zero_grad -> backward -> clip -> opt.step) and its
+    order are untouched.
+
+    Two trainers from a byte-identical starting net, one checking the guard every step
+    and one every 100, must end byte-identical. If they diverge, a 'sync' that was
+    removed was actually load-bearing -- put it back.
+    """
+    import copy
+    cache = _cache_for(t19)
+    rows, _ = generate_dataset([t19], 3, seeds_per_policy=2, expansion_cap=100, verbose=False)
+
+    def mk(net, tgt, every):
+        cfg = TrainConfig(fringe_size=3, batch_size=8, device="cpu", expansion_cap=100,
+                          seed=0, div_check_every=every)
+        return QTrainer(net, tgt, [t19], {t19.name: cache}, rows, cfg)
+
+    net_a, tgt_a = _net(), _net()
+    net_b, tgt_b = copy.deepcopy(net_a), copy.deepcopy(tgt_a)
+    tr_a, tr_b = mk(net_a, tgt_a, 1), mk(net_b, tgt_b, 100)
+    for _ in range(40):
+        tr_a.step()
+        tr_b.step()
+    for pa, pb in zip(net_a.parameters(), net_b.parameters()):
+        assert torch.equal(pa, pb), (
+            "guard check interval changed the weights -- a removed sync was load-bearing"
+        )
+
 
 def test_divergence_guard_fires_on_exploding_q(t19):
     """gamma=1 has no contraction, so drift is possible. We know Q* exactly, so it

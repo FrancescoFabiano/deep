@@ -92,6 +92,13 @@ class TrainConfig:
     device: Optional[str] = None
     # Divergence guard: |Q| beyond this multiple of the cap means drift, not learning.
     q_abort_multiple: float = 3.0
+    # How often the guard MATERIALISES |Q| (a GPU->CPU sync). 1 = every step (the
+    # default; drift is caught immediately). Drift compounds over steps, so a larger
+    # value (e.g. 100 in production) catches it a few steps later while removing the
+    # last per-step sync -- it does not change the trained weights, only the abort
+    # latency. The 5 logging fields never sync per step at all (returned as on-device
+    # tensors, float()'d by the caller only at checkpoints).
+    div_check_every: int = 1
 
 
 class QTrainer:
@@ -141,6 +148,7 @@ class QTrainer:
         worst_magnitude = (cfg.expansion_cap if cfg.gamma >= 1.0
                            else 1.0 / (1.0 - cfg.gamma))
         self.q_ceiling = cfg.q_abort_multiple * worst_magnitude * self.scale
+        self.div_check_every = max(1, int(cfg.div_check_every))
 
     # ---- forward helpers -------------------------------------------------
 
@@ -208,24 +216,35 @@ class QTrainer:
         if self.steps % cfg.target_sync == 0:
             self.target.load_state_dict(self.model.state_dict())
 
-        q_max = float(q_all.detach().abs().max())
-        if not math.isfinite(q_max) or q_max > self.q_ceiling:
-            raise DivergenceError(
-                f"|Q| = {q_max:.3f} (scaled) exceeds {self.q_ceiling:.3f} = "
-                f"{cfg.q_abort_multiple} x expansion_cap x reward_scale at step "
-                f"{self.steps}. gamma={cfg.gamma} gives no contraction, so this is "
-                f"drift, not learning. Unscaled |Q| ~ {q_max / self.scale:.1f} "
-                f"expansions against a cap of {cfg.expansion_cap}."
-            )
+        # DIVERGENCE GUARD -- the only per-step sync, and only every div_check_every
+        # steps. `q_max_t` stays on device; we materialise it (a GPU->CPU sync) solely
+        # to compare against the ceiling. Drift compounds, so checking every N steps
+        # catches it a few steps later at most and does NOT change the trained weights.
+        q_max_t = q_all.detach().abs().max()
+        if self.steps % self.div_check_every == 0:
+            q_max = float(q_max_t)
+            if not math.isfinite(q_max) or q_max > self.q_ceiling:
+                raise DivergenceError(
+                    f"|Q| = {q_max:.3f} (scaled) exceeds {self.q_ceiling:.3f} = "
+                    f"{cfg.q_abort_multiple} x expansion_cap x reward_scale at step "
+                    f"{self.steps}. gamma={cfg.gamma} gives no contraction, so this is "
+                    f"drift, not learning. Unscaled |Q| ~ {q_max / self.scale:.1f} "
+                    f"expansions against a cap of {cfg.expansion_cap}."
+                )
+        # The logging fields are returned as detached ON-DEVICE TENSORS -- NO per-step
+        # sync. The caller float()s them ONLY at checkpoints (run.py), where the read
+        # actually happens (~20x total, not once per step). Read-only observations:
+        # the training math and its order are untouched, so removing these syncs is
+        # bit-identical (test_step_is_bit_identical_with_and_without_logging_syncs).
         return {
             "step": self.steps,
-            "td_loss": float(td.detach()),
-            "cql": float(cql_term.detach()),
-            "loss": float(loss.detach()),
-            "q_mean": float(q_all.detach().mean()),
-            "q_max": q_max,
-            "q_max_unscaled": q_max / self.scale,
-            "grad_norm": float(gn),
+            "td_loss": td.detach(),
+            "cql": cql_term.detach(),
+            "loss": loss.detach(),
+            "q_mean": q_all.detach().mean(),
+            "q_max": q_max_t,
+            "q_max_unscaled": q_max_t / self.scale,
+            "grad_norm": gn.detach() if torch.is_tensor(gn) else torch.as_tensor(gn),
             "lr": self.opt.param_groups[0]["lr"],
         }
 

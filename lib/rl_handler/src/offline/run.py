@@ -317,7 +317,10 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
             out = evaluate_split(cov_instances, policy_for, cfg.fringe_size,
                                  seeds=cfg.eval_seeds, expansion_cap=cap, score_for=score_for)
             if trainer is not None:
-                out.update({k: log[k] for k in ("td_loss", "q_mean", "q_max", "grad_norm", "lr")})
+                # materialise the on-device tensors HERE (at the checkpoint), not
+                # every step -- this is the only place the values are read.
+                out.update({k: float(log[k]) for k in ("td_loss", "q_mean", "q_max", "grad_norm")})
+                out["lr"] = log["lr"]
                 out.update(trainer.q_vs_qstar(train_rows[:200]))
             out["dataset"] = dsum
             out["coverage_is_transfer"] = (eval_mode == "test_instances")

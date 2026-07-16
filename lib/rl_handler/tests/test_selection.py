@@ -202,6 +202,35 @@ def test_beats_baselines_is_non_blocking():
     assert fails([blk])
 
 
+def test_only_validity_gates_block_the_run():
+    """THE invariant, pinned so the blocking-semantics fix cannot silently regress.
+    This is the SECOND time a gate 'failure' meant something other than 'run failed'
+    (first: unarmed != failed; now: quality != validity). The rule: only VALIDITY
+    checks block; QUALITY gates warn. If someone later marks a quality gate blocking,
+    this fails -- instead of the launcher silently aborting on a floor null again.
+
+      blocking (validity)     : onnx_parity, env_fidelity
+      non-blocking (quality)  : beats_baselines
+    """
+    from src.offline.selection import gate_env_fidelity, gate_onnx_parity
+
+    parity = gate_onnx_parity(lambda: (True, "ok"))
+    fidelity = gate_env_fidelity([100, 50, 20], [100, 50, 20])
+    quality = gate_beats_baselines(0.5, {"bfs": 0.2}, higher_is_better=True)
+
+    assert parity.blocking is True, "onnx_parity is a validity check -> blocking"
+    assert fidelity.blocking is True, "env_fidelity is a validity check -> blocking"
+    assert quality.blocking is False, "beats_baselines is a quality gate -> non-blocking"
+
+    # and the run-failure rule reads exactly these three flags
+    def run_fails(gates):
+        return any(g.armed and g.blocking and not g.passed for g in gates)
+    # a lost quality gate never fails the run; a failed validity gate always does
+    assert not run_fails([GateResult("beats_baselines", False, "", blocking=False)])
+    assert run_fails([GateResult("onnx_parity", False, "")])
+    assert run_fails([GateResult("env_fidelity", False, "")])
+
+
 # ------------------------------------------------------- the sidecar ---------
 
 def test_onnx_naming_matches_what_the_cpp_and_bulk_runner_expect(tmp_path):
