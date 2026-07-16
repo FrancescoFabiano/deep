@@ -82,9 +82,11 @@ def evaluate_split(
             env = FringeEnv(inst, fringe_size=fringe_size, seed=s, gamma=1.0,
                             expansion_cap=expansion_cap)
             res = env.reset(seed=s)
+            ret = 0.0                        # accumulated reward = the RETURN (gamma=1)
             while not res.done:
                 if env.forced:
                     res = env.step(env.forced_action)
+                    ret += float(res.reward)
                     continue
                 if score_for is not None:
                     lg = score_for(inst.name, env.fringe)
@@ -104,7 +106,8 @@ def evaluate_split(
                 else:
                     rk = list(pol(env.fringe))
                 res = env.step(rk[0], rk)
-            inst_rs.append(_row_from(env, res, inst))
+                ret += float(res.reward)
+            inst_rs.append(_row_from(env, res, inst, ret))
         rs.extend(inst_rs)
         per_instance[inst.name] = aggregate_rollouts(
             inst_rs, reference_budget=reference_budget(inst))
@@ -120,6 +123,7 @@ def evaluate_split(
         "regret_mean_lower_bound": agg["regret_mean"],
         "regret_median_lower_bound": _pct(rs, 0.50),
         "regret_p90_lower_bound": _pct(rs, 0.90),
+        "return_mean": agg["return_mean"],       # the objective, over ALL rollouts
         "expansions_mean": agg["expansions_mean"],
         "success_rate": agg["coverage"],
         "doom_rate": agg["doom_rate"],
@@ -152,11 +156,12 @@ def evaluate_split(
     return out
 
 
-def _row_from(env: FringeEnv, res, inst: TreeInstance) -> Dict:
+def _row_from(env: FringeEnv, res, inst: TreeInstance, ret: float = 0.0) -> Dict:
     solved = res.info["outcome"] == "success"
     return {
         "instance": inst.name,
         "expansions": res.info["expansions"],
+        "return": ret,                       # accumulated reward = the objective itself
         "solved": solved,
         "outcome": res.info["outcome"],
         "truncated": res.truncated,

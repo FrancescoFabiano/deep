@@ -83,6 +83,53 @@ def fig_selection_audit(val, base, out: Path, F: int, metric: str, field: str):
     fig.tight_layout(); fig.savefig(out, dpi=150); plt.close(fig)
 
 
+def fig_return_vs_frames(val, base, out: Path, F: int, transfer: bool):
+    """The objective itself (return = accumulated reward per rollout) vs FRAMES.
+    Return CANNOT be held out in the fallback (env.reset is root-only), so the model
+    line is a TRAIN-SET estimate there; the held-out signal is top1 (see the
+    train-vs-held-out top1 figure). On the test-CSV path the model line is held-out
+    transfer.
+    """
+    frames = [r.get("frames", r["step"]) for r in val]
+    ys = [r.get("return_mean") for r in val]
+    if not any(y is not None for y in ys):
+        return
+    fig, ax = plt.subplots(figsize=(9, 5))
+    for name, (c, ls, label) in BASE_STYLE.items():
+        if name in base and base[name].get("return_mean") is not None:
+            ax.axhline(base[name]["return_mean"], color=c, ls=ls, lw=1.5,
+                       label=f"{label}={base[name]['return_mean']:.1f}")
+    kind = "held-out (test instances)" if transfer else "train-set estimate"
+    ax.plot(frames, ys, "o-", color=RL_C, lw=1.8, ms=4, label=f"model return ({kind})")
+    ax.set_xlabel("frames (step x batch_size)")
+    ax.set_ylabel("mean return per rollout")
+    ax.set_title(f"Return vs frames  (F={F})", fontsize=11)
+    ax.grid(alpha=.25); ax.legend(fontsize=8, loc="best", framealpha=.95)
+    fig.tight_layout(); fig.savefig(out, dpi=150); plt.close(fig)
+
+
+def fig_train_vs_heldout_top1(val, out: Path, F: int):
+    """Overfitting, shown directly: train-frontier top1 vs held-out-frontier top1 vs
+    frames. A widening gap (train up, held-out flat) is overfitting. Same metric, two
+    data subsets -- the fallback's honest train/eval view (return can't be held out)."""
+    if "train_top1" not in val[-1] or "heldout_top1" not in val[-1]:
+        return
+    frames = [r.get("frames", r["step"]) for r in val]
+    tr = [r["train_top1"] for r in val]
+    ho = [r["heldout_top1"] for r in val]
+    fig, ax = plt.subplots(figsize=(9, 5))
+    ax.plot(frames, tr, "o-", color="#0072B2", lw=1.8, ms=4, label="train frontiers")
+    ax.plot(frames, ho, "s-", color=RL_C, lw=1.8, ms=4, label="held-out trajectories")
+    ax.fill_between(frames, ho, tr, where=[a > b for a, b in zip(tr, ho)],
+                    color="grey", alpha=.15, label="train - held-out gap")
+    ax.set_xlabel("frames (step x batch_size)")
+    ax.set_ylabel("top1 (oracle agreement)")
+    ax.set_ylim(0, 1.02)
+    ax.set_title(f"Train vs held-out top1 vs frames  (F={F})", fontsize=11)
+    ax.grid(alpha=.25); ax.legend(fontsize=8, loc="best", framealpha=.95)
+    fig.tight_layout(); fig.savefig(out, dpi=150); plt.close(fig)
+
+
 def fig_line(val, base, out: Path, F: int, field: str, ylabel: str):
     steps = [r["step"] for r in val]
     ys = [r.get(field) for r in val]
@@ -169,6 +216,9 @@ def main():
     field = "heldout_top1" if held else "coverage_at_reference_budget"
 
     fig_selection_audit(val, base, out / "selection_audit.png", F, metric, field)
+    fig_return_vs_frames(val, base, out / "return_vs_frames.png", F,
+                         transfer=bool(val[-1].get("coverage_is_transfer")))
+    fig_train_vs_heldout_top1(val, out / "train_vs_heldout_top1.png", F)
     fig_line(val, base, out / "coverage_vs_checkpoint.png", F,
              "coverage_at_reference_budget", "coverage @ reference budget")
     fig_line(val, base, out / "regret_vs_checkpoint.png", F,

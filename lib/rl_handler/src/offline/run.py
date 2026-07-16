@@ -332,6 +332,13 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
                 t1, n_ho = heldout_top1(heldout_rows, rl_rank, by_name)
                 out["heldout_top1"] = t1
                 out["heldout_n"] = n_ho
+                # TRAIN-frontier top1, same metric, for the overfitting gap: if train
+                # top1 climbs while held-out top1 stalls, that IS overfitting, and here
+                # it is on the metric the fallback can actually split (return cannot be
+                # held out -- env.reset() is root-only, so the rollout return is a
+                # train-set estimate). A matched sample keeps the two comparable.
+                out["train_top1"], _ = heldout_top1(train_rows[:len(heldout_rows)],
+                                                    rl_rank, by_name)
                 sel_score = t1
             else:
                 sel_score = out["coverage_at_reference_budget"]

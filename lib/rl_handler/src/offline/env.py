@@ -777,6 +777,7 @@ def aggregate_rollouts(rollouts, reference_budget: Optional[int] = None) -> Dict
         scored = solved
     regrets = [r["regret"] for r in scored]
     exps = [r["expansions"] for r in scored]
+    returns = [r["return"] for r in rs if "return" in r]
     return {
         "n": len(rs),
         "coverage": len(scored) / n,
@@ -786,5 +787,7 @@ def aggregate_rollouts(rollouts, reference_budget: Optional[int] = None) -> Dict
         # over SOLVED-WITHIN-BUDGET only
         "regret_mean": (sum(regrets) / len(regrets)) if regrets else None,
         "expansions_mean": (sum(exps) / len(exps)) if exps else None,
+        # the objective itself, over ALL rollouts (a timeout's return is real cost)
+        "return_mean": (sum(returns) / len(returns)) if returns else None,
         "n_solved": len(scored),
     }
