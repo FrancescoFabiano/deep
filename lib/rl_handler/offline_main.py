@@ -174,11 +174,13 @@ def main(argv=None) -> int:
             behaviour_policies=a.behaviour_policies,
         )
         out = run(cfg, REPO)
-        # Only an ARMED gate can fail the run. An unarmed gate did not measure
-        # anything, so it has no verdict -- counting it as failure meant deliberately
-        # disarming the env-fidelity gate (planner deployment out of scope) would
-        # abort the launcher at step 2.
-        if any(g.armed and not g.passed for g in out["gates"]):
+        # The run fails only on an ARMED, BLOCKING gate that did not pass.
+        #  - unarmed: did not measure anything, no verdict (e.g. env-fidelity with no
+        #    --deep-exe; planner deployment out of scope).
+        #  - non-blocking: a WARNING, not a failure (beats_baselines -- a weak model,
+        #    e.g. the HASHED floor null where the model ties random, is a valid result
+        #    we want to record, not a launcher abort).
+        if any(g.armed and g.blocking and not g.passed for g in out["gates"]):
             rc = 1
     return rc
 

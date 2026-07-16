@@ -292,6 +292,15 @@ class GateResult:
     do not want (planner deployment out of scope) would abort the launcher at step 2.
     A gate that did not measure anything cannot have a verdict: callers must count
     only `armed and not passed` as failure."""
+    blocking: bool = True
+    """False = a failure is a WARNING, not a run failure. `beats_baselines` is
+    non-blocking by design ("failing does not block export; it prints a prominent
+    warning" -- a weak model is still a valid, recordable result, e.g. the HASHED
+    floor null where the model ties random). Only env-fidelity/onnx-parity are
+    validity checks that must block. The run fails only on `armed and blocking and not
+    passed` -- otherwise making beats_baselines honest (top1, not the optimistic
+    train-set regret) would abort the launcher on exactly the floor result we want to
+    record."""
 
 
 def gate_onnx_parity(check: Callable[[], Tuple[bool, str]]) -> GateResult:
@@ -431,25 +440,39 @@ def gate_env_fidelity(
 
 
 def gate_beats_baselines(
-    model_regret: Optional[float],
+    model_score: Optional[float],
     baselines: Dict[str, Optional[float]],
     exclude: Sequence[str] = ("hfs_oracle",),
+    *,
+    higher_is_better: bool = False,
+    metric: str = "regret",
 ) -> GateResult:
-    """Gate 3: beat bfs / dfs / random AND the two-head baseline on val regret.
+    """Gate 3: beat bfs / dfs / random on the SELECTION metric, on the SAME held-out
+    set the model was selected on.
 
-    NOT required to beat hfs_oracle -- that is the clairvoyant ceiling (it ranks by
-    delta, the answer to the problem) and cannot be beaten. Failing this does not
-    block export; it prints a prominent warning, because "we shipped a model that
-    loses to dfs" must be visible rather than silent.
+    metric/direction MUST match the eval mode, or the gate passes on the wrong number:
+      FALLBACK (held-out trajectories): metric='heldout_top1', higher_is_better=True.
+        regret here is a TRAIN-SET rollout estimate -- optimistic (the model trained on
+        those instances), which is exactly the number selection was moved away from.
+      PRIMARY (test CSVs): metric='regret', higher_is_better=False -- held-out transfer.
+
+    NOT required to beat hfs_oracle -- the clairvoyant ceiling (it ranks by delta, the
+    answer) and unbeatable. Failing does not block export; it warns, because "we shipped
+    a model that loses to dfs" must be visible rather than silent.
     """
-    if model_regret is None:
-        return GateResult("beats_baselines", False, "model solved nothing")
+    if model_score is None:
+        return GateResult("beats_baselines", False, "model solved nothing", blocking=False)
+    # "lost to k" = baseline is at least as good as the model on this metric.
+    def loses_to(v: float) -> bool:
+        return (v >= model_score) if higher_is_better else (v <= model_score)
     lost = {k: v for k, v in baselines.items()
-            if k not in exclude and v is not None and v <= model_regret}
+            if k not in exclude and v is not None and loses_to(v)}
+    beat = sorted(set(baselines) - set(exclude))
     return GateResult(
         "beats_baselines", not lost,
-        (f"model regret {model_regret:.2f}; LOSES TO {lost}" if lost
-         else f"model regret {model_regret:.2f} beats {sorted(set(baselines) - set(exclude))}"),
+        (f"model {metric} {model_score:.3f}; LOSES TO {lost}" if lost
+         else f"model {metric} {model_score:.3f} beats {beat}"),
+        blocking=False,   # a weak model is a valid, recordable result -- warn, don't abort
     )
 
 

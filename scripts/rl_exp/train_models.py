@@ -49,6 +49,7 @@ from __future__ import annotations
 import argparse
 import shutil
 import subprocess
+import os
 import sys
 import time
 from collections import deque
@@ -108,9 +109,18 @@ def run_one(cmd: list[str], prefix: str) -> int:
     kept in a ring buffer and dumped verbatim on a non-zero exit — kwargs
     errors are never silent.
     """
+    # -u + PYTHONUNBUFFERED: the child's stdout is BLOCK-buffered when piped (not a
+    # tty), so without this the per-checkpoint prints sit in the pipe buffer and this
+    # readline loop sees nothing until the child exits -- the observability gap that
+    # made the floor run look hung. (The tqdm bar in run.py disables itself when not a
+    # tty, so it never spams \r into these logs; only the newline prints stream here.)
+    if cmd and "-u" not in cmd:
+        cmd = [cmd[0], "-u", *cmd[1:]]
+    env = {**os.environ, "PYTHONUNBUFFERED": "1"}
     print(" ".join(cmd), flush=True)
     process = subprocess.Popen(
-        cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1
+        cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1,
+        env=env,
     )
     last_print = 0.0
     recent: deque[str] = deque(maxlen=40)

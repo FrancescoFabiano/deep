@@ -300,9 +300,17 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
     # ---- train with checkpoints ----
     cands: List[Candidate] = []
     every = max(1, cfg.frames // cfg.n_checkpoints)
+    # Progress bar: only when attached to a terminal. Through train_models.run_one the
+    # child is piped (not a tty), so tqdm disables itself -- no \r spam in the logs;
+    # the per-checkpoint prints stream instead (run_one runs the child with -u).
+    import sys as _sys
+    from tqdm import tqdm
+    bar = tqdm(total=cfg.frames, desc=f"train F={cfg.fringe_size}", unit="step",
+               disable=not _sys.stderr.isatty(), dynamic_ncols=True, leave=False)
     for step in range(1, cfg.frames + 1):
         if trainer is not None:
             log = trainer.step()
+        bar.update(1)
         if step % every == 0 or step == cfg.frames:
             # coverage/regret: held-out transfer on PRIMARY, train-set estimate on
             # FALLBACK (labelled in the sidecar -- never reported as transfer there).
@@ -337,8 +345,11 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
             sig = (f"heldout_top1={out['heldout_top1']:.3f}"
                    if eval_mode == "held_out_trajectories"
                    else f"coverage={out['coverage_at_reference_budget']:.2f}")
+            bar.set_postfix_str(
+                f"{sig} td={out.get('td_loss', float('nan')):.4f}", refresh=False)
             print(f"[run] step {step:5d} {sig} "
                   f"regret={out['regret_mean_lower_bound']} auc={out.get('viability_auc')}")
+    bar.close()
 
     # Smoothed selection on the held-out signal -- NOT a single argmax draw (the floor
     # run showed argmax picks a lucky rollout).
@@ -391,7 +402,16 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
                 "the RL-vs-baseline claim is made IN THE OFFLINE ENV)" if not cfg.deep_exe
                 else "NOT ARMED: no usable instance reaches 20 expansions",
                 armed=False))
-        gates.append(gate_beats_baselines(best.regret, baselines))
+        # Gate on the SELECTION metric, matched-n on the SAME held-out set: FALLBACK
+        # compares held-out top1 (higher better) vs each baseline's top1; PRIMARY
+        # compares held-out-transfer regret. Gating on the fallback's train-set regret
+        # would PASS on the optimistic number selection was moved away from.
+        if eval_mode == "held_out_trajectories":
+            gates.append(gate_beats_baselines(
+                best.select_score, baseline_top1,
+                higher_is_better=True, metric="heldout_top1"))
+        else:
+            gates.append(gate_beats_baselines(best.regret, baselines, metric="regret"))
         for g in gates:
             verdict = "PASS" if g.passed else ("FAIL" if g.armed else "SKIP")
             print(f"[gate] {g.name}: {verdict} -- {g.detail}")
@@ -433,6 +453,17 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
                                    "stochastic transition; it does not pin a C++ "
                                    "RefillMode. Whoever deploys should confirm the "
                                    "planner's refill matches their intent.")})
+
+    # Diagnostic figures from the telemetry we just wrote (neutral; read-only).
+    try:
+        import subprocess as _sp
+        _sp.run([_sys.executable,
+                 str(repo_root / "scripts/rl_exp/plot_diagnostics.py"),
+                 str(run_dir / "telemetry.jsonl"), "--fringe", str(cfg.fringe_size)],
+                check=False, capture_output=True)
+    except Exception as e:                       # plotting must never fail a run
+        print(f"[run] (figures skipped: {e})")
+
     return {"selected": best, "baselines": baselines, "gates": gates, "run_dir": run_dir}
 
 

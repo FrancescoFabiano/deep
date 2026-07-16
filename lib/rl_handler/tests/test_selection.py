@@ -169,6 +169,39 @@ def test_beats_baselines_fails_when_nothing_solved():
     assert not gate_beats_baselines(None, {"dfs": 1.0}).passed
 
 
+def test_beats_baselines_top1_direction_is_higher_is_better():
+    """FALLBACK gates on held-out top1, where HIGHER wins (opposite of regret).
+    A model above every baseline's top1 passes; at or below any baseline it loses."""
+    base = {"bfs": 0.38, "dfs": 0.20, "random": 0.29, "hfs_oracle": 1.0}
+    win = gate_beats_baselines(0.42, base, higher_is_better=True, metric="heldout_top1")
+    assert win.passed and "heldout_top1" in win.detail
+    # RL == random (the floor null) must LOSE, not pass -- 0.29 does not beat 0.29
+    floor = gate_beats_baselines(0.29, base, higher_is_better=True, metric="heldout_top1")
+    assert not floor.passed and "random" in floor.detail
+    # and it must NOT be required to beat the oracle's perfect 1.0
+    assert "hfs_oracle" not in floor.detail
+
+
+def test_beats_baselines_regret_still_defaults_to_lower_is_better():
+    """PRIMARY path unchanged: regret, lower wins."""
+    assert gate_beats_baselines(5.0, {"dfs": 10.0, "random": 20.0}).passed
+    assert not gate_beats_baselines(20.0, {"dfs": 10.0}).passed
+
+
+def test_beats_baselines_is_non_blocking():
+    """A weak model is a valid, recordable result (the HASHED floor null ties random),
+    so beats_baselines WARNS -- it must not abort the run. Only an armed, BLOCKING,
+    failed gate fails the run."""
+    lost = gate_beats_baselines(0.29, {"bfs": 0.38}, higher_is_better=True,
+                                metric="heldout_top1")
+    assert not lost.passed and lost.armed and lost.blocking is False
+    fails = lambda gs: any(g.armed and g.blocking and not g.passed for g in gs)
+    assert not fails([lost]), "a failed beats_baselines must NOT fail the run"
+    # a failed env-fidelity (blocking) DOES fail the run
+    blk = GateResult("env_fidelity", False, "counts disagree")   # blocking default True
+    assert fails([blk])
+
+
 # ------------------------------------------------------- the sidecar ---------
 
 def test_onnx_naming_matches_what_the_cpp_and_bulk_runner_expect(tmp_path):
