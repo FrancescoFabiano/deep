@@ -112,7 +112,7 @@ class QTrainer:
     ):
         if cfg.model not in MODELS:
             raise ValueError(f"model must be one of {MODELS}, got {cfg.model!r}")
-        assert_gamma(cfg.gamma)
+        assert_gamma(cfg.gamma, cfg.expansion_cap)   # full dominance check: cap < horizon
         self.cfg = cfg
         self.device = cfg.device or default_device()
         self.model = model.to(self.device)
@@ -132,9 +132,15 @@ class QTrainer:
             else default_reward_scale(instances)
         )
         self.steps = 0
-        # |Q| ceiling in SCALED units: the worst return is -cap, so anything past
-        # q_abort_multiple * cap * scale is drift.
-        self.q_ceiling = cfg.q_abort_multiple * cfg.expansion_cap * self.scale
+        # |Q| ceiling in SCALED units. The worst value a legitimate critic can
+        # represent is the absorbing DOOM floor: at gamma<1 that is 1/(1-gamma)
+        # (=10000 at 0.9999), NOT the cap -- a bootstrapped timeout is fixed-pointed
+        # at doom (y=-1+gamma*(-1/(1-gamma)) = -1/(1-gamma)) and can go no lower. At
+        # gamma=1 the SSP doom is -expansion_cap, so the cap IS the floor there.
+        # Anything past q_abort_multiple * floor * scale is drift, not learning.
+        worst_magnitude = (cfg.expansion_cap if cfg.gamma >= 1.0
+                           else 1.0 / (1.0 - cfg.gamma))
+        self.q_ceiling = cfg.q_abort_multiple * worst_magnitude * self.scale
 
     # ---- forward helpers -------------------------------------------------
 

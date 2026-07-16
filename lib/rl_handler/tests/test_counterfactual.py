@@ -21,7 +21,10 @@ from conftest import make_tree
 
 
 def _env(inst, F, seed=0):
-    return FringeEnv(inst, fringe_size=F, gamma=0.99, seed=seed)
+    # gamma left at the default (0.9999): these tests are about counterfactual
+    # enumeration, not the objective. gamma=0.99 no longer validates against the
+    # default cap (horizon 100 < cap 2000 fails the dominance check in assert_gamma).
+    return FringeEnv(inst, fringe_size=F, seed=seed)
 
 
 def enumerate_actions(env: FringeEnv, ranking):

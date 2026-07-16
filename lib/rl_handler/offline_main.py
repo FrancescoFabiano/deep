@@ -85,11 +85,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--target-sync", type=int, default=500)
     p.add_argument("--max-grad-norm", type=float, default=10.0)
     p.add_argument("--cql-alpha", type=float, default=0.0)
-    p.add_argument("--gamma", type=float, default=1.0,
-                   help="1.0 IS the objective: every policy is proper (completeness "
-                        "proposition), so this is a stochastic shortest path problem. "
-                        "gamma<1 truncates the objective and warns; an ablation axis, "
-                        "not a tuning knob.")
+    p.add_argument("--gamma", type=float, default=0.9999,
+                   help="Default 0.9999: the paper's discounted reward, numerically "
+                        "~= the gamma=1 SSP limit (V*=-delta to <0.2%% for delta << "
+                        "horizon 10000). gamma=1 stays valid as the SSP ablation. "
+                        "assert_gamma enforces cap < 1/(1-gamma) so the objective "
+                        "cannot silently saturate.")
     p.add_argument("--reward-scale", type=float, default=None,
                    help="default 1/median(delta_root over train). Pure rescaling; "
                         "human-facing numbers stay unscaled.")

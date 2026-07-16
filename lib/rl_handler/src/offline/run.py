@@ -25,7 +25,7 @@ from .batching import default_device, pack_single
 from .dataset import generate_dataset
 from .determinism import determinism_report, set_determinism
 from .encoder import InstanceCache
-from .env import default_expansion_cap, reference_budget
+from .env import DEFAULT_GAMMA, default_expansion_cap, reference_budget
 from .usability import build_usable_pool, fidelity_names, usable_names
 from .planner_config import exploitation_for, planner_flags
 from .policies import BEHAVIOUR_POLICIES, make_policy
@@ -83,7 +83,7 @@ class RunConfig:
     lr: float = 1e-4
     batch_size: int = 64
     cql_alpha: float = 0.0
-    gamma: float = 1.0
+    gamma: float = DEFAULT_GAMMA    # 0.9999: paper's discounted reward ~= SSP limit
     reward_scale: Optional[float] = None
     eval_expansion_cap: Optional[int] = None
     fidelity_instances: int = 3

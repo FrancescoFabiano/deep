@@ -92,19 +92,28 @@ def reference_budget(instance: TreeInstance) -> int:
 REWARD_MODES = ("absorbing", "legacy")
 
 # THE OBJECTIVE IS UNDISCOUNTED. See assert_gamma().
-DEFAULT_GAMMA = 1.0
+DEFAULT_GAMMA = 0.9999
 
 
 # ---------------------------------------------------------------- reward ----
 
-def doom_penalty(expansion_cap: int, reward_mode: str = "absorbing") -> float:
-    """Terminal reward on DOOM.
+def doom_penalty(expansion_cap: int, gamma: float = DEFAULT_GAMMA,
+                 reward_mode: str = "absorbing") -> float:
+    """Terminal reward on GENUINE DOOM (a real dead end -- no viable node remains).
 
-    absorbing: -expansion_cap -- "the worst cost the budget admits". Finite, and
-    UNREACHABLE by construction: the completeness proposition makes DOOM
-    equivalent to delta(root)=inf, and unsolvable instances are filtered out at
-    load. (The old -1/(1-gamma) form is +inf at gamma=1 and is gone with the
-    discounting it belonged to.)
+    absorbing, gamma < 1: -1/(1-gamma) -- the paper's absorbing-failure return, the
+    worst value the discounted objective admits. At gamma=0.9999 this is -10000.
+    UNREACHABLE by construction on the gated pool: the completeness proposition makes
+    DOOM equivalent to delta(root)=inf, and those instances are filtered at load.
+
+    absorbing, gamma == 1: -expansion_cap. The -1/(1-gamma) form is -inf at gamma=1,
+    so the undiscounted SSP ablation uses a finite stand-in for "the worst cost the
+    budget admits". (gamma=1 stays a valid ablation axis; it is no longer the default.)
+
+    This is for genuine doom ONLY. A TIMEOUT is truncation, not failure: it returns
+    the ordinary step -1 and BOOTSTRAPS (env.step, `truncated=True`), so it must never
+    receive this penalty -- doing so would declare a budget-exhausted state a
+    catastrophic terminal and reintroduce the deep-search pessimism (Pardo 2018).
 
     legacy: -1, the known-broken reward kept only for the reward ablation.
     """
@@ -112,7 +121,9 @@ def doom_penalty(expansion_cap: int, reward_mode: str = "absorbing") -> float:
         return -1.0
     if reward_mode != "absorbing":
         raise ValueError(f"reward_mode must be one of {REWARD_MODES}, got {reward_mode!r}")
-    return -float(expansion_cap)
+    if gamma >= 1.0:
+        return -float(expansion_cap)
+    return -1.0 / (1.0 - gamma)
 
 
 def g_succ(k: int, gamma: float = DEFAULT_GAMMA) -> float:
@@ -126,47 +137,51 @@ def g_succ(k: int, gamma: float = DEFAULT_GAMMA) -> float:
     return -(1.0 - gamma ** k) / (1.0 - gamma)
 
 
-def assert_gamma(gamma: float) -> None:
-    """The objective is undiscounted, and the completeness proposition is why.
+def assert_gamma(gamma: float, expansion_cap: Optional[int] = None) -> None:
+    """Validate gamma, and (if a cap is given) the DOMINANCE invariant the paper's
+    reward needs.
 
-    Every policy reaches a goal on a solvable instance (see FringeEnv._doom), so
-    EVERY POLICY IS PROPER. Costs are strictly positive (-1 per expansion), the
-    process terminates with probability 1 under any policy, and there is no
-    absorbing failure state to escape into. That is exactly the stochastic
-    shortest path setting (Bertsekas & Tsitsiklis): the undiscounted Bellman
-    operator has a unique fixed point and value iteration converges.
+    THE OBJECTIVE, AND WHY BOTH gamma ARE DEFENSIBLE. Every policy reaches a goal on
+    a solvable instance (see FringeEnv._doom), so EVERY POLICY IS PROPER: costs are
+    strictly positive (-1/expansion), the process terminates w.p.1, there is no
+    absorbing failure to escape into. That is the stochastic-shortest-path setting
+    (Bertsekas & Tsitsiklis), where the undiscounted operator is well-posed and
+    V*(s) = -delta(s) EXACTLY. gamma=1 is therefore correct, not a hack, and stays a
+    valid ablation axis.
 
-    Discounting exists to make NON-TERMINATING processes well-posed. Ours
-    terminates. So at gamma = 1:
+    gamma=0.9999 (the default) matches the PAPER'S discounted formulation while
+    staying numerically ~= the SSP limit: for delta 3-24 against a horizon of 10000,
+    V* = -(1-gamma^delta)/(1-gamma) equals -delta to <0.2%. It buys the paper's
+    formula on the page and produces the same numbers -- a presentation/conformance
+    choice, not a change of objective.
 
-        V*(s)     = -delta(s)   exactly
-        G_succ(k) = -k          linear in k
-        no horizon constraint, no cap coupling
+    THE DOMINANCE INVARIANT. The paper's guarantee (a success always beats doom)
+    only holds if every reachable success return -(1-gamma^k)/(1-gamma) stays above
+    G_doom = -1/(1-gamma). The worst reachable k is the expansion cap, so the
+    invariant is:
 
-    and, more importantly, no distortion. At gamma=0.99 a 1000-expansion search
-    and a 2000-expansion one both return ~-100: a discounted critic is
-    STRUCTURALLY unable to represent the difference between a slow search and a
-    hopeless one. We are minimising expansions; gamma < 1 stops counting them
-    past the horizon. That is the wrong objective, not a numerical nuisance.
+        expansion_cap < 1/(1 - gamma)          (cap strictly below the horizon)
 
-    gamma stays a flag so it can be an ABLATION AXIS, not a tuning knob.
+    Past the horizon the discounted return saturates and a slow search becomes
+    indistinguishable from a hopeless one -- the exact collapse gamma<1 risks. At
+    gamma=0.9999 the horizon is 10000 and the cap is 2000, so it passes with a wide
+    margin. This is checked HERE so a future gamma/cap combo that breaks it fails
+    loudly rather than silently flattening the objective.
     """
-    if gamma == 1.0:
-        return
-    if not (0.0 < gamma < 1.0):
+    if not (0.0 < gamma <= 1.0):
         raise ValueError(f"gamma must be in (0, 1], got {gamma}")
-    warnings.warn(
-        f"gamma={gamma} < 1 TRUNCATES the objective. Every policy is proper here "
-        f"(completeness proposition), so this is a stochastic shortest path "
-        f"problem and the undiscounted operator is well-posed. Discounting makes "
-        f"the critic unable to distinguish a slow search from a hopeless one: at "
-        f"gamma={gamma}, a {int(1/(1-gamma))*10}-expansion success and a "
-        f"{int(1/(1-gamma))*20}-expansion one differ by "
-        f"{abs(g_succ(int(1/(1-gamma))*10, gamma) - g_succ(int(1/(1-gamma))*20, gamma)):.3g}. "
-        f"Use gamma=1 unless you are running the discounting ablation.",
-        RuntimeWarning,
-        stacklevel=2,
-    )
+    if gamma < 1.0 and expansion_cap is not None:
+        horizon = 1.0 / (1.0 - gamma)
+        if expansion_cap >= horizon:
+            raise ValueError(
+                f"gamma={gamma} gives horizon 1/(1-gamma)={horizon:.0f}, but "
+                f"expansion_cap={expansion_cap} >= horizon. A success at the cap "
+                f"returns {g_succ(int(expansion_cap), gamma):.1f}, which does not "
+                f"dominate doom {-horizon:.0f} with margin: past the horizon the "
+                f"discounted objective saturates and a slow search is "
+                f"indistinguishable from a hopeless one. Lower the cap below "
+                f"{horizon:.0f}, or move gamma closer to 1."
+            )
 
 
 # ------------------------------------------------------------ step result ----
@@ -236,7 +251,6 @@ class FringeEnv:
         self.instance = instance
         self.fringe_size = int(fringe_size)
         self.gamma = float(gamma)
-        assert_gamma(self.gamma)
         self.reward_mode = reward_mode
         self.rng = random.Random(seed)
         self.seed = seed
@@ -253,7 +267,10 @@ class FringeEnv:
             int(expansion_cap) if expansion_cap is not None
             else default_expansion_cap([instance])
         )
-        self.doom_reward = doom_penalty(self.expansion_cap, self.reward_mode)
+        # Validate gamma AND the dominance invariant now that the cap is known:
+        # a success at the cap must dominate doom (cap < 1/(1-gamma)).
+        assert_gamma(self.gamma, self.expansion_cap)
+        self.doom_reward = doom_penalty(self.expansion_cap, self.gamma, self.reward_mode)
 
         self.fringe: List[int] = []
         self.order: List[int] = []      # state ids, best first (the priority queue)
@@ -295,7 +312,7 @@ class FringeEnv:
         true regret -- every figure using it must say so on the axis, not in a
         caption. Never a training target.
         """
-        return self.instance.v_star(self.fringe, self.reservoir)
+        return self.instance.v_star(self.fringe, self.reservoir, gamma=self.gamma)
 
     def _record_occupancy(self) -> None:
         self.reservoir_sizes.append(len(self.reservoir))

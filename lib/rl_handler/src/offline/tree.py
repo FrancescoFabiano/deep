@@ -7,7 +7,7 @@ is reconstructed into the search tree the offline MDP moves inside.
 TWO DISTANCES, AND THEY ARE NOT THE SAME
 ----------------------------------------
 `h*(v)` is the CSV `Distance From Goal` column, as computed by the generator.
-\warning It is NOT "the true distance in the state DAG", despite what it looks
+WARNING: It is NOT "the true distance in the state DAG", despite what it looks
 like: the generator's memo is keyed by STATE ALONE inside a depth-bounded DFS
 (`TrainingDataset.tpp`), so a state locked as a 1e6 leaf on a deep first visit
 returns that stale verdict when later reached shallower with room to expand. `h*`
@@ -117,16 +117,23 @@ class TreeInstance:
 
     # ---- oracle quantities (diagnostics / selection only) ----
 
-    def v_star(self, beam: Iterable[int], reservoir: Iterable[int] = ()) -> float:
-        """V*(B, R) = -min delta over viable v in B u R.
+    def v_star(self, beam: Iterable[int], reservoir: Iterable[int] = (),
+               gamma: float = 1.0) -> float:
+        """V*(B, R) = the discounted return of reaching the nearest goal in B u R.
 
-        The reservoir IS included: with the completeness wrapper a node parked in
-        R is not lost, so the attainable optimum must account for it.
+        gamma = 1:  -min delta          (the SSP limit, in expansion units)
+        gamma < 1:  -(1 - gamma^d)/(1-gamma)  with d = min delta -- the paper's V*.
+
+        For d << 1/(1-gamma) these agree to <0.2% (d=24, gamma=0.9999: -23.97 vs -24),
+        so the discounted form is the paper's formula producing the SSP numbers.
+
+        The reservoir IS included: with the completeness wrapper a node parked in R is
+        not lost, so the attainable optimum must account for it.
 
         OPTIMISTIC BOUND, not the attainable optimum. Refill is uniformly random
         (RefillMode::RANDOM) and therefore not under the policy's control, so a
-        low-delta node sitting in R may never be handed back to the beam. Every
-        figure and log that uses this must say so.
+        low-delta node sitting in R may never be handed back to the beam. Every figure
+        and log that uses this must say so.
         """
         best = INF_DELTA
         for v in beam:
@@ -135,7 +142,11 @@ class TreeInstance:
         for v in reservoir:
             if self.delta[v] < best:
                 best = self.delta[v]
-        return -best if best != INF_DELTA else -INF_DELTA
+        if best == INF_DELTA:
+            return -INF_DELTA
+        if gamma >= 1.0:
+            return -float(best)
+        return -(1.0 - gamma ** best) / (1.0 - gamma)
 
     def regret(self, expansions: int) -> float:
         """regret(pi) = k_pi - delta(root), in expansions. Lower is better."""
