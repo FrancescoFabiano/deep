@@ -23,13 +23,16 @@ cross-config number is noise. `assert_within_config` enforces it.
 from __future__ import annotations
 
 import json
+import math
+import random
 import subprocess
+from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
 from .planner_config import planner_flags
-from .tree import TreeInstance
+from .tree import INF_DELTA, TreeInstance
 
 
 def config_of(instance_name: str) -> str:
@@ -114,6 +117,13 @@ class Candidate:
     regret: Optional[float]
     doom: float
     payload: Dict = field(default_factory=dict)
+    # The scalar the SMOOTHED selector maximises (higher = better). PRIMARY path
+    # (held-out test instances): coverage. FALLBACK path (held-out trajectories):
+    # held-out top1-oracle-agreement -- a low-variance ranking signal, because
+    # coverage at n=15 rollouts is too noisy to argmax over (the floor run showed
+    # argmax picks a lucky single rollout). None => fall back to the coverage/regret
+    # key below.
+    select_score: Optional[float] = None
 
     def key(self):
         """Sort key. Higher coverage first; then LOWER regret; then EARLIER step.
@@ -129,6 +139,143 @@ def select(candidates: Sequence[Candidate]) -> Candidate:
     if not candidates:
         raise ValueError("no checkpoints to select from")
     return sorted(candidates, key=lambda c: c.key())[0]
+
+
+def select_smoothed(candidates: Sequence[Candidate], window: int = 3) -> Candidate:
+    """Pick the checkpoint maximising the WINDOW-MEAN of `select_score` over `window`
+    consecutive checkpoints -- NOT a single argmax draw.
+
+    The floor run proved argmax-on-a-single-draw selects noise: coverage bounced
+    0.73-1.00 with no trend at n=15 rollouts (1 rollout = 0.067), and the rule
+    reported a lucky peak. Averaging over a window of checkpoints cuts selection
+    variance ~sqrt(window) for free. Ties -> EARLIEST checkpoint (a model that peaked
+    early and held is preferred to a late fluke).
+
+    Requires select_score set on every candidate. If none is set, this raises -- use
+    plain select() for the coverage/regret key instead.
+    """
+    if not candidates:
+        raise ValueError("no checkpoints to select from")
+    if any(c.select_score is None for c in candidates):
+        raise ValueError(
+            "select_smoothed needs select_score on every candidate; use select() for "
+            "the coverage/regret key."
+        )
+    cands = sorted(candidates, key=lambda c: c.step)
+    scores = [c.select_score for c in cands]
+    best_i, best_mean = 0, float("-inf")
+    for i in range(len(cands)):
+        lo = max(0, i - window + 1)
+        w = scores[lo:i + 1]
+        m = sum(w) / len(w)
+        if m > best_mean:                 # strict > -> earliest wins ties
+            best_mean, best_i = m, i
+    return cands[best_i]
+
+
+# ------------------------------------------- held-out trajectory split -------
+
+def split_trajectories(
+    rows: Sequence,
+    frac: float = 0.10,
+    seed: int = 0,
+    min_heldout: int = 1,
+) -> Tuple[List, List, Dict]:
+    """Hold out ~`frac` of EACH instance's TRAJECTORIES (whole rollouts) for eval.
+
+    A trajectory is one behaviour rollout, keyed (instance, policy, seed); every
+    counterfactual action of a frontier AND every consecutive frontier of that
+    rollout share the key (verified in dataset._emit), so holding out whole
+    trajectories avoids the two leaks a per-frontier split would cause:
+      1. a frontier's K actions never straddle train/eval;
+      2. consecutive frontiers (which differ by ONE expansion and are near-identical)
+         never straddle train/eval -- a held-out frontier is never a one-step
+         neighbour of a trained one.
+
+    Every instance keeps >=1 trajectory in TRAIN (no problem is dropped from training)
+    and, if it has >=2, contributes >=1 to EVAL (so it is represented on both sides).
+    Splits per-instance so the eval covers every instance, not a random subset.
+
+    Returns (train_rows, heldout_rows, manifest). The manifest records the fraction,
+    the seed, the per-instance train/eval counts, and the exact held-out
+    (instance, policy, seed) list -- so the split is reproducible and auditable, and
+    a too-thin instance is visible.
+    """
+    by_inst: Dict[str, set] = defaultdict(set)
+    for r in rows:
+        by_inst[r.instance].add((r.policy, r.seed))
+
+    rng = random.Random(seed)
+    heldout_keys: set = set()          # (instance, policy, seed)
+    per_instance: Dict[str, Dict] = {}
+    for inst in sorted(by_inst):
+        trajs = sorted(by_inst[inst])
+        rng.shuffle(trajs)
+        n = len(trajs)
+        k = math.ceil(frac * n)
+        if n >= 2:
+            k = max(k, min_heldout)
+        k = min(k, n - 1)              # never hold out ALL: keep >=1 trajectory in train
+        for pol, sd in trajs[:k]:
+            heldout_keys.add((inst, pol, sd))
+        per_instance[inst] = {"n_traj": n, "n_train": n - k, "n_eval": k}
+
+    def key(r):
+        return (r.instance, r.policy, r.seed)
+
+    train_rows = [r for r in rows if key(r) not in heldout_keys]
+    heldout_rows = [r for r in rows if key(r) in heldout_keys]
+    manifest = {
+        "split": "held_out_trajectories",
+        "frac": frac,
+        "seed": seed,
+        "min_heldout": min_heldout,
+        "n_train_rows": len(train_rows),
+        "n_heldout_rows": len(heldout_rows),
+        "heldout_trajectories": sorted(list(t) for t in heldout_keys),
+        "per_instance": per_instance,
+        "instances_with_no_eval": [i for i, c in per_instance.items() if c["n_eval"] == 0],
+    }
+    return train_rows, heldout_rows, manifest
+
+
+def heldout_top1(
+    heldout_rows: Sequence,
+    rank_for: Callable[[str, Sequence[int]], Sequence[int]],
+    instances_by_name: Dict[str, TreeInstance],
+) -> Tuple[float, int]:
+    """Mean top1-oracle-agreement over the UNIQUE held-out frontiers.
+
+    The deployment decision IS a ranking -- expand the lowest-delta node, discard the
+    highest -- so top1 (does the ranker put a minimum-delta node first?) is the
+    ranking analogue of what is deployed. It is scored identically for the RL model
+    and for a baseline (both expose `rank_for(instance, beam) -> ranking`), so the
+    comparison is matched-n on the SAME held-out frontiers -- no max-of-20-vs-single
+    bias.
+
+    `rank_for(name, beam) -> ranking` (slot indices, best first).
+    Degenerate frontiers are skipped: a singleton beam or one with no viable node
+    cannot discriminate a good ranker from a bad one. Returns (mean_top1, n_scored).
+    """
+    seen: set = set()
+    hits = n = 0
+    for r in heldout_rows:
+        if getattr(r, "forced", False):
+            continue                     # forced states have no choice to rank
+        fkey = (r.instance, tuple(r.obs))
+        if fkey in seen:
+            continue
+        seen.add(fkey)
+        beam = list(r.obs)
+        inst = instances_by_name[r.instance]
+        deltas = [inst.delta[v] for v in beam]
+        if len(beam) < 2 or all(d == INF_DELTA for d in deltas):
+            continue
+        ranking = rank_for(r.instance, beam)
+        best = min(deltas)
+        hits += 1 if deltas[ranking[0]] == best else 0
+        n += 1
+    return (hits / n if n else 0.0), n
 
 
 # ----------------------------------------------------------- the gates ------

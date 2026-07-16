@@ -13,9 +13,12 @@ from src.offline.selection import (
     config_of,
     gate_beats_baselines,
     gate_env_fidelity,
+    heldout_top1,
     onnx_path_for,
     select,
+    select_smoothed,
     split_instances,
+    split_trajectories,
     write_selection_sidecar,
 )
 
@@ -283,3 +286,125 @@ def test_an_unarmed_gate_is_not_a_failed_gate():
     fails = lambda gs: any(g.armed and not g.passed for g in gs)
     assert not fails([unarmed, passed]), "an unarmed gate must NOT fail the run"
     assert fails([failed, passed]), "a genuinely failed gate MUST fail the run"
+
+
+# ------------------------------------------- held-out trajectory split -------
+
+from dataclasses import dataclass as _dc
+
+
+@_dc
+class _Row:
+    instance: str
+    policy: str
+    seed: int
+    obs: tuple = (0, 1)
+    forced: bool = False
+
+
+def _rollout_rows(instance, policy, seed, n_frontiers=3):
+    """Fake one rollout: n_frontiers, each with 2 counterfactual action rows."""
+    out = []
+    for t in range(n_frontiers):
+        for a in range(2):
+            out.append(_Row(instance, policy, seed, obs=(t, t + 1)))
+    return out
+
+
+def _pool_rows(instances, policies=("bfs", "dfs", "hfs_oracle", "random"), seeds=(0, 1, 2)):
+    from src.offline.selection import split_trajectories  # noqa
+    rows = []
+    for inst in instances:
+        for p in policies:
+            for s in seeds:
+                rows += _rollout_rows(inst, p, s)
+    return rows
+
+
+def test_split_holds_out_whole_trajectories_no_leak():
+    """THE leak test. No held-out (instance,policy,seed) trajectory may share its
+    tuple with any TRAIN row -- the clean, checkable guarantee (a frontier
+    composition can recur across rollouts, so we pin the rollout-level invariant)."""
+    from src.offline.selection import split_trajectories
+    rows = _pool_rows(["CC_2_3_4__pl_7", "CC_2_2_3__pl_4"])
+    train, held, man = split_trajectories(rows, frac=0.10, seed=0)
+    train_keys = {(r.instance, r.policy, r.seed) for r in train}
+    held_keys = {(r.instance, r.policy, r.seed) for r in held}
+    assert train_keys and held_keys
+    assert train_keys.isdisjoint(held_keys), "a held-out rollout leaked into train"
+
+
+def test_split_keeps_every_instance_in_both_train_and_eval():
+    """Constraint: no problem dropped from training; and every instance is evaluable.
+    12 rollouts/instance (4 policies x 3 seeds) -> ceil(0.10*12)=2 held out, 10 train."""
+    from src.offline.selection import split_trajectories
+    insts = ["CC_2_3_4__pl_7", "CC_2_2_3__pl_4", "CC_3_2_3__pl_5"]
+    _, _, man = split_trajectories(_pool_rows(insts), frac=0.10, seed=0)
+    for inst in insts:
+        c = man["per_instance"][inst]
+        assert c["n_train"] >= 1, f"{inst} dropped from TRAIN"
+        assert c["n_eval"] >= 1, f"{inst} absent from EVAL"
+        assert c["n_train"] + c["n_eval"] == c["n_traj"]
+    assert man["per_instance"]["CC_2_3_4__pl_7"]["n_eval"] == 2   # ceil(0.1*12)
+    assert man["instances_with_no_eval"] == []
+
+
+def test_split_never_holds_out_all_of_a_thin_instances_trajectories():
+    """An instance with 2 rollouts: 1 held out, 1 kept in train -- never 0 in train."""
+    from src.offline.selection import split_trajectories
+    rows = _pool_rows(["X__pl_1"], policies=("bfs",), seeds=(0, 1))
+    _, _, man = split_trajectories(rows, frac=0.99, seed=0)   # even at 99%
+    c = man["per_instance"]["X__pl_1"]
+    assert c["n_train"] == 1 and c["n_eval"] == 1
+
+
+def test_split_is_reproducible_and_manifest_records_it():
+    from src.offline.selection import split_trajectories
+    rows = _pool_rows(["A__pl_1", "B__pl_2"])
+    _, h1, m1 = split_trajectories(rows, frac=0.2, seed=7)
+    _, h2, m2 = split_trajectories(rows, frac=0.2, seed=7)
+    assert m1["heldout_trajectories"] == m2["heldout_trajectories"]
+    assert m1["frac"] == 0.2 and m1["seed"] == 7
+    # a different seed shuffles differently
+    _, _, m3 = split_trajectories(rows, frac=0.2, seed=8)
+    # (may coincide by chance on tiny sets; assert the recorded seed differs)
+    assert m3["seed"] == 8
+
+
+def test_smoothed_selection_prefers_a_sustained_peak_over_a_lucky_spike():
+    """window-mean, not argmax. A single spiked checkpoint must NOT win over a
+    sustained plateau -- this is the exact bias the floor run exposed."""
+    from src.offline.selection import Candidate, select_smoothed
+    def C(step, score):
+        return Candidate(step=step, frames=step, coverage=0.0, regret=0.0, doom=0.0,
+                         select_score=score)
+    # a lone spike at step 2, vs a sustained high plateau at steps 4-6
+    cands = [C(1, 0.5), C(2, 1.0), C(3, 0.5), C(4, 0.9), C(5, 0.9), C(6, 0.9)]
+    chosen = select_smoothed(cands, window=3)
+    assert chosen.step in (5, 6), "must pick the sustained plateau, not the spike"
+    # argmax would have picked the step-2 spike
+    assert max(cands, key=lambda c: c.select_score).step == 2
+
+
+def test_smoothed_selection_needs_a_score_on_every_candidate():
+    from src.offline.selection import Candidate, select_smoothed
+    cands = [Candidate(step=1, frames=1, coverage=1.0, regret=0.0, doom=0.0)]  # no score
+    with pytest.raises(ValueError, match="select_score"):
+        select_smoothed(cands)
+
+
+def test_heldout_top1_scores_rankers_on_the_same_frontiers():
+    """Matched-n: a perfect ranker (oracle) scores 1.0, an adversarial ranker 0.0,
+    on the identical held-out frontiers."""
+    from src.offline.selection import heldout_top1
+    from conftest import make_tree
+    inst = make_tree([[1, 2, 3], [], [], []], goals=[1], name="G__pl_1")
+    # frontier = slots {1,2,3}; slot 1 is the goal (delta 0), 2/3 are sterile (inf)
+    held = [_Row("G__pl_1", "bfs", 0, obs=(1, 2, 3))]
+    inst_by = {"G__pl_1": inst}
+    good = lambda name, beam: sorted(range(len(beam)), key=lambda k: inst.delta[beam[k]])
+    bad = lambda name, beam: sorted(range(len(beam)), key=lambda k: -inst.delta[beam[k]])
+    g, ng = heldout_top1(held, good, inst_by)
+    b, nb = heldout_top1(held, bad, inst_by)
+    assert ng == nb == 1
+    assert g == 1.0 and b == 0.0

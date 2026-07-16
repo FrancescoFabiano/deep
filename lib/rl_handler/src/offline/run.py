@@ -36,14 +36,20 @@ from .selection import (
     assert_within_config,
     gate_beats_baselines,
     gate_env_fidelity,
+    heldout_top1,
     onnx_path_for,
     run_planner_expansions,
     select,
+    select_smoothed,
     split_instances,
+    split_trajectories,
     write_selection_sidecar,
 )
 from .telemetry import CheckpointRecord, TelemetryWriter, evaluate_split
 from .tree import load_tree_instance, partition_solvable
+
+SELECTION_WINDOW = 3       # checkpoints averaged in the smoothed selector
+HELDOUT_TRAJ_FRAC = 0.10   # fraction of each instance's rollouts held out for eval
 
 MODELS = ("dqn", "cql", "two_head")
 
@@ -139,6 +145,29 @@ def load_pool(cfg: RunConfig, repo_root: Path) -> tuple[List, Dict[str, Instance
     return insts, caches, {"pool": pool, "unsolvable": [u.name for u in unsolvable]}
 
 
+def _load_test_instances(cfg: RunConfig, repo_root: Path,
+                         caches: Dict[str, InstanceCache]) -> List:
+    """The PRIMARY eval path: held-out TEST instances (cross-instance transfer).
+
+    Returns the solvable test instances and adds their caches in place. Empty when no
+    test CSVs are given -- the FALLBACK (held-out trajectories) then applies. The two
+    coexist by design: test-CSV instances get cross-instance transfer eval, the rest
+    get trajectory holdout, and the two claims are never blurred.
+    """
+    if not cfg.test_csvs:
+        return []
+    csvs = [Path(p) for p in cfg.test_csvs]
+    loaded = [load_tree_instance(p, name=p.parent.name, kind_of_data=cfg.kind_of_data)
+              for p in csvs if p.exists()]
+    solvable, _ = partition_solvable(loaded)
+    for i in solvable:
+        caches.setdefault(i.name, InstanceCache.from_paths(
+            i.state_paths_abs(repo_root),
+            cache_file=_fringe_dir(cfg).parent / "cache" / f"{i.name}.pt",
+            verbose=False))
+    return solvable
+
+
 def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
     if cfg.model not in MODELS:
         raise ValueError(f"model must be one of {MODELS}, got {cfg.model!r}")
@@ -149,20 +178,39 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
 
     insts, caches, meta = load_pool(cfg, repo_root)
     by_name = {i.name: i for i in insts}
-    train_n, val_n = split_instances([i.name for i in insts], cfg.val_frac,
-                                     cfg.seed, cfg.val_instances,
-                                     allow_cross_config=cfg.allow_cross_config)
-    assert_within_config(train_n, val_n,                     # the guardrail
-                         allow_cross_config=cfg.allow_cross_config)
-    train_i = [by_name[n] for n in train_n]
-    val_i = [by_name[n] for n in val_n]
+
+    # ---- EVAL DESIGN: PRIMARY (held-out test instances) or FALLBACK (held-out
+    #      trajectories). Constraint: no instance is dropped from TRAINING, so we do
+    #      NOT split instances into train/val. Every usable instance trains.
+    #        PRIMARY  (test CSVs present): coverage/regret on the held-out TEST
+    #          instances -> genuine cross-instance TRANSFER; selection on coverage.
+    #        FALLBACK (no test CSVs, the common case since test CSVs cannot be
+    #          generated everywhere): hold out ~10% of each instance's TRAJECTORIES,
+    #          select on held-out-frontier top1-oracle-agreement (a low-variance
+    #          ranking signal). coverage/regret is still REPORTED but only as a
+    #          train-set rollout estimate -- NOT held out, and NOT the selection
+    #          target. The two are never blurred: transfer is claimed only on PRIMARY.
+    train_i = insts
+    test_i = _load_test_instances(cfg, repo_root, caches)
+    for t in test_i:
+        by_name.setdefault(t.name, t)
+    eval_mode = "test_instances" if test_i else "held_out_trajectories"
+
+    # The guardrail still applies: training ONE model across configurations is the
+    # cross-config decision (node ids are fluent-set hashes, 0.0% overlap on HASHED).
+    # No instance-level train/val split any more, so the whole training set is the set
+    # that must be within-config unless the run opts in.
+    all_names = [i.name for i in train_i] + [i.name for i in test_i]
+    assert_within_config(all_names, [], allow_cross_config=cfg.allow_cross_config)
+
     cap = cfg.eval_expansion_cap or default_expansion_cap(insts)
     scale = cfg.reward_scale if cfg.reward_scale is not None else default_reward_scale(train_i)
     max_delta = max((d for i in train_i for d in i.delta if d != float("inf")), default=64.0)
 
     print(f"[run] F={cfg.fringe_size} model={cfg.model} "
           f"{cfg.kind_of_data}/{cfg.context_mode} device={device} -> {run_dir}")
-    print(f"[run] usable: train={train_n} val={val_n}  cap={cap} scale={scale:.4f}")
+    print(f"[run] eval_mode={eval_mode}  train_instances={len(train_i)}  "
+          f"test_instances={len(test_i)}  cap={cap} scale={scale:.4f}")
 
     rows, dsum = generate_dataset(train_i, cfg.fringe_size,
                                   policies=cfg.behaviour_policies or BEHAVIOUR_POLICIES,
@@ -170,23 +218,52 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
                                   expansion_cap=cap,
                                   counterfactual=cfg.counterfactual,
                                   n_refill_samples=cfg.n_refill_samples)
+
+    # FALLBACK: split the transitions by trajectory so held-out frontiers are never
+    # one-step neighbours of trained ones. PRIMARY: all rows train; eval is the
+    # test instances.
+    if eval_mode == "held_out_trajectories":
+        train_rows, heldout_rows, split_manifest = split_trajectories(
+            rows, frac=HELDOUT_TRAJ_FRAC, seed=cfg.seed)
+        cov_instances = train_i          # coverage rollout is a TRAIN-SET estimate
+        print(f"[run] held-out-trajectory split: {split_manifest['n_train_rows']} train "
+              f"/ {split_manifest['n_heldout_rows']} eval rows; "
+              f"per-instance {split_manifest['per_instance']}")
+        if split_manifest["instances_with_no_eval"]:
+            print(f"[run] WARNING instances too thin to eval: "
+                  f"{split_manifest['instances_with_no_eval']}")
+    else:
+        train_rows, heldout_rows, split_manifest = rows, [], {"split": "test_instances"}
+        cov_instances = test_i           # coverage rollout is genuine held-out transfer
+
     tel = TelemetryWriter(run_dir / "telemetry.jsonl")
 
-    # ---- baselines, reported on their OWN before any comparison ----
+    def rank_for_policy(name, beam, pol):
+        return make_policy(by_name[name], pol, seed=0)(list(beam))
+
+    # ---- baselines, reported on their OWN before any comparison. Matched-n with RL:
+    #      the SAME held-out frontiers (fallback) or the SAME test instances (primary).
     baselines: Dict[str, Optional[float]] = {}
+    baseline_top1: Dict[str, float] = {}
     for b in BEHAVIOUR_POLICIES:
-        out = evaluate_split(val_i, lambda n, _b=b: make_policy(by_name[n], _b, seed=0),
+        out = evaluate_split(cov_instances, lambda n, _b=b: make_policy(by_name[n], _b, seed=0),
                              cfg.fringe_size, seeds=cfg.eval_seeds, expansion_cap=cap)
         baselines[b] = out["regret_mean_lower_bound"]
+        if eval_mode == "held_out_trajectories":
+            t1, _ = heldout_top1(heldout_rows,
+                                 lambda n, beam, _b=b: rank_for_policy(n, beam, _b), by_name)
+            baseline_top1[b] = t1
+            out["heldout_top1"] = t1
         tel.append(CheckpointRecord(step=-1, frames=0, split=f"baseline:{b}", payload=out))
-    print(f"[run] baselines (val regret lower bound): {baselines}")
+    print(f"[run] baselines regret={baselines}"
+          + (f"  heldout_top1={baseline_top1}" if baseline_top1 else ""))
 
     net = _net(cfg, max_delta).to(device)
     if cfg.model == "two_head":
         from .baseline import train_two_head_baseline
         beams = []
         seen = set()
-        for r in rows:
+        for r in train_rows:                 # held-out frontiers must not train the baseline either
             if r.forced:
                 continue
             k = (r.instance, tuple(r.obs))
@@ -199,7 +276,8 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
                                          context_mode=cfg.context_mode)
         trainer = None
     else:
-        trainer = QTrainer(net, _net(cfg, max_delta), train_i, caches, rows,
+        # QTrainer sees ONLY train_rows -- the held-out trajectories never enter training.
+        trainer = QTrainer(net, _net(cfg, max_delta), train_i, caches, train_rows,
                            TrainConfig(fringe_size=cfg.fringe_size, gamma=cfg.gamma,
                                        lr=cfg.lr, batch_size=cfg.batch_size,
                                        model=cfg.model, cql_alpha=cfg.cql_alpha,
@@ -216,6 +294,9 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
     def policy_for(name):
         return lambda beam: sorted(range(len(beam)), key=lambda k: -score_for(name, beam)[k])
 
+    def rl_rank(name, beam):                 # the RL ranker, for heldout_top1
+        return policy_for(name)(list(beam))
+
     # ---- train with checkpoints ----
     cands: List[Candidate] = []
     every = max(1, cfg.frames // cfg.n_checkpoints)
@@ -223,32 +304,48 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
         if trainer is not None:
             log = trainer.step()
         if step % every == 0 or step == cfg.frames:
-            out = evaluate_split(val_i, policy_for, cfg.fringe_size, seeds=cfg.eval_seeds,
-                                 expansion_cap=cap, score_for=score_for)
+            # coverage/regret: held-out transfer on PRIMARY, train-set estimate on
+            # FALLBACK (labelled in the sidecar -- never reported as transfer there).
+            out = evaluate_split(cov_instances, policy_for, cfg.fringe_size,
+                                 seeds=cfg.eval_seeds, expansion_cap=cap, score_for=score_for)
             if trainer is not None:
                 out.update({k: log[k] for k in ("td_loss", "q_mean", "q_max", "grad_norm", "lr")})
-                out.update(trainer.q_vs_qstar(rows[:200]))
+                out.update(trainer.q_vs_qstar(train_rows[:200]))
             out["dataset"] = dsum
+            out["coverage_is_transfer"] = (eval_mode == "test_instances")
+
+            # THE SELECTION SIGNAL. FALLBACK: held-out-frontier top1 (low variance,
+            # leak-free, matched-n with baselines). PRIMARY: coverage on held-out
+            # instances. Smoothed over a window at select time -- never argmax.
+            if eval_mode == "held_out_trajectories":
+                t1, n_ho = heldout_top1(heldout_rows, rl_rank, by_name)
+                out["heldout_top1"] = t1
+                out["heldout_n"] = n_ho
+                sel_score = t1
+            else:
+                sel_score = out["coverage_at_reference_budget"]
+
             tel.append(CheckpointRecord(step=step, frames=step * cfg.batch_size,
                                         split="val", payload=out))
-            tr = evaluate_split(train_i[:2], policy_for, cfg.fringe_size, seeds=2,
-                                expansion_cap=cap)
-            tel.append(CheckpointRecord(step=step, frames=step * cfg.batch_size,
-                                        split="train", payload=tr))
             cands.append(Candidate(step=step, frames=step * cfg.batch_size,
                                    coverage=out["coverage_at_reference_budget"],
                                    regret=out["regret_mean_lower_bound"],
-                                   doom=out["doom_rate"]))
+                                   doom=out["doom_rate"], select_score=sel_score))
             torch.save(net.state_dict(), run_dir / "checkpoints" / f"ckpt_{step}.pt"
                        if (run_dir / "checkpoints").exists()
                        else _mk(run_dir / "checkpoints") / f"ckpt_{step}.pt")
-            print(f"[run] step {step:5d} coverage={out['coverage_at_reference_budget']:.2f} "
-                  f"regret={out['regret_mean_lower_bound']} "
-                  f"auc={out.get('viability_auc')}")
+            sig = (f"heldout_top1={out['heldout_top1']:.3f}"
+                   if eval_mode == "held_out_trajectories"
+                   else f"coverage={out['coverage_at_reference_budget']:.2f}")
+            print(f"[run] step {step:5d} {sig} "
+                  f"regret={out['regret_mean_lower_bound']} auc={out.get('viability_auc')}")
 
-    best = select(cands)
-    print(f"[run] selected checkpoint {best.step} (coverage {best.coverage:.2f}, "
-          f"regret {best.regret})")
+    # Smoothed selection on the held-out signal -- NOT a single argmax draw (the floor
+    # run showed argmax picks a lucky rollout).
+    best = select_smoothed(cands, window=SELECTION_WINDOW)
+    print(f"[run] selected checkpoint {best.step} "
+          f"(select_score={best.select_score:.3f}, coverage {best.coverage:.2f}, "
+          f"regret {best.regret}) via {eval_mode}, window={SELECTION_WINDOW}")
     net.load_state_dict(torch.load(run_dir / "checkpoints" / f"ckpt_{best.step}.pt"))
 
     # ---- export ONLY the selected checkpoint ----
@@ -300,7 +397,9 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
             print(f"[gate] {g.name}: {verdict} -- {g.detail}")
 
         write_selection_sidecar(
-            onnx, best, train_instances=train_n, val_instances=val_n,
+            onnx, best,
+            train_instances=[i.name for i in train_i],
+            val_instances=[i.name for i in test_i],
             fringe_size=cfg.fringe_size, kind_of_data=cfg.kind_of_data,
             model=cfg.model, gamma=cfg.gamma, reward_scale=scale,
             baselines=baselines, gates=gates,
@@ -308,6 +407,20 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
             extra={"determinism": determinism_report(),
                    "context_mode": cfg.context_mode,
                    "dataset_type": cfg.dataset_type,
+                   "eval_mode": eval_mode,
+                   "selection_window": SELECTION_WINDOW,
+                   "selection_metric": ("heldout_top1"
+                                        if eval_mode == "held_out_trajectories"
+                                        else "coverage_at_reference_budget"),
+                   "split_manifest": split_manifest,
+                   "baseline_heldout_top1": baseline_top1 or None,
+                   "coverage_note": (
+                       "coverage/regret is a TRAIN-SET rollout estimate (rolled from "
+                       "root on trained instances), NOT held out. Selection used "
+                       "held-out-trajectory top1. Transfer is NOT claimed here."
+                       if eval_mode == "held_out_trajectories"
+                       else "coverage/regret is held-out cross-instance TRANSFER "
+                            "(test CSVs)."),
                    "cross_config": cfg.allow_cross_config,
                    "exploratory": cfg.allow_cross_config,
                    "cross_config_note": (
