@@ -138,6 +138,13 @@ class GateResult:
     name: str
     passed: bool
     detail: str
+    armed: bool = True
+    """False = the gate did not RUN (a precondition was absent), which is NOT the same
+    as running and failing. Conflating them made an unarmed env-fidelity gate print
+    'FAIL -- NOT ARMED' and fail the whole run, so disarming a gate we deliberately
+    do not want (planner deployment out of scope) would abort the launcher at step 2.
+    A gate that did not measure anything cannot have a verdict: callers must count
+    only `armed and not passed` as failure."""
 
 
 def gate_onnx_parity(check: Callable[[], Tuple[bool, str]]) -> GateResult:
@@ -180,6 +187,26 @@ def run_planner_expansions(
         )
     if not Path(problem_file).exists():
         raise FileNotFoundError(f"problem file not found: {problem_file}")
+    # KNOWN BUG -- PARKED, NOT FIXED (2026-07-15). This uses planner_flags() for
+    # RL_exploitation but DISCARDS the rest of what it returns, including
+    # "RL_heuristics": "RNG". The C++ default is MIN, so the planner refills the
+    # reservoir deterministically while the offline env models RANDOM refill -- the
+    # exact invariant planner_config exists to enforce ("refill must be RANDOM
+    # (--RL_heuristics RNG), the only mode reproducible offline"). Different refill
+    # rules cannot produce matching expansion counts, so the gate compares two
+    # different algorithms and fails by construction.
+    #
+    # It went unnoticed because the export device leak (run.py) crashed every run
+    # before this ran: gate 2 had NEVER executed. Its one and only verdict --
+    # "FAIL, median 0.738 over 1/3 instances, offline=[27,30,27] planner=[14,9,103]"
+    # -- is this bug, not evidence the env is unfaithful. n=1, and the discrepancy
+    # flips sign across instances.
+    #
+    # NOT fixed because planner deployment is out of scope; the gate is unarmed
+    # (--deep-exe defaults to None). When deployment returns: pass every flag
+    # planner_flags() computes, not one of them -- and note RNG refill makes the gate
+    # stochastic across seeds, which needs its own thought. Scrutinize the first real
+    # verdict; this is still untested code.
     cmd = [str(deep_exe), str(problem_file), "-b", "-c",
            "--search", "RL",
            "--RL_model", str(Path(onnx_path).resolve()),

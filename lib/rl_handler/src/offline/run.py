@@ -10,6 +10,7 @@ USABLE DATA ONLY: instances absent from `usable_pool.json` never enter.
 
 from __future__ import annotations
 
+import copy
 import json
 from dataclasses import dataclass
 from pathlib import Path
@@ -31,6 +32,7 @@ from .policies import BEHAVIOUR_POLICIES, make_policy
 from .qlearning import QTrainer, TrainConfig, default_reward_scale
 from .selection import (
     Candidate,
+    GateResult,
     assert_within_config,
     gate_beats_baselines,
     gate_env_fidelity,
@@ -256,7 +258,16 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
     # bulk_coverage_run.py reads and the C++ checks logits-length against.
     onnx = run_dir / f"frontier_policy_{cfg.fringe_size}_best_by_expansions.onnx"
     if cfg.export_onnx:
-        RLFrontierTrainer(model=net, device="cpu", kind_of_data=cfg.kind_of_data).to_onnx(
+        # EXPORT A COPY. RLFrontierTrainer.__init__ does `self.model = model.to(device)`
+        # and nn.Module.to() mutates IN PLACE, so passing the live `net` with
+        # device="cpu" permanently moved the training model off the GPU. The very next
+        # block (the env-fidelity gate) calls score_for, which still packs to `device`
+        # -- so every run that reached the export died with "mat1 is on cuda:0,
+        # different from other tensors on cpu". --deep-exe defaults to the deep binary,
+        # so the gate is armed by default and this fired on ANY complete run: gate 2 had
+        # never once executed. Export must not mutate the training model.
+        RLFrontierTrainer(model=copy.deepcopy(net), device="cpu",
+                          kind_of_data=cfg.kind_of_data).to_onnx(
             onnx, node_input_dim=1, onnx_frontier_size=cfg.fringe_size)
         print(f"[run] exported {onnx}")
 
@@ -274,13 +285,19 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
                     repo_root=repo_root))
             gates.append(gate_env_fidelity(off, live))
         else:
-            gates.append(type(gate_beats_baselines(1.0, {}))(
+            # armed=False: the gate did not RUN. Not a verdict, so it must not fail
+            # the run -- planner deployment is out of scope and --deep-exe defaults
+            # to None, so this is the EXPECTED state, not a problem.
+            gates.append(GateResult(
                 "env_fidelity", False,
-                "NOT ARMED: no --deep-exe given" if not cfg.deep_exe
-                else "NOT ARMED: no usable instance reaches 20 expansions"))
+                "NOT ARMED: no --deep-exe given (planner deployment out of scope; "
+                "the RL-vs-baseline claim is made IN THE OFFLINE ENV)" if not cfg.deep_exe
+                else "NOT ARMED: no usable instance reaches 20 expansions",
+                armed=False))
         gates.append(gate_beats_baselines(best.regret, baselines))
         for g in gates:
-            print(f"[gate] {g.name}: {'PASS' if g.passed else 'FAIL'} -- {g.detail}")
+            verdict = "PASS" if g.passed else ("FAIL" if g.armed else "SKIP")
+            print(f"[gate] {g.name}: {verdict} -- {g.detail}")
 
         write_selection_sidecar(
             onnx, best, train_instances=train_n, val_instances=val_n,

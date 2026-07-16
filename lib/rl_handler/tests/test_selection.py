@@ -8,6 +8,7 @@ import pytest
 
 from src.offline.selection import (
     Candidate,
+    GateResult,
     assert_within_config,
     config_of,
     gate_beats_baselines,
@@ -261,3 +262,24 @@ def test_planner_count_is_parsed(tmp_path):
     prob = tmp_path / "p.txt"; prob.write_text("x")
     assert run_planner_expansions(exe, prob, tmp_path / "m.onnx", 8, separated=True,
                                   repo_root=tmp_path, timeout_s=10) == 9031
+
+
+def test_an_unarmed_gate_is_not_a_failed_gate():
+    """A gate that did not RUN has no verdict. Conflating 'not measured' with
+    'measured and failed' made the unarmed env-fidelity gate print `FAIL -- NOT
+    ARMED` and fail the whole run, so disarming a gate we deliberately do not want
+    (planner deployment out of scope) would abort the launcher at step 2.
+
+    Callers must count only `armed and not passed` as failure.
+    """
+    unarmed = GateResult("env_fidelity", False, "NOT ARMED: no --deep-exe given",
+                         armed=False)
+    failed = GateResult("env_fidelity", False, "median 0.738 > tolerance 0.100")
+    passed = GateResult("beats_baselines", True, "beats bfs/dfs/random")
+
+    assert not unarmed.armed and unarmed.passed is False
+    assert failed.armed and passed.armed, "gates are armed unless said otherwise"
+
+    fails = lambda gs: any(g.armed and not g.passed for g in gs)
+    assert not fails([unarmed, passed]), "an unarmed gate must NOT fail the run"
+    assert fails([failed, passed]), "a genuinely failed gate MUST fail the run"

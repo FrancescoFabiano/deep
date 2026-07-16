@@ -19,6 +19,7 @@ names only as documentation.
 
 from __future__ import annotations
 
+import copy
 import warnings
 
 import numpy as np
@@ -417,4 +418,44 @@ def test_context_modes_actually_use_the_context(mode, tmp_path):
     assert not np.allclose(drop[:3], full[:3], atol=1e-5), (
         f"{mode} produced identical scores after removing a candidate -- the "
         f"context is inert and this mode has degenerated to `none`"
+    )
+
+
+# ------------------------------------------- export must not mutate the model ---
+
+def test_export_does_not_move_the_training_model_off_its_device(tmp_path):
+    """REGRESSION. `RLFrontierTrainer.__init__` does `self.model = model.to(device)`,
+    and nn.Module.to() mutates IN PLACE. run.py exported with
+    `RLFrontierTrainer(model=net, device="cpu")`, which permanently moved the LIVE
+    training net to CPU; the env-fidelity gate then packed to `device` and every run
+    that reached the export died with
+
+        RuntimeError: mat1 is on cuda:0, different from other tensors on cpu
+
+    `--deep-exe` defaults to the deep binary, so the gate is armed by default and this
+    fired on any complete run -- gate 2 had never executed. Export a COPY.
+    """
+    model = _model("self_attention")
+    dev_before = next(model.parameters()).device
+
+    # what run.py does now: export a deepcopy, never the live model
+    _export(copy.deepcopy(model), tmp_path, F=4, kind="merged")
+
+    dev_after = next(model.parameters()).device
+    assert dev_after == dev_before, (
+        f"export moved the training model {dev_before} -> {dev_after}; it must not "
+        f"touch the live net"
+    )
+
+
+def test_exporting_the_live_model_is_what_broke_it(tmp_path):
+    """Pins the MECHANISM, so nobody 'simplifies' the deepcopy away: handing the live
+    model to the export trainer DOES relocate it. This is the bug, demonstrated."""
+    model = _model("self_attention")
+    assert next(model.parameters()).device.type == "cpu"
+    moved = torch.device("meta")           # a device we can assert on without a GPU
+    RLFrontierTrainer(model=model, device=moved, kind_of_data="merged")
+    assert next(model.parameters()).device.type == "meta", (
+        "RLFrontierTrainer no longer relocates the model in place -- if this is "
+        "intentional, the deepcopy in run.py's export can be revisited"
     )

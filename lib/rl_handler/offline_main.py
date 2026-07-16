@@ -130,8 +130,16 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--export-onnx", dest="export_onnx", action="store_true", default=True)
     p.add_argument("--no-export-onnx", dest="export_onnx", action="store_false")
     p.add_argument("--fidelity-instances", type=int, default=3)
-    p.add_argument("--deep-exe", default=str(REPO / "cmake-build-release-nn/bin/deep"),
-                   help="the env-fidelity gate is UNARMED without this")
+    p.add_argument("--deep-exe", default=None,
+                   help="Path to the deep binary. ARMS the env-fidelity gate, which "
+                        "replays the policy in the REAL planner and compares expansion "
+                        "counts. Default None = UNARMED: planner deployment is out of "
+                        "scope, and the RL-vs-baseline claim is made IN THE OFFLINE "
+                        "ENV, which is what we measure. Pass a path only when planner "
+                        "deployment is back in scope -- and see the note in run.py: "
+                        "the gate does not pass --RL_heuristics RNG, so its first "
+                        "verdict was measured against a MIN-refill planner and is not "
+                        "to be trusted until that is fixed.")
     return p
 
 
@@ -165,7 +173,11 @@ def main(argv=None) -> int:
             behaviour_policies=a.behaviour_policies,
         )
         out = run(cfg, REPO)
-        if any(not g.passed for g in out["gates"]):
+        # Only an ARMED gate can fail the run. An unarmed gate did not measure
+        # anything, so it has no verdict -- counting it as failure meant deliberately
+        # disarming the env-fidelity gate (planner deployment out of scope) would
+        # abort the launcher at step 2.
+        if any(g.armed and not g.passed for g in out["gates"]):
             rc = 1
     return rc
 
