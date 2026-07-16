@@ -106,6 +106,26 @@ def test_writer_roundtrips_jsonl(tmp_path, t19):
     assert json.loads(json.dumps(got)) == got
 
 
+def test_a_new_writer_truncates_the_previous_runs_rows(tmp_path, t19):
+    """A run's telemetry.jsonl must hold ONLY that run's rows. The writer used to
+    append, so a re-run into an existing fringe dir mixed its rows with the stale
+    previous run's (measured: 44 old + 24 new on an F=4 re-run), silently corrupting
+    the figures. Each new writer truncates."""
+    path = tmp_path / "telemetry.jsonl"
+    out = evaluate_split([t19], _pol_for(t19), fringe_size=3, seeds=2, expansion_cap=200)
+
+    w1 = TelemetryWriter(path)
+    w1.append(CheckpointRecord(step=1, frames=10, split="run1", payload=out))
+    w1.append(CheckpointRecord(step=2, frames=20, split="run1", payload=out))
+
+    w2 = TelemetryWriter(path)                       # a second run, same dir
+    w2.append(CheckpointRecord(step=1, frames=10, split="run2", payload=out))
+
+    got = w2.read()
+    assert len(got) == 1, "the second run must not inherit the first run's rows"
+    assert got[0]["split"] == "run2"
+
+
 def test_telemetry_never_branches_on_dataset_type():
     import ast, pathlib
     tree = ast.parse(pathlib.Path("src/offline/telemetry.py").read_text())

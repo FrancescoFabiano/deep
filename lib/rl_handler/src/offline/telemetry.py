@@ -190,11 +190,20 @@ def _pct(rs, q):
 
 
 class TelemetryWriter:
-    """Append-only JSONL. Figures read this; nothing plots from the training loop."""
+    """One run's JSONL. TRUNCATES on construction: a run's telemetry.jsonl must
+    contain ONLY that run's rows.
+
+    It used to open in append mode, so a re-run into an existing fringe dir appended
+    its rows to the STALE previous run's file (measured: an F=4 re-run left 44 old +
+    24 new rows). Figures and analysis then mixed two runs -- and since selection reads
+    the newest rows while a plot reads all rows, the old rows (a different eval_mode,
+    no heldout_top1) silently corrupted the figures. Truncate once here; append per row.
+    """
 
     def __init__(self, path: str | Path):
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
+        self.path.write_text("")          # truncate: this run owns the file
 
     def append(self, rec: CheckpointRecord) -> None:
         with self.path.open("a") as fh:
