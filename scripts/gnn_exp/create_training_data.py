@@ -348,7 +348,7 @@ def run_cpp_on_training_files_multithreaded(
     )
 
     # Determine number of threads to use
-    max_threads = min(8, max(1, (os.cpu_count() or 4) - 2))
+    max_threads = 4 #min(8, max(1, (os.cpu_count() or 4) - 2))
 
     def wrapper(file_path):
         time.sleep(5)  # Delay start like in original code

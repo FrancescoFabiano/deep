@@ -30,8 +30,6 @@ BATCH="${BATCH:-batch1}"                  # -> exp/rl_exp/batch1
 ALGO="${ALGO:-dqn}"                       # dqn | cql
 MODE="${MODE:-separated}"                 # separated | merged
 STRICT="${STRICT:-yes}"                   # yes | no          (--strong_equality)
-PAD="${PAD:-no}"                          # yes | no          (pad fringe with closed nodes)
-STRAT="${STRAT:-no}"                      # yes | no          (d*-stratified replay)
 CTX="${CTX:-self_attention}"              # self_attention | mean_pool
 
 # --- data handling ---
@@ -63,7 +61,7 @@ DISCARD_FACTOR="${DISCARD_FACTOR:-0}"
 
 # A depth bound that CONTAINS the optimal keeps the whole solution path while cutting
 # the tree where it no longer matters. CC optimals are ~4-7; SC needs the depth.
-DEPTH_MAP="${DEPTH_MAP:-CC:25,SC:40,SCRich:40}"
+DEPTH_MAP="${DEPTH_MAP:-CC:25,SC:40,SCRich:40,Grapevine:25,Assemble:25,CoinBox:25}"
 # No MAX_DEPTH fallback: DEPTH_MAP is AUTHORITATIVE. A domain absent from it fails
 # loudly rather than silently inheriting 40 -- which is the UNFAITHFUL setting for
 # CC and is what blew past the ceiling and poisoned the tree.
@@ -158,7 +156,7 @@ echo ""
 echo "============================================================"
 echo "  BATCH:   ${BATCH_DIR}"
 echo "  algo=${ALGO}  mode=${MODE}  strict=${STRICT}"
-echo "  pad=${PAD}  strat=${STRAT}  ctx=${CTX}"
+echo "  ctx=${CTX}"
 echo "  fringes: ${FRINGE_SIZES}"
 echo "  gen  flags: ${GEN_FLAG:-<none>}  discard=${DISCARD_FACTOR}  depth_map=${DEPTH_MAP}"
 echo "  train flags: ${TRAIN_FLAG} ${TRAIN_EXTRA}"

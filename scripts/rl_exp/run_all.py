@@ -29,10 +29,8 @@ OUT = Path(cli.out_dir) if SCOPED else Path("combined_results")
 OUT.mkdir(parents=True, exist_ok=True)
 #print(f"[DEBUG] Output dir: {OUT.resolve()}")
 
-#FRINGES = [8, 16, 32, 64]
-#STRICT_FLAGS = [True, False]
-FRINGES = [32, 64]
-STRICT_FLAGS = [True, False]
+FRINGES = [4, 8, 16, 32]
+STRICT_FLAGS = [True]
 
 def run(label, args, split_path, prefix, fringe, strict):
     #print("\n[DEBUG] ===== RUN START =====")

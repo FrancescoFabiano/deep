@@ -175,8 +175,19 @@ def make_figure(subset, survivors, metric, variant, domain, color_map, out):
         means = np.array([np.mean(by_pl[x]) for x in xs])
         stds = np.array([np.std(by_pl[x]) for x in xs])  # population std (0 for singletons)
         color = color_map[lbl]
+        linestyle = "--" if "bfs_" in lbl else "-"
 
-        ax.plot(xs, means, marker="o", markersize=4, linewidth=1.5, label=lbl, color=color)
+        ax.plot(
+            xs,
+            means,
+            marker="o",
+            markersize=4,
+            linewidth=1.5,
+            linestyle=linestyle,
+            label=lbl,
+            color=color,
+        )
+
         ax.fill_between(xs, means - stds, means + stds, color=color, alpha=0.18)
         plotted_x.update(xs)
 
