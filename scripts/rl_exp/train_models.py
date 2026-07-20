@@ -51,7 +51,6 @@ import shutil
 import subprocess
 import os
 import sys
-import time
 from collections import deque
 from pathlib import Path
 
@@ -101,19 +100,24 @@ def domain_test_csvs(models_root: Path, domain: str) -> list[Path]:
     return _instance_csvs(models_root / domain / "test_data")
 
 
-def run_one(cmd: list[str], prefix: str) -> int:
-    """Run offline_main.py, streaming one log line every ~15s; return exit code.
+def run_one(cmd: list[str], prefix: str, domain: str = "?") -> int:
+    """Run offline_main.py with a PARENT-side tqdm progress bar; return exit code.
 
-    The 15s throttle keeps long training runs readable, but would hide a
-    fast-failing error (e.g. a rejected kwarg).  So the most recent lines are
-    kept in a ring buffer and dumped verbatim on a non-zero exit — kwargs
-    errors are never silent.
+    The bar lives here, not in the child: the child is piped (never a tty), so a
+    bar there cannot render through this line-buffered readline loop (B0/B1). We
+    parse the child's stable per-checkpoint line
+    `[run] ckpt F=.. step=.. frames=.. total=.. ndcg=.. td=..` to advance ONE bar
+    over FRAMES, resetting per fringe (one offline_main child trains ALL
+    --fringe-sizes in sequence). Every other child line -- the H2 row-share table,
+    the H3 zero-scorable warning, goals-loaded, gate results, errors -- is routed
+    through tqdm.write so it prints above the bar without corrupting it.
+
+    TTY GUARD: when this parent's stderr is NOT a tty (backgrounded / tee'd to a
+    log), a \r bar would be thousands of control chars, so we fall back to plain
+    line output -- every child line is printed. The child stays bounded: its own
+    bar disables itself when piped, so only newline prints stream here. On a
+    non-zero exit the last lines are dumped so kwargs errors are never silent.
     """
-    # -u + PYTHONUNBUFFERED: the child's stdout is BLOCK-buffered when piped (not a
-    # tty), so without this the per-checkpoint prints sit in the pipe buffer and this
-    # readline loop sees nothing until the child exits -- the observability gap that
-    # made the floor run look hung. (The tqdm bar in run.py disables itself when not a
-    # tty, so it never spams \r into these logs; only the newline prints stream here.)
     if cmd and "-u" not in cmd:
         cmd = [cmd[0], "-u", *cmd[1:]]
     env = {**os.environ, "PYTHONUNBUFFERED": "1"}
@@ -122,15 +126,36 @@ def run_one(cmd: list[str], prefix: str) -> int:
         cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1,
         env=env,
     )
-    last_print = 0.0
+    import re
+    from tqdm import tqdm
+    is_tty = sys.stderr.isatty()
+    ckpt_re = re.compile(
+        r"\[run\] ckpt F=(\d+) step=(\d+) frames=(\d+) total=(\d+) ndcg=(\S+) td=(\S+)")
     recent: deque[str] = deque(maxlen=40)
+    bar = None
+    cur_F = None
     assert process.stdout is not None
-    for line in iter(process.stdout.readline, ""):
-        recent.append(line.rstrip())
-        now = time.time()
-        if now - last_print >= 15:
-            print(f"{prefix} {recent[-1]}", flush=True)
-            last_print = now
+    for raw in iter(process.stdout.readline, ""):
+        line = raw.rstrip()
+        recent.append(line)
+        m = ckpt_re.search(line)
+        if m and is_tty:
+            F, _step, frames, total, ndcg, td = m.groups()
+            if bar is None or F != cur_F:
+                if bar is not None:
+                    bar.close()
+                bar = tqdm(total=int(total), desc=f"{domain}-{F}fringe", unit="frame",
+                           unit_scale=True, dynamic_ncols=True, leave=True)
+                cur_F = F
+            bar.n = int(frames)
+            bar.set_postfix_str(f"ndcg={ndcg} td={td}", refresh=False)
+            bar.refresh()
+        elif is_tty and bar is not None:
+            bar.write(f"{prefix} {line}")   # non-checkpoint line, above the bar
+        else:
+            print(f"{prefix} {line}", flush=True)   # startup lines, and the non-tty path
+    if bar is not None:
+        bar.close()
     process.stdout.close()
     rc = process.wait()
     if rc != 0:
@@ -197,7 +222,7 @@ def train_domain(
         # from the forwarded remainder; pass it through deliberately.
         cmd += ["--fringe-sizes", *(str(F) for F in fringe_sizes)]
 
-        rc = run_one(cmd, prefix)
+        rc = run_one(cmd, prefix, domain=domain)
         if rc != 0:
             # Fail loudly: propagate offline_main's non-zero exit immediately
             # (covers rejected kwargs and training errors alike).

@@ -486,8 +486,15 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
                    else f"coverage={out['coverage_at_reference_budget']:.2f}")
             bar.set_postfix_str(
                 f"{sig} td={out.get('td_loss', float('nan')):.4f}", refresh=False)
-            print(f"[run] step {step:5d} {sig} "
-                  f"regret={out['regret_mean_lower_bound']} auc={out.get('viability_auc')}")
+            # STABLE, PARSEABLE per-checkpoint line: train_models.py (the parent, which is
+            # a tty) parses `F=/step=/frames=/total=/ndcg=/td=` to drive its progress bar --
+            # a bar in this child cannot render through the parent's line-buffered pipe.
+            # Do not reorder/rename these fields without updating the parser.
+            _ndcg = out.get("heldout_ndcg")
+            print(f"[run] ckpt F={cfg.fringe_size} step={step} "
+                  f"frames={step * cfg.batch_size} total={cfg.frames * cfg.batch_size} "
+                  f"ndcg={'nan' if _ndcg is None else round(_ndcg, 4)} "
+                  f"td={out.get('td_loss', float('nan')):.4f}")
     bar.close()
 
     # Smoothed selection on the held-out signal -- NOT a single argmax draw (the floor
