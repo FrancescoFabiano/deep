@@ -18,15 +18,35 @@ makes it safe to train through one and deploy through the other.
 
 from __future__ import annotations
 
-from typing import Dict, List, Sequence, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple
 
 import torch
 
-from .encoder import InstanceCache, pack_fringe
+from .encoder import InstanceCache, StateGraph, pack_fringe, pack_goal_tensors
 
 
 def default_device() -> str:
     return "cuda" if torch.cuda.is_available() else "cpu"
+
+
+def assert_goal_mode_consistent(net, goal_present: bool) -> None:
+    """MODE/PLUMBING consistency check (S1), run at every net call.
+
+    This is NOT a statement about the model being invariant/insensitive to the goal --
+    it enforces that the PLUMBING matches the MODE: separated <-> a goal is present,
+    merged <-> no goal. `goal_graphs=None` used to mean two different things ("merged,
+    correctly no goal" and "separated, goal missing"), and that ambiguity WAS the bug.
+    Here it is made impossible to represent. The model's own `use_goal_separate_input`
+    is the single source of truth for the mode; nothing re-derives it from
+    cfg/dataset_type.
+    """
+    sep = bool(getattr(net, "use_goal_separate_input", False))
+    if sep != bool(goal_present):
+        raise AssertionError(
+            "goal/mode consistency check failed: model.use_goal_separate_input="
+            f"{sep} but goal_present={bool(goal_present)}. Separated requires a goal "
+            "at every net call; merged forbids one."
+        )
 
 
 def pack_single(
@@ -34,9 +54,16 @@ def pack_single(
     beam: Sequence[int],
     fringe_size: int,
     device,
+    goal_graph: Optional[StateGraph] = None,
 ) -> Dict[str, torch.Tensor]:
-    """One fringe, exactly as `FringeEvalRL::fringe_to_tensor_minimal` builds it."""
+    """One fringe, exactly as `FringeEvalRL::fringe_to_tensor_minimal` builds it.
+
+    `goal_graph` (separated mode): the fringe's instance goal, emitting the 4 goal
+    tensors. `None` -> merged, byte-identical to before (no goal keys added).
+    """
     p = pack_fringe(cache, list(beam), fringe_size)
+    if goal_graph is not None:
+        p.update(pack_goal_tensors([goal_graph]))
     return {k: v.to(device) for k, v in p.items()}
 
 
@@ -44,12 +71,16 @@ def pack_batch(
     caches: Dict[str, InstanceCache],
     picks: Sequence[Tuple[str, Sequence[int]]],
     device,
+    goal_graphs: Optional[Sequence[StateGraph]] = None,
 ) -> Dict[str, torch.Tensor]:
     """Many beams in ONE graph.
 
     `membership` continues across beams (global slot ids); `candidate_batch[j]`
     says which beam slot j belongs to. Also returns `slot_offset`, the index of
     each beam's first slot, so a caller can gather the slot for a chosen action.
+
+    `goal_graphs` (separated mode): one goal per fringe, aligned with `picks`,
+    emitting the 4 goal tensors. `None` -> merged, byte-identical (no goal keys).
     """
     nf, ei, ea, mem, cb = [], [], [], [], []
     slot_offset: List[int] = []
@@ -64,7 +95,7 @@ def pack_batch(
         slot_offset.append(slot_off)
         node_off += int(p["node_features"].numel())
         slot_off += len(beam)
-    return {
+    out = {
         "node_features": torch.cat(nf).to(device),
         "edge_index": torch.cat(ei, dim=1).to(device),
         "edge_attr": torch.cat(ea).to(device),
@@ -74,6 +105,13 @@ def pack_batch(
         "beam_sizes": torch.tensor([len(b) for _, b in picks], dtype=torch.int64, device=device),
         "n_slots": slot_off,
     }
+    if goal_graphs is not None:
+        if len(goal_graphs) != len(picks):
+            raise ValueError(
+                f"goal_graphs ({len(goal_graphs)}) must align with picks ({len(picks)})."
+            )
+        out.update({k: v.to(device) for k, v in pack_goal_tensors(goal_graphs).items()})
+    return out
 
 
 def segment_max(values: torch.Tensor, seg: torch.Tensor, n_seg: int) -> torch.Tensor:

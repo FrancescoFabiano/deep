@@ -402,6 +402,98 @@ def heldout_ranking_metrics(
     return out
 
 
+_RANK_KEYS = ("top1", "regret_at_decision", "picked_dead", "ndcg", "js", "kendall_tau")
+
+
+def _order_score(ranking: Sequence[int], n: int) -> list:
+    """ranking (slots best-first) -> per-slot score (higher = ranked earlier), for tau-b."""
+    s = [0.0] * n
+    for pos, slot in enumerate(ranking):
+        s[slot] = -pos
+    return s
+
+
+def heldout_ranking_micro_macro(
+    heldout_rows: Sequence,
+    instances_by_name: Dict[str, TreeInstance],
+    logits_for: Callable[[str, Sequence[int]], Sequence[float]],
+    agreement_rankers: Optional[Dict[str, Callable[[str, Sequence[int]], Sequence[int]]]] = None,
+) -> Dict[str, object]:
+    """Fix 3 (micro/macro) + Fix 2 (policy agreement) in ONE forward pass over the unique
+    held-out frontiers. Returns the pooled MICRO metrics (identical to
+    `heldout_ranking_metrics`, so the selector is unchanged), per-instance metrics + MACRO
+    + EFFECTIVE INSTANCE COUNT, and -- when `agreement_rankers` is given -- top1/tau-b
+    agreement of the MODEL's ranking with EACH behaviour policy's ranking. The single pass
+    is what keeps checkpoint eval from getting slower: model logits are computed once and
+    reused for micro, macro, and agreement.
+
+    Recording only: selection stays on micro. `agreement_rankers` must be built with a
+    FIXED tie-break seed by the caller (recorded in telemetry) so the curve carries no
+    tie-break noise -- every behaviour policy uses the mandatory random tie-break.
+    """
+    seen: set = set()
+    pooled: Dict[str, list] = defaultdict(list)
+    per: Dict[str, Dict[str, list]] = defaultdict(lambda: defaultdict(list))
+    ag_top1: Dict[str, list] = defaultdict(list)
+    ag_taub: Dict[str, list] = defaultdict(list)
+    n_pool = 0
+    n_inst: Dict[str, int] = defaultdict(int)
+    for r in heldout_rows:
+        if getattr(r, "forced", False):
+            continue
+        fkey = (r.instance, tuple(r.obs))
+        if fkey in seen:
+            continue
+        seen.add(fkey)
+        beam = list(r.obs)
+        inst = instances_by_name[r.instance]
+        deltas = [inst.delta[v] for v in beam]
+        if len(beam) < 2 or all(d >= INF_DELTA for d in deltas):
+            continue
+        logits = list(logits_for(r.instance, beam))
+        m = ranking_metrics_for_frontier(deltas, logits=logits)
+        for k, v in m.items():
+            if v is not None:
+                pooled[k].append(v)
+                per[r.instance][k].append(v)
+        n_pool += 1
+        n_inst[r.instance] += 1
+        if agreement_rankers:
+            model_rank = sorted(range(len(beam)), key=lambda k: -logits[k])
+            for pol, rank_fn in agreement_rankers.items():
+                pr = list(rank_fn(r.instance, beam))
+                ag_top1[pol].append(1.0 if model_rank[0] == pr[0] else 0.0)
+                if len(beam) > 2:
+                    from scipy.stats import kendalltau
+                    t = kendalltau(_order_score(model_rank, len(beam)),
+                                   _order_score(pr, len(beam))).statistic
+                    if t == t:  # not NaN
+                        ag_taub[pol].append(t)
+
+    def _mean(d, k):
+        return (sum(d[k]) / len(d[k])) if d[k] else None
+
+    def _m(lst):
+        return (sum(lst) / len(lst)) if lst else None
+
+    micro = {"n": n_pool, **{k: _mean(pooled, k) for k in _RANK_KEYS}}
+    per_instance = {i: {"n": n_inst[i], **{k: _mean(per[i], k) for k in _RANK_KEYS}}
+                    for i in per}
+    ndcgs = [pi["ndcg"] for pi in per_instance.values() if pi["ndcg"] is not None]
+    top1s = [pi["top1"] for pi in per_instance.values() if pi["top1"] is not None]
+    out = {
+        "micro": micro,
+        "per_instance": per_instance,
+        "ndcg_macro": (sum(ndcgs) / len(ndcgs)) if ndcgs else None,
+        "top1_macro": (sum(top1s) / len(top1s)) if top1s else None,
+        "effective_instance_count": len(per_instance),
+    }
+    if agreement_rankers:
+        out["agreement"] = {pol: {"top1": _m(ag_top1[pol]), "taub": _m(ag_taub[pol])}
+                            for pol in agreement_rankers}
+    return out
+
+
 # ----------------------------------------------------------- the gates ------
 
 @dataclass

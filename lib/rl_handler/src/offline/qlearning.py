@@ -39,14 +39,16 @@ import torch
 from torch import nn
 
 from .batching import (
+    assert_goal_mode_consistent,
     default_device,
     pack_batch,
+    pack_single,
     segment_argmax,
     segment_logsumexp,
     segment_max,
 )
 from .dataset import Transition
-from .encoder import InstanceCache
+from .encoder import InstanceCache, StateGraph
 from .env import DEFAULT_GAMMA, assert_gamma
 from .metrics import is_argmin_action, r2
 from .tree import INF_DELTA, TreeInstance
@@ -116,6 +118,7 @@ class QTrainer:
         caches: Dict[str, InstanceCache],
         transitions: Sequence[Transition],
         cfg: TrainConfig,
+        goals: Optional[Dict[str, StateGraph]] = None,
     ):
         if cfg.model not in MODELS:
             raise ValueError(f"model must be one of {MODELS}, got {cfg.model!r}")
@@ -127,6 +130,11 @@ class QTrainer:
         self.target.load_state_dict(self.model.state_dict())
         for p in self.target.parameters():
             p.requires_grad_(False)
+        # S1/S2 boundary invariant, once at construction: a separated model MUST have a
+        # goal map, a merged model MUST NOT. Online and target share `_logits`, so both
+        # nets are covered by the same per-call assertion downstream.
+        assert_goal_mode_consistent(self.model, goals is not None)
+        self.goals = goals
         self.by_name = {i.name: i for i in instances}
         self.caches = caches
         self.data = list(transitions)
@@ -153,11 +161,22 @@ class QTrainer:
     # ---- forward helpers -------------------------------------------------
 
     def _logits(self, net: nn.Module, picks) -> tuple[torch.Tensor, Dict]:
-        p = pack_batch(self.caches, picks, self.device)
+        # ONE goal decision, per instance, looked up by name (not stored per row).
+        # Online and target both flow through here -> identical goal treatment, which
+        # matters because double-DQN takes argmax(online) and value(target).
+        goal_graphs = (
+            [self.goals[name] for name, _ in picks] if self.goals is not None else None
+        )
+        assert_goal_mode_consistent(net, goal_graphs is not None)
+        p = pack_batch(self.caches, picks, self.device, goal_graphs=goal_graphs)
         out = net(
             node_features=p["node_features"], edge_index=p["edge_index"],
             edge_attr=p["edge_attr"], membership=p["membership"],
             candidate_batch=p["candidate_batch"], mask=None,
+            goal_node_features=p.get("goal_node_features"),
+            goal_edge_index=p.get("goal_edge_index"),
+            goal_edge_attr=p.get("goal_edge_attr"),
+            goal_batch=p.get("goal_batch"),
         )
         return out, p
 
@@ -285,15 +304,20 @@ class QTrainer:
     def greedy_policy(self, instance_name: str):
         """argmax logits over the active slots -- exactly what the planner pops."""
         cache = self.caches[instance_name]
+        goal_graph = self.goals[instance_name] if self.goals is not None else None
 
         def _policy(beam: Sequence[int]) -> List[int]:
-            from .batching import pack_single
-            p = pack_single(cache, beam, len(beam), self.device)
+            assert_goal_mode_consistent(self.model, goal_graph is not None)
+            p = pack_single(cache, beam, len(beam), self.device, goal_graph=goal_graph)
             with torch.no_grad():
                 s = self.model(
                     node_features=p["node_features"], edge_index=p["edge_index"],
                     edge_attr=p["edge_attr"], membership=p["membership"],
                     candidate_batch=None, mask=p["mask"],
+                    goal_node_features=p.get("goal_node_features"),
+                    goal_edge_index=p.get("goal_edge_index"),
+                    goal_edge_attr=p.get("goal_edge_attr"),
+                    goal_batch=p.get("goal_batch"),
                 )
             sc = s.detach().cpu().tolist()
             return sorted(range(len(beam)), key=lambda k: -sc[k])

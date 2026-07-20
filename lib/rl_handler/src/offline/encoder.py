@@ -452,6 +452,55 @@ def segment_argmax(values: torch.Tensor, ptr: torch.Tensor) -> torch.Tensor:
     return first
 
 
+def pack_goal_tensors(goal_graphs: Sequence["StateGraph"]) -> Dict[str, torch.Tensor]:
+    """The 4 separated-mode goal tensors from one StateGraph PER FRINGE.
+
+    ``goal_batch=b`` marks fringe b's goal nodes so ``goal_emb`` aligns one pooled
+    row per fringe with ``candidate_batch`` (see ``FrontierPolicyNetwork._pool_goal``).
+    Every goal graph must be non-None with >=1 node -- a missing/empty goal is the
+    separated-mode bug this whole change exists to prevent, so it raises, never
+    silently drops to the zeros fallback. Single implementation shared by
+    ``pack_fringe_batch`` (batched) and ``batching.pack_batch``/``pack_single``.
+    """
+    node_parts: List[torch.Tensor] = []
+    edge_index_parts: List[torch.Tensor] = []
+    edge_attr_parts: List[torch.Tensor] = []
+    batch_parts: List[torch.Tensor] = []
+    node_offset = 0
+    for b, g in enumerate(goal_graphs):
+        if g is None:
+            raise ValueError(
+                "separated mode requires a goal graph for every fringe; "
+                f"got None at fringe {b}."
+            )
+        gn = int(g.node_ids.numel())
+        if gn == 0:
+            raise ValueError(
+                f"separated mode requires >=1 goal node per fringe; "
+                f"fringe {b} has an empty goal graph."
+            )
+        node_parts.append(g.node_ids)
+        batch_parts.append(torch.full((gn,), b, dtype=torch.int64))
+        if g.edge_index.numel() > 0:
+            edge_index_parts.append(g.edge_index + node_offset)
+            edge_attr_parts.append(g.edge_attr)
+        node_offset += gn
+    return {
+        "goal_node_features": torch.cat(node_parts, dim=0),
+        "goal_edge_index": (
+            torch.cat(edge_index_parts, dim=1)
+            if edge_index_parts
+            else torch.zeros((2, 0), dtype=torch.int64)
+        ),
+        "goal_edge_attr": (
+            torch.cat(edge_attr_parts, dim=0)
+            if edge_attr_parts
+            else torch.zeros((0,), dtype=torch.int64)
+        ),
+        "goal_batch": torch.cat(batch_parts, dim=0),
+    }
+
+
 def pack_fringe_batch(
     fringes: Sequence[Tuple[InstanceCache, Sequence[int]]],
     goal_graphs: Optional[Sequence[Optional[StateGraph]]] = None,
@@ -517,42 +566,6 @@ def pack_fringe_batch(
                 f"goal_graphs ({len(goal_graphs)}) must align with fringes "
                 f"({len(fringes)})."
             )
-        goal_node_parts: List[torch.Tensor] = []
-        goal_edge_index_parts: List[torch.Tensor] = []
-        goal_edge_attr_parts: List[torch.Tensor] = []
-        goal_batch_parts: List[torch.Tensor] = []
-        goal_node_offset = 0
-        for b, g in enumerate(goal_graphs):
-            if g is None:
-                raise ValueError(
-                    "separated mode requires a goal graph for every fringe; "
-                    f"got None at fringe {b}."
-                )
-            gn = int(g.node_ids.numel())
-            if gn == 0:
-                # >=1 goal node per fringe keeps goal_batch rows aligned with
-                # candidate_batch (see _pool_goal).
-                raise ValueError(
-                    f"separated mode requires >=1 goal node per fringe; "
-                    f"fringe {b} has an empty goal graph."
-                )
-            goal_node_parts.append(g.node_ids)
-            goal_batch_parts.append(torch.full((gn,), b, dtype=torch.int64))
-            if g.edge_index.numel() > 0:
-                goal_edge_index_parts.append(g.edge_index + goal_node_offset)
-                goal_edge_attr_parts.append(g.edge_attr)
-            goal_node_offset += gn
-        out["goal_node_features"] = torch.cat(goal_node_parts, dim=0)
-        out["goal_edge_index"] = (
-            torch.cat(goal_edge_index_parts, dim=1)
-            if goal_edge_index_parts
-            else torch.zeros((2, 0), dtype=torch.int64)
-        )
-        out["goal_edge_attr"] = (
-            torch.cat(goal_edge_attr_parts, dim=0)
-            if goal_edge_attr_parts
-            else torch.zeros((0,), dtype=torch.int64)
-        )
-        out["goal_batch"] = torch.cat(goal_batch_parts, dim=0)
+        out.update(pack_goal_tensors(goal_graphs))
 
     return out

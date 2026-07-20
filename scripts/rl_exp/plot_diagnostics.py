@@ -242,6 +242,45 @@ def fig_top1_bars(val, base, out: Path, F: int):
     fig.tight_layout(); fig.savefig(out, dpi=150); plt.close(fig)
 
 
+# Fix 2: agreement-figure colours match the slide (Okabe-Ito).
+_AGREE_COLORS = {"bfs": "#0072B2", "dfs": "#D55E00",
+                 "hfs_oracle": "#009E73", "random": "#CC79A7"}
+
+
+def fig_policy_agreement(val, out: Path, F: int):
+    """Fix 2: per-checkpoint agreement of the MODEL's ranking with EACH behaviour policy,
+    x = frames. Two panels: top1-agreement and Kendall tau-b. hfs ranks by delta, so its
+    agreement tracks NDCG/top1 -- kept for comparability, expect redundancy. Guarded:
+    pre-schema-4 telemetry has no agreement fields, so the figure is skipped rather than
+    blanked/mis-drawn."""
+    pols = ("bfs", "dfs", "hfs_oracle", "random")
+    if not any(f"heldout_agree_top1_{p}" in r for p in pols for r in val):
+        return
+    frames = [r.get("frames", r["step"]) for r in val]
+    seed = next((r.get("agree_tiebreak_seed") for r in val
+                 if r.get("agree_tiebreak_seed") is not None), None)
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11, 4.3))
+    for p in pols:
+        c = _AGREE_COLORS[p]
+        lab = "hfs" if p == "hfs_oracle" else p
+        for ax, key in ((ax1, f"heldout_agree_top1_{p}"), (ax2, f"heldout_agree_taub_{p}")):
+            fr = [f for f, r in zip(frames, val) if r.get(key) is not None]
+            ys = [r[key] for r in val if r.get(key) is not None]
+            if ys:
+                ax.plot(fr, ys, "o-", color=c, lw=1.8, ms=4, label=lab)
+    ax1.set_ylabel("top1 agreement"); ax1.set_ylim(0, 1.02)
+    ax2.set_ylabel("Kendall tau-b")
+    ax1.set_title(f"Model vs policy: top1 agreement  (F={F})", fontsize=11)
+    ax2.set_title(f"Model vs policy: Kendall tau-b  (F={F})", fontsize=11)
+    for ax in (ax1, ax2):
+        ax.set_xlabel("frames (step x batch_size)")
+        ax.legend(fontsize=8); ax.grid(alpha=0.3)
+    fig.text(0.5, 0.005,
+             f"fixed tie-break seed = {seed}; hfs ranks by delta, so hfs-agreement tracks "
+             f"NDCG/top1 (kept for comparability)", ha="center", fontsize=7.5, style="italic")
+    fig.tight_layout(rect=(0, 0.04, 1, 1)); fig.savefig(out, dpi=150); plt.close(fig)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("telemetry", type=Path)
@@ -263,6 +302,7 @@ def main():
     fig_return_vs_frames(val, base, out / "return_vs_frames.png", F,
                          transfer=bool(val[-1].get("coverage_is_transfer")))
     fig_train_vs_heldout_top1(val, out / "train_vs_heldout_top1.png", F)
+    fig_policy_agreement(val, out / "policy_agreement.png", F)   # Fix 2
     fig_metric_curve(val, base, out / "ndcg_vs_frames.png", F, "heldout_ndcg", "NDCG")
     fig_metric_curve(val, base, out / "js_divergence_vs_frames.png", F, "heldout_js",
                      "JS divergence (model vs oracle)", lower_better=True)

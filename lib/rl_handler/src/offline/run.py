@@ -21,7 +21,8 @@ import torch
 from ..models.frontier_policy import FrontierPolicyNetwork
 from ..models.two_head_baseline import TwoHeadBaselineNetwork
 from ..trainer import RLFrontierTrainer
-from .batching import default_device, pack_single
+from .batching import assert_goal_mode_consistent, default_device, pack_single
+from .encoder import load_goal_graph
 from .dataset import generate_dataset
 from .determinism import determinism_report, set_determinism
 from .encoder import InstanceCache
@@ -37,6 +38,7 @@ from .selection import (
     gate_beats_baselines,
     gate_env_fidelity,
     heldout_ranking_metrics,
+    heldout_ranking_micro_macro,
     heldout_top1,
     onnx_path_for,
     run_planner_expansions,
@@ -55,7 +57,13 @@ HELDOUT_TRAJ_FRAC = 0.10   # fraction of each instance's rollouts held out for e
 # reads it to detect a run that predates a metric and trigger the self-validated
 # backfill (rather than silently emitting a blank figure). 1: coverage/regret only.
 # 2: +heldout_top1/train_top1. 3: +return_mean +full ranking family (ndcg/js/...).
-METRICS_SCHEMA = 3
+# 4: +macro/per-instance NDCG + effective_instance_count (Fix 3) + per-policy agreement
+#    top1/tau-b vs bfs/dfs/hfs/random (Fix 2).
+METRICS_SCHEMA = 4
+# Fix 2: fixed tie-break seed for the policy-agreement metrics. Every behaviour policy
+# uses the mandatory random tie-break sigma~=(sigma,u); pinning the seed keeps the
+# agreement CURVE from carrying tie-break noise. Recorded in telemetry per checkpoint.
+AGREEMENT_TIEBREAK_SEED = 12345
 
 MODELS = ("dqn", "cql", "two_head")
 
@@ -148,7 +156,39 @@ def load_pool(cfg: RunConfig, repo_root: Path) -> tuple[List, Dict[str, Instance
         i.state_paths_abs(repo_root),
         cache_file=_fringe_dir(cfg).parent / "cache" / f"{i.name}.pt",
         verbose=False) for i in insts}
-    return insts, caches, {"pool": pool, "unsolvable": [u.name for u in unsolvable]}
+    goals = _load_goals(cfg, csvs, insts)
+    return insts, caches, {"pool": pool, "unsolvable": [u.name for u in unsolvable],
+                           "goals": goals}
+
+
+def _load_goals(cfg: RunConfig, csvs, insts) -> Optional[Dict[str, object]]:
+    """S2 -- validate mode against data at load time. Separated: every usable instance
+    MUST have a readable ``goal_tree.dot`` beside its state CSV (same dir); a missing one
+    FAILS LOUDLY with the instance name + expected path rather than falling back to None
+    (that silent fallback is exactly the bug this change removes). Merged: no goal is
+    loaded and None is returned.
+
+    Data-layout difference: separated generation (launcher ``--no_goal`` / GEN_FLAG) emits
+    the goal as a SEPARATE per-instance ``goal_tree.dot``; merged folds the goal into each
+    state graph, so no separate goal artifact is expected.
+    """
+    if cfg.kind_of_data != "separated":
+        return None
+    goal_path = {Path(p).parent.name: Path(p).parent / "goal_tree.dot" for p in csvs}
+    goals: Dict[str, object] = {}
+    for i in insts:
+        gp = goal_path.get(i.name)
+        if gp is None or not gp.exists():
+            raise FileNotFoundError(
+                f"separated mode (kind_of_data=separated) requires a goal_tree.dot for "
+                f"every usable instance, but it is missing for {i.name!r}: expected "
+                f"{gp}. Regenerate the data in separated mode, or run merged. "
+                f"(Refusing to fall back to a goal-less run -- that was the bug.)"
+            )
+        goals[i.name] = load_goal_graph(gp)
+    print(f"[run] separated: loaded goal_tree.dot for {len(goals)} instances (goal is "
+          f"threaded through training, target net, and eval)")
+    return goals
 
 
 def _load_test_instances(cfg: RunConfig, repo_root: Path,
@@ -184,6 +224,7 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
 
     insts, caches, meta = load_pool(cfg, repo_root)
     by_name = {i.name: i for i in insts}
+    goals = meta["goals"]   # {name: goal StateGraph} in separated mode, else None
 
     # ---- EVAL DESIGN: PRIMARY (held-out test instances) or FALLBACK (held-out
     #      trajectories). Constraint: no instance is dropped from TRAINING, so we do
@@ -198,6 +239,10 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
     #          target. The two are never blurred: transfer is claimed only on PRIMARY.
     train_i = insts
     test_i = _load_test_instances(cfg, repo_root, caches)
+    if goals is not None and test_i:
+        # separated PRIMARY path: test instances score through score_for too, so they
+        # need goals as well (same FAIL-LOUD contract as train).
+        goals.update(_load_goals(cfg, list(cfg.test_csvs or []), test_i))
     for t in test_i:
         by_name.setdefault(t.name, t)
     eval_mode = "test_instances" if test_i else "held_out_trajectories"
@@ -225,6 +270,16 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
                                   counterfactual=cfg.counterfactual,
                                   n_refill_samples=cfg.n_refill_samples)
 
+    # H2: per-instance ROW SHARE at assembly. One instance owning 48-60% of the gradient
+    # (batch1 pl_7) must be VISIBLE in the log, not require forensics.
+    from collections import Counter as _Counter
+    _rc = _Counter(r.instance for r in rows)
+    _ntot = max(1, len(rows))
+    print(f"[run] dataset row shares ({len(rows)} rows over {len(_rc)} instances):")
+    for _name, _c in sorted(_rc.items(), key=lambda kv: -kv[1]):
+        _flag = "   <-- DOMINATES" if _c / _ntot >= 0.40 else ""
+        print(f"[run]   {_name:24} {_c:>8} rows  {100 * _c / _ntot:5.1f}%{_flag}")
+
     # FALLBACK: split the transitions by trajectory so held-out frontiers are never
     # one-step neighbours of trained ones. PRIMARY: all rows train; eval is the
     # test instances.
@@ -238,6 +293,28 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
         if split_manifest["instances_with_no_eval"]:
             print(f"[run] WARNING instances too thin to eval: "
                   f"{split_manifest['instances_with_no_eval']}")
+        # H3: instances_with_no_eval counts TRAJECTORIES, but a metric-blind instance can
+        # get eval trajectories yet contribute ZERO frontiers that survive the ranking
+        # filter (len>=2, not-all-INF, deduped). Count SCORABLE frontiers and warn loudly
+        # -- this is what silently hid pl_3 / CC_3_3_3__pl_4 (0 scorable) behind a '[]'.
+        _scorable = {i.name: 0 for i in train_i}
+        _seen_fr: set = set()
+        for _r in heldout_rows:
+            if getattr(_r, "forced", False):
+                continue
+            _k = (_r.instance, tuple(_r.obs))
+            if _k in _seen_fr:
+                continue
+            _seen_fr.add(_k)
+            _d = [by_name[_r.instance].delta[v] for v in _r.obs]
+            if len(_r.obs) >= 2 and not all(x >= float("inf") for x in _d):
+                _scorable[_r.instance] = _scorable.get(_r.instance, 0) + 1
+        _blind = sorted(n for n, c in _scorable.items() if c == 0)
+        split_manifest["instances_with_no_scorable_frontier"] = _blind
+        if _blind:
+            print(f"[run] WARNING {len(_blind)} instance(s) contribute ZERO scorable "
+                  f"held-out frontiers (invisible to the ranking metric, no matter the "
+                  f"aggregation): {_blind}")
     else:
         train_rows, heldout_rows, split_manifest = rows, [], {"split": "test_instances"}
         cov_instances = test_i           # coverage rollout is genuine held-out transfer
@@ -294,14 +371,21 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
                                        lr=cfg.lr, batch_size=cfg.batch_size,
                                        model=cfg.model, cql_alpha=cfg.cql_alpha,
                                        reward_scale=scale, expansion_cap=cap,
-                                       seed=cfg.seed, device=device))
+                                       seed=cfg.seed, device=device),
+                           goals=goals)
 
     def score_for(name, beam):
-        p = pack_single(caches[name], beam, len(beam), device)
+        goal_graph = goals[name] if goals is not None else None
+        assert_goal_mode_consistent(net, goal_graph is not None)
+        p = pack_single(caches[name], beam, len(beam), device, goal_graph=goal_graph)
         with torch.no_grad():
             return net(node_features=p["node_features"], edge_index=p["edge_index"],
                        edge_attr=p["edge_attr"], membership=p["membership"],
-                       candidate_batch=None, mask=p["mask"]).cpu().tolist()
+                       candidate_batch=None, mask=p["mask"],
+                       goal_node_features=p.get("goal_node_features"),
+                       goal_edge_index=p.get("goal_edge_index"),
+                       goal_edge_attr=p.get("goal_edge_attr"),
+                       goal_batch=p.get("goal_batch")).cpu().tolist()
 
     def policy_for(name):
         return lambda beam: sorted(range(len(beam)), key=lambda k: -score_for(name, beam)[k])
@@ -345,12 +429,33 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
                 # FULL ranking-metric family for the model (logits enable the softmax
                 # divergence). top1 asks only "best first?"; ndcg/js read the WHOLE
                 # ordering, which is what DISCARD needs (it removes the worst kappa).
-                rm = heldout_ranking_metrics(heldout_rows, by_name, logits_for=score_for)
+                # ONE pass -> pooled (micro, the selector) + per-instance + macro (Fix 3)
+                # + per-policy agreement (Fix 2, fixed tie-break seed).
+                _agree_rankers = {
+                    p: (lambda name, beam, _p=p: make_policy(
+                        by_name[name], _p, seed=AGREEMENT_TIEBREAK_SEED)(list(beam)))
+                    for p in BEHAVIOUR_POLICIES
+                }
+                rmm = heldout_ranking_micro_macro(
+                    heldout_rows, by_name, logits_for=score_for,
+                    agreement_rankers=_agree_rankers)
+                rm = rmm["micro"]     # selection stays on MICRO -- unchanged
                 out["heldout_n"] = rm["n"]
                 for k in ("top1", "ndcg", "js", "regret_at_decision", "picked_dead",
                           "kendall_tau"):
                     out[f"heldout_{k}"] = rm[k]
                 out["heldout_top1"] = rm["top1"]      # kept for back-compat / selection
+                # Fix 3 (RECORD only, do NOT select on these):
+                out["heldout_ndcg_macro"] = rmm["ndcg_macro"]
+                out["heldout_top1_macro"] = rmm["top1_macro"]
+                out["heldout_per_instance_ndcg"] = {i: v["ndcg"]
+                                                    for i, v in rmm["per_instance"].items()}
+                out["effective_instance_count"] = rmm["effective_instance_count"]
+                # Fix 2: per-policy agreement (top1 + tau-b), RECORD only.
+                out["agree_tiebreak_seed"] = AGREEMENT_TIEBREAK_SEED
+                for _pol, _a in rmm["agreement"].items():
+                    out[f"heldout_agree_top1_{_pol}"] = _a["top1"]
+                    out[f"heldout_agree_taub_{_pol}"] = _a["taub"]
                 # TRAIN-frontier metrics, same family, for the overfitting gap: train
                 # up while held-out flat = overfitting, on the metrics the fallback can
                 # split (return can't be held out -- env.reset() is root-only).

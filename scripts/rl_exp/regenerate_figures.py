@@ -29,6 +29,12 @@ REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / "lib" / "rl_handler"))
 
 # The metrics the current figure set needs in each val row. Absence => backfill.
+# NOTE (METRICS_SCHEMA=4, Fix 2/3): the macro/per-instance NDCG + effective_instance_count
+# and the per-policy agreement (heldout_agree_top1/taub_*) fields are recorded LIVE by a
+# schema-4 run and are NOT in this backfill list: agreement needs the behaviour-policy
+# rankings at a fixed tie-break seed and is not cheaply reconstructable, so we do not
+# fake it for pre-schema-4 runs. The agreement FIGURE (fig_policy_agreement) skips itself
+# when those fields are absent, so old runs are not mis-drawn -- just left without it.
 REQUIRED_VAL_FIELDS = ("heldout_top1", "heldout_ndcg", "heldout_js",
                        "return_mean", "train_ndcg")
 PLOT = REPO / "scripts" / "rl_exp" / "plot_diagnostics.py"
