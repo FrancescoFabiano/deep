@@ -151,3 +151,39 @@ decisive. The verdict does not rest on it.
 - The per-family pre-flight table (oracle[wl] vs oracle[id_knn] vs baselines)
   remains worth having, but MUST be rebuilt on the corrected oracle before any
   claim rests on it.
+
+---
+
+# Sampler ablation (proportional vs capped) on batch1_1/CC — PRE-REGISTERED LIMITATION
+
+Recorded 2026-07-21, BEFORE any arm was run.
+
+**The deepest fidelity bin contains exactly one instance.** `--fidelity-instances 5`
+takes all five fidelity-usable instances in the CC pool, whose plan lengths are
+pl=4 (`CC_3_2_3__pl_4`), pl=5 (`CC_2_2_4__pl_5`, `CC_3_2_3__pl_5`), pl=6
+(`CC_2_2_3__pl_6`), pl=7 (`CC_2_3_4__pl_7`). The remaining three usable instances
+are excluded from planner-side scoring because BFS reaches < 20 expansions.
+
+So the deepest bin is `CC_2_3_4__pl_7` alone — which is **also the pool's dominant
+instance (62% of rows at F=8) and the one the cap reduces most**. Any depth-related
+verdict from this ablation is therefore CONFOUNDED between "deep" and "this
+particular instance", and is provisional. Three seeds give three measurements of one
+instance, not three instances: seed replication does not repair this.
+
+**pl=5 is the only bin with within-bin replication** (2 instances). A depth claim
+that survives only at pl=7 and not at pl=5 should be read as an instance effect
+until a second deep instance exists.
+
+This does not change the pre-registered verdict rule; it bounds what the rule can
+conclude.
+
+**The run is a STRUCTURE-ONLY FLOOR.** `--allow-cross-config` is required to train
+the CC pool at all: its eight instances span five configurations (`CC_2_2_3`,
+`CC_2_2_4`, `CC_2_3_4`, `CC_3_2_3`, `CC_3_3_3`), and on HASHED the node ids are
+hashes of the fluent set, so different configurations share **0% vocabulary**. The
+model therefore learns from topology and edge labels alone; the node channel
+carries no cross-configuration signal.
+
+Both arms inherit this equally, so the RELATIVE comparison the verdict rule rests on
+remains valid. The ABSOLUTE numbers are a floor, not the method's performance, and
+must not be reported as such.
