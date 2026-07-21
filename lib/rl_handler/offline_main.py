@@ -78,9 +78,24 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--model", choices=["dqn", "cql", "two_head"], default="dqn")
     p.add_argument("--fringe-sizes", type=int, nargs="+", default=[4])
     # ---- trainer ----
-    p.add_argument("--frames", type=int, default=2000)
+    # BUDGET: epochs, not steps. `--frames` (the step count) is retired, not
+    # aliased -- the same step count meant a different number of passes over the
+    # data at every F, so runs at different F were never comparable. Steps are
+    # derived: S = ceil(epochs * |train_rows| / batch_size).
+    p.add_argument("--epochs", type=float, default=100.0,
+                   help="passes over train_rows; steps are derived per run")
     p.add_argument("--n-checkpoints", type=int, default=5)
     p.add_argument("--batch-size", type=int, default=64)
+    p.add_argument("--sampler", choices=["proportional", "capped"],
+                   default="proportional",
+                   help="proportional = uniform over rows (historical default); "
+                        "capped = draw instance ~ min(c*(k), k*p_i) then row within it")
+    p.add_argument("--sampler-k", type=float, default=4.0,
+                   help="the MAXIMUM multiple of its own natural share that any "
+                        "instance may be lifted to. The cap is DERIVED from it as "
+                        "the tightest value consistent with it, "
+                        "c*(k) = min{c : sum_i min(c, k*p_i) >= 1}; then "
+                        "u_i = min(c*, k*p_i). Only read when --sampler capped")
     p.add_argument("--lr", type=float, default=1e-4)
     p.add_argument("--target-sync", type=int, default=500)
     p.add_argument("--max-grad-norm", type=float, default=10.0)
@@ -158,7 +173,8 @@ def main(argv=None) -> int:
             dir_save_model=Path(a.dir_save_model),
             fringe_size=F, model=a.model, kind_of_data=kind, context_mode=ctx,
             attn_heads=a.attn_heads, attn_layers=a.attn_layers,
-            frames=a.frames, n_checkpoints=a.n_checkpoints, seed=a.seed,
+            epochs=a.epochs, n_checkpoints=a.n_checkpoints, seed=a.seed,
+            sampler=a.sampler, sampler_k=a.sampler_k,
             seeds_per_policy=a.seeds_per_policy,
             counterfactual=a.counterfactual_actions,
             n_refill_samples=a.n_refill_samples,

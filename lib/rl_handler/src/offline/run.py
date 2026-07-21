@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import copy
 import json
+import math
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence
@@ -86,7 +87,12 @@ class RunConfig:
     behaviour_policies: Optional[List[str]] = None
     target_sync: int = 500
     max_grad_norm: float = 10.0
-    frames: int = 2000
+    # BUDGET IS EPOCHS, NOT STEPS. `--frames` was the step count, so the same
+    # number meant a different number of passes over the data at every F (100k
+    # frames = 321 epochs at F=4 but 44 at F=32, because the dataset grows with
+    # F). Epochs fix the comparison: S is derived per run, after the held-out
+    # split, from the size of the pool the trainer actually sees.
+    epochs: float = 100.0
     n_checkpoints: int = 5
     seed: int = 0
     seeds_per_policy: int = 3
@@ -111,6 +117,10 @@ class RunConfig:
     device: Optional[str] = None
     export_onnx: bool = True
     dataset_type: str = "HASHED"          # opaque; BITMASK needs no change here
+    # Draw distribution (see qlearning.TrainConfig). Default is the historical
+    # behaviour, so the ablation runs both arms from one binary.
+    sampler: str = "proportional"
+    sampler_k: float = 12.0
 
 
 def _net(cfg: RunConfig, max_delta: float):
@@ -347,6 +357,15 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
     print(f"[run] baselines regret={baselines}"
           + (f"  top1={baseline_top1}  ndcg={baseline_ndcg}" if baseline_top1 else ""))
 
+    # ---- budget: epochs -> steps, once N is known ----
+    # N is |train_rows|, i.e. AFTER the held-out split: the held-out trajectories
+    # never enter training, so counting them would overstate the budget.
+    N_train = len(train_rows)
+    S = int(math.ceil(cfg.epochs * N_train / cfg.batch_size))
+    D = S * cfg.batch_size
+    print(f"[budget] epochs={cfg.epochs:g}  N={N_train:,}  batch_size={cfg.batch_size}"
+          f"  S={S:,} steps  D={D:,} draws")
+
     net = _net(cfg, max_delta).to(device)
     if cfg.model == "two_head":
         from .baseline import train_two_head_baseline
@@ -360,7 +379,7 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
                 seen.add(k)
                 beams.append((r.instance, r.obs))
         net, _ = train_two_head_baseline(train_i, caches, beams, cfg.fringe_size,
-                                         steps=cfg.frames, device=device, seed=cfg.seed,
+                                         steps=S, device=device, seed=cfg.seed,
                                          hidden_dim=cfg.hidden_dim,
                                          context_mode=cfg.context_mode)
         trainer = None
@@ -371,8 +390,10 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
                                        lr=cfg.lr, batch_size=cfg.batch_size,
                                        model=cfg.model, cql_alpha=cfg.cql_alpha,
                                        reward_scale=scale, expansion_cap=cap,
-                                       seed=cfg.seed, device=device),
+                                       seed=cfg.seed, device=device,
+                                       sampler=cfg.sampler, sampler_k=cfg.sampler_k),
                            goals=goals)
+        print(trainer.allocation_report(D))
 
     def score_for(name, beam):
         goal_graph = goals[name] if goals is not None else None
@@ -395,19 +416,31 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
 
     # ---- train with checkpoints ----
     cands: List[Candidate] = []
-    every = max(1, cfg.frames // cfg.n_checkpoints)
+    # EXACT count: `S // n_checkpoints` is integer division, so it overshot
+    # whenever n_checkpoints did not divide the budget (100k/7 gave 8 records,
+    # 100k/3 gave 4). With S derived from epochs the divisibility essentially
+    # never holds, so the miss would become the norm. Enumerate the steps
+    # instead: exactly n_checkpoints of them (modulo collisions at tiny S), and
+    # the last is exactly S.
+    ckpt_steps = sorted({max(1, round(i * S / cfg.n_checkpoints))
+                         for i in range(1, cfg.n_checkpoints + 1)})
     # Progress bar: only when attached to a terminal. Through train_models.run_one the
     # child is piped (not a tty), so tqdm disables itself -- no \r spam in the logs;
     # the per-checkpoint prints stream instead (run_one runs the child with -u).
     import sys as _sys
     from tqdm import tqdm
-    bar = tqdm(total=cfg.frames, desc=f"train F={cfg.fringe_size}", unit="step",
-               disable=not _sys.stderr.isatty(), dynamic_ncols=True, leave=False)
-    for step in range(1, cfg.frames + 1):
+    # The bar reports EPOCHS, the unit the budget is now expressed in; the loop
+    # is still over steps and the checkpoint line below still reports steps and
+    # draws, so train_models.py's parser is unaffected.
+    bar = tqdm(total=float(cfg.epochs), desc=f"train F={cfg.fringe_size}",
+               unit="epoch", disable=not _sys.stderr.isatty(),
+               dynamic_ncols=True, leave=False)
+    _ckpt_set = set(ckpt_steps)
+    for step in range(1, S + 1):
         if trainer is not None:
             log = trainer.step()
-        bar.update(1)
-        if step % every == 0 or step == cfg.frames:
+        bar.update(cfg.batch_size / N_train)
+        if step in _ckpt_set:
             # coverage/regret: held-out transfer on PRIMARY, train-set estimate on
             # FALLBACK (labelled in the sidecar -- never reported as transfer there).
             out = evaluate_split(cov_instances, policy_for, cfg.fringe_size,
@@ -492,7 +525,7 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
             # Do not reorder/rename these fields without updating the parser.
             _ndcg = out.get("heldout_ndcg")
             print(f"[run] ckpt F={cfg.fringe_size} step={step} "
-                  f"frames={step * cfg.batch_size} total={cfg.frames * cfg.batch_size} "
+                  f"frames={step * cfg.batch_size} total={D} "
                   f"ndcg={'nan' if _ndcg is None else round(_ndcg, 4)} "
                   f"td={out.get('td_loss', float('nan')):.4f}")
     bar.close()

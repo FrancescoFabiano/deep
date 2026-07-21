@@ -88,6 +88,16 @@ class TrainConfig:
     max_grad_norm: float = 10.0
     model: str = "dqn"              # dqn | cql
     cql_alpha: float = 0.0          # 0 reduces cql to plain Double-DQN
+    # Draw distribution over instances. "proportional" is the historical
+    # behaviour (uniform over ROWS, so row share == gradient share); "capped"
+    # draws an instance first, then a row uniformly within it. Neither filters
+    # rows, drops instances, or touches `self.data` -- only the draw changes.
+    sampler: str = "proportional"   # proportional | capped
+    # The MAXIMUM multiple of its own natural share any instance may be lifted
+    # to. Dimensionless, so it does not move with F or D. The cap is DERIVED
+    # from it as the tightest value consistent with it, c*(k), so no (k, pool)
+    # combination can be infeasible for k >= 1.
+    sampler_k: float = 4.0
     reward_scale: Optional[float] = None
     expansion_cap: int = 2000
     seed: int = 0
@@ -101,6 +111,71 @@ class TrainConfig:
     # latency. The 5 logging fields never sync per step at all (returned as on-device
     # tensors, float()'d by the caller only at checkpoints).
     div_check_every: int = 1
+
+
+SAMPLERS = ("proportional", "capped")
+
+
+def _prop_then_clip(p: Dict[str, float], u: Dict[str, float]) -> Dict[str, float]:
+    """Allocate 1.0 over instances: start proportional, clip anything above its
+    ceiling, freeze it, renormalise the REST in proportion to p. Repeat.
+
+    NOT water-filling: water-filling equalises everything below the cap and so
+    returns the uniform allocation, which is a different intervention entirely
+    (it lifts 12-row instances to 1/m). Here nothing is ever lifted -- an
+    instance that cannot absorb mass simply stays small, and the tail keeps its
+    relative weights. Terminates in at most len(p) rounds (one freeze each).
+    """
+    s = dict(p)
+    frozen = {k for k, v in u.items() if v <= 0.0}
+    for k in frozen:
+        s[k] = 0.0
+    for _ in range(len(p) + 1):
+        free = [k for k in p if k not in frozen]
+        if not free:
+            break
+        mass = 1.0 - sum(s[k] for k in frozen)
+        denom = sum(p[k] for k in free)
+        if denom <= 0.0:
+            break
+        for k in free:
+            s[k] = mass * p[k] / denom
+        over = [k for k in free if s[k] > u[k] + 1e-15]
+        if not over:
+            break
+        for k in over:
+            s[k] = u[k]
+            frozen.add(k)
+    return s
+
+
+def _derive_cap(p: Dict[str, float], k: float) -> float:
+    """c*(k) = min { c : sum_i min(c, k*p_i) >= 1 } -- the TIGHTEST cap that
+    still admits an allocation in which nothing is lifted beyond k.
+
+    The cap is derived, not declared: k (a repetition tolerance, dimensionless)
+    is the knob, and c follows. A solution always exists for k >= 1, because at
+    c = 1 the sum is sum_i k*p_i = k >= 1, so this construction cannot be
+    infeasible -- there is no rejection path.
+
+    sum_i min(c, k*p_i) is non-decreasing in c, so bisection is exact to
+    tolerance. Returns the feasible (upper) side, so sum_i u_i >= 1 always.
+
+    Guarded here as well as in the caller: below k=1 the bisection has no root
+    and would silently return 1.0, which is a wrong answer rather than a
+    refusal.
+    """
+    if k < 1.0:
+        raise ValueError(
+            f"k must be >= 1 for c*(k) to exist (at c=1 the sum is k), got {k:g}")
+    lo, hi = 0.0, 1.0
+    for _ in range(200):
+        mid = (lo + hi) / 2.0
+        if sum(min(mid, k * v) for v in p.values()) >= 1.0:
+            hi = mid
+        else:
+            lo = mid
+    return hi
 
 
 class QTrainer:
@@ -141,6 +216,7 @@ class QTrainer:
         if not self.data:
             raise ValueError("no transitions to train on")
         self.rng = random.Random(cfg.seed)
+        self._build_allocation()
         self.opt = torch.optim.AdamW(self.model.parameters(), lr=cfg.lr)
         self.scale = (
             float(cfg.reward_scale) if cfg.reward_scale is not None
@@ -157,6 +233,102 @@ class QTrainer:
                            else 1.0 / (1.0 - cfg.gamma))
         self.q_ceiling = cfg.q_abort_multiple * worst_magnitude * self.scale
         self.div_check_every = max(1, int(cfg.div_check_every))
+
+    # ---------- instance-stratified draw distribution ----------
+
+    def _build_allocation(self) -> None:
+        """One pass over self.data -> per-instance row indices, p, u, s.
+
+        `Transition.instance` is a first-class field, so no re-scan and no
+        schema change. self.data is READ, never mutated: every instance keeps
+        every row, and |train_rows| is identical in both modes. The only thing
+        that differs between proportional and capped is which row a draw lands
+        on.
+        """
+        if self.cfg.sampler not in SAMPLERS:
+            raise ValueError(
+                f"sampler must be one of {SAMPLERS}, got {self.cfg.sampler!r}")
+        k = float(self.cfg.sampler_k)
+        if k < 1.0:
+            raise ValueError(
+                f"sampler_k must be >= 1 (an instance cannot be lifted to less "
+                f"than its own share and still fill the simplex), got {k:g}")
+        idx: Dict[str, List[int]] = {}
+        for j, t in enumerate(self.data):
+            idx.setdefault(t.instance, []).append(j)
+        N = len(self.data)
+        m = len(idx)
+        if m == 0:
+            raise ValueError("empty pool: no instances carry rows")
+        p = {i: len(v) / N for i, v in idx.items()}
+        c_star = _derive_cap(p, k)                    # derived from k, not from m
+        u = {i: min(c_star, k * p[i]) for i in p}
+        sum_u = sum(u.values())
+
+        if self.cfg.sampler == "capped":
+            s = _prop_then_clip(p, u)
+        else:
+            s = dict(p)                                # today's behaviour, exactly
+        max_lift = max((s[i] / p[i]) for i in p if p[i] > 0)
+
+        self._inst_names = sorted(idx)
+        self._inst_rows = [idx[n] for n in self._inst_names]
+        self._alloc_p = p
+        self._alloc_s = s
+        self._alloc_u = u
+        self.allocation = {
+            "mode": self.cfg.sampler, "m": m, "c_star": c_star, "k": k,
+            "max_lift": max_lift, "sum_u": sum_u, "n_rows": N,
+            "counts": {n: len(idx[n]) for n in idx},
+            "p": p, "u": u, "s": s,
+        }
+        # cum_weights + random.choices is a C-level draw, so a capped step costs
+        # the same as today's randrange in practice.
+        cum, acc = [], 0.0
+        for n in self._inst_names:
+            acc += s[n]
+            cum.append(acc)
+        if cum:
+            cum[-1] = 1.0
+        self._inst_cum = cum
+
+    def _draw_batch(self) -> List[Transition]:
+        """batch_size rows. proportional: uniform over rows (unchanged).
+        capped: instance ~ s, then a row uniformly within that instance."""
+        n = self.cfg.batch_size
+        if self.cfg.sampler == "proportional":
+            return [self.data[self.rng.randrange(len(self.data))] for _ in range(n)]
+        picks = self.rng.choices(range(len(self._inst_names)),
+                                 cum_weights=self._inst_cum, k=n)
+        out = []
+        for i in picks:
+            rows = self._inst_rows[i]
+            out.append(self.data[rows[self.rng.randrange(len(rows))]])
+        return out
+
+    def allocation_report(self, total_draws: int) -> str:
+        """The 2C block: what each instance will actually be shown."""
+        a = self.allocation
+        N, D = a["n_rows"], int(total_draws)
+        E = D / N if N else 0.0
+        head = (f"[sampler] mode={a['mode']}  k={a['k']:g}  "
+                f"c*={a['c_star']:.4f}  m={a['m']}  "
+                f"max_lift={a['max_lift']:.2f}  sum_u={a['sum_u']:.4f}")
+        lines = [head,
+                 f"[sampler] {'instance':24}{'n_i':>9}{'p_i':>8}{'s_i':>8}"
+                 f"{'r_i':>10}{'r_i/E':>8}  binds   (E=D/N={E:,.1f})"]
+        for name in sorted(a["s"], key=lambda x: -a["s"][x]):
+            n_i, s_i, u_i, p_i = a["counts"][name], a["s"][name], a["u"][name], a["p"][name]
+            r_i = s_i * D / n_i if n_i else 0.0
+            if a["mode"] == "proportional" or s_i < u_i - 1e-12:
+                binds = "-"
+            elif u_i <= a["k"] * p_i - 1e-15:
+                binds = "c*"
+            else:
+                binds = "k"
+            lines.append(f"[sampler] {name:24}{n_i:>9,}{p_i:>8.4f}{s_i:>8.4f}"
+                         f"{r_i:>10,.0f}{(r_i / E if E else 0):>8.2f}  {binds}")
+        return "\n".join(lines)
 
     # ---- forward helpers -------------------------------------------------
 
@@ -184,7 +356,7 @@ class QTrainer:
 
     def step(self) -> Dict[str, float]:
         cfg = self.cfg
-        batch = [self.data[self.rng.randrange(len(self.data))] for _ in range(cfg.batch_size)]
+        batch = self._draw_batch()
 
         picks = [(t.instance, t.obs) for t in batch]
         q_all, p = self._logits(self.model, picks)

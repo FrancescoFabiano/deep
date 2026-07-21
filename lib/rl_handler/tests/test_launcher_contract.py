@@ -42,12 +42,13 @@ def accepted_flags() -> set[str]:
 # ---- what final_launcher.sh sends, AFTER the reconciliation ----
 # TRAIN_FLAG   : --no_goal        (separated cells only)
 # TRAIN_EXTRA  : --context-mode X [--cql-alpha A]
-# plus         : --fringe-sizes / --model / --batch-size / --frames / --n-checkpoints
+# plus         : --fringe-sizes / --model / --batch-size / --epochs / --sampler
+#                / --sampler-k / --n-checkpoints
 # train_models.py adds: --seed / --dir-save-model / --train-csv / --test-csv /
 #                       --kind-of-data separated
 LAUNCHER_SENDS = [
-    "--fringe-sizes", "--model", "--no_goal", "--batch-size", "--frames",
-    "--n-checkpoints", "--context-mode", "--cql-alpha",
+    "--fringe-sizes", "--model", "--no_goal", "--batch-size", "--epochs",
+    "--sampler", "--sampler-k", "--n-checkpoints", "--context-mode", "--cql-alpha",
 ]
 TRAIN_MODELS_SENDS = [
     "--seed", "--dir-save-model", "--train-csv", "--test-csv", "--kind-of-data",
@@ -105,7 +106,8 @@ def test_the_launchers_full_separated_invocation_is_accepted():
         "--seed", "0", "--dir-save-model", "/tmp/d/seed0",
         "--train-csv", "/tmp/a.csv", "/tmp/b.csv",
         "--kind-of-data", "separated", "--model", "cql",
-        "--no_goal", "--batch-size", "64", "--frames", "100000",
+        "--no_goal", "--batch-size", "64", "--epochs", "100",
+        "--sampler", "proportional", "--sampler-k", "12",
         "--n-checkpoints", "20", "--context-mode", "self_attention",
         "--cql-alpha", "1.0", "--fringe-sizes", "4", "8", "16", "32",
     ])
@@ -116,7 +118,8 @@ def test_the_launchers_full_separated_invocation_is_accepted():
 def test_the_launchers_merged_invocation_is_accepted():
     a = _parser().parse_args([
         "--seed", "0", "--dir-save-model", "/tmp/d/seed0", "--train-csv", "/tmp/a.csv",
-        "--model", "dqn", "--batch-size", "64", "--frames", "100000",
+        "--model", "dqn", "--batch-size", "64", "--epochs", "100",
+        "--sampler", "capped", "--sampler-k", "12",
         "--n-checkpoints", "20", "--context-mode", "mean_pool",
         "--fringe-sizes", "4",
     ])

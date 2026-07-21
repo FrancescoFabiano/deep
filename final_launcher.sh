@@ -44,8 +44,15 @@ DOMAINS="${DOMAINS:-CC}"                  # domains to symlink/check, e.g. "CC S
 
 DEEP_EXE="cmake-build-release-nn/bin/deep"
 BATCH_SIZE=64
-FRAMES=100000
+# BUDGET IS EPOCHS, NOT STEPS. FRAMES=100000 meant 100k optimizer steps, which at
+# batch 64 was 321 epochs at F=4 but only 44 at F=32 -- the dataset grows with F,
+# so the same step count trained each F a different amount and no F-sweep was
+# comparable. Steps are now derived per run: S = ceil(EPOCHS * |train_rows| / batch).
+EPOCHS=100
 N_CHECKPOINTS=20
+# Draw distribution: proportional (uniform over rows, historical) | capped.
+SAMPLER="${SAMPLER:-proportional}"
+SAMPLER_K="${SAMPLER_K:-4}"
 CQL_ALPHA=1.0
 # ---- FAITHFUL GENERATION ----
 # The discard is BIASED, not uniform: its probability rises with depth and gains
@@ -392,7 +399,7 @@ fi
 # ============================================================
 #  2. TRAIN
 # ============================================================
-echo "[2/3] training (model=${ALGO}, F=${FRINGE_SIZES}, batch=${BATCH_SIZE}, frames=${FRAMES}) ..."
+echo "[2/3] training (model=${ALGO}, F=${FRINGE_SIZES}, batch=${BATCH_SIZE}, epochs=${EPOCHS}, sampler=${SAMPLER}${SAMPLER:+ k=${SAMPLER_K}}) ..."
 # DOMAINS is forwarded: without it train_models.py falls back to find_domains(),
 # i.e. EVERY subdir of _models with a training_data/ -- so DOMAINS="CoinBox" on
 # batch1_1 gated CoinBox and then trained all five domains, including Assemble
@@ -405,7 +412,9 @@ run_stage python3 scripts/rl_exp/train_models.py "${BATCH_DIR}" \
     --model "${ALGO}" \
     ${TRAIN_FLAG} \
     --batch-size ${BATCH_SIZE} \
-    --frames ${FRAMES} \
+    --epochs ${EPOCHS} \
+    --sampler ${SAMPLER} \
+    --sampler-k ${SAMPLER_K} \
     --n-checkpoints ${N_CHECKPOINTS} \
     ${TRAIN_EXTRA} \
     || fail "step 2 (train)"
