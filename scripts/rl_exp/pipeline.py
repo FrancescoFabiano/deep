@@ -26,6 +26,9 @@ if __name__ == "__main__":
     parser.add_argument("batch_root", help="e.g. exp/rl_exp/batch0_train")
     parser.add_argument("--separated", action="store_true",
                         help="run in separated (goal-free) mode; forwards --dataset_separated")
+    parser.add_argument("--domains", nargs="+", default=None,
+                        help="domains to evaluate (default: all discovered under batch_root). "
+                             "Keeps evaluation scoped to what was actually trained.")
     parser.add_argument("--dry-run", action="store_true",
                         help="print discovered domains + run_all commands and exit (no simulation)")
     opts = parser.parse_args()
@@ -37,6 +40,16 @@ if __name__ == "__main__":
     domains = discover_domains(batch_root)
     if not domains:
         sys.exit(f"[PIPELINE] no domains (subdir with Training/) found under {batch_root}")
+
+    if opts.domains:
+        # Fail on an unknown name rather than silently evaluating nothing: a typo
+        # here reads exactly like "that domain produced no results".
+        found = {d.name: d for d in domains}
+        unknown = [n for n in opts.domains if n not in found]
+        if unknown:
+            sys.exit(f"[PIPELINE] unknown domain(s) {unknown} under {batch_root}; "
+                     f"discovered: {sorted(found)}")
+        domains = [found[n] for n in opts.domains]
 
     sep = " --separated" if opts.separated else ""
     batch_name = batch_root.stem

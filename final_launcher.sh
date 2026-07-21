@@ -275,6 +275,73 @@ else
 fi
 
 # ============================================================
+#  1b. PATH STALENESS CHECK  (before anything reads a .dot)
+# ============================================================
+# The generation tables store the .dot paths as they existed WHEN GENERATED, and
+# nothing rewrites them when a tree is moved or a domain dir renamed. batch2's
+# Grapevine_5__pl_4 recorded `batch2/_models/Grapevine/...` (the dir it was
+# generated into, later moved to batch1/_models/Grapevine and hardlinked into
+# batch2/_models/CC-Grapevine) and training died 12 CSVs deep with a bare
+# FileNotFoundError. Worse, the surviving CSVs resolve only because their SOURCE
+# batch still exists on disk -- a hardlinked batch is not self-contained, so
+# deleting the donor silently breaks it. Fail here instead, with the prefix named.
+echo "[1b] path staleness check ..."
+if [[ "${DRY_RUN}" == "true" ]]; then echo "[DRY] path staleness check -> verifies every .dot prefix in the generation tables resolves"; else
+python3 - "${BATCH_DIR}" ${DOMAINS} <<'PYEOF' || fail "step 1b (path staleness check)"
+import csv, sys
+from pathlib import Path
+
+batch_dir, domains = sys.argv[1], sys.argv[2:]
+rc = 0
+for dom in domains:
+    root = Path(batch_dir) / "_models" / dom / "training_data"
+    broken = []
+    for csv_path in sorted(root.glob("*/*_depth_*.csv")):
+        with csv_path.open(newline="") as fh:
+            rdr = csv.DictReader(fh)
+            cols = [c for c in (rdr.fieldnames or []) if "Path" in c or c == "Goal"]
+            dirs = {}   # recorded parent dir -> one example file
+            for row in rdr:
+                for c in cols:
+                    v = (row.get(c) or "").strip()
+                    # `init.dot` is the root's predecessor sentinel: it is never
+                    # written to disk and never opened (tree.py builds the parent
+                    # map with .get()), so it is not evidence of a stale prefix.
+                    if v.endswith(".dot") and Path(v).name != "init.dot":
+                        dirs.setdefault(str(Path(v).parent), v)
+        for d, example in sorted(dirs.items()):
+            if not Path(example).exists():
+                broken.append((csv_path.parent.name, example))
+    if broken:
+        rc = 1
+        print(f"[1b] {dom}: {len(broken)} recorded path prefix(es) do not resolve --")
+        for inst, example in broken:
+            print(f"       {inst}: {example}")
+        print("     These tables were generated into a directory that has since moved or\n"
+              "     been renamed; nothing rewrites the path column on a move. Fix by\n"
+              "     rewriting the column IN PLACE -- open(p,'w'), NOT sed -i, so hardlinked\n"
+              "     copies of the same table in other batches are corrected too.")
+    # A resolving-but-foreign prefix is legal (hardlinked batches) yet fragile:
+    # report the donor trees once per domain so the dependency is visible.
+    donors = set()
+    for csv_path in sorted(root.glob("*/*_depth_*.csv")):
+        with csv_path.open(newline="") as fh:
+            rdr = csv.DictReader(fh)
+            first = next(rdr, None)
+        if not first:
+            continue
+        v = (first.get("File Path") or "").strip()
+        if v.endswith(".dot") and not Path(v).resolve().is_relative_to(csv_path.parent.resolve()):
+            donors.add(str(Path(v).parents[3]))
+    if donors:
+        print(f"[1b] {dom}: WARNING tables point at {len(donors)} foreign tree(s): "
+              f"{', '.join(sorted(donors))}\n"
+              f"     This batch is NOT self-contained -- deleting a donor breaks it.")
+sys.exit(rc)
+PYEOF
+fi
+
+# ============================================================
 #  1c. FAITHFULNESS GATE  (between generation and training)
 # ============================================================
 # Nothing trains on data that fails this. An unfaithful tree is a WRONG PROBLEM,
@@ -284,13 +351,20 @@ fi
 # applies however the launcher is invoked.
 echo "[1c] usability gate ..."
 if [[ "${DRY_RUN}" == "true" ]]; then echo "[DRY] usability gate -> ${BATCH_DIR}/_models/<dom>/usable_pool.json (refuses training if n_usable==0)"; else
+REQUIRE_SCORABLE="${REQUIRE_SCORABLE:-false}" \
 python3 - "${BATCH_DIR}" "${MODE}" ${DOMAINS} <<'PYEOF' || fail "step 1c (usability gate)"
+import os
 import sys
 from pathlib import Path
 sys.path.insert(0, "lib/rl_handler")
 from src.offline.tree import load_tree_instance, partition_solvable
 from src.offline.usability import build_usable_pool
 
+# Scorability is a FLAG by default: a metric-blind instance still contributes
+# gradient, and excluding it would silently change the training pool of every
+# existing batch. REQUIRE_SCORABLE=true promotes it to an exclusion -- use it for
+# runs whose whole point is a held-out ranking claim, and expect a smaller pool.
+require_scorable = os.environ.get("REQUIRE_SCORABLE", "false") == "true"
 batch_dir, mode, domains = sys.argv[1], sys.argv[2], sys.argv[3:]
 rc = 0
 for dom in domains:
@@ -300,9 +374,14 @@ for dom in domains:
         print(f"[1c] {dom}: no generation tables under {root}"); rc = 1; continue
     insts = [load_tree_instance(p, name=p.parent.name, kind_of_data=mode) for p in csvs]
     ok, _ = partition_solvable(insts)
-    pool = build_usable_pool(ok, out_path=Path(batch_dir) / "_models" / dom / "usable_pool.json")
+    pool = build_usable_pool(ok, out_path=Path(batch_dir) / "_models" / dom / "usable_pool.json",
+                             require_scorable=require_scorable)
     if pool["n_usable"] == 0:
         print(f"[1c] {dom}: NO USABLE INSTANCE -- refusing to train."); rc = 1
+    if pool["n_usable_for_ranking"] == 0 and pool["n_usable"] > 0:
+        print(f"[1c] {dom}: WARNING every usable instance is METRIC-BLIND; held-out "
+              f"ranking metrics and checkpoint selection will be vacuous. Training "
+              f"still runs (gradient is fine) -- do not read the ranking numbers.")
     if pool["n_usable_for_fidelity"] == 0:
         print(f"[1c] {dom}: WARNING no instance reaches 20 expansions; the "
               f"env-fidelity gate cannot score anything and will report NOT ARMED.")
@@ -314,7 +393,14 @@ fi
 #  2. TRAIN
 # ============================================================
 echo "[2/3] training (model=${ALGO}, F=${FRINGE_SIZES}, batch=${BATCH_SIZE}, frames=${FRAMES}) ..."
+# DOMAINS is forwarded: without it train_models.py falls back to find_domains(),
+# i.e. EVERY subdir of _models with a training_data/ -- so DOMAINS="CoinBox" on
+# batch1_1 gated CoinBox and then trained all five domains, including Assemble
+# (n_usable=0, ungated because 1c only checks the named domains, so it raised deep
+# inside load_pool). Single-domain batches like batch2 masked this.
+# (DOMAINS is never empty: the `:-CC` default above substitutes on unset AND empty.)
 run_stage python3 scripts/rl_exp/train_models.py "${BATCH_DIR}" \
+    --domains ${DOMAINS} \
     --fringe-sizes ${FRINGE_SIZES} \
     --model "${ALGO}" \
     ${TRAIN_FLAG} \
@@ -329,6 +415,7 @@ run_stage python3 scripts/rl_exp/train_models.py "${BATCH_DIR}" \
 # ============================================================
 echo "[3/3] evaluation pipeline ..."
 run_stage python3 scripts/rl_exp/pipeline.py "${BATCH_DIR}" \
+    --domains ${DOMAINS} \
     ${PIPE_FLAG} \
     || fail "step 3 (pipeline)"
 

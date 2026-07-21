@@ -91,6 +91,10 @@ MIN_STATES = 50
 MIN_EXPANSIONS_FOR_FIDELITY = 20
 # Reported, never gated on -- see the module docstring.
 POISONED_FRAC_NOTE_ABOVE = 0.01
+# F at which scorability is probed. Measured FLAT in F (Assemble_B3 18 at
+# 4/8/16/32; CC_2_2_3__pl_6 61/70/67/67; CoinBox 2/2/2/2), so one probe stands in
+# for the sweep: branching binds, not beam capacity.
+SCORABILITY_PROBE_F = 32
 
 
 @dataclass
@@ -106,6 +110,12 @@ class InstanceVerdict:
     n_states: int = 0
     bfs_expansions: Optional[int] = None
     usable_for_fidelity: bool = False
+    # Scorability: capacity to produce frontiers the ranking metric can read.
+    scorable_frontiers: Optional[int] = None      # rankable frontiers, whole rollout
+    contrastive_frontiers: Optional[int] = None   # of those, >=2 DISTINCT delta labels
+    median_frontier_size: Optional[float] = None
+    singleton_frontier_frac: Optional[float] = None
+    metric_blind: Optional[bool] = None           # scorable_frontiers == 0
 
 
 def bfs_expansions(instance: TreeInstance, cap: int = 200000) -> Optional[int]:
@@ -136,11 +146,85 @@ def bfs_expansions(instance: TreeInstance, cap: int = 200000) -> Optional[int]:
     return None
 
 
+def scorability(
+    inst: TreeInstance,
+    *,
+    fringe_size: int = SCORABILITY_PROBE_F,
+) -> Dict[str, float]:
+    """Can this tree produce frontiers the ranking metric can READ?
+
+    WHY THIS EXISTS: `min_states` was standing in for this and does not correlate
+    with it in either direction. Measured: CC_2_3_4__pl_3 (50,167 states, admitted)
+    yields ZERO scorable frontiers, while Assemble_B3__pl_5 (23 states, excluded)
+    yields 18. An instance with zero trains -- it contributes gradient -- but is
+    invisible to every held-out ranking metric and to checkpoint selection, so it
+    can neither support nor refute any claim made from those numbers.
+
+    SCORABLE mirrors `run.py`'s H3 filter exactly (non-forced, unique (instance,
+    obs), len(beam) >= 2, not all-INF), but is measured over the WHOLE rollout
+    rather than the 10% held-out slice: this is CAPACITY. Zero here forces zero
+    held-out; nonzero here does not guarantee a usable held-out count (CoinBox has
+    capacity yet only ~2 survive the split, and that count swings 2->169 on the
+    split seed alone). Treat it as a necessary, not sufficient, condition.
+
+    CONTRASTIVE is the stricter cut: >= 2 DISTINCT delta labels, counting inf as a
+    label. A `[1.0, inf]` frontier IS contrastive -- reachable-vs-dead-end is a
+    real ranking signal. Requiring two distinct FINITE deltas instead scores
+    CoinBox at a bogus 0% when its true contrast rate is 93.4%.
+
+    Probed under the deterministic `bfs` behaviour policy at one seed -- 1/12th of
+    the pipeline's 4-policy x 3-seed sweep, which keeps the gate cheap, and no RNG
+    so the verdict cannot swing on a seed the way the retired delta_root criterion
+    did.
+    """
+    # Local import: the gate is tree-only at module scope, and dataset/ pulls in
+    # env + policies. Nothing in that chain imports usability, so no cycle.
+    from .dataset import generate_dataset
+    from .env import default_expansion_cap
+
+    rows, _ = generate_dataset(
+        [inst], fringe_size, policies=("bfs",), seeds_per_policy=1,
+        expansion_cap=default_expansion_cap([inst]),
+        counterfactual="all", n_refill_samples=1, verbose=False,
+    )
+    seen: set = set()
+    sizes: List[int] = []
+    n_scorable = n_contrastive = 0
+    for r in rows:
+        if getattr(r, "forced", False):
+            continue
+        key = tuple(r.obs)
+        if key in seen:
+            continue
+        seen.add(key)
+        sizes.append(len(r.obs))
+        if len(r.obs) < 2:
+            continue
+        deltas = [inst.delta[v] for v in r.obs]
+        if all(d >= INF_DELTA for d in deltas):
+            continue
+        n_scorable += 1
+        if len(set(deltas)) >= 2:
+            n_contrastive += 1
+    sizes.sort()
+    median = float(sizes[len(sizes) // 2]) if sizes else 0.0
+    singleton = (sum(1 for s in sizes if s < 2) / len(sizes)) if sizes else 1.0
+    return {
+        "scorable_frontiers": n_scorable,
+        "contrastive_frontiers": n_contrastive,
+        "median_frontier_size": median,
+        "singleton_frontier_frac": singleton,
+    }
+
+
 def check_instance(
     inst: TreeInstance,
     *,
     min_states: int = MIN_STATES,
     min_expansions: int = MIN_EXPANSIONS_FOR_FIDELITY,
+    probe_scorability: bool = True,
+    require_scorable: bool = False,
+    fringe_size: int = SCORABILITY_PROBE_F,
 ) -> InstanceVerdict:
     """Is this tree USABLE for training? (Not: are its distances optimal.)"""
     reach = inst._reachable()
@@ -198,6 +282,31 @@ def check_instance(
             f"BFS reaches only {v.bfs_expansions} expansions (< {min_expansions}): "
             f"too small for the fidelity gate to score; kept for coverage"
         )
+
+    # 4. SCORABILITY: can the ranking metric read this instance at all?
+    #    Default is a FLAG, matching `usable_for_fidelity`: a metric-blind instance
+    #    still contributes gradient, and excluding it silently changes the training
+    #    pool of every existing batch. `require_scorable=True` promotes it to an
+    #    exclusion for runs whose whole purpose is a held-out ranking claim.
+    if probe_scorability:
+        s = scorability(inst, fringe_size=fringe_size)
+        v.scorable_frontiers = int(s["scorable_frontiers"])
+        v.contrastive_frontiers = int(s["contrastive_frontiers"])
+        v.median_frontier_size = s["median_frontier_size"]
+        v.singleton_frontier_frac = s["singleton_frontier_frac"]
+        v.metric_blind = v.scorable_frontiers == 0
+        if v.metric_blind:
+            msg = (
+                f"METRIC-BLIND: 0 scorable frontiers at F={fringe_size} "
+                f"({100 * v.singleton_frontier_frac:.0f}% of its frontiers are "
+                f"singletons). It trains, but contributes NOTHING to held-out "
+                f"ranking metrics or checkpoint selection"
+            )
+            if require_scorable:
+                v.usable = False
+                v.reasons.append(msg + " -- excluded (require_scorable)")
+            else:
+                v.reasons.append(msg + "; kept for coverage")
     return v
 
 
@@ -208,13 +317,19 @@ def build_usable_pool(
     *,
     min_states: int = MIN_STATES,
     min_expansions: int = MIN_EXPANSIONS_FOR_FIDELITY,
+    probe_scorability: bool = True,
+    require_scorable: bool = False,
+    fringe_size: int = SCORABILITY_PROBE_F,
 ) -> Dict[str, object]:
     """Partition into usable / excluded, with a reason for every exclusion.
 
     Writes `usable_pool.json`. Nothing downstream may train on an instance absent
     from `usable`.
     """
-    verdicts = [check_instance(i, min_states=min_states, min_expansions=min_expansions)
+    verdicts = [check_instance(i, min_states=min_states, min_expansions=min_expansions,
+                               probe_scorability=probe_scorability,
+                               require_scorable=require_scorable,
+                               fringe_size=fringe_size)
                 for i in instances]
     usable = [v for v in verdicts if v.usable]
     excluded = [v for v in verdicts if not v.usable]
@@ -223,10 +338,20 @@ def build_usable_pool(
         "n_usable": len(usable),
         "n_excluded": len(excluded),
         "n_usable_for_fidelity": sum(1 for v in usable if v.usable_for_fidelity),
+        "n_metric_blind": sum(1 for v in usable if v.metric_blind),
+        "n_usable_for_ranking": sum(1 for v in usable if v.metric_blind is False),
         "criteria": {
             "delta_root_finite": True,
             "min_states": min_states,
             "min_expansions_for_fidelity": min_expansions,
+            "scorability_probe_fringe_size": (fringe_size if probe_scorability else None),
+            "scorable_frontiers": (
+                "FLAG by default (require_scorable promotes it to an exclusion). "
+                "0 => the instance trains but is invisible to every held-out ranking "
+                "metric and to checkpoint selection. This is what min_states was "
+                "wrongly standing in for: the two do not correlate in either "
+                "direction (50,167-state instance -> 0 scorable; 23-state -> 18)."
+            ),
             "delta_root_equals_known_optimal": (
                 "DIAGNOSTIC ONLY -- retired as a gate: it tested DFS luck, not the "
                 "tree (delta_root swung 14/6/7 across seeds on a fixed optimal of 4)"
@@ -252,9 +377,22 @@ def build_usable_pool(
         p.write_text(json.dumps(doc, indent=1))
     if verbose:
         print(f"[usability] {len(usable)}/{len(verdicts)} usable; "
-              f"{doc['n_usable_for_fidelity']} usable for the fidelity gate")
+              f"{doc['n_usable_for_fidelity']} usable for the fidelity gate; "
+              f"{doc['n_usable_for_ranking']} scorable for ranking")
         for v in excluded:
             print(f"  EXCLUDED {v.instance}: {'; '.join(v.reasons)}")
+        blind = [v for v in usable if v.metric_blind]
+        if blind:
+            print(f"  WARNING {len(blind)}/{len(usable)} usable instance(s) are "
+                  f"METRIC-BLIND (0 scorable frontiers at F={fringe_size}) -- they "
+                  f"train but cannot support or refute any held-out ranking claim:")
+            for v in blind:
+                print(f"    {v.instance}: {v.n_states} states, median |fringe|="
+                      f"{v.median_frontier_size:.0f}, "
+                      f"{100 * v.singleton_frontier_frac:.0f}% singletons")
+        if usable and doc["n_usable_for_ranking"] == 0:
+            print("  WARNING every usable instance is METRIC-BLIND: held-out ranking "
+                  "metrics and checkpoint selection will be vacuous for this domain.")
     return doc
 
 
