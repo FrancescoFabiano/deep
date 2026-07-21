@@ -121,6 +121,10 @@ class RunConfig:
     # behaviour, so the ablation runs both arms from one binary.
     sampler: str = "proportional"
     sampler_k: float = 12.0
+    # Export the FINAL checkpoint (step S) instead of the one the selector picks.
+    # For controlled comparisons: two arms must be scored at the same step, and
+    # the smoothed selector runs on heldout_ndcg, which is a retired signal.
+    select_final: bool = False
 
 
 def _net(cfg: RunConfig, max_delta: float):
@@ -532,7 +536,7 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
 
     # Smoothed selection on the held-out signal -- NOT a single argmax draw (the floor
     # run showed argmax picks a lucky rollout).
-    best = select_smoothed(cands, window=SELECTION_WINDOW)
+    best = cands[-1] if cfg.select_final else select_smoothed(cands, window=SELECTION_WINDOW)
     print(f"[run] selected checkpoint {best.step} "
           f"(select_score={best.select_score:.3f}, coverage {best.coverage:.2f}, "
           f"regret {best.regret}) via {eval_mode}, window={SELECTION_WINDOW}")
