@@ -208,3 +208,34 @@ and structure-only-floor limitations already registered above.
 
 The four shallower fidelity instances (pl 4/5/5/6) remain planner-side and
 commensurable with BFS_strict; only pl_7 falls back to the in-tree substitute.
+
+---
+
+# SC sampler ablation — THIRD OUTCOME pre-registered (2026-07-23, before the batch)
+
+Pool SC, F=16, --allow-cross-config (6 configs -> structure-only floor, as on CC).
+Arms proportional vs capped(k=4), seeds 0/1/2. Verified optima (BFS == pl_N):
+SC_8_10__pl_6=6, SC_4_2__pl_7=7, SC_10_10__pl_13=13, SC_10_8__pl_15=15.
+
+The two-outcome rule (CAP SUPPORTED / NOT SUPPORTED) assumed the pool can be
+solved at a measurable rate. Add a THIRD outcome, fixed before results:
+
+  INCONCLUSIVE -- FLOOR TOO LOW: if the optimality rate is near zero for BOTH
+  arms on the two deep instances (pl 13, 15), the structure-only cross-config
+  floor is too low for either sampler to produce optimal deep plans, and the run
+  answers the sampler question NEITHER WAY. On HASHED the node channel carries 0%
+  cross-config signal, so a 6-config SC model learns from topology + edge labels
+  alone; if that floor cannot reach optimal on the deep instances, the sampler
+  cannot be the deciding factor there.
+
+This is DISTINCT from CAP NOT SUPPORTED, which requires ctrl to MATCH OR BEAT cap
+at a MEASURABLE optimality rate (a real signal against the cap), not both at the
+floor. Distinguishing them: NOT SUPPORTED needs ctrl > 0 optimal on instances
+where cap is also > 0; FLOOR TOO LOW is both ~0 on the deep bins regardless of arm.
+
+BUDGET NOTE: SC train_rows ~3.9k at F=16, ~10x smaller than CC (~40k). To avoid an
+undertraining artifact, epochs is set to MATCH CC's step count (~30k steps), not
+CC's epoch count -- so each SC row is reused ~10x more than CC's were. The converse
+risk (overfitting the ~3.9k rows) is real; if it depresses optimality it presents
+as the FLOOR TOO LOW outcome, which this entry now captures. Per-run convergence is
+read post-hoc from the 20-checkpoint curve.
