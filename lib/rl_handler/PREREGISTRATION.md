@@ -187,3 +187,24 @@ carries no cross-configuration signal.
 Both arms inherit this equally, so the RELATIVE comparison the verdict rule rests on
 remains valid. The ABSOLUTE numbers are a floor, not the method's performance, and
 must not be reported as such.
+
+---
+
+# pl_7 planner-side substitute — PRE-REGISTERED (written 2026-07-22, before the CAP arm)
+
+`CC_2_3_4__pl_7` is deterministically unmeasurable planner-side: the planner aborts
+with `std::bad_alloc` after ~236s, reproducibly (confirmed on two independent runs,
+rc=-6/SIGABRT, 0 bytes stdout, 36 GB host RAM free throughout), in frozen C++. The
+pre-registered "deepest bin must not degrade" clause therefore has NO planner-side
+subject.
+
+SUBSTITUTE, fixed in advance: for pl_7 ONLY, compare OFFLINE IN-TREE expansions
+between the two arms (the `off` vector from evaluate_split, now persisted in
+planner_expansions.json). Both arms navigate the same tree, so the comparison is
+valid BETWEEN ARMS. It is NOT commensurable with BFS_strict (which is uncapped BFS
+on the true state space, not the DFS-sampled tree) and must NEVER be reported as a
+deployment number. Any depth verdict from it is in-tree only, and inherits the n=1
+and structure-only-floor limitations already registered above.
+
+The four shallower fidelity instances (pl 4/5/5/6) remain planner-side and
+commensurable with BFS_strict; only pl_7 falls back to the in-tree substitute.
