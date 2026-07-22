@@ -440,11 +440,16 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
                unit="epoch", disable=not _sys.stderr.isatty(),
                dynamic_ncols=True, leave=False)
     _ckpt_set = set(ckpt_steps)
+    import time as _time
+    t_train, t_eval = 0.0, 0.0     # wall split: trainer.step vs per-checkpoint eval
     for step in range(1, S + 1):
         if trainer is not None:
+            _t0 = _time.perf_counter()
             log = trainer.step()
+            t_train += _time.perf_counter() - _t0
         bar.update(cfg.batch_size / N_train)
         if step in _ckpt_set:
+            _te = _time.perf_counter()
             # coverage/regret: held-out transfer on PRIMARY, train-set estimate on
             # FALLBACK (labelled in the sidecar -- never reported as transfer there).
             out = evaluate_split(cov_instances, policy_for, cfg.fringe_size,
@@ -532,7 +537,12 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
                   f"frames={step * cfg.batch_size} total={D} "
                   f"ndcg={'nan' if _ndcg is None else round(_ndcg, 4)} "
                   f"td={out.get('td_loss', float('nan')):.4f}")
+            t_eval += _time.perf_counter() - _te
     bar.close()
+    print(f"[timing] training {t_train:.1f}s over {S} steps "
+          f"({1000 * t_train / max(1, S):.2f} ms/step); "
+          f"per-checkpoint eval {t_eval:.1f}s over {len(_ckpt_set)} checkpoints "
+          f"({t_eval / max(1, len(_ckpt_set)):.1f} s/ckpt)")
 
     # Smoothed selection on the held-out signal -- NOT a single argmax draw (the floor
     # run showed argmax picks a lucky rollout).
@@ -574,7 +584,13 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
                     cfg.deep_exe, _problem_for(repo_root, n), onnx,
                     cfg.fringe_size, separated=(cfg.kind_of_data == "separated"),
                     repo_root=repo_root))
-            gates.append(gate_env_fidelity(off, live))
+            # PERSIST BEFORE GATING: a None is a measurement (the planner aborted
+            # on that instance), not an absence. A failed gate must not discard it.
+            (run_dir / "planner_expansions.json").write_text(json.dumps({
+                "instances": fid, "offline": off, "planner": live,
+                "fringe_size": cfg.fringe_size, "checkpoint": best.step,
+            }, indent=1))
+            gates.append(gate_env_fidelity(off, live, names=fid))
         else:
             # armed=False: the gate did not RUN. Not a verdict, so it must not fail
             # the run -- planner deployment is out of scope and --deep-exe defaults

@@ -606,6 +606,7 @@ def gate_env_fidelity(
     planner_expansions: Sequence[int],
     tolerance_frac: float = 0.10,
     min_expansions: int = 20,
+    names: Optional[Sequence[str]] = None,
 ) -> GateResult:
     """Gate 2: THE most important test.
 
@@ -625,9 +626,11 @@ def gate_env_fidelity(
                           f"nothing to compare: offline={len(offline_expansions)} "
                           f"planner={len(planner_expansions)}")
     if any(p is None for p in planner_expansions):
+        missing = [(names[i] if names and i < len(names) else f"#{i}")
+                   for i, p in enumerate(planner_expansions) if p is None]
         return GateResult("env_fidelity", False,
                           f"the planner produced no expansion count for "
-                          f"{sum(1 for p in planner_expansions if p is None)} instance(s); "
+                          f"{len(missing)} instance(s) {missing}; "
                           f"a missing count is a FAILURE, never 'no data'")
     # A fractional tolerance is meaningless on tiny searches: at 7 expansions a
     # +-1 difference is 14%. Instances below `min_expansions` cannot discriminate
