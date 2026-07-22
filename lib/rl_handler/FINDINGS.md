@@ -216,3 +216,36 @@ moment BITMASK feeds the RL path.
   model sat at `viability_auc` 0.568 (picking sterile at the base rate) while landing
   26 expansions from the ceiling and beating every baseline. Gating on the proxy
   would have killed the best model produced.
+
+---
+
+# Capped sampler adopted as the production default (2026-07-23)
+
+DECISION: `final_launcher.sh` now defaults `SAMPLER=capped --sampler-k 4`. The
+CLI/RunConfig default stays `proportional`, so only the production launcher opts in;
+existing scripts and reruns are byte-identical to before.
+
+ADOPTED ON:
+- A principled fix to a MEASURED training imbalance, not on an economy win.
+  On CC F=8, proportional sampling gave `CC_2_3_4__pl_7` 62% of the gradient
+  (effective instances 3.2 of 12), and dominance rose with F (49%→59% F=4→8).
+  Capped bounds any instance to `min(c*(k), k·p_i)`; both arms share the same
+  train_rows, so nothing is filtered or dropped -- only the draw changes.
+- Cap was the ONLY arm to reach OPTIMAL solutions on any fidelity instance:
+  `CC_2_2_3__pl_6` at plan length 6, all three seeds. Ctrl (proportional) was
+  never optimal on any instance at any seed (21/24 runs across the fidelity set
+  are suboptimal; the 3 optimal ones are all cap on pl_6).
+
+NODE-ECONOMY CLAIM EXPLICITLY DECLINED on CC. 21/24 fidelity runs return
+suboptimal plans, so plan length confounds expansion counts in 11 of 12 same-seed
+pairs. The single matched-length pair (`CC_3_2_3__pl_5` seed1: cap 8/9 vs ctrl 8/10)
+favours cap by ONE expansion. On the deep instance `CC_2_3_4__pl_7` the confound
+bites both ways -- cap seed1 dominates ctrl (14/39 vs 105/123) but cap seed2 buys
+fewer expansions with a 3x LONGER plan (33/134 vs 11/151). Efficiency is therefore
+DEFERRED to the SC ablation, where >1 deep instance gives replication CC lacked.
+
+OPEN QUESTION (objective, not sampler): the pervasive suboptimality is a property
+of the RLBeam search objective -- BOTH arms show it, at every depth. The RL beam is
+greedy and optimality-free by construction; whether a different objective (the
+retired rank-sup pairwise, or a search-aware loss) recovers optimal plans is
+untested and orthogonal to the sampler choice.

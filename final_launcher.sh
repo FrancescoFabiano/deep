@@ -50,8 +50,14 @@ BATCH_SIZE=64
 # comparable. Steps are now derived per run: S = ceil(EPOCHS * |train_rows| / batch).
 EPOCHS=100
 N_CHECKPOINTS=20
-# Draw distribution: proportional (uniform over rows, historical) | capped.
-SAMPLER="${SAMPLER:-proportional}"
+# Draw distribution: capped (production default) | proportional (historical,
+# reachable via SAMPLER=proportional for ablation). Capped draws an instance from
+# min(c*(k), k*p_i) then a row within it, so no single instance dominates the
+# gradient (on CC F=8, proportional gave pl_7 62% of rows / 3.2 effective
+# instances; capped bounds that). The CLI/RunConfig default stays proportional --
+# only this production launcher opts in -- so existing scripts and reruns are
+# unaffected.
+SAMPLER="${SAMPLER:-capped}"
 SAMPLER_K="${SAMPLER_K:-4}"
 CQL_ALPHA=1.0
 # ---- FAITHFUL GENERATION ----
