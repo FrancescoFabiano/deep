@@ -527,6 +527,7 @@ def gate_onnx_parity(check: Callable[[], Tuple[bool, str]]) -> GateResult:
 
 
 PLANNER_EXPANSIONS_RE = r"Nodes expanded:\s*(\d+)"
+PLANNER_PLANLEN_RE = r"Plan length:\s*(\d+)"
 
 
 def run_planner_expansions(
@@ -599,6 +600,48 @@ def run_planner_expansions(
     import re
     m = re.search(PLANNER_EXPANSIONS_RE, r.stdout or "")
     return int(m.group(1)) if m else None
+
+
+def run_planner_metrics(*args, **kwargs) -> tuple[Optional[int], Optional[int]]:
+    """Like run_planner_expansions but also parses the plan length.
+
+    Returns (expansions, plan_length). Node economy is only a win if the plan is
+    still optimal, so the quality check needs the length beside the count -- and
+    it must be persisted with the expansions (not derived post-hoc from a re-run),
+    so a failed gate cannot discard it. Re-runs the same command once; the planner
+    is deterministic (verified), so this cannot disagree with a separate
+    run_planner_expansions call. (expansions, None) if only the count parsed;
+    (None, None) on abort/timeout.
+    """
+    import re
+    import subprocess
+    from pathlib import Path
+    deep_exe, problem_file, onnx_path, fringe_size, separated = args[:5]
+    repo_root = kwargs.get("repo_root", ".")
+    strong_equality = kwargs.get("strong_equality", True)
+    timeout_s = kwargs.get("timeout_s", 600)
+    if not Path(deep_exe).exists():
+        raise FileNotFoundError(f"planner binary not found: {deep_exe}")
+    if not Path(problem_file).exists():
+        raise FileNotFoundError(f"problem file not found: {problem_file}")
+    cmd = [str(deep_exe), str(problem_file), "-b", "-c", "--search", "RL",
+           "--RL_model", str(Path(onnx_path).resolve()),
+           "--RL_fringe_size", str(int(fringe_size)),
+           "--RL_exploitation", str(planner_flags(fringe_size)["RL_exploitation"]),
+           "--RL_exploration", "0"]
+    if separated:
+        cmd.append("--dataset_separated")
+    if strong_equality:
+        cmd.append("--strong_equality")
+    try:
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout_s,
+                           cwd=str(repo_root))
+    except (subprocess.TimeoutExpired, OSError):
+        return None, None
+    out = r.stdout or ""
+    me = re.search(PLANNER_EXPANSIONS_RE, out)
+    ml = re.search(PLANNER_PLANLEN_RE, out)
+    return (int(me.group(1)) if me else None), (int(ml.group(1)) if ml else None)
 
 
 def gate_env_fidelity(

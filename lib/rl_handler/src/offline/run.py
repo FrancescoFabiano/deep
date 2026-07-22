@@ -43,6 +43,7 @@ from .selection import (
     heldout_top1,
     onnx_path_for,
     run_planner_expansions,
+    run_planner_metrics,
     select,
     select_smoothed,
     split_instances,
@@ -575,19 +576,25 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
         # GATE 2 -- only instances the gate can actually SCORE
         fid = [n for n in fidelity_names(meta["pool"]) if n in by_name][:cfg.fidelity_instances]
         if cfg.deep_exe and fid:
-            off, live = [], []
+            off, live, plen = [], [], []
             for n in fid:
                 out = evaluate_split([by_name[n]], policy_for, cfg.fringe_size, seeds=1,
                                      expansion_cap=cap)
                 off.append(int(out["expansions_mean"] or 0))
-                live.append(run_planner_expansions(
+                # plan_length beside expansions: fewer expansions is only a WIN if
+                # the plan is still optimal, so the quality check needs both, and
+                # both must survive a gate failure.
+                exp_n, plen_n = run_planner_metrics(
                     cfg.deep_exe, _problem_for(repo_root, n), onnx,
                     cfg.fringe_size, separated=(cfg.kind_of_data == "separated"),
-                    repo_root=repo_root))
+                    repo_root=repo_root)
+                live.append(exp_n)
+                plen.append(plen_n)
             # PERSIST BEFORE GATING: a None is a measurement (the planner aborted
             # on that instance), not an absence. A failed gate must not discard it.
             (run_dir / "planner_expansions.json").write_text(json.dumps({
                 "instances": fid, "offline": off, "planner": live,
+                "plan_length": plen,
                 "fringe_size": cfg.fringe_size, "checkpoint": best.step,
             }, indent=1))
             gates.append(gate_env_fidelity(off, live, names=fid))
