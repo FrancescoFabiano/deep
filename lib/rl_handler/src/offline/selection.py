@@ -602,7 +602,16 @@ def run_planner_expansions(
     return int(m.group(1)) if m else None
 
 
-def run_planner_metrics(*args, **kwargs) -> tuple[Optional[int], Optional[int]]:
+def run_planner_metrics(
+    deep_exe: str | Path,
+    problem_file: str | Path,
+    onnx_path: str | Path,
+    fringe_size: int,
+    separated: bool,
+    repo_root: str | Path = ".",
+    strong_equality: bool = True,
+    timeout_s: int = 600,
+) -> tuple[Optional[int], Optional[int]]:
     """Like run_planner_expansions but also parses the plan length.
 
     Returns (expansions, plan_length). Node economy is only a win if the plan is
@@ -612,14 +621,13 @@ def run_planner_metrics(*args, **kwargs) -> tuple[Optional[int], Optional[int]]:
     is deterministic (verified), so this cannot disagree with a separate
     run_planner_expansions call. (expansions, None) if only the count parsed;
     (None, None) on abort/timeout.
+
+    Signature mirrors run_planner_expansions exactly -- the caller passes
+    `separated` and `repo_root` as keywords, so this must NOT take *args.
     """
     import re
     import subprocess
     from pathlib import Path
-    deep_exe, problem_file, onnx_path, fringe_size, separated = args[:5]
-    repo_root = kwargs.get("repo_root", ".")
-    strong_equality = kwargs.get("strong_equality", True)
-    timeout_s = kwargs.get("timeout_s", 600)
     if not Path(deep_exe).exists():
         raise FileNotFoundError(f"planner binary not found: {deep_exe}")
     if not Path(problem_file).exists():
