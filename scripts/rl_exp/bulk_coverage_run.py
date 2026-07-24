@@ -1,4 +1,5 @@
 import csv, subprocess, re, shlex, threading, time
+import os, signal
 from pathlib import Path
 from statistics import mean
 import multiprocessing
@@ -11,6 +12,33 @@ NUMERIC_COLUMNS = [
 ]
 
 TIMEOUT = 600
+
+# Per-instance resident-memory ceiling. When a planner run's RSS crosses this,
+# it is killed and recorded as MEMOUT (analogous to TIMEOUT). RSS (physical RAM)
+# is used rather than an RLIMIT_AS cap, because ONNX Runtime + threads reserve a
+# large *virtual* address space that would trip an address-space limit far below
+# real usage.
+MEMORY_LIMIT_GB = 16
+MEMORY_LIMIT_BYTES = int(MEMORY_LIMIT_GB * 1024 ** 3)
+# How often the monitor thread samples RSS while a run is in flight (seconds).
+MEMORY_POLL_INTERVAL = 0.25
+
+
+def _rss_bytes(pid):
+    """Resident set size of `pid` in bytes (0 if the process is gone).
+
+    Threads share the address space, so VmRSS already covers a multithreaded
+    planner. Child processes (not expected here) are not summed.
+    """
+    try:
+        with open(f"/proc/{pid}/status") as f:
+            for line in f:
+                if line.startswith("VmRSS:"):
+                    # format: "VmRSS:\t   123456 kB"
+                    return int(line.split()[1]) * 1024
+    except (FileNotFoundError, ProcessLookupError, ValueError, IndexError):
+        return 0
+    return 0
 
 
 # ---------- FLAG BUILDER ----------
@@ -52,33 +80,70 @@ def run_instance(binary, file, args_list):
 
     start = time.time()
 
+    timeout_flag = False
+    memout_flag = False
+    error_flag = False
+    out = ""
+
     try:
-        res = subprocess.run(
+        # start_new_session=True puts the child in its own process group so we can
+        # SIGKILL the whole group (child + any descendants) on timeout / memout.
+        proc = subprocess.Popen(
             cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
-            timeout=TIMEOUT
+            start_new_session=True,
         )
-        out = res.stdout
-        timeout_flag = False
-        error_flag = res.returncode != 0
 
-        if error_flag:
-            print(f"\n[ERROR][T{thread_id}] Return code: {res.returncode}")
+        # Per-process RSS watchdog: kills THIS run if it crosses the 16 GB ceiling.
+        memout_event = threading.Event()
+
+        def _watch():
+            while proc.poll() is None:
+                if _rss_bytes(proc.pid) > MEMORY_LIMIT_BYTES:
+                    memout_event.set()
+                    try:
+                        os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+                    except (ProcessLookupError, PermissionError):
+                        pass
+                    return
+                time.sleep(MEMORY_POLL_INTERVAL)
+
+        watcher = threading.Thread(target=_watch, daemon=True)
+        watcher.start()
+
+        try:
+            out, _ = proc.communicate(timeout=TIMEOUT)
+        except subprocess.TimeoutExpired:
+            try:
+                os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+            except (ProcessLookupError, PermissionError):
+                pass
+            out, _ = proc.communicate()
+            if not memout_event.is_set():
+                timeout_flag = True
+
+        watcher.join(timeout=1.0)
+        out = out or ""
+
+        if memout_event.is_set():
+            memout_flag = True
+            print(f"[MEMOUT][T{thread_id}] {file} (> {MEMORY_LIMIT_GB} GB RSS)")
+        elif timeout_flag:
+            print(f"[TIMEOUT][T{thread_id}] {file}")
             print(out)
-
-    except subprocess.TimeoutExpired as e:
-        print(f"[TIMEOUT][T{thread_id}] {file}")
-        out = e.stdout.decode() if isinstance(e.stdout, bytes) else (e.stdout or "")
-        timeout_flag = True
-        error_flag = False
-        print(out)
+        else:
+            error_flag = proc.returncode != 0
+            if error_flag:
+                print(f"\n[ERROR][T{thread_id}] Return code: {proc.returncode}")
+                print(out)
 
     except Exception as e:
         print(f"[ERROR][T{thread_id}] {file}: {e}")
         out = ""
         timeout_flag = False
+        memout_flag = False
         error_flag = True
 
     elapsed = round(time.time() - start, 2)
@@ -89,7 +154,7 @@ def run_instance(binary, file, args_list):
 
     result = {
         "File": file.name,
-        "GoalFound": "Yes" if ("Goal found" in out and not timeout_flag and not error_flag) else "No",
+        "GoalFound": "Yes" if ("Goal found" in out and not timeout_flag and not memout_flag and not error_flag) else "No",
         "PlanLength": ex(r"Plan length:\s*(\d+)"),
         "NodesExpanded": ex(r"Nodes expanded:\s*(\d+)"),
         "TotalExecutionTime": ex(r"Total execution time:\s*(\d+)"),
@@ -100,7 +165,10 @@ def run_instance(binary, file, args_list):
         "Status": "OK"
     }
 
-    if timeout_flag:
+    if memout_flag:
+        result["GoalFound"] = "MO"
+        result["Status"] = "MEMOUT"
+    elif timeout_flag:
         result["GoalFound"] = "TO"
         result["Status"] = "TIMEOUT"
     elif error_flag:
