@@ -153,7 +153,7 @@ def main(binary, folder, fringe, strict, extra_args):
     #print(f"[DEBUG] Found {len(files)} problems")
 
     # max_threads = max(1, int(multiprocessing.cpu_count() * 0.9))
-    max_threads = 2
+    max_threads = 8
     #print(f"[DEBUG] Using {max_threads} threads")
 
     results = []

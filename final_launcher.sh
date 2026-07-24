@@ -38,18 +38,35 @@ DATA_SOURCE="${DATA_SOURCE:-}"            # e.g. "batch1" -> symlink its trainin
 GENERATE_TEST_DATA="${GENERATE_TEST_DATA:-false}"
 FORCE_REGEN="${FORCE_REGEN:-false}"       # true -> regenerate even if data exists
 
+# --- stage control ---
+# Step 3 (pipeline.py) is the evaluation/inference pass. false stops after
+# training -- for sweeps where evaluation is run separately, or not wanted.
+# NOTE: the launcher passes --deep_exe to GENERATION only and never --deep-exe
+# to training, so the in-training env-fidelity gate reports NOT ARMED and every
+# planner-side number (success rate, nodes expanded) comes from pipeline.py and
+# nowhere else. RUN_INFERENCE=false therefore yields trained models and ZERO
+# measurements -- fine for a sweep, wrong for a run whose numbers you need.
+RUN_INFERENCE="${RUN_INFERENCE:-true}"    # true | false
+
 # --- what stays fixed across runs ---
 FRINGE_SIZES="${FRINGE_SIZES:-4 8 16 32}"
 DOMAINS="${DOMAINS:-CC}"                  # domains to symlink/check, e.g. "CC SC SCRich"
 
 DEEP_EXE="cmake-build-release-nn/bin/deep"
-BATCH_SIZE=64
+BATCH_SIZE="${BATCH_SIZE:-64}"
 # BUDGET IS EPOCHS, NOT STEPS. FRAMES=100000 meant 100k optimizer steps, which at
 # batch 64 was 321 epochs at F=4 but only 44 at F=32 -- the dataset grows with F,
 # so the same step count trained each F a different amount and no F-sweep was
 # comparable. Steps are now derived per run: S = ceil(EPOCHS * |train_rows| / batch).
-EPOCHS=100
-N_CHECKPOINTS=20
+#
+# EPOCHS fixes data exposure, NOT the number of gradient updates: at fixed EPOCHS,
+# doubling BATCH_SIZE halves S. The two knobs are not independent -- change one at
+# a time, and state both when reporting a run.
+EPOCHS="${EPOCHS:-100}"
+# Checkpoint steps are enumerated (round(i*S/N_CHECKPOINTS)), so the count is exact
+# whenever S >= N_CHECKPOINTS; below that it collapses to S distinct steps. Small
+# pools with few epochs are where that bites.
+N_CHECKPOINTS="${N_CHECKPOINTS:-20}"
 # Draw distribution: capped (production default) | proportional (historical,
 # reachable via SAMPLER=proportional for ablation). Capped draws an instance from
 # min(c*(k), k*p_i) then a row within it, so no single instance dominates the
@@ -174,11 +191,31 @@ echo "  fringes: ${FRINGE_SIZES}"
 echo "  gen  flags: ${GEN_FLAG:-<none>}  discard=${DISCARD_FACTOR}  depth_map=${DEPTH_MAP}"
 echo "  train flags: ${TRAIN_FLAG} ${TRAIN_EXTRA}"
 echo "  data source: ${DATA_SOURCE:-<generate here>}"
+echo "  budget: epochs=${EPOCHS}  batch=${BATCH_SIZE}  ckpts=${N_CHECKPOINTS}"
+echo "  inference: ${RUN_INFERENCE}"
 echo "============================================================"
 
 [[ "${DRY_RUN}" == "true" ]] || mkdir -p "${BATCH_DIR}"
 
 fail() { echo "[FAIL] ${BATCH_DIR} — $1"; rm -rf out; exit 1; }
+
+# Validated HERE, before step 1, not at step 3: the default is `true` and the
+# comparison below is a bare == "true", so any typo (`False`, `0`, `no`) reads as
+# "skip". That is the opposite safety direction from DRY_RUN, where a typo means
+# "run for real" -- here it would silently discard the evaluation after paying
+# for the whole training run.
+[[ "${RUN_INFERENCE}" == "true" || "${RUN_INFERENCE}" == "false" ]] \
+    || fail "RUN_INFERENCE must be true|false, got '${RUN_INFERENCE}'"
+
+# Same reasoning for the numeric knobs: argparse would reject a bad value, but not
+# until step 2, i.e. after generation has already run. Reject here instead.
+# EPOCHS is --epochs type=float (fractional passes are legal); the other two are ints.
+[[ "${BATCH_SIZE}"    =~ ^[1-9][0-9]*$ ]] \
+    || fail "BATCH_SIZE must be a positive integer, got '${BATCH_SIZE}'"
+[[ "${N_CHECKPOINTS}" =~ ^[1-9][0-9]*$ ]] \
+    || fail "N_CHECKPOINTS must be a positive integer, got '${N_CHECKPOINTS}'"
+[[ "${EPOCHS}" =~ ^[0-9]*\.?[0-9]+$ ]] && awk -v v="${EPOCHS}" 'BEGIN{exit !(v>0)}' \
+    || fail "EPOCHS must be a positive number, got '${EPOCHS}'"
 
 # Every stage goes through this, so DRY_RUN proves the wiring without touching the
 # machine (no generation, no GPU, no `deep` calls).
@@ -428,11 +465,18 @@ run_stage python3 scripts/rl_exp/train_models.py "${BATCH_DIR}" \
 # ============================================================
 #  3. EVALUATE
 # ============================================================
-echo "[3/3] evaluation pipeline ..."
-run_stage python3 scripts/rl_exp/pipeline.py "${BATCH_DIR}" \
-    --domains ${DOMAINS} \
-    ${PIPE_FLAG} \
-    || fail "step 3 (pipeline)"
+if [[ "${RUN_INFERENCE}" == "true" ]]; then
+    echo "[3/3] evaluation pipeline ..."
+    run_stage python3 scripts/rl_exp/pipeline.py "${BATCH_DIR}" \
+        --domains ${DOMAINS} \
+        ${PIPE_FLAG} \
+        || fail "step 3 (pipeline)"
+else
+    echo "[3/3] evaluation pipeline SKIPPED (RUN_INFERENCE=false)"
+    echo "      No planner-side numbers were produced: the in-training fidelity"
+    echo "      gate is NOT ARMED (no --deep-exe), so pipeline.py is the only"
+    echo "      source of success rate and node expansions."
+fi
 
 [[ "${DRY_RUN}" == "true" ]] || rm -rf out
 
