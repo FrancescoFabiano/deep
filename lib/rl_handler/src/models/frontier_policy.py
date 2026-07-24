@@ -1,3 +1,13 @@
+"""Deployed network architecture (DO NOT rename exported symbols).
+
+FrontierPolicyNetwork is the model behind every frontier_policy_<F>.onnx the
+C++ planner loads (FringeEvalRL): GNN encoder with in-graph HASHED int64
+normalization + per-fringe-slot score head with optional frontier context.
+Used by the offline DQN trainer (src/offline/dqn.py). Checkpoint configs
+reference the constructor signature; the ONNX contract depends on the
+forward semantics.
+"""
+
 from __future__ import annotations
 
 import torch
@@ -27,6 +37,9 @@ I64_ABS_MIN_FLOAT = float(1 << 63)
 I64_MAX_FLOAT = float(I64_MAX)
 
 
+VALID_CONTEXT_MODES = {"mean_pool", "self_attention", "none"}
+
+
 def _build_mlp(in_dim: int, hidden_dim: int, depth: int, out_dim: int) -> nn.Sequential:
     layers = []
     d_in = in_dim
@@ -36,6 +49,184 @@ def _build_mlp(in_dim: int, hidden_dim: int, depth: int, out_dim: int) -> nn.Seq
         d_in = hidden_dim
     layers.append(nn.Linear(d_in, out_dim))
     return nn.Sequential(*layers)
+
+
+class FringeAttention(nn.Module):
+    """Multi-head self-attention over fringe state embeddings.
+
+    Each state attends to all other states in ITS fringe (not across fringes in
+    the training batch).  Variable-size fringes are padded into ``[B, max_K, D]``
+    with a key-padding mask so padding slots are ignored by attention.
+
+    Two entry points:
+      * ``forward(z, candidate_batch)`` — batched training path.  ``candidate_batch``
+        maps each pooled state to its fringe index; the disconnected fringes are
+        padded/unpadded around the transformer stack.
+      * ``forward_single(z, mask)`` — single-fringe inference/ONNX path (batch=1).
+        No ``_pad`` loop, so it traces cleanly; ``mask`` (1=active, 0=padding)
+        becomes the key-padding mask.  This is the path the exported ONNX runs,
+        because the C++ contract feeds one fringe with ``candidate_batch=None``.
+    """
+
+    def __init__(
+        self,
+        hidden_dim: int,
+        n_heads: int = 4,
+        n_layers: int = 1,
+        dropout: float = 0.0,
+    ):
+        super().__init__()
+        self.hidden_dim = int(hidden_dim)
+        self.n_heads = int(n_heads)
+        self.layers = nn.ModuleList(
+            [
+                nn.TransformerEncoderLayer(
+                    d_model=self.hidden_dim,
+                    nhead=self.n_heads,
+                    dim_feedforward=self.hidden_dim * 2,
+                    dropout=dropout,
+                    batch_first=True,
+                )
+                for _ in range(max(1, int(n_layers)))
+            ]
+        )
+
+    def _append_goal(
+        self,
+        z: torch.Tensor,
+        candidate_batch: torch.Tensor,
+        goal_emb: torch.Tensor,
+    ):
+        """Append one goal token per fringe as an extra attention member.
+
+        ``z`` is ``[N, D]`` and ``candidate_batch`` ``[N]`` (fringe index per
+        state, 0..B-1); ``goal_emb`` is ``[B, D]`` (one goal per fringe).  The
+        goal tokens are concatenated at the end with fringe indices ``0..B-1``,
+        so the augmented ``candidate_batch`` is non-contiguous — safe because
+        ``_pad`` groups by argsort, not by contiguity.
+
+        Returns ``(z_aug [N+B, D], cb_aug [N+B])``.
+        """
+        B = goal_emb.size(0)
+        goal_batch = torch.arange(B, device=z.device, dtype=candidate_batch.dtype)
+        z_aug = torch.cat([z, goal_emb], dim=0)
+        cb_aug = torch.cat([candidate_batch, goal_batch], dim=0)
+        return z_aug, cb_aug
+
+    def forward(
+        self,
+        z: torch.Tensor,
+        candidate_batch: torch.Tensor,
+        goal_emb: Optional[torch.Tensor] = None,
+    ) -> torch.Tensor:
+        """Batched training path.
+
+        Args:
+            z: ``[N, D]`` flat state embeddings (all fringes concatenated).
+            candidate_batch: ``[N]`` fringe index per state (0..B-1).
+            goal_emb: optional ``[B, D]`` per-fringe goal embedding.  When given,
+                one goal token is appended per fringe as an extra attention
+                member; its output slot is discarded (only the ``N`` state
+                outputs are returned).
+
+        Returns:
+            ``[N, D]`` — each state enriched by attending to its fringe-mates
+            (and to the goal token when ``goal_emb`` is provided).
+        """
+        N = z.size(0)
+        if goal_emb is not None:
+            z_inp, cb_inp = self._append_goal(z, candidate_batch, goal_emb)
+        else:
+            z_inp, cb_inp = z, candidate_batch
+        padded, key_padding, positions = self._pad(z_inp, cb_inp)
+        # src_key_padding_mask convention: True = IGNORE that position.
+        for layer in self.layers:
+            padded = layer(padded, src_key_padding_mask=key_padding)
+        z_out = self._unpad(padded, cb_inp, positions)
+        return z_out[:N]  # strip the appended goal output tokens
+
+    def forward_single(
+        self,
+        z: torch.Tensor,
+        mask: Optional[torch.Tensor] = None,
+        goal_emb: Optional[torch.Tensor] = None,
+    ) -> torch.Tensor:
+        """Single-fringe inference/ONNX path: ``z`` is ``[M, D]`` for one fringe.
+
+        ``mask`` (1=active, 0=padding) is turned into a ``[1, M]`` key-padding
+        mask (True = ignore).  No padding assembly, so this is trace-friendly for
+        ONNX export at batch=1.
+
+        When ``goal_emb`` is provided (separated mode), a single goal token is
+        appended (always active) so the fringe attends to the goal; its output
+        slot is stripped before returning the ``M`` state outputs.
+        """
+        K = z.size(0)
+        if goal_emb is not None:
+            g = goal_emb.view(1, -1) if goal_emb.dim() == 1 else goal_emb[:1]
+            z_aug = torch.cat([z, g], dim=0)  # [M+1, D]
+            z_seq = z_aug.unsqueeze(0)
+            key_padding = None
+            if mask is not None:
+                mask_aug = torch.cat(
+                    [
+                        mask.to(dtype=torch.bool).view(-1),
+                        torch.ones(1, dtype=torch.bool, device=z.device),  # goal active
+                    ],
+                    dim=0,
+                )
+                key_padding = (~mask_aug).view(1, -1)
+            for layer in self.layers:
+                z_seq = layer(z_seq, src_key_padding_mask=key_padding)
+            return z_seq.squeeze(0)[:K]  # strip goal output token
+
+        z_seq = z.unsqueeze(0)  # [1, M, D]
+        key_padding = None
+        if mask is not None:
+            key_padding = (~mask.to(dtype=torch.bool).view(1, -1))
+        for layer in self.layers:
+            z_seq = layer(z_seq, src_key_padding_mask=key_padding)
+        return z_seq.squeeze(0)
+
+    def _pad(self, z: torch.Tensor, candidate_batch: torch.Tensor):
+        """Flat ``[N, D]`` -> padded ``[B, max_K, D]`` + key-padding mask ``[B, max_K]``.
+
+        ``candidate_batch`` is produced by ``repeat_interleave`` in the packers,
+        so it is sorted with contiguous per-fringe groups.  The intra-fringe
+        position of every state is therefore computed vectorially (argsort-based,
+        robust even if the grouping were ever reordered) — no per-element Python
+        loop / CUDA sync.
+        """
+        device = z.device
+        N = z.size(0)
+        D = z.size(1)
+        B = int(candidate_batch.max().item()) + 1
+        sizes = torch.bincount(candidate_batch, minlength=B)
+        max_K = int(sizes.max().item())
+
+        # position of each state within its fringe (0..size_b-1)
+        offsets = torch.cumsum(sizes, 0) - sizes  # [B] group start rank
+        order = torch.argsort(candidate_batch, stable=True)
+        ranks_sorted = (
+            torch.arange(N, device=device) - offsets[candidate_batch[order]]
+        )
+        positions = torch.empty(N, dtype=torch.long, device=device)
+        positions[order] = ranks_sorted
+
+        padded = z.new_zeros(B, max_K, D)
+        key_padding = torch.ones(B, max_K, dtype=torch.bool, device=device)  # True=ignore
+        padded[candidate_batch, positions] = z
+        key_padding[candidate_batch, positions] = False
+        return padded, key_padding, positions
+
+    def _unpad(
+        self,
+        padded: torch.Tensor,
+        candidate_batch: torch.Tensor,
+        positions: torch.Tensor,
+    ) -> torch.Tensor:
+        """Padded ``[B, max_K, D]`` -> flat ``[N, D]`` (gather back each state)."""
+        return padded[candidate_batch, positions]
 
 
 class GNNEncoder(nn.Module):
@@ -259,12 +450,35 @@ class FrontierPolicyNetwork(nn.Module):
         edge_emb_dim: int = 32,
         num_edge_labels: int = 256,
         num_node_labels: int = 4096,
-        use_global_context: bool = True,
+        use_global_context: Optional[bool] = None,
+        context_mode: Optional[str] = None,
+        attn_heads: int = 4,
+        attn_layers: int = 1,
         mlp_depth: int = 2,
         use_goal_separate_input: bool = False,
     ):
         super().__init__()
-        self.use_global_context = use_global_context
+        # Resolve the frontier-context mode.  `context_mode` is authoritative when
+        # given (new checkpoints carry it); otherwise fall back to the deprecated
+        # `use_global_context` bool (True->mean_pool, False->none) so old configs /
+        # callers keep working; default (both unset) is mean_pool.
+        if context_mode is None:
+            if use_global_context is None:
+                context_mode = "mean_pool"
+            else:
+                context_mode = "mean_pool" if use_global_context else "none"
+        context_mode = str(context_mode)
+        if context_mode not in VALID_CONTEXT_MODES:
+            raise ValueError(
+                f"context_mode must be one of {sorted(VALID_CONTEXT_MODES)}, "
+                f"got {context_mode!r}."
+            )
+        self.context_mode = context_mode
+        self.attn_heads = int(attn_heads)
+        self.attn_layers = int(attn_layers)
+        # Kept for backward-compat serialization / callers that read it: True iff
+        # the head concatenates mean-pool frontier context.
+        self.use_global_context = context_mode == "mean_pool"
         self.pooling_type = pooling_type
         self.use_goal_separate_input = use_goal_separate_input
         self.dataset_type = str(dataset_type).upper()
@@ -281,9 +495,22 @@ class FrontierPolicyNetwork(nn.Module):
             num_edge_labels=self.num_edge_labels,
             num_node_labels=self.num_node_labels,
         )
-        head_in = hidden_dim * 2 if use_global_context else hidden_dim
+        # mean_pool and self_attention both concat a second hidden-width vector
+        # ([z_i || ctx_i] resp. [z_i || z'_i]), so head_in matches for a fair A/B;
+        # none scores each state from its own embedding only.
+        if self.context_mode in ("mean_pool", "self_attention"):
+            head_in = hidden_dim * 2
+        else:  # "none"
+            head_in = hidden_dim
         if self.use_goal_separate_input:
             head_in += hidden_dim
+        self.fringe_attention: Optional[FringeAttention] = None
+        if self.context_mode == "self_attention":
+            self.fringe_attention = FringeAttention(
+                hidden_dim=hidden_dim,
+                n_heads=self.attn_heads,
+                n_layers=self.attn_layers,
+            )
         self.policy_head = _build_mlp(
             in_dim=head_in,
             hidden_dim=hidden_dim,
@@ -375,9 +602,30 @@ class FrontierPolicyNetwork(nn.Module):
         z: torch.Tensor,
         candidate_batch: Optional[torch.Tensor],
         mask: Optional[torch.Tensor] = None,
+        goal_emb: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
-        if not self.use_global_context:
+        if self.context_mode == "none":
             return z
+        if self.context_mode == "self_attention":
+            # Inference/ONNX contract feeds one fringe with candidate_batch=None;
+            # use the mask as the key-padding mask (single-fringe, trace-friendly).
+            # In separated mode the goal embedding (goal_emb) joins the attention
+            # sequence as an extra token per fringe so each state ranks itself
+            # goal-relative; merged/mean_pool/none pass goal_emb=None (ignored).
+            if candidate_batch is None:
+                z_att = self.fringe_attention.forward_single(z, mask, goal_emb=goal_emb)
+                return torch.cat([z, z_att], dim=-1)
+            if candidate_batch.dim() != 1:
+                raise ValueError(
+                    f"candidate_batch must be 1D, got shape {tuple(candidate_batch.shape)}"
+                )
+            if candidate_batch.numel() == 0:
+                return torch.cat([z, z.new_zeros(z.shape)], dim=-1)
+            if int(candidate_batch.min().item()) < 0:
+                raise ValueError("candidate_batch contains negative frontier indices.")
+            z_att = self.fringe_attention(z, candidate_batch, goal_emb=goal_emb)
+            return torch.cat([z, z_att], dim=-1)
+        # context_mode == "mean_pool" (existing behavior, unchanged below)
         if candidate_batch is None:
             if mask is not None:
                 is_tracing = torch.onnx.is_in_onnx_export() or torch.jit.is_tracing()
@@ -421,6 +669,73 @@ class FrontierPolicyNetwork(nn.Module):
         ctx = ctx_per_frontier[candidate_batch]
         return torch.cat([z, ctx], dim=-1)
 
+    def head_features(
+        self,
+        node_features: torch.Tensor,
+        edge_index: torch.Tensor,
+        edge_attr: torch.Tensor,
+        membership: torch.Tensor,
+        candidate_batch: Optional[torch.Tensor] = None,
+        mask: Optional[torch.Tensor] = None,
+        goal_node_features: Optional[torch.Tensor] = None,
+        goal_edge_index: Optional[torch.Tensor] = None,
+        goal_edge_attr: Optional[torch.Tensor] = None,
+        goal_batch: Optional[torch.Tensor] = None,
+        pool_node_index: Optional[torch.Tensor] = None,
+        pool_membership: Optional[torch.Tensor] = None,
+    ) -> torch.Tensor:
+        """Per-candidate features fed to `policy_head`.
+
+        Extracted from forward() so a variant can swap the HEAD while sharing
+        this encoder + context stack byte-for-byte. That identity is what makes
+        the two-head baseline a fair comparison: only the loss differs.
+        """
+        node_emb = self.encoder(node_features, edge_index, edge_attr)
+        expected_num_candidates = (
+            int(candidate_batch.numel()) if candidate_batch is not None else None
+        )
+        z = self._pool_nodes(
+            node_emb,
+            membership,
+            pool_node_index=pool_node_index,
+            pool_membership=pool_membership,
+            expected_size=expected_num_candidates,
+        )
+        # Encode the goal BEFORE contextualization so self_attention can attend
+        # to it (goal joins the sequence as an extra token, separated mode only).
+        # goal_emb stays None for merged mode and whenever any goal_* input is
+        # absent; the MLP-concat channel below keeps its zeros fallback for that
+        # case (backward-compat, dual channel).
+        goal_emb = None
+        if self.use_goal_separate_input and (
+            goal_node_features is not None
+            and goal_edge_index is not None
+            and goal_edge_attr is not None
+            and goal_batch is not None
+        ):
+            goal_node_emb = self.encoder(
+                goal_node_features,
+                goal_edge_index,
+                goal_edge_attr,
+            )
+            goal_emb = self._pool_goal(goal_node_emb, goal_batch)
+
+        h = self._contextualize(z, candidate_batch, mask=mask, goal_emb=goal_emb)
+        if self.use_goal_separate_input:
+            if goal_emb is not None:
+                if candidate_batch is None:
+                    goal_per_candidate = goal_emb.mean(dim=0, keepdim=True).expand(h.size(0), -1)
+                else:
+                    goal_per_candidate = goal_emb[candidate_batch]
+            else:
+                goal_per_candidate = torch.zeros(
+                    (h.size(0), self.encoder.input_proj.out_features),
+                    device=h.device,
+                    dtype=h.dtype,
+                )
+            h = torch.cat([h, goal_per_candidate], dim=-1)
+        return h
+
     def forward(
         self,
         node_features: torch.Tensor,
@@ -436,42 +751,13 @@ class FrontierPolicyNetwork(nn.Module):
         pool_node_index: Optional[torch.Tensor] = None,
         pool_membership: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
-        node_emb = self.encoder(node_features, edge_index, edge_attr)
-        expected_num_candidates = (
-            int(candidate_batch.numel()) if candidate_batch is not None else None
+        h = self.head_features(
+            node_features, edge_index, edge_attr, membership,
+            candidate_batch=candidate_batch, mask=mask,
+            goal_node_features=goal_node_features, goal_edge_index=goal_edge_index,
+            goal_edge_attr=goal_edge_attr, goal_batch=goal_batch,
+            pool_node_index=pool_node_index, pool_membership=pool_membership,
         )
-        z = self._pool_nodes(
-            node_emb,
-            membership,
-            pool_node_index=pool_node_index,
-            pool_membership=pool_membership,
-            expected_size=expected_num_candidates,
-        )
-        h = self._contextualize(z, candidate_batch, mask=mask)
-        if self.use_goal_separate_input:
-            if (
-                goal_node_features is not None
-                and goal_edge_index is not None
-                and goal_edge_attr is not None
-                and goal_batch is not None
-            ):
-                goal_node_emb = self.encoder(
-                    goal_node_features,
-                    goal_edge_index,
-                    goal_edge_attr,
-                )
-                goal_emb = self._pool_goal(goal_node_emb, goal_batch)
-                if candidate_batch is None:
-                    goal_per_candidate = goal_emb.mean(dim=0, keepdim=True).expand(h.size(0), -1)
-                else:
-                    goal_per_candidate = goal_emb[candidate_batch]
-            else:
-                goal_per_candidate = torch.zeros(
-                    (h.size(0), self.encoder.input_proj.out_features),
-                    device=h.device,
-                    dtype=h.dtype,
-                )
-            h = torch.cat([h, goal_per_candidate], dim=-1)
         logits = self.policy_head(h).squeeze(-1)
         if mask is not None:
             logits = logits.masked_fill(~mask.to(torch.bool), -1e9)

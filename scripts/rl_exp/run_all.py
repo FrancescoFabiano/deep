@@ -1,4 +1,4 @@
-import subprocess, shutil, sys, shlex
+import argparse, subprocess, shutil, shlex
 from pathlib import Path
 
 SCRIPT = "scripts/rl_exp/bulk_coverage_run.py"
@@ -6,24 +6,38 @@ BIN = "./cmake-build-release-nn/bin/deep"
 
 #print("[DEBUG] Script started")
 
-DATA = Path(sys.argv[1])
+parser = argparse.ArgumentParser()
+parser.add_argument("data", help="domain-level path, e.g. exp/rl_exp/batch0_train/CC")
+parser.add_argument("--separated", action="store_true",
+                    help="run in separated (goal-free) mode; adds --dataset_separated for the C++ binary")
+parser.add_argument("--out-dir", default=None,
+                    help="results dir. When given, it is already domain-scoped "
+                         "(e.g. combined_results/batchX/CC) and results are written directly here. "
+                         "When omitted (back-compat), defaults to combined_results/ with a per-domain subdir.")
+cli = parser.parse_args()
+
+DATA = Path(cli.data)
 #print(f"[DEBUG] DATA path: {DATA} (exists={DATA.exists()})")
 
-OUT = Path("combined_results")
-OUT.mkdir(exist_ok=True)
+# separated (goal-free) mode is off by default -> merged behaviour, no extra flag
+SEP = " --dataset_separated" if cli.separated else ""
+
+# --out-dir given -> path is already domain-scoped, write straight to OUT.
+# omitted -> legacy behaviour: combined_results/ with a per-domain subdir (OUT / domain).
+SCOPED = cli.out_dir is not None
+OUT = Path(cli.out_dir) if SCOPED else Path("combined_results")
+OUT.mkdir(parents=True, exist_ok=True)
 #print(f"[DEBUG] Output dir: {OUT.resolve()}")
 
-#FRINGES = [8, 16, 32, 64]
-#STRICT_FLAGS = [True, False]
-FRINGES = [32, 64]
-STRICT_FLAGS = [True, False]
+FRINGES = [4, 8, 16, 32]
+STRICT_FLAGS = [True]
 
 def run(label, args, split_path, prefix, fringe, strict):
     #print("\n[DEBUG] ===== RUN START =====")
 
     domain = split_path.parent.name
-    OUT_check = OUT / domain
-    OUT_check.mkdir(exist_ok=True)
+    OUT_check = OUT if SCOPED else OUT / domain
+    OUT_check.mkdir(parents=True, exist_ok=True)
     split = split_path.name
 
     uses_rl = "--search RL" in args
@@ -90,7 +104,7 @@ for strict in STRICT_FLAGS:
         prefix = "train" if split == "Training" else "test"
 
         # ---- BFS (once) ----
-        run("BFS", "--search BFS", split_path, prefix, fringe=0, strict=strict)
+        run("BFS", "--search BFS" + SEP, split_path, prefix, fringe=0, strict=strict)
 
         # ---- RL per fringe ----
         for fringe in FRINGES:
@@ -99,7 +113,7 @@ for strict in STRICT_FLAGS:
             for h in ["SUBGOALS","L_PG","C_PG","S_PG"]:
                 run(
                     f"RL-{h}",
-                    f"--search RL --heuristics {h}",
+                    f"--search RL --heuristics {h}" + SEP,
                     split_path,
                     prefix,
                     fringe,
@@ -109,7 +123,7 @@ for strict in STRICT_FLAGS:
             for h in ["MIN","MAX","AVG","RNG"]:
                 run(
                     f"RL-H-{h}",
-                    f"--search RL --heuristics RL_H --RL_heuristics {h}",
+                    f"--search RL --heuristics RL_H --RL_heuristics {h}" + SEP,
                     split_path,
                     prefix,
                     fringe,

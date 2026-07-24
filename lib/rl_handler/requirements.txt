@@ -13,3 +13,4 @@ onnx
 onnxscript
 onnxruntime
 pandas
+scipy

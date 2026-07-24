@@ -1,7 +1,11 @@
+import sys
 import pandas as pd
 from pathlib import Path
 
-df = pd.read_csv("combined_results/aggregate.csv")
+# optional positional arg: results dir (batch+domain scoped when called from
+# pipeline.py, e.g. combined_results/batchX/CC). default = combined_results.
+RESULTS = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("combined_results")
+df = pd.read_csv(RESULTS / "aggregate.csv")
 
 # --- numeric cleanup ---
 df["NodesExpanded_mean"] = pd.to_numeric(df["NodesExpanded_mean"], errors="coerce")
@@ -9,8 +13,8 @@ df["TotalExecutionTime_mean"] = pd.to_numeric(df["TotalExecutionTime_mean"], err
 
 df["SolvedPct"] = df["Solved"] / df["Total"] * 100
 
-out = Path("combined_results/analysis")
-out.mkdir(exist_ok=True)
+out = RESULTS / "analysis"
+out.mkdir(parents=True, exist_ok=True)
 
 # --- BEST PER GROUP (min nodes) ---
 best = (

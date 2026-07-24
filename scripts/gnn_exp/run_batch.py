@@ -114,7 +114,17 @@ def main():
 
     # Step 1: Generate training data
     if not args.skip_gen:
-        step1_cmd = f"{sys.executable} scripts/gnn_exp/create_all_training_data.py {shlex.quote(str(exp_dir))} --deep_exe {shlex.quote(str(deep_exe))} --dataset_type {args.dataset_type}"
+        # Both ceilings are REQUIRED and stated here rather than defaulted in the
+        # generator: a default there drifts from what callers actually pass (it said
+        # 60000 while every launcher passed 50000). These are gnn_exp's historical
+        # values -- 60000 was this path's old default, 100000 the old C++ default for
+        # the VISIT ceiling -- so behaviour is unchanged, just visible.
+        step1_cmd = (
+            f"{sys.executable} scripts/gnn_exp/create_all_training_data.py "
+            f"{shlex.quote(str(exp_dir))} --deep_exe {shlex.quote(str(deep_exe))} "
+            f"--dataset_type {args.dataset_type} "
+            f"--dataset-max-creation 60000 --dataset-max-generation 100000"
+        )
         run_cmd(step1_cmd, cwd=repo_root)
     else:
         print("\n⏭ Skipping Step 1 (Generate training data)")

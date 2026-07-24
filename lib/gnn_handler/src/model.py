@@ -60,12 +60,13 @@ class BaseModel(ABC):
             **kwargs: passed through to evaluate()
         """
         best_metric = float("inf")
+        best_epoch = -1
         os.makedirs(checkpoint_dir, exist_ok=True)
         pbar = tqdm(range(n_epochs), desc="training...")
 
         history: dict[str, list[float]] = defaultdict(list)
 
-        for _ in pbar:
+        for epoch in pbar:
             self.model.train()
             epoch_loss = 0.0
 
@@ -85,11 +86,15 @@ class BaseModel(ABC):
                 **{k: f"{v:.4f}" for k, v in val_metrics.items()},
             )
 
+            # {model_name}.pt always holds the BEST-val_loss epoch so far —
+            # this is the file the pipeline reloads before ONNX export and
+            # the planner ultimately consumes.
             if val_metrics["val_loss"] < best_metric:
                 best_path = f"{checkpoint_dir}/{model_name}.pt"
                 self._save_full_checkpoint(best_path)
 
                 best_metric = val_metrics["val_loss"]
+                best_epoch = epoch
 
             # ←–– dynamically record *all* metrics returned
             for name, value in val_metrics.items():
@@ -97,7 +102,11 @@ class BaseModel(ABC):
 
             history["train_loss"].append(avg_loss)
 
-        self.save_and_plot_metrics(history, checkpoint_dir, n_epochs)
+        # Last-epoch weights kept for reference (the best checkpoint above is
+        # what the pipeline actually uses).
+        self._save_full_checkpoint(f"{checkpoint_dir}/{model_name}_last.pt")
+
+        self.save_and_plot_metrics(history, checkpoint_dir, n_epochs, best_epoch)
 
     def _move_batch_to_device(self, batch: dict) -> dict:
         for k, v in batch.items():
@@ -159,11 +168,17 @@ class BaseModel(ABC):
         raise NotImplementedError
 
     @staticmethod
-    def save_and_plot_metrics(history, checkpoint_dir, n_epochs):
+    def save_and_plot_metrics(history, checkpoint_dir, n_epochs, best_epoch=None):
 
         file_path = f"{checkpoint_dir}/history_losses.json"
         with open(file_path, "w") as f:
-            json.dump(history, f, indent=4)
+            # best_epoch is a scalar, not a per-epoch series — keep it in the
+            # JSON but out of `history` so the plotting loops below (which
+            # expect n_epochs-long lists) never see it.
+            payload = dict(history)
+            if best_epoch is not None:
+                payload["best_epoch"] = best_epoch
+            json.dump(payload, f, indent=4)
 
         # — after training: plot everything you tracked —
         epochs = range(n_epochs)

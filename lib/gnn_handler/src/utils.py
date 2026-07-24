@@ -3,6 +3,7 @@ from __future__ import annotations
 import math
 import os
 import random
+import re
 
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
@@ -13,6 +14,7 @@ import pydot
 import torch
 
 from matplotlib import pyplot as plt
+from scipy.stats import spearmanr
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from torch import nn
 from torch.utils.data import DataLoader, Dataset
@@ -29,6 +31,70 @@ from src.models.distance_estimator import (
 KEYWORD_MAPPED = "MAPPED"
 KEYWORD_HASHED = "HASHED"
 KEYWORD_BITMASK = "BITMASK"
+
+# Two's-complement reinterpretation constants.
+# NetworkX node labels are 64-bit hash values the planner prints either
+# unsigned (historical data: [0, 2^64-1]) or signed (current data:
+# [-2^63, 2^63-1]).  Unsigned values in [2^63, 2^64-1] are folded into
+# signed int64 by subtracting 2^64 — the bit pattern is identical; only the
+# sign interpretation changes.
+_UINT64_MOD  = 2**64
+_INT64_MIN   = -(2**63)
+_INT64_MAX   = 2**63   # first value that needs reinterpretation
+
+
+def uint64_to_signed_int64(values: list[int]) -> list[int]:
+    """Reinterpret a list of 64-bit node-ID ints as signed int64.
+
+    Accepts the union of signed and unsigned 64-bit ranges, i.e. any value
+    in [-2^63, 2^64-1]:
+      - [-2^63, 2^63-1]  : already valid int64, returned unchanged
+      - [2^63,  2^64-1]  : unsigned form, mapped to [-2^63, -1] via two's
+                           complement (identical bit pattern)
+    Values outside [-2^63, 2^64-1] raise ValueError.
+
+    The C++ planner historically printed node hashes unsigned and now prints
+    them signed; both forms of the same hash map to the same value here.
+
+    NOTE: kept as the readable reference implementation (used by the
+    validation/profiling scripts); production code paths use the vectorized
+    uint64_ids_to_int64_tensor() instead.
+    """
+    out = []
+    for v in values:
+        if v < _INT64_MIN or v >= _UINT64_MOD:
+            raise ValueError(
+                f"Node ID {v} is outside [-2^63, 2^64-1]."
+            )
+        out.append(v if v < _INT64_MAX else v - _UINT64_MOD)
+    return out
+
+
+def uint64_ids_to_int64_tensor(values: Sequence[int]) -> torch.Tensor:
+    """Convert node-ID ints to an int64 tensor preserving the 64-bit pattern.
+
+    Vectorized equivalent of uint64_to_signed_int64 + torch.tensor(...).
+    Accepts the union of signed and unsigned 64-bit ranges, i.e. any value
+    in [-2^63, 2^64-1]:
+      - [-2^63, 2^63-1]  : already valid int64, returned unchanged
+      - [2^63,  2^64-1]  : unsigned form, folded to negative via two's
+                           complement (identical bit pattern)
+    Values outside [-2^63, 2^64-1] raise ValueError.
+
+    The C++ planner historically printed node hashes unsigned and now prints
+    them signed; both forms of the same hash map to the same tensor value.
+    """
+    for v in values:
+        if v < _INT64_MIN or v > _UINT64_MOD - 1:
+            raise ValueError(f"Node ID {v} outside [-2^63, 2^64-1].")
+    # Mask to 64 bits with exact Python ints (handles negatives), then
+    # reinterpret the raw bits as int64 via a zero-copy view — identical to
+    # the two's-complement fold done element-wise in uint64_to_signed_int64,
+    # but without per-element Python arithmetic on the fold itself.
+    masked = [v & 0xFFFFFFFFFFFFFFFF for v in values]
+    raw = np.fromiter(masked, dtype=np.uint64, count=len(masked))
+    # .copy() so the tensor owns its memory (raw goes out of scope here)
+    return torch.from_numpy(raw.view(np.int64).copy())
 
 
 class PrecomputedGraphDataset(Dataset):
@@ -80,8 +146,145 @@ def seed_everything(seed: int = 42):
 
 def _load_dot(path: Path) -> nx.DiGraph:
     src = path.read_text()
-    dot = pydot.graph_from_dot_data(src)[0]
-    return nx.nx_pydot.from_pydot(dot)
+    graphs = pydot.graph_from_dot_data(src)
+    if not graphs:
+        # pydot returns None for files it can't parse — notably its grammar
+        # rejects bare negative numerals as node IDs, which the planner now
+        # emits (signed int64 hashes).
+        raise ValueError(
+            f"pydot could not parse {path}. If the file contains signed "
+            "(negative) node IDs, it should have been handled by "
+            "_parse_dot_fast; check why the fast parser rejected it."
+        )
+    return nx.nx_pydot.from_pydot(graphs[0])
+
+
+# ---------------------------------------------------------------------------
+# Fast DOT -> PyG path
+# ---------------------------------------------------------------------------
+# The planner emits DOT files with a fixed, trivial shape:
+#
+#   digraph G {
+#     <u> -> <v> [label="<int>"];
+#     ...
+#   }
+#
+# pydot's pure-Python parser takes ~21 ms per file on these graphs — 97% of
+# the whole dataloader-preparation time.  _parse_dot_fast() parses this
+# restricted grammar with one regex per line and builds the PyG Data object
+# directly, reproducing *exactly* what _load_dot() + _nx_to_pyg() produce:
+#
+#   * node order  = order of first appearance while scanning edges
+#     (source endpoint before target), which is how nx.nx_pydot.from_pydot
+#     inserts nodes;
+#   * edge order  = MultiDiGraph adjacency order: edges grouped by source
+#     node in node-insertion order, then by target in first-edge order, then
+#     parallel edges in file order — which is the order from_networkx()
+#     iterates G.edges();
+#   * same Data fields, dtypes and values (edge_index, edge_attr, edge_label,
+#     label, shape, name, num_nodes, node_names — plus node_bits/node_bitint/
+#     node_labels in bitmask mode).
+#
+# Any line that doesn't match the restricted grammar (explicit node
+# statements, subgraphs, extra attributes, ...) makes the function return
+# None and the caller falls back to the general pydot/NetworkX path, so
+# semantics never change.
+
+# `u -> v [label="3"];`  — node tokens may be quoted; label may be unquoted.
+# Node tokens may carry a leading minus: the planner now prints node-ID
+# hashes as *signed* int64, so bare negative numerals appear in DOT files.
+_DOT_EDGE_RE = re.compile(
+    r'^\s*"?(-?[0-9A-Za-z_]+)"?\s*->\s*"?(-?[0-9A-Za-z_]+)"?\s*'
+    r'(?:\[\s*label\s*=\s*("?-?\d+"?)\s*\])?\s*;?\s*$'
+)
+_DOT_HEADER_RE = re.compile(r"^\s*digraph\s+([0-9A-Za-z_]+)\s*\{\s*$")
+_DOT_CLOSE_RE = re.compile(r"^\s*\}\s*$")
+
+
+def _parse_dot_fast(src: str, bitmask: bool = False) -> Optional[Data]:
+    """Parse a planner DOT string directly into a PyG Data object.
+
+    Returns None when the input doesn't match the planner's restricted DOT
+    grammar; the caller must then fall back to _load_dot() + _nx_to_pyg().
+    """
+    graph_name = None
+    node_idx: Dict[str, int] = {}
+    # adjacency in NetworkX MultiDiGraph order: u_idx -> {v_idx: [raw labels]}
+    adj: Dict[int, Dict[int, List[str]]] = {}
+
+    for line in src.splitlines():
+        m = _DOT_EDGE_RE.match(line)
+        if m is not None:
+            u, v, raw_label = m.group(1), m.group(2), m.group(3)
+            if raw_label is None:
+                # Unlabeled edges change the attribute layout that
+                # from_networkx() would produce — use the general path.
+                return None
+            ui = node_idx.setdefault(u, len(node_idx))
+            vi = node_idx.setdefault(v, len(node_idx))
+            adj.setdefault(ui, {}).setdefault(vi, []).append(raw_label)
+            continue
+        if not line.strip():
+            continue
+        if graph_name is None:
+            hm = _DOT_HEADER_RE.match(line)
+            if hm is not None:
+                graph_name = hm.group(1)
+                continue
+            return None  # first significant line is not a digraph header
+        if _DOT_CLOSE_RE.match(line):
+            continue
+        return None  # node statements, subgraphs, extra attrs, ... -> pydot
+
+    if graph_name is None:
+        return None
+
+    # Flatten adjacency in the exact order MultiDiGraph.edges() iterates.
+    srcs: List[int] = []
+    dsts: List[int] = []
+    raw_labels: List[str] = []
+    for ui in range(len(node_idx)):
+        for vi, labels in adj.get(ui, {}).items():
+            for lab in labels:
+                srcs.append(ui)
+                dsts.append(vi)
+                raw_labels.append(lab)
+
+    data = Data()
+    data.edge_index = torch.tensor([srcs, dsts], dtype=torch.int64)
+    edge_label = torch.tensor(
+        [int(lab.replace('"', "")) for lab in raw_labels], dtype=torch.int64
+    )
+    data.edge_attr = edge_label.view(-1, 1).float()
+    # Extra fields kept for parity with the from_networkx() output.
+    data.edge_label = edge_label
+    data.label = raw_labels
+    data.shape = torch.zeros(len(node_idx), dtype=torch.int64)
+    data.name = graph_name
+    data.num_nodes = len(node_idx)
+
+    nodes = list(node_idx)  # insertion order == from_networkx node order
+    if bitmask:
+        if not nodes:
+            return None
+        bit_len = len(nodes[0])
+        if any(len(n) != bit_len for n in nodes):
+            raise ValueError("Inconsistent bit length across nodes.")
+        joined = "".join(nodes)
+        bits_u8 = np.frombuffer(joined.encode("ascii"), dtype=np.uint8) - ord("0")
+        if not ((bits_u8 == 0) | (bits_u8 == 1)).all():
+            raise ValueError("Node labels are not 0/1 bitstrings.")
+        data.node_bits = torch.from_numpy(
+            bits_u8.reshape(len(nodes), bit_len).astype(bool)
+        )
+        weights = 2 ** torch.arange(bit_len - 1, -1, -1)  # msb…lsb
+        data.node_bitint = (data.node_bits.to(torch.int64) * weights).sum(dim=1)
+        data.node_labels = nodes
+        data.node_names = data.node_bitint
+    else:
+        data.node_names = uint64_ids_to_int64_tensor([int(n) for n in nodes])
+
+    return data
 
 
 def plot_graph(G: nx.Graph):
@@ -220,13 +423,20 @@ def _nx_to_pyg(
         # (Optional) keep the original labels for reference (as a python list)
         data.node_labels = nodes
 
-        # (Optional) if you still want a float tensor like the non-bitmask branch:
-        data.node_names = data.node_bitint.to(torch.float32)
+        # (Optional) if you still want a scalar id tensor alongside node_bits,
+        # keep it as int64 — float32 would lose precision for |id| > 2^24.
+        data.node_names = data.node_bitint  # already int64
 
     else:
-        # 2) Node IDs → float tensor
+        # 2) Node IDs → int64 tensor.
+        # Node labels from NetworkX may be unsigned 64-bit hash values that fall
+        # in [2^63, 2^64-1] — valid uint64 but they overflow signed int64.
+        # We reinterpret them as signed int64 via two's complement (same bit
+        # pattern, different sign interpretation) so torch.int64 never overflows.
+        # normalize_int64_ids() in model.py then maps [-2^63, 2^63-1] → [-1, 1]
+        # over float64, so the full 64-bit uniqueness is preserved end-to-end.
         raw_ids = [int(n) for n in G.nodes()]
-        data.node_names = torch.tensor(raw_ids, dtype=torch.float)
+        data.node_names = uint64_ids_to_int64_tensor(raw_ids)
 
     # 3) Clean up unused fields if you like
     # del data.edge_label, data.edge_type, data.x
@@ -234,6 +444,39 @@ def _nx_to_pyg(
     if diagnose:
         diagnose_data(data)
 
+    return data
+
+
+def load_graph(
+    path: str | Path,
+    bitmask: bool = False,
+    if_plot_graph: bool = False,
+    graph_cache: Optional[Dict[str, Data]] = None,
+) -> Data:
+    """Load one DOT file into a PyG Data object.
+
+    Resolution order:
+      1. graph_cache lookup (pre-serialized Data, see preprocess_dot_to_pt.py)
+      2. _parse_dot_fast() — regex parser for the planner's restricted grammar
+      3. _load_dot() + _nx_to_pyg() — general pydot/NetworkX fallback
+
+    All three produce identical Data objects for planner-generated files.
+    """
+    if graph_cache is not None and not if_plot_graph:
+        cached = graph_cache.get(str(path))
+        if cached is None:  # cache keys are resolved absolute paths
+            cached = graph_cache.get(str(Path(path).resolve()))
+        if cached is not None:
+            return cached
+
+    if if_plot_graph:  # plotting needs the NetworkX graph: general path only
+        G = _load_dot(Path(path))
+        plot_graph(G)
+        return _nx_to_pyg(G, bitmask=bitmask)
+
+    data = _parse_dot_fast(Path(path).read_text(), bitmask=bitmask)
+    if data is None:  # DOT construct outside the planner grammar
+        data = _nx_to_pyg(_load_dot(Path(path)), bitmask=bitmask)
     return data
 
 
@@ -245,12 +488,11 @@ def preprocess_sample(
     bitmask: bool = False,
     if_plot_graph: bool = False,
     if_diagnose: bool = False,
+    graph_cache: Optional[Dict[str, Data]] = None,
 ) -> Dict[str, Any]:
-    Gs = _load_dot(Path(state_path))
-    if if_plot_graph:
-        plot_graph(Gs)
-    # print("Gs.nodes = ", Gs.nodes())
-    ds = _nx_to_pyg(Gs, bitmask=bitmask)
+    ds = load_graph(
+        state_path, bitmask=bitmask, if_plot_graph=if_plot_graph, graph_cache=graph_cache
+    )
     assert ds.edge_index.size(1) == ds.edge_attr.size(
         0
     ), f"Mismatch: {ds.edge_index.size(1)} edges vs {ds.edge_attr.size(0)} attrs"
@@ -268,10 +510,12 @@ def preprocess_sample(
         sample["target"] = torch.tensor([target], dtype=torch.float)
 
     if goal_path is not None:
-        Gg = _load_dot(Path(goal_path))
-        if if_plot_graph:
-            plot_graph(Gg)
-        dg = _nx_to_pyg(Gg, bitmask=bitmask)
+        dg = load_graph(
+            goal_path,
+            bitmask=bitmask,
+            if_plot_graph=if_plot_graph,
+            graph_cache=graph_cache,
+        )
         assert dg.edge_index.size(1) == dg.edge_attr.size(
             0
         ), f"Mismatch: {dg.edge_index.size(1)} edges vs {dg.edge_attr.size(0)} attrs"
@@ -370,6 +614,12 @@ class DistanceEstimatorModel(BaseModel):
         rmse = math.sqrt(mse)
         mae = mean_absolute_error(all_targets, all_preds)
         r2 = r2_score(all_targets, all_preds)
+        # Rank correlation between predictions and targets — the quantity A*
+        # actually consumes (node ordering), as opposed to R² (calibration).
+        # NaN (e.g. constant predictions) is reported as 0.0 so the training
+        # history stays JSON-serializable and plottable.
+        rho = spearmanr(all_preds, all_targets).statistic
+        spearman = float(rho) if not math.isnan(rho) else 0.0
 
         return {
             "val_loss": 1 - r2,
@@ -377,6 +627,7 @@ class DistanceEstimatorModel(BaseModel):
             "rmse": rmse,
             "mae": mae,
             "r2": r2,
+            "spearman": spearman,
         }
 
     def _save_full_checkpoint(self, path, **metrics):
@@ -471,7 +722,12 @@ class DistanceEstimatorModel(BaseModel):
         input_names, dummy_inputs, dynamic_axes = [], [], {}
 
         if getattr(self.model, "bit_input", None) is None:
-            # IDs path — first input: float32 [Ns]
+            # IDs path — node IDs as int64 (raw two's-complement hash bits,
+            # exactly what the C++ planner feeds via CreateTensor<int64_t>).
+            # The wrapper casts to float64 in-graph before normalization, so
+            # full int64 precision survives the process boundary.  Edge
+            # attributes are int64 too (C++ CreateTensor<int64_t>) and are
+            # cast to float32 in-graph.
             input_names += [
                 "state_node_ids",
                 "state_edge_index",
@@ -479,17 +735,17 @@ class DistanceEstimatorModel(BaseModel):
                 "state_batch",
             ]
             dummy_inputs += [
-                torch.arange(Ns, dtype=torch.float32),  # [Ns]
-                torch.zeros((2, Es), dtype=torch.int64),  # [2, Es]
-                torch.zeros((Es, 1), dtype=torch.float32),  # [Es, 1]
-                torch.zeros(Ns, dtype=torch.int64),  # [Ns]
+                torch.arange(Ns, dtype=torch.int64),         # [Ns]
+                torch.zeros((2, Es), dtype=torch.int64),     # [2, Es]
+                torch.zeros((Es, 1), dtype=torch.int64),     # [Es, 1]
+                torch.zeros(Ns, dtype=torch.int64),          # [Ns]
             ]
             dynamic_axes.update(
                 {
-                    "state_node_ids": {0: "Ns"},
-                    "state_edge_index": {1: "Es"},
-                    "state_edge_attr": {0: "Es"},
-                    "state_batch": {0: "Ns"},
+                    "state_node_ids":     {0: "Ns"},
+                    "state_edge_index":   {1: "Es"},
+                    "state_edge_attr":    {0: "Es"},
+                    "state_batch":        {0: "Ns"},
                 }
             )
             if with_goal:
@@ -500,17 +756,17 @@ class DistanceEstimatorModel(BaseModel):
                     "goal_batch",
                 ]
                 dummy_inputs += [
-                    torch.arange(Ng, dtype=torch.float32),  # [Ng]
-                    torch.zeros((2, Eg), dtype=torch.int64),  # [2, Eg]
-                    torch.zeros((Eg, 1), dtype=torch.float32),  # [Eg, 1]
-                    torch.zeros(Ng, dtype=torch.int64),  # [Ng]
+                    torch.arange(Ng, dtype=torch.int64),         # [Ng]
+                    torch.zeros((2, Eg), dtype=torch.int64),     # [2, Eg]
+                    torch.zeros((Eg, 1), dtype=torch.int64),     # [Eg, 1]
+                    torch.zeros(Ng, dtype=torch.int64),          # [Ng]
                 ]
                 dynamic_axes.update(
                     {
-                        "goal_node_ids": {0: "Ng"},
-                        "goal_edge_index": {1: "Eg"},
-                        "goal_edge_attr": {0: "Eg"},
-                        "goal_batch": {0: "Ng"},
+                        "goal_node_ids":     {0: "Ng"},
+                        "goal_edge_index":   {1: "Eg"},
+                        "goal_edge_attr":    {0: "Eg"},
+                        "goal_batch":        {0: "Ng"},
                     }
                 )
         else:
@@ -525,7 +781,7 @@ class DistanceEstimatorModel(BaseModel):
             dummy_inputs += [
                 torch.zeros((Ns, bit_len), dtype=torch.uint8),  # [Ns, bit_len]
                 torch.zeros((2, Es), dtype=torch.int64),  # [2, Es]
-                torch.zeros((Es, 1), dtype=torch.float32),  # [Es, 1]
+                torch.zeros((Es, 1), dtype=torch.int64),  # [Es, 1] — C++ feeds int64
                 torch.zeros(Ns, dtype=torch.int64),  # [Ns]
             ]
             dynamic_axes.update(
@@ -546,7 +802,7 @@ class DistanceEstimatorModel(BaseModel):
                 dummy_inputs += [
                     torch.zeros((Ng, bit_len), dtype=torch.uint8),  # [Ng, bit_len]
                     torch.zeros((2, Eg), dtype=torch.int64),  # [2, Eg]
-                    torch.zeros((Eg, 1), dtype=torch.float32),  # [Eg, 1]
+                    torch.zeros((Eg, 1), dtype=torch.int64),  # [Eg, 1] — C++ feeds int64
                     torch.zeros(Ng, dtype=torch.int64),  # [Ng]
                 ]
                 dynamic_axes.update(
@@ -568,17 +824,25 @@ class DistanceEstimatorModel(BaseModel):
 
         dynamic_axes["distance"] = {0: "B"}
 
+        # The wrapper holds a *reference* to self.model, so wrapper.cpu()
+        # moves the shared core model to CPU.  Restore the original device
+        # afterwards (even on export failure) so later predict_* calls don't
+        # hit a CPU/CUDA device mismatch.
+        original_device = next(self.model.parameters()).device
         wrapper = Wrapper(self.model).eval()
-        torch.onnx.export(
-            wrapper.cpu(),
-            tuple(dummy_inputs),
-            onnx_path.as_posix(),
-            opset_version=18,
-            input_names=input_names,
-            output_names=["distance"],
-            dynamic_axes=dynamic_axes,
-            do_constant_folding=False,
-        )
+        try:
+            torch.onnx.export(
+                wrapper.cpu(),
+                tuple(dummy_inputs),
+                onnx_path.as_posix(),
+                opset_version=18,
+                input_names=input_names,
+                output_names=["distance"],
+                dynamic_axes=dynamic_axes,
+                do_constant_folding=False,
+            )
+        finally:
+            self.model.to(original_device)
 
 
 def preprocess_for_onnx(
@@ -592,12 +856,13 @@ def preprocess_for_onnx(
     """
     Build ONNX feed dict for a batch of graphs.
     - Bitmask=True -> produces uint8 node feature matrices with keys: state_node_bits / goal_node_bits
-    - Bitmask=False -> produces float32 node id vectors with keys: state_node_ids / goal_node_ids
+    - Bitmask=False -> produces int64 node id vectors with keys: state_node_ids / goal_node_ids
 
-    Returns numpy arrays with exact dtypes/shapes expected by your ONNX:
-      state_node_bits: uint8  [Ns, bit_len]   (or state_node_ids: float32 [Ns])
+    Returns numpy arrays with the exact dtypes/shapes the ONNX model expects
+    (matching what the C++ planner feeds via CreateTensor<...>):
+      state_node_bits: uint8  [Ns, bit_len]   (or state_node_ids: int64 [Ns])
       state_edge_index: int64 [2, Es]
-      state_edge_attr: float32 [Es, 1]
+      state_edge_attr: int64  [Es, 1]
       state_batch: int64      [Ns]
       (optional) goal_* equivalents
       (optional) depth: float32 [B], where B == len(state_dot_files)
@@ -618,7 +883,7 @@ def preprocess_for_onnx(
         # edge tensors from PyG
         data = from_networkx(G)
         edge_index = data.edge_index.long()
-        edge_attr = data.edge_label.view(-1, 1).float()
+        edge_attr = data.edge_label.view(-1, 1).long()  # int64, cast in-graph
 
         # nodes: keep order consistent with networkx iteration
         nodes = list(G.nodes())
@@ -652,7 +917,13 @@ def preprocess_for_onnx(
         return node_bits, edge_index, edge_attr
 
     def _parse_dot_ids(path: Path) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        """read DOT -> (node_ids_f32 [N], edge_index [2,E], edge_attr [E,1])"""
+        """read DOT -> (node_ids int64 [N], edge_index [2,E], edge_attr int64 [E,1])
+
+        Node IDs are returned as int64 (uint64 hash bits reinterpreted via
+        two's complement) — the same raw representation the C++ planner feeds
+        with CreateTensor<int64_t>.  The ONNX graph itself casts them to
+        float64 before normalize_int64_ids(), so no precision is lost here.
+        """
         G = _load_dot(path)
         for _, d in G.nodes(data=True):
             d["shape"] = {"circle": 0, "doublecircle": 1}.get(
@@ -663,10 +934,9 @@ def preprocess_for_onnx(
 
         data = from_networkx(G)
         edge_index = data.edge_index.long()
-        edge_attr = data.edge_label.view(-1, 1).float()
+        edge_attr = data.edge_label.view(-1, 1).long()  # int64, cast in-graph
 
-        # node ids as float32 vector
-        node_ids = torch.tensor([float(int(x)) for x in G.nodes()], dtype=torch.float32)
+        node_ids = uint64_ids_to_int64_tensor([int(x) for x in G.nodes()])
         return node_ids, edge_index, edge_attr
 
     # collectors for concatenation
@@ -718,7 +988,7 @@ def preprocess_for_onnx(
         )
     else:
         state_node_ids = (
-            torch.cat(s_nodes) if s_nodes else torch.zeros((0,), dtype=torch.float32)
+            torch.cat(s_nodes) if s_nodes else torch.zeros((0,), dtype=torch.int64)
         )
 
     state_edge_index = (
@@ -727,7 +997,7 @@ def preprocess_for_onnx(
     state_edge_attr = (
         torch.cat(s_attrs, dim=0)
         if s_attrs
-        else torch.zeros((0, 1), dtype=torch.float32)
+        else torch.zeros((0, 1), dtype=torch.int64)
     )
     state_batch = (
         torch.cat(s_batch, dim=0) if s_batch else torch.zeros((0,), dtype=torch.int64)
@@ -738,9 +1008,9 @@ def preprocess_for_onnx(
     if bitmask:
         feed["state_node_bits"] = state_node_bits.numpy()  # uint8 [Ns, bit_len]
     else:
-        feed["state_node_ids"] = state_node_ids.numpy()  # float32 [Ns]
+        feed["state_node_ids"] = state_node_ids.numpy()  # int64 [Ns]
     feed["state_edge_index"] = state_edge_index.numpy()  # int64 [2, Es]
-    feed["state_edge_attr"] = state_edge_attr.numpy()  # float32 [Es, 1]
+    feed["state_edge_attr"] = state_edge_attr.numpy()  # int64 [Es, 1]
     feed["state_batch"] = state_batch.numpy()  # int64 [Ns]
 
     # optional depth: float32 [B] where B = number of *state* graphs
@@ -760,14 +1030,14 @@ def preprocess_for_onnx(
                 if g_nodes
                 else torch.zeros((0, bit_len), dtype=torch.uint8)
             )
-            feed["goal_node_bits"] = goal_node_bits.numpy()  # uint8 [Ng, bit_len]
+            feed["goal_node_bits"]    = goal_node_bits.numpy()  # uint8  [Ng, bit_len]
         else:
             goal_node_ids = (
                 torch.cat(g_nodes)
                 if g_nodes
-                else torch.zeros((0,), dtype=torch.float32)
+                else torch.zeros((0,), dtype=torch.int64)
             )
-            feed["goal_node_ids"] = goal_node_ids.numpy()  # float32 [Ng]
+            feed["goal_node_ids"] = goal_node_ids.numpy()  # int64 [Ng]
 
         goal_edge_index = (
             torch.cat(g_edges, dim=1)
@@ -777,7 +1047,7 @@ def preprocess_for_onnx(
         goal_edge_attr = (
             torch.cat(g_attrs, dim=0)
             if g_attrs
-            else torch.zeros((0, 1), dtype=torch.float32)
+            else torch.zeros((0, 1), dtype=torch.int64)
         )
         goal_batch = (
             torch.cat(g_batch, dim=0)
@@ -786,7 +1056,7 @@ def preprocess_for_onnx(
         )
 
         feed["goal_edge_index"] = goal_edge_index.numpy()  # int64 [2, Eg]
-        feed["goal_edge_attr"] = goal_edge_attr.numpy()  # float32 [Eg, 1]
+        feed["goal_edge_attr"] = goal_edge_attr.numpy()  # int64 [Eg, 1]
         feed["goal_batch"] = goal_batch.numpy()  # int64 [Ng]
 
         # sanity: if bitmask, state/goal bit widths must match ONNX feature dim
