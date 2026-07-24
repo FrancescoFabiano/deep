@@ -121,10 +121,3 @@ graph_cache_*.pt
 # GNN experiment artifacts (trained models, ONNX exports, eval results)
 exp/**/_models/
 exp/**/_results*/
-
-# RL run outputs (models, telemetry, figures, generated instances) -- never track
-exp/rl_exp/
-# Offline-RL run artifacts (offline-RL-test branch)
-exp/rl_exp/offline_rl/
-exp/rl_exp/**/_models_offline_rl/
-exp/rl_exp/batch0/
