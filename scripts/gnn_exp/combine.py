@@ -56,7 +56,7 @@ def get_names(file_res:str="../../exp/gnn_exp/final_results_ok"):
             else:
                 n = 2
 
-            title_train = f"Scalability {batch_n.replace("b", "B")} - {domain} - Train"
+            title_train = f"Scalability {batch_n.replace('b', 'B')} - {domain} - Train"
             figname_train = f"{file_res}/{batch_n}/{domain}_scalability_comparison_train.pdf"
             main_plot_scaling(output_file_train, n, title_train, figname_train)
 
