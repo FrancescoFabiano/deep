@@ -89,14 +89,27 @@ def two_head_loss(
     viable: torch.Tensor,      # float 1.0/0.0
     delta: torch.Tensor,       # finite where viable; ignored elsewhere
     distance_weight: float = 1.0,
+    label_mask: Optional[torch.Tensor] = None,   # bool; False = censored slot
 ) -> Tuple[torch.Tensor, dict]:
-    """BCE on viability (all slots) + MSE on distance (VIABLE slots only).
+    """BCE on viability (LABELED slots) + MSE on distance (VIABLE slots only).
 
     The MSE is masked rather than clipped: a sterile node has no finite distance,
     so asking the head to predict one would be inventing a target.
+
+    `label_mask` (fix 1A) applies the SAME principle to the BCE: a CENSORED slot
+    (delta=inf as a generation artifact -- depth-bound leaf / h*-contradicted
+    subtree) has no known viability, so labeling it non-viable would also be
+    inventing a target. False = censored = excluded from both losses. None keeps
+    the historical all-slots BCE.
     """
-    bce = nn.functional.binary_cross_entropy_with_logits(p_logit, viable)
-    m = viable > 0.5
+    if label_mask is None:
+        label_mask = torch.ones_like(viable, dtype=torch.bool)
+    lm = label_mask.to(dtype=torch.bool)
+    if lm.any():
+        bce = nn.functional.binary_cross_entropy_with_logits(p_logit[lm], viable[lm])
+    else:
+        bce = p_logit.sum() * 0.0
+    m = (viable > 0.5) & lm
     if m.any():
         mse = nn.functional.mse_loss(d_hat[m], delta[m])
     else:
@@ -108,4 +121,5 @@ def two_head_loss(
         "loss": float(loss.detach()),
         "n_viable": int(m.sum()),
         "n_total": int(viable.numel()),
+        "n_censored": int((~lm).sum()),
     }

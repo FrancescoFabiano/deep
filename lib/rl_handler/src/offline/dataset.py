@@ -64,6 +64,12 @@ class Transition:
     forced: bool
     oracle_action: int
     on_trajectory: bool           # True iff this is the action the behaviour took
+    # True iff the action expands a CENSORED depth-bound leaf: the tree records
+    # a dead end there but the real planner would expand it normally, so the
+    # transition's outcome is unknowable from the data. Dropped from training
+    # by generate_dataset (drop_censored=True) -- keeping it would teach
+    # "avoid v" from a label that is a generation artifact (fix 1A).
+    censored_expansion: bool = False
 
     def to_row(self) -> Dict[str, object]:
         return asdict(self)
@@ -77,6 +83,12 @@ def _emit(env: FringeEnv, ranking: Sequence[int], action: int, t: int,
     n_actions = env.n_actions()
     forced = env.forced
     oracle_a = inst.oracle_action(env.fringe)
+    node = env.fringe[action]
+    # Censored bound-hit LEAF: the tree records b_v=0 / delta=inf there purely
+    # because generation stopped (depth bound), so the replayed "dead end"
+    # transition is a fabrication. Internal censored nodes keep their rows --
+    # their replay transitions (children exist) are real tree dynamics.
+    censored_leaf = inst.censored[node] and not inst.children[node]
 
     c = env.clone()
     res = c.step(action, ranking=list(ranking))
@@ -102,6 +114,7 @@ def _emit(env: FringeEnv, ranking: Sequence[int], action: int, t: int,
         forced=forced,
         oracle_action=int(oracle_a),
         on_trajectory=bool(on_traj),
+        censored_expansion=bool(censored_leaf),
     )
 
 
@@ -113,6 +126,7 @@ def generate_episode(
     expansion_cap: int,
     counterfactual: str = "all",
     n_refill_samples: int = 1,
+    gamma: float = 1.0,
 ) -> List[Transition]:
     """One behaviour rollout with every action enumerated at each state.
 
@@ -120,11 +134,20 @@ def generate_episode(
     successor of (s, a) is a random variable. Sample it n times and emit each
     draw as its OWN row -- averaging them would fabricate a successor state that
     the planner can never be in.
+
+    `gamma`: the discount factor for the data-generating env. THE TRAINING
+    PIPELINE PASSES THE ARGPARSER'S --gamma (run.py forwards RunConfig.gamma),
+    so the data-generating env and the trainer share one objective -- it was a
+    hardcoded 1.0 before, silently disagreeing with the trainer's 0.9999.
+    The DEFAULT stays 1.0 for standalone structural probes (e.g. usability.
+    scorability), whose caps can exceed the gamma<1 dominance horizon and which
+    never train anything: rewards are -1/0 either way, gamma only sets the
+    (unreachable) doom penalty and arms the dominance guard.
     """
     if counterfactual not in COUNTERFACTUAL_MODES:
         raise ValueError(f"counterfactual must be one of {COUNTERFACTUAL_MODES}")
 
-    env = FringeEnv(instance, fringe_size=fringe_size, seed=seed, gamma=1.0,
+    env = FringeEnv(instance, fringe_size=fringe_size, seed=seed, gamma=gamma,
                     expansion_cap=expansion_cap)
     pol = make_policy(instance, policy_name, seed=seed)
     rows: List[Transition] = []
@@ -164,9 +187,20 @@ def generate_dataset(
     expansion_cap: Optional[int] = None,
     counterfactual: str = "all",
     n_refill_samples: int = 1,
+    gamma: float = 1.0,
+    drop_censored: bool = True,
     verbose: bool = True,
 ) -> tuple[List[Transition], Dict[str, object]]:
-    """Full offline dataset + the composition summary that must be reported."""
+    """Full offline dataset + the composition summary that must be reported.
+
+    `drop_censored`: rows whose action expands a censored bound-hit leaf are
+    DROPPED from the returned pool (the count is in the summary) -- their
+    recorded "dead end" outcome is a generation artifact, and training on it
+    teaches the policy to avoid states that may sit on the shortest path at
+    deployment. The behaviour rollout still traverses them (the env dynamics
+    are unchanged); only the training LABEL is withheld. False keeps the old
+    behaviour for ablation.
+    """
     policies = list(policies)
     for p in policies:
         if p not in BEHAVIOUR_POLICIES:
@@ -178,16 +212,23 @@ def generate_dataset(
         for pol in policies:
             for s in range(int(seeds_per_policy)):
                 rows.extend(generate_episode(
-                    inst, fringe_size, pol, s, cap, counterfactual, n_refill_samples,
+                    inst, fringe_size, pol, s, cap, counterfactual,
+                    n_refill_samples, gamma,
                 ))
+    n_censored_rows = sum(1 for r in rows if r.censored_expansion)
+    if drop_censored and n_censored_rows:
+        rows = [r for r in rows if not r.censored_expansion]
     summary = dataset_summary(rows, fringe_size, cap)
+    summary["n_censored_rows"] = n_censored_rows
+    summary["censored_rows_dropped"] = bool(drop_censored)
     if verbose:
         print(
             f"[dataset] F={fringe_size} n_rows={summary['n_rows']} "
             f"states={summary['n_states']} "
             f"actions/state={summary['actions_per_state']:.2f} "
             f"forced_states={summary['forced_state_frac']:.3f} "
-            f"truncated_frac={summary['truncated_frac']:.4f}"
+            f"truncated_frac={summary['truncated_frac']:.4f} "
+            f"censored_rows={'dropped ' if drop_censored else ''}{n_censored_rows}"
         )
     return rows, summary
 

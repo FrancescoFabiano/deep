@@ -56,7 +56,6 @@ Consequence: the transition is stochastic and V* is an OPTIMISTIC BOUND.
 from __future__ import annotations
 
 import random
-import warnings
 from dataclasses import dataclass, field
 from typing import Dict, Iterable, List, Optional, Sequence
 
@@ -127,14 +126,32 @@ def doom_penalty(expansion_cap: int, gamma: float = DEFAULT_GAMMA,
 
 
 def g_succ(k: int, gamma: float = DEFAULT_GAMMA) -> float:
-    """Return of a success after k expansions.
+    """Return of k REWARDED (-1) expansions -- the algebra's idealised form.
 
     gamma = 1:  -k                       linear, no saturation, ever
     gamma < 1:  -(1 - gamma^k)/(1-gamma)
+
+    REALIZED-RETURN CONVENTION (off-by-two, by design, do not "fix" in the env):
+    an episode solved at expansion count k accrues g_succ(k - 2), NOT g_succ(k):
+    the root expansion happens inside reset() with reward 0, and the success
+    step itself returns 0 (the goal is detected at GENERATION, before any cost
+    is charged). A constant offset never changes the argmax policy or any
+    between-arm comparison; use `realized_success_return` when comparing a
+    recorded return against this algebra.
     """
     if gamma == 1.0:
         return -float(k)
     return -(1.0 - gamma ** k) / (1.0 - gamma)
+
+
+def realized_success_return(k: int, gamma: float = DEFAULT_GAMMA) -> float:
+    """The return FringeEnv actually accrues for a success at k expansions.
+
+    = g_succ(max(0, k - 2)): reset (expansion 1) and the success step are both
+    rewarded 0. This is the function to use when checking a recorded rollout
+    return against the algebra -- comparing against g_succ(k) is off by two.
+    """
+    return g_succ(max(0, int(k) - 2), gamma)
 
 
 def assert_gamma(gamma: float, expansion_cap: Optional[int] = None) -> None:
@@ -173,10 +190,13 @@ def assert_gamma(gamma: float, expansion_cap: Optional[int] = None) -> None:
     if gamma < 1.0 and expansion_cap is not None:
         horizon = 1.0 / (1.0 - gamma)
         if expansion_cap >= horizon:
+            # Margin computed on the REALIZED return (reset + success step are
+            # rewarded 0), not the idealised g_succ(cap) -- the two differ by a
+            # constant 2 expansions and the realized one is what the critic sees.
             raise ValueError(
                 f"gamma={gamma} gives horizon 1/(1-gamma)={horizon:.0f}, but "
                 f"expansion_cap={expansion_cap} >= horizon. A success at the cap "
-                f"returns {g_succ(int(expansion_cap), gamma):.1f}, which does not "
+                f"returns {realized_success_return(int(expansion_cap), gamma):.1f}, which does not "
                 f"dominate doom {-horizon:.0f} with margin: past the horizon the "
                 f"discounted objective saturates and a slow search is "
                 f"indistinguishable from a hopeless one. Lower the cap below "
@@ -289,6 +309,7 @@ class FringeEnv:
         self.reservoir_sizes: List[int] = []
         self.beam_sizes: List[int] = []
         self.n_sterile_expansions = 0
+        self.n_censored_expansions = 0
 
     # ---- observation helpers ----
 
@@ -319,10 +340,19 @@ class FringeEnv:
         self.beam_sizes.append(len(self.fringe))
 
     def beam_sterile_frac(self) -> float:
-        """Fraction of the current beam whose subtree contains no goal."""
+        """Fraction of the current beam PROVABLY sterile (censored excluded --
+        a depth-bound leaf is unknown, not a dead subtree)."""
         if not self.fringe:
             return 0.0
-        n = sum(1 for v in self.fringe if self.instance.delta[v] == INF_DELTA)
+        n = sum(1 for v in self.fringe if self.instance.provably_sterile(v))
+        return n / len(self.fringe)
+
+    def beam_censored_frac(self) -> float:
+        """Fraction of the current beam whose delta=inf is a generation
+        artifact (censored) rather than proven sterility."""
+        if not self.fringe:
+            return 0.0
+        n = sum(1 for v in self.fringe if self.instance.censored[v])
         return n / len(self.fringe)
 
     # ---- core mechanics ----
@@ -474,11 +504,14 @@ class FringeEnv:
         return self._terminated(self.doom_reward, "doom")
 
     def reset(self, seed: Optional[int] = None) -> StepResult:
-        """Expand the root (forced, counts as expansion 1).
+        """Expand the root (forced, counts as expansion 1, reward 0 -- see the
+        realized-return convention in g_succ).
 
-        The initial state is never goal-tested: the C++ only tests successors
-        (SpaceSearcher.tpp:162), so a goal root would not be detected there
-        either.
+        The root itself is not goal-tested HERE: the gated data never contains
+        a goal root (delta_root >= 1 on every solvable instance), so the branch
+        would be dead. Note the planner DOES test the initial state
+        (SpaceSearcher.tpp:80) before dispatch -- an earlier version of this
+        docstring claimed otherwise.
         """
         if seed is not None:
             self.rng.seed(seed)
@@ -553,13 +586,18 @@ class FringeEnv:
         self.order.remove(v)
         self.expansions += 1
         if self.instance.delta[v] == INF_DELTA:
-            # A sterile expansion: v's whole subtree contains no goal. This is
-            # node-level FAILURE -- the completeness proposition removed episode
-            # doom, it did not remove failure. ~35% of CC_2_3_4__pl_7's nodes are
-            # sterile, and the 197-expansion gap between bfs (231) and
-            # hfs_oracle (34) is almost entirely spent in them. Avoiding these is
-            # the primary thing the policy must learn.
-            self.n_sterile_expansions += 1
+            # delta=inf splits in two (fix 1A):
+            #   PROVABLY STERILE: v's subtree demonstrably contains no goal.
+            #     Node-level FAILURE -- avoiding these is the primary thing the
+            #     policy must learn (the bfs-vs-hfs_oracle expansion gap is
+            #     almost entirely spent in them).
+            #   CENSORED: the inf is a generation artifact (depth-bound leaf /
+            #     h*-contradicted subtree) -- unknown, not failure. Counted
+            #     separately so no metric can call it failure.
+            if self.instance.censored[v]:
+                self.n_censored_expansions += 1
+            else:
+                self.n_sterile_expansions += 1
 
         fresh, goal = self._generate_children(v)
         if goal:
@@ -650,6 +688,7 @@ class FringeEnv:
         c.reservoir_sizes = list(self.reservoir_sizes)
         c.beam_sizes = list(self.beam_sizes)
         c.n_sterile_expansions = self.n_sterile_expansions
+        c.n_censored_expansions = self.n_censored_expansions
         # Guard against silent drift: this hand-rolled copy bypasses __init__, so
         # any field added later is missing here and the clone diverges from the
         # parent in a way that surfaces far from the cause.
@@ -725,8 +764,13 @@ def rollout(
         # --- node-level FAILURE and the compounding loop (F10) ---
         # expansions_sterile_frac is the single clearest measure of whether the
         # policy learned anything: hfs_oracle should be ~0, bfs large.
+        # CENSORED expansions are reported separately: spending an expansion on
+        # a depth-bound leaf is not (provable) failure, so folding it into the
+        # sterile fraction would penalise a policy for the generator's horizon.
         "expansions_sterile_frac": env.n_sterile_expansions / max(1, env.expansions),
         "n_sterile_expansions": env.n_sterile_expansions,
+        "expansions_censored_frac": env.n_censored_expansions / max(1, env.expansions),
+        "n_censored_expansions": env.n_censored_expansions,
         "beam_sterile_frac": (sum(sterile_beam) / len(sterile_beam)) if sterile_beam else 0.0,
         "eviction_events": len(env.evictions),
         "eviction_recovery_steps_mean": (

@@ -33,12 +33,27 @@ from __future__ import annotations
 import random
 from typing import Callable, List, Sequence
 
-from .tree import TreeInstance
+from .tree import INF_DELTA, TreeInstance
 
 BEHAVIOUR_POLICIES = ("bfs", "dfs", "hfs_oracle", "random")
 
 # A ranking policy: (beam: Sequence[int]) -> List[int] slot indices, best first.
 RankingPolicy = Callable[[Sequence[int]], List[int]]
+
+# hfs_oracle tier sentinels for delta=inf nodes (fix 1A). CENSORED (a
+# generation artifact, outcome unknown) is preferred to PROVABLY STERILE (a
+# demonstrated dead subtree): the demonstrations must not teach "worst tier"
+# from a label the generator invented. Any two finite sentinels with
+# max_finite_delta < CENSORED < STERILE would do; comparisons are the only use.
+_ORACLE_SIGMA_CENSORED = 1e17
+_ORACLE_SIGMA_STERILE = 1e18
+
+
+def _oracle_sigma(instance: TreeInstance, v: int) -> float:
+    d = instance.delta[v]
+    if d != INF_DELTA:
+        return float(d)
+    return _ORACLE_SIGMA_CENSORED if instance.censored[v] else _ORACLE_SIGMA_STERILE
 
 
 def _sigma_fn(instance: TreeInstance, name: str, rng: random.Random):
@@ -47,7 +62,7 @@ def _sigma_fn(instance: TreeInstance, name: str, rng: random.Random):
     if name == "dfs":
         return lambda v: -float(instance.depth[v])
     if name == "hfs_oracle":
-        return lambda v: float(instance.delta[v])
+        return lambda v: _oracle_sigma(instance, v)
     if name == "random":
         return lambda v: rng.random()
     raise ValueError(f"unknown behaviour policy {name!r}; expected one of {BEHAVIOUR_POLICIES}")
@@ -81,6 +96,8 @@ def oracle_ranking(instance: TreeInstance, beam: Sequence[int]) -> List[int]:
 
     Used by the diagnostics that need pi* without behaviour randomness, e.g. the
     synthetic-tree test asserting hfs_oracle spends exactly delta(root)
-    expansions.
+    expansions. Same 3 tiers as the behaviour oracle: finite delta, then
+    censored (unknown), then provably sterile.
     """
-    return sorted(range(len(beam)), key=lambda k: (instance.delta[beam[k]], k))
+    return sorted(range(len(beam)),
+                  key=lambda k: (_oracle_sigma(instance, beam[k]), k))
