@@ -65,9 +65,11 @@ HeuristicsManager<StateRepr>::HeuristicsManager(
           "RL heuristic selected, but wrong search_type selected. RL "
           "heuristics only works with RL search type.");
     }
-    if (ArgumentParser::get_instance().get_RL_adaptive()) {
-      // The adaptive schedule tracks subgoal progress as its stagnation
-      // signal, which needs the SatisfiedGoals singleton initialized.
+    if (ArgumentParser::get_instance().get_RL_adaptive() &&
+        ArgumentParser::get_instance().get_RL_adaptive_signal() != "budget") {
+      // The subgoal-signal schedule tracks subgoal progress as its
+      // stagnation signal, which needs SatisfiedGoals initialized; the
+      // budget schedule is heuristic-free and skips it.
       expand_goals();
       SatisfiedGoals::get_instance().set(m_goals);
     }

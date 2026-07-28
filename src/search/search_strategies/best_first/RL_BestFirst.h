@@ -39,9 +39,15 @@ public:
     m_exploration_max = std::max<std::size_t>(1, m_max_beam_size / 2);
     m_beam_width = m_max_beam_size;
     if (m_adaptive) {
-      m_initial_unsatisfied =
-          SatisfiedGoals::get_instance().get_unsatisfied_goals(initial_state);
-      m_best_unsatisfied_goals = m_initial_unsatisfied;
+      m_budget_schedule =
+          ArgumentParser::get_instance().get_RL_adaptive_signal() == "budget";
+      if (m_budget_schedule) {
+        build_stage_table();
+      } else {
+        m_initial_unsatisfied =
+            SatisfiedGoals::get_instance().get_unsatisfied_goals(initial_state);
+        m_best_unsatisfied_goals = m_initial_unsatisfied;
+      }
     }
   }
 
@@ -105,7 +111,11 @@ public:
     }
 
     if (m_adaptive) {
-      update_adaptive_schedule(batch);
+      if (m_budget_schedule) {
+        update_budget_schedule();
+      } else {
+        update_adaptive_schedule(batch);
+      }
     }
 
     for (auto &state : batch) {
@@ -123,6 +133,9 @@ public:
     m_beam_width = m_max_beam_size;
     m_dive_rounds_left = 0;
     m_dive_count = 0;
+    m_stage_idx = 0;
+    m_rounds_in_stage = 0;
+    m_lap_scale = 1;
   }
 
   [[nodiscard]] std::string get_name() const override {
@@ -137,7 +150,7 @@ public:
       name += ")";
     }
     if (m_adaptive) {
-      name += " [adaptive]";
+      name += m_budget_schedule ? " [adaptive:budget]" : " [adaptive]";
     }
     return name;
   }
@@ -194,12 +207,23 @@ private:
   // burst: a narrow beam (cycling widths) that mimics a small fringe size,
   // returning to full width if the dive does not bite.
   bool m_adaptive{false};
+  bool m_budget_schedule{false};
   std::size_t m_exploration_current{0};
   std::size_t m_exploration_max{1};
   std::size_t m_beam_width{1};
   int m_stall_rounds{0};
   int m_dive_rounds_left{0};
   std::size_t m_dive_count{0};
+
+  struct ScheduleStage {
+    std::size_t explore;
+    std::size_t width;
+    int budget;
+  };
+  std::vector<ScheduleStage> m_stages;
+  std::size_t m_stage_idx{0};
+  int m_rounds_in_stage{0};
+  int m_lap_scale{1};
   unsigned short m_initial_unsatisfied{
       std::numeric_limits<unsigned short>::max()};
   unsigned short m_best_unsatisfied_goals{
@@ -247,6 +271,34 @@ private:
 
   [[nodiscard]] std::size_t beam_limit() const {
     return m_adaptive ? m_beam_width : m_max_beam_size;
+  }
+
+  // Heuristic-free schedule: regimes advance purely on expended rounds,
+  // iterative-deepening style. E=0 full width first (long enough for a
+  // complete greedy dive), then growing exploration, then the dive widths;
+  // when the table is exhausted every budget doubles and the cycle repeats.
+  void build_stage_table() {
+    m_stages.clear();
+    m_stages.push_back({0, m_max_beam_size, 30});
+    for (std::size_t e = 1; e <= m_exploration_max; e *= 2) {
+      m_stages.push_back({e, m_max_beam_size, 10});
+    }
+    for (const std::size_t w : DIVE_WIDTHS) {
+      m_stages.push_back({0, std::min(w, m_max_beam_size), DIVE_ROUNDS});
+    }
+  }
+
+  void update_budget_schedule() {
+    if (++m_rounds_in_stage < m_stages[m_stage_idx].budget * m_lap_scale) {
+      return;
+    }
+    m_rounds_in_stage = 0;
+    if (++m_stage_idx == m_stages.size()) {
+      m_stage_idx = 0;
+      m_lap_scale *= 2;
+    }
+    m_exploration_current = m_stages[m_stage_idx].explore;
+    m_beam_width = m_stages[m_stage_idx].width;
   }
 
   void update_adaptive_schedule(const std::vector<State<StateRepr>> &batch) {
