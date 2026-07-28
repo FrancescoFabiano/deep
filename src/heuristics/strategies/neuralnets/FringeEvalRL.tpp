@@ -261,7 +261,8 @@ FringeTensor FringeEvalRL<StateRepr>::fringe_to_tensor_minimal(
 
 template <StateRepresentation StateRepr>
 std::vector<float> FringeEvalRL<StateRepr>::get_score(
-    const std::vector<State<StateRepr>> &states) {
+    const std::vector<State<StateRepr>> &states,
+    std::vector<float> *raw_scores) {
   const auto fringe_tensor = fringe_to_tensor_minimal(states);
 
   if (!m_model_loaded) {
@@ -441,6 +442,10 @@ std::vector<float> FringeEvalRL<StateRepr>::get_score(
   // Get the result
   const float *output_data = output_tensors[0].template GetTensorData<float>();
   const auto output_info = output_tensors[0].GetTensorTypeAndShapeInfo();
+
+  if (raw_scores != nullptr) {
+    raw_scores->assign(output_data, output_data + states.size());
+  }
 
   return rankScores(output_data, states.size());
 }
