@@ -11,6 +11,7 @@
 
 #include "BestFirst.h"
 #include "neuralnets/FringeEvalRL.h"
+#include "strategies/SatisfiedGoals.h"
 
 enum class RefillMode { RANDOM, HEURISTIC };
 
@@ -32,6 +33,9 @@ public:
       m_seed = std::random_device{}(); // Use random device if seed is negative
     }
     m_rng.seed(m_seed);
+
+    m_adaptive = ArgumentParser::get_instance().get_RL_adaptive();
+    m_exploration_max = std::max<std::size_t>(1, m_max_beam_size / 2);
   }
 
   void set_refill_mode(const RefillMode mode) {
@@ -63,9 +67,14 @@ public:
     std::vector<State<StateRepr>> batch;
     batch.reserve(m_max_beam_size);
 
-    // Add the newly generated states first.
+    // Add the newly generated states first. In adaptive mode reserve the
+    // current exploration budget so random reservoir states always have
+    // beam slots to occupy, even when the branching factor exceeds the beam.
+    const std::size_t new_state_cap =
+        m_adaptive ? std::max<std::size_t>(1, m_max_beam_size - exploration_budget())
+                   : m_max_beam_size;
     for (auto &s : states) {
-      if (batch.size() < m_max_beam_size) {
+      if (batch.size() < new_state_cap) {
         batch.push_back(std::move(s));
       } else {
         reservoir_push(std::move(s), true);
@@ -84,7 +93,14 @@ public:
 
     for (std::size_t i = 0; i < batch.size(); ++i) {
       batch[i].set_heuristic_value(heuristic_values[i]);
-      this->search_space.push(std::move(batch[i]));
+    }
+
+    if (m_adaptive) {
+      update_adaptive_schedule(batch);
+    }
+
+    for (auto &state : batch) {
+      this->search_space.push(std::move(state));
     }
   }
 
@@ -92,6 +108,9 @@ public:
     Base::reset();
     m_reservoir.clear();
     m_rng.seed(m_seed);
+    m_exploration_current = 0;
+    m_stall_rounds = 0;
+    m_best_unsatisfied_goals = std::numeric_limits<unsigned short>::max();
   }
 
   [[nodiscard]] std::string get_name() const override {
@@ -104,6 +123,9 @@ public:
         name += "-" + Configuration::get_instance().get_RL_heuristics_name();
       }
       name += ")";
+    }
+    if (m_adaptive) {
+      name += " [adaptive]";
     }
     return name;
   }
@@ -154,6 +176,16 @@ private:
   std::size_t m_exploration_size =
       Configuration::get_instance().get_exploration_nodes();
 
+  // Adaptive schedule: exploration starts at zero (pure exploitation) and
+  // escalates when the best number of satisfied subgoals stops improving.
+  bool m_adaptive{false};
+  std::size_t m_exploration_current{0};
+  std::size_t m_exploration_max{1};
+  int m_stall_rounds{0};
+  unsigned short m_best_unsatisfied_goals{
+      std::numeric_limits<unsigned short>::max()};
+  static constexpr int STALL_PATIENCE = 5;
+
   std::mt19937_64 m_rng;
   int64_t m_seed{-1};
 
@@ -187,6 +219,30 @@ private:
     }
   }
 
+  [[nodiscard]] std::size_t exploration_budget() const {
+    return m_adaptive ? m_exploration_current : m_exploration_size;
+  }
+
+  void update_adaptive_schedule(const std::vector<State<StateRepr>> &batch) {
+    const auto &satisfied_goals = SatisfiedGoals::get_instance();
+    unsigned short best = std::numeric_limits<unsigned short>::max();
+    for (const auto &state : batch) {
+      best = std::min(best, satisfied_goals.get_unsatisfied_goals(state));
+    }
+
+    if (best < m_best_unsatisfied_goals) {
+      m_best_unsatisfied_goals = best;
+      m_stall_rounds = 0;
+      m_exploration_current = 0;
+    } else if (++m_stall_rounds >= STALL_PATIENCE) {
+      m_stall_rounds = 0;
+      m_exploration_current =
+          m_exploration_current == 0
+              ? 1
+              : std::min(m_exploration_current * 2, m_exploration_max);
+    }
+  }
+
   void refill_beam_heuristic(std::vector<State<StateRepr>> &batch) {
     const std::size_t free_slots = m_max_beam_size - batch.size();
     if (free_slots == 0 || m_reservoir.empty()) {
@@ -196,7 +252,7 @@ private:
     // Fill most of the missing slots with the best reservoir states.
     // Keep a small amount of random exploration inside the beam budget.
     const std::size_t exploration_slots = std::min<std::size_t>(
-        {free_slots, m_reservoir.size(), m_exploration_size});
+        {free_slots, m_reservoir.size(), exploration_budget()});
     const std::size_t exploit_slots = free_slots - exploration_slots;
 
     for (std::size_t i = 0; i < exploit_slots && !m_reservoir.empty(); ++i) {

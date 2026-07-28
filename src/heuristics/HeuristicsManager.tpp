@@ -65,6 +65,12 @@ HeuristicsManager<StateRepr>::HeuristicsManager(
           "RL heuristic selected, but wrong search_type selected. RL "
           "heuristics only works with RL search type.");
     }
+    if (ArgumentParser::get_instance().get_RL_adaptive()) {
+      // The adaptive schedule tracks subgoal progress as its stagnation
+      // signal, which needs the SatisfiedGoals singleton initialized.
+      expand_goals();
+      SatisfiedGoals::get_instance().set(m_goals);
+    }
     break;
 #else
     ExitHandler::exit_with_message(
