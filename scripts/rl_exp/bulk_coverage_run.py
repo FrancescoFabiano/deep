@@ -11,7 +11,8 @@ NUMERIC_COLUMNS = [
     "InitTime","SearchTime","ThreadOverhead"
 ]
 
-TIMEOUT = 600
+TIMEOUT = 30
+EXPLOITATION_PERCENTAGE = 10
 
 # Per-instance resident-memory ceiling. When a planner run's RSS crosses this,
 # it is killed and recorded as MEMOUT (analogous to TIMEOUT). RSS (physical RAM)
@@ -57,13 +58,17 @@ def build_flags(base_folder, domain_name, fringe, strict, extra_args):
     )
 
     model_path = None
-
+    
     if uses_rl:
         data_root = Path(base_folder).parent.parent
         model_path = data_root / "_models" / domain_name / f"frontier_policy_{fringe}.onnx"
         model_path = model_path.resolve()
 
         flags += ["--RL_model", str(model_path)]
+        # flags += ["--RL_exploration", str(EXPLORATION_PERCENTAGE)]
+        flags += ["--RL_exploitation", str(EXPLOITATION_PERCENTAGE)]
+        flags += ["--RL_adaptive"]
+        flags += ["--RL_adaptive_signal", "budget"]
 
     return flags, model_path, uses_rl
 
