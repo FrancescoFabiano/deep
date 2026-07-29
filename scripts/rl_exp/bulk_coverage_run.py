@@ -13,6 +13,7 @@ NUMERIC_COLUMNS = [
 
 TIMEOUT = 30
 EXPLOITATION_PERCENTAGE = 10
+EXPLORATION_PERCENTAGE = 10 # it works only on non-adaptive regime
 
 # Per-instance resident-memory ceiling. When a planner run's RSS crosses this,
 # it is killed and recorded as MEMOUT (analogous to TIMEOUT). RSS (physical RAM)
@@ -65,7 +66,7 @@ def build_flags(base_folder, domain_name, fringe, strict, extra_args):
         model_path = model_path.resolve()
 
         flags += ["--RL_model", str(model_path)]
-        # flags += ["--RL_exploration", str(EXPLORATION_PERCENTAGE)]
+        flags += ["--RL_exploration", str(EXPLORATION_PERCENTAGE)] # it works only on non-adaptive regime
         flags += ["--RL_exploitation", str(EXPLOITATION_PERCENTAGE)]
         flags += ["--RL_adaptive"]
         flags += ["--RL_adaptive_signal", "budget"]
