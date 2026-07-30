@@ -173,6 +173,35 @@ def select_smoothed(candidates: Sequence[Candidate], window: int = 3) -> Candida
     return cands[best_i]
 
 
+# ---------------------------------------- censored-aware frontier filtering --
+# (fix 1A) A CENSORED slot -- delta=inf as a generation artifact (depth-bound
+# leaf / h*-contradicted subtree, see tree.compute_censored) -- has NO oracle
+# verdict: judging the model's placement of it against gain 0 / worst tier
+# scores the model against an invented label. Every ranking metric therefore
+# runs on the sub-beam of rankable slots. The MODEL still scores the FULL beam
+# (that is what deployment does); only the judgment is restricted.
+
+
+def rankable_slots(inst: TreeInstance, beam: Sequence[int]) -> List[int]:
+    """Slot indices the ranking metrics may judge (censored excluded).
+
+    Tolerates duck-typed instances without a `censored` field (test stubs,
+    external callers): no censoring information = every slot is rankable,
+    which is exactly the pre-fix-1A behaviour.
+    """
+    cens = getattr(inst, "censored", None)
+    if cens is None:
+        return list(range(len(beam)))
+    return [k for k, v in enumerate(beam) if not cens[v]]
+
+
+def project_ranking(ranking: Sequence[int], keep: Sequence[int]) -> List[int]:
+    """Full-beam ranking -> ranking over `keep`, slots remapped to 0..m-1 in
+    `keep` order, relative order preserved."""
+    pos = {slot: i for i, slot in enumerate(keep)}
+    return [pos[s] for s in ranking if s in pos]
+
+
 # ------------------------------------------- held-out trajectory split -------
 
 def split_trajectories(
@@ -255,7 +284,9 @@ def heldout_top1(
 
     `rank_for(name, beam) -> ranking` (slot indices, best first).
     Degenerate frontiers are skipped: a singleton beam or one with no viable node
-    cannot discriminate a good ranker from a bad one. Returns (mean_top1, n_scored).
+    cannot discriminate a good ranker from a bad one. Censored slots are excluded
+    from the judgment (rankable_slots); the ranker still sees the full beam.
+    Returns (mean_top1, n_scored).
     """
     seen: set = set()
     hits = n = 0
@@ -268,10 +299,11 @@ def heldout_top1(
         seen.add(fkey)
         beam = list(r.obs)
         inst = instances_by_name[r.instance]
-        deltas = [inst.delta[v] for v in beam]
-        if len(beam) < 2 or all(d == INF_DELTA for d in deltas):
+        keep = rankable_slots(inst, beam)
+        deltas = [inst.delta[beam[k]] for k in keep]
+        if len(keep) < 2 or all(d == INF_DELTA for d in deltas):
             continue
-        ranking = rank_for(r.instance, beam)
+        ranking = project_ranking(rank_for(r.instance, beam), keep)
         best = min(deltas)
         hits += 1 if deltas[ranking[0]] == best else 0
         n += 1
@@ -385,13 +417,16 @@ def heldout_ranking_metrics(
         seen.add(fkey)
         beam = list(r.obs)
         inst = instances_by_name[r.instance]
-        deltas = [inst.delta[v] for v in beam]
-        if len(beam) < 2 or all(d >= INF_DELTA for d in deltas):
+        keep = rankable_slots(inst, beam)
+        deltas = [inst.delta[beam[k]] for k in keep]
+        if len(keep) < 2 or all(d >= INF_DELTA for d in deltas):
             continue
         if logits_for is not None:
-            m = ranking_metrics_for_frontier(deltas, logits=list(logits_for(r.instance, beam)))
+            lg = list(logits_for(r.instance, beam))
+            m = ranking_metrics_for_frontier(deltas, logits=[lg[k] for k in keep])
         else:
-            m = ranking_metrics_for_frontier(deltas, ranking=list(rank_for(r.instance, beam)))
+            m = ranking_metrics_for_frontier(
+                deltas, ranking=project_ranking(rank_for(r.instance, beam), keep))
         for k, v in m.items():
             if v is not None:
                 acc[k].append(v)
@@ -447,10 +482,12 @@ def heldout_ranking_micro_macro(
         seen.add(fkey)
         beam = list(r.obs)
         inst = instances_by_name[r.instance]
-        deltas = [inst.delta[v] for v in beam]
-        if len(beam) < 2 or all(d >= INF_DELTA for d in deltas):
+        keep = rankable_slots(inst, beam)
+        deltas = [inst.delta[beam[k]] for k in keep]
+        if len(keep) < 2 or all(d >= INF_DELTA for d in deltas):
             continue
-        logits = list(logits_for(r.instance, beam))
+        full_logits = list(logits_for(r.instance, beam))
+        logits = [full_logits[k] for k in keep]
         m = ranking_metrics_for_frontier(deltas, logits=logits)
         for k, v in m.items():
             if v is not None:
@@ -459,14 +496,14 @@ def heldout_ranking_micro_macro(
         n_pool += 1
         n_inst[r.instance] += 1
         if agreement_rankers:
-            model_rank = sorted(range(len(beam)), key=lambda k: -logits[k])
+            model_rank = sorted(range(len(keep)), key=lambda k: -logits[k])
             for pol, rank_fn in agreement_rankers.items():
-                pr = list(rank_fn(r.instance, beam))
+                pr = project_ranking(list(rank_fn(r.instance, beam)), keep)
                 ag_top1[pol].append(1.0 if model_rank[0] == pr[0] else 0.0)
-                if len(beam) > 2:
+                if len(keep) > 2:
                     from scipy.stats import kendalltau
-                    t = kendalltau(_order_score(model_rank, len(beam)),
-                                   _order_score(pr, len(beam))).statistic
+                    t = kendalltau(_order_score(model_rank, len(keep)),
+                                   _order_score(pr, len(keep))).statistic
                     if t == t:  # not NaN
                         ag_taub[pol].append(t)
 

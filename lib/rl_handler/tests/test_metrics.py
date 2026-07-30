@@ -164,7 +164,16 @@ def test_rollout_reports_the_failure_and_eviction_telemetry(t19):
 
 def test_sterile_expansion_rate_separates_oracle_from_bfs(shipped_instances, capsys):
     """The headline of F10, on real data: this is the clearest single measure of
-    whether the policy learned anything."""
+    whether the policy learned anything.
+
+    Since fix 1A, delta=inf splits into PROVABLY STERILE and CENSORED (a
+    generation artifact -- depth-bound leaf / h*-contradicted). On the shipped
+    CC table the split is extreme: 20,988 of 20,989 inf-delta nodes are
+    censored (20,938 because h* itself says a goal IS reachable -- the
+    spanning-tree reconstruction merely lacks the edge). So the off-oracle
+    waste bfs pays now shows up as expansions_CENSORED_frac; the combined
+    fraction is what separates bfs from pi*.
+    """
     inst = shipped_instances["CC_2_3_4__pl_7"]
     out = {}
     for name in ("hfs_oracle", "bfs"):
@@ -175,11 +184,13 @@ def test_sterile_expansion_rate_separates_oracle_from_bfs(shipped_instances, cap
             )
             for s in range(3)
         ]
-        out[name] = sum(r["expansions_sterile_frac"] for r in rs) / len(rs)
-    assert out["hfs_oracle"] == 0.0, "pi* must never expand a dead subtree"
-    assert out["bfs"] > 0.4, f"bfs should waste heavily on sterile nodes: {out}"
+        out[name] = sum(
+            r["expansions_sterile_frac"] + r["expansions_censored_frac"] for r in rs
+        ) / len(rs)
+    assert out["hfs_oracle"] == 0.0, "pi* must never expand a delta=inf subtree"
+    assert out["bfs"] > 0.4, f"bfs should waste heavily off the oracle path: {out}"
     with capsys.disabled():
-        print(f"\n  CC F=32 expansions_sterile_frac: hfs_oracle="
+        print(f"\n  CC F=32 sterile+censored expansion frac: hfs_oracle="
               f"{out['hfs_oracle']:.3f}  bfs={out['bfs']:.3f}")
 
 

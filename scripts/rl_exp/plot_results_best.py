@@ -59,8 +59,9 @@ def get_top(data):
         .reset_index()
     )
 
+    # order rows first by success rate, then by nodes expanded (fewer is better)
     ranking = ranking.sort_values(
-        by=["Solved", "NodesExpanded_mean"],
+        by=["SolvedPct", "NodesExpanded_mean"],
         ascending=[False, True]
     )
 

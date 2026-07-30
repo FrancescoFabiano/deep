@@ -20,7 +20,7 @@ import torch
 
 from ..models.two_head_baseline import TwoHeadBaselineNetwork, two_head_loss
 from .batching import default_device, pack_batch, pack_single
-from .encoder import InstanceCache
+from .encoder import InstanceCache, pack_fringe
 from .env import FringeEnv, rollout
 from .metrics import beam_metrics, mean_ignoring_none
 from .tree import INF_DELTA, TreeInstance
@@ -141,12 +141,18 @@ def train_two_head_baseline(
             [0.0 if d == INF_DELTA else float(d) for d in deltas],
             dtype=torch.float32, device=device,
         )
+        # Censored slots (fix 1A) carry no viability label -- their delta=inf
+        # is a generation artifact, so the BCE must not read them as sterile.
+        label_mask = torch.tensor(
+            [not by_name[n].censored[v] for n, beam in picks for v in beam],
+            dtype=torch.bool, device=device,
+        )
         opt.zero_grad()
         p_logit, d_hat = model.heads(
             p["node_features"], p["edge_index"], p["edge_attr"], p["membership"],
             candidate_batch=p["candidate_batch"], mask=None,
         )
-        loss, log = two_head_loss(p_logit, d_hat, viable, dt)
+        loss, log = two_head_loss(p_logit, d_hat, viable, dt, label_mask=label_mask)
         loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), 10.0)
         opt.step()

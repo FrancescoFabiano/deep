@@ -59,6 +59,19 @@ def validate_int64_range(value: int, *, context: str) -> int:
     return int(value)
 
 
+def fold_uint64_to_int64(value: int, *, context: str) -> int:
+    """Fold IDs in [-2^63, 2^64-1] to int64 preserving the 64-bit pattern.
+
+    Mirrors src/offline/encoder.uint64_ids_to_int64 (two's complement): HASHED
+    ids are raw 64-bit hashes, so ~half of them exceed 2^63-1. The previous
+    strict int64 check made this reference loader reject typical HASHED data --
+    the exact folding path it exists to parity-test.
+    """
+    if value < I64_MIN or value > (1 << 64) - 1:
+        raise ValueError(f"{context} is out of foldable range [-2^63, 2^64-1].")
+    return int(value - (1 << 64)) if value > I64_MAX else int(value)
+
+
 @dataclass
 class EvalGraphTensors:
     node_features: torch.Tensor
@@ -124,7 +137,7 @@ def load_graph_tensors_no_pyg(path: str, dataset_type: str) -> EvalGraphTensors:
         node_names = node_features.clone()
     elif dataset_type_norm == "HASHED":
         raw_ids = [
-            validate_int64_range(
+            fold_uint64_to_int64(
                 parse_numeric_node_label(node),
                 context=f"Node '{node}'",
             )

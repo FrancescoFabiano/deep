@@ -62,6 +62,7 @@ def evaluate_split(
     seeds: int = 5,
     expansion_cap: int = 2000,
     score_for: Optional[Callable] = None,
+    gamma: float = 1.0,
 ) -> Dict[str, object]:
     """Roll the greedy policy in the REAL env and collect everything.
 
@@ -69,6 +70,9 @@ def evaluate_split(
     `score_for(instance_name, beam) -> logits`, optional; when given, the ranking
     diagnostics (viability_auc, top1, spearman) and the F4 residual are collected
     along the trajectory.
+    `gamma`: the run's discount factor, threaded from RunConfig so the eval env
+    matches the trained objective (it affects only the unreachable doom penalty
+    on gated data; the reported `return` stays the undiscounted reward sum).
     """
     rs: List[Dict] = []
     auc, top1, sp = [], [], []
@@ -79,7 +83,7 @@ def evaluate_split(
         pol = policy_for(inst.name)
         inst_rs = []
         for s in range(seeds):
-            env = FringeEnv(inst, fringe_size=fringe_size, seed=s, gamma=1.0,
+            env = FringeEnv(inst, fringe_size=fringe_size, seed=s, gamma=gamma,
                             expansion_cap=expansion_cap)
             res = env.reset(seed=s)
             ret = 0.0                        # accumulated reward = the RETURN (gamma=1)

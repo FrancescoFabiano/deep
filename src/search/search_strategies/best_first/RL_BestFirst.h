@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <array>
 #include <cstddef>
 #include <limits>
 #include <numeric>
@@ -11,6 +12,7 @@
 
 #include "BestFirst.h"
 #include "neuralnets/FringeEvalRL.h"
+#include "strategies/SatisfiedGoals.h"
 
 enum class RefillMode { RANDOM, HEURISTIC };
 
@@ -32,6 +34,21 @@ public:
       m_seed = std::random_device{}(); // Use random device if seed is negative
     }
     m_rng.seed(m_seed);
+
+    m_adaptive = ArgumentParser::get_instance().get_RL_adaptive();
+    m_exploration_max = std::max<std::size_t>(1, m_max_beam_size / 2);
+    m_beam_width = m_max_beam_size;
+    if (m_adaptive) {
+      m_budget_schedule =
+          ArgumentParser::get_instance().get_RL_adaptive_signal() == "budget";
+      if (m_budget_schedule) {
+        build_stage_table();
+      } else {
+        m_initial_unsatisfied =
+            SatisfiedGoals::get_instance().get_unsatisfied_goals(initial_state);
+        m_best_unsatisfied_goals = m_initial_unsatisfied;
+      }
+    }
   }
 
   void set_refill_mode(const RefillMode mode) {
@@ -63,9 +80,16 @@ public:
     std::vector<State<StateRepr>> batch;
     batch.reserve(m_max_beam_size);
 
-    // Add the newly generated states first.
+    // Add the newly generated states first. In adaptive mode the beam is
+    // capped at the current dynamic width, minus the exploration budget so
+    // random reservoir states always have beam slots to occupy, even when
+    // the branching factor exceeds the beam.
+    const std::size_t new_state_cap =
+        m_adaptive
+            ? std::max<std::size_t>(1, beam_limit() - exploration_budget())
+            : m_max_beam_size;
     for (auto &s : states) {
-      if (batch.size() < m_max_beam_size) {
+      if (batch.size() < new_state_cap) {
         batch.push_back(std::move(s));
       } else {
         reservoir_push(std::move(s), true);
@@ -84,7 +108,18 @@ public:
 
     for (std::size_t i = 0; i < batch.size(); ++i) {
       batch[i].set_heuristic_value(heuristic_values[i]);
-      this->search_space.push(std::move(batch[i]));
+    }
+
+    if (m_adaptive) {
+      if (m_budget_schedule) {
+        update_budget_schedule();
+      } else {
+        update_adaptive_schedule(batch);
+      }
+    }
+
+    for (auto &state : batch) {
+      this->search_space.push(std::move(state));
     }
   }
 
@@ -92,6 +127,15 @@ public:
     Base::reset();
     m_reservoir.clear();
     m_rng.seed(m_seed);
+    m_exploration_current = 0;
+    m_stall_rounds = 0;
+    m_best_unsatisfied_goals = m_initial_unsatisfied;
+    m_beam_width = m_max_beam_size;
+    m_dive_rounds_left = 0;
+    m_dive_count = 0;
+    m_stage_idx = 0;
+    m_rounds_in_stage = 0;
+    m_lap_scale = 1;
   }
 
   [[nodiscard]] std::string get_name() const override {
@@ -104,6 +148,9 @@ public:
         name += "-" + Configuration::get_instance().get_RL_heuristics_name();
       }
       name += ")";
+    }
+    if (m_adaptive) {
+      name += m_budget_schedule ? " [adaptive:budget]" : " [adaptive]";
     }
     return name;
   }
@@ -154,6 +201,37 @@ private:
   std::size_t m_exploration_size =
       Configuration::get_instance().get_exploration_nodes();
 
+  // Adaptive schedule: exploration starts at zero (pure exploitation) and
+  // escalates when the best number of satisfied subgoals stops improving.
+  // When escalation is exhausted without progress the search enters a dive
+  // burst: a narrow beam (cycling widths) that mimics a small fringe size,
+  // returning to full width if the dive does not bite.
+  bool m_adaptive{false};
+  bool m_budget_schedule{false};
+  std::size_t m_exploration_current{0};
+  std::size_t m_exploration_max{1};
+  std::size_t m_beam_width{1};
+  int m_stall_rounds{0};
+  int m_dive_rounds_left{0};
+  std::size_t m_dive_count{0};
+
+  struct ScheduleStage {
+    std::size_t explore;
+    std::size_t width;
+    int budget;
+  };
+  std::vector<ScheduleStage> m_stages;
+  std::size_t m_stage_idx{0};
+  int m_rounds_in_stage{0};
+  int m_lap_scale{1};
+  unsigned short m_initial_unsatisfied{
+      std::numeric_limits<unsigned short>::max()};
+  unsigned short m_best_unsatisfied_goals{
+      std::numeric_limits<unsigned short>::max()};
+  static constexpr int STALL_PATIENCE = 5;
+  static constexpr int DIVE_ROUNDS = 60;
+  static constexpr std::array<std::size_t, 4> DIVE_WIDTHS{4, 8, 2, 16};
+
   std::mt19937_64 m_rng;
   int64_t m_seed{-1};
 
@@ -170,7 +248,7 @@ private:
   };
 
   void refill_beam(std::vector<State<StateRepr>> &batch) {
-    if (batch.size() >= m_max_beam_size || m_reservoir.empty()) {
+    if (batch.size() >= beam_limit() || m_reservoir.empty()) {
       return;
     }
 
@@ -182,21 +260,100 @@ private:
   }
 
   void refill_beam_random(std::vector<State<StateRepr>> &batch) {
-    while (batch.size() < m_max_beam_size && !m_reservoir.empty()) {
+    while (batch.size() < beam_limit() && !m_reservoir.empty()) {
       batch.push_back(reservoir_take_random());
     }
   }
 
-  void refill_beam_heuristic(std::vector<State<StateRepr>> &batch) {
-    const std::size_t free_slots = m_max_beam_size - batch.size();
-    if (free_slots == 0 || m_reservoir.empty()) {
+  [[nodiscard]] std::size_t exploration_budget() const {
+    return m_adaptive ? m_exploration_current : m_exploration_size;
+  }
+
+  [[nodiscard]] std::size_t beam_limit() const {
+    return m_adaptive ? m_beam_width : m_max_beam_size;
+  }
+
+  // Heuristic-free schedule: regimes advance purely on expended rounds,
+  // iterative-deepening style. E=0 full width first (long enough for a
+  // complete greedy dive), then growing exploration, then the dive widths;
+  // when the table is exhausted every budget doubles and the cycle repeats.
+  void build_stage_table() {
+    m_stages.clear();
+    m_stages.push_back({0, m_max_beam_size, 30});
+    for (std::size_t e = 1; e <= m_exploration_max; e *= 2) {
+      m_stages.push_back({e, m_max_beam_size, 10});
+    }
+    for (const std::size_t w : DIVE_WIDTHS) {
+      m_stages.push_back({0, std::min(w, m_max_beam_size), DIVE_ROUNDS});
+    }
+  }
+
+  void update_budget_schedule() {
+    if (++m_rounds_in_stage < m_stages[m_stage_idx].budget * m_lap_scale) {
       return;
     }
+    m_rounds_in_stage = 0;
+    if (++m_stage_idx == m_stages.size()) {
+      m_stage_idx = 0;
+      m_lap_scale *= 2;
+    }
+    m_exploration_current = m_stages[m_stage_idx].explore;
+    m_beam_width = m_stages[m_stage_idx].width;
+  }
+
+  void update_adaptive_schedule(const std::vector<State<StateRepr>> &batch) {
+    const auto &satisfied_goals = SatisfiedGoals::get_instance();
+    unsigned short best = std::numeric_limits<unsigned short>::max();
+    for (const auto &state : batch) {
+      best = std::min(best, satisfied_goals.get_unsatisfied_goals(state));
+    }
+
+    if (best < m_best_unsatisfied_goals) {
+      m_best_unsatisfied_goals = best;
+      m_stall_rounds = 0;
+      m_exploration_current = 0;
+      if (m_dive_rounds_left > 0) {
+        m_dive_rounds_left = DIVE_ROUNDS; // The dive is biting: keep diving.
+      }
+      return;
+    }
+
+    if (m_dive_rounds_left > 0) {
+      if (--m_dive_rounds_left == 0) {
+        m_beam_width = m_max_beam_size; // Dive did not bite: back to full.
+        m_stall_rounds = 0;
+      }
+      return;
+    }
+
+    if (++m_stall_rounds >= STALL_PATIENCE) {
+      m_stall_rounds = 0;
+      if (m_exploration_current < m_exploration_max) {
+        m_exploration_current = m_exploration_current == 0
+                                    ? 1
+                                    : std::min(m_exploration_current * 2,
+                                               m_exploration_max);
+      } else {
+        // Exploration exhausted: burst into a narrow dive, emulating the
+        // small fringe sizes that solve what full width cannot.
+        m_beam_width = std::min(DIVE_WIDTHS[m_dive_count++ % DIVE_WIDTHS.size()],
+                                m_max_beam_size);
+        m_exploration_current = 0;
+        m_dive_rounds_left = DIVE_ROUNDS;
+      }
+    }
+  }
+
+  void refill_beam_heuristic(std::vector<State<StateRepr>> &batch) {
+    if (batch.size() >= beam_limit() || m_reservoir.empty()) {
+      return;
+    }
+    const std::size_t free_slots = beam_limit() - batch.size();
 
     // Fill most of the missing slots with the best reservoir states.
     // Keep a small amount of random exploration inside the beam budget.
     const std::size_t exploration_slots = std::min<std::size_t>(
-        {free_slots, m_reservoir.size(), m_exploration_size});
+        {free_slots, m_reservoir.size(), exploration_budget()});
     const std::size_t exploit_slots = free_slots - exploration_slots;
 
     for (std::size_t i = 0; i < exploit_slots && !m_reservoir.empty(); ++i) {

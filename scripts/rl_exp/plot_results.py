@@ -1,4 +1,5 @@
 import sys
+import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from pathlib import Path
@@ -10,6 +11,8 @@ df = pd.read_csv(RESULTS / "aggregate.csv")
 
 # --- clean ---
 df["NodesExpanded_mean"] = pd.to_numeric(df["NodesExpanded_mean"], errors="coerce")
+df["Solved"] = pd.to_numeric(df["Solved"], errors="coerce")
+df["Total"] = pd.to_numeric(df["Total"], errors="coerce")
 
 # normalize Strict
 df["Strict"] = df["Strict"].map({
@@ -33,8 +36,23 @@ pivot = df.pivot_table(
     aggfunc="mean"
 )
 
-# sort nicely
-pivot = pivot.sort_index()
+# --- row ordering: first by success rate (desc), then by nodes expanded (asc) ---
+# Success rate and mean nodes are aggregated per approach across all fringes/configs
+# (nodes weighted by the number of instances so larger runs dominate the tie-break).
+ranking = (
+    df.groupby("Approach")
+    .apply(lambda g: pd.Series({
+        "SuccessRate": g["Solved"].sum() / g["Total"].sum()
+        if g["Total"].sum() else 0.0,
+        "NodesExpanded_mean": np.average(
+            g["NodesExpanded_mean"],
+            weights=g["Total"].fillna(0),
+        ) if g["Total"].sum() else np.nan,
+    }), include_groups=False)
+    .sort_values(by=["SuccessRate", "NodesExpanded_mean"], ascending=[False, True])
+)
+
+pivot = pivot.reindex(index=ranking.index)
 pivot = pivot[sorted(pivot.columns)]
 
 # --- PLOT ---

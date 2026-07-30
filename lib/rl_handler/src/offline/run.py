@@ -42,6 +42,7 @@ from .selection import (
     heldout_ranking_micro_macro,
     heldout_top1,
     onnx_path_for,
+    rankable_slots,
     run_planner_expansions,
     run_planner_metrics,
     select,
@@ -283,7 +284,8 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
                                   seeds_per_policy=cfg.seeds_per_policy,
                                   expansion_cap=cap,
                                   counterfactual=cfg.counterfactual,
-                                  n_refill_samples=cfg.n_refill_samples)
+                                  n_refill_samples=cfg.n_refill_samples,
+                                  gamma=cfg.gamma)
 
     # H2: per-instance ROW SHARE at assembly. One instance owning 48-60% of the gradient
     # (batch1 pl_7) must be VISIBLE in the log, not require forensics.
@@ -321,8 +323,13 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
             if _k in _seen_fr:
                 continue
             _seen_fr.add(_k)
-            _d = [by_name[_r.instance].delta[v] for v in _r.obs]
-            if len(_r.obs) >= 2 and not all(x >= float("inf") for x in _d):
+            # Censored-aware, mirroring selection.rankable_slots exactly: a
+            # frontier is scorable iff >=2 NON-CENSORED slots survive and not
+            # all of them are INF.
+            _it = by_name[_r.instance]
+            _keep = rankable_slots(_it, _r.obs)
+            _d = [_it.delta[_r.obs[k]] for k in _keep]
+            if len(_keep) >= 2 and not all(x >= float("inf") for x in _d):
                 _scorable[_r.instance] = _scorable.get(_r.instance, 0) + 1
         _blind = sorted(n for n, c in _scorable.items() if c == 0)
         split_manifest["instances_with_no_scorable_frontier"] = _blind
@@ -346,7 +353,8 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
     baseline_ndcg: Dict[str, float] = {}
     for b in BEHAVIOUR_POLICIES:
         out = evaluate_split(cov_instances, lambda n, _b=b: make_policy(by_name[n], _b, seed=0),
-                             cfg.fringe_size, seeds=cfg.eval_seeds, expansion_cap=cap)
+                             cfg.fringe_size, seeds=cfg.eval_seeds, expansion_cap=cap,
+                             gamma=cfg.gamma)
         baselines[b] = out["regret_mean_lower_bound"]
         if eval_mode == "held_out_trajectories":
             # the FULL ranking-metric family, matched-n on the held-out frontiers
@@ -454,7 +462,8 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
             # coverage/regret: held-out transfer on PRIMARY, train-set estimate on
             # FALLBACK (labelled in the sidecar -- never reported as transfer there).
             out = evaluate_split(cov_instances, policy_for, cfg.fringe_size,
-                                 seeds=cfg.eval_seeds, expansion_cap=cap, score_for=score_for)
+                                 seeds=cfg.eval_seeds, expansion_cap=cap,
+                                 score_for=score_for, gamma=cfg.gamma)
             if trainer is not None:
                 # materialise the on-device tensors HERE (at the checkpoint), not
                 # every step -- this is the only place the values are read.
@@ -579,7 +588,7 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
             off, live, plen = [], [], []
             for n in fid:
                 out = evaluate_split([by_name[n]], policy_for, cfg.fringe_size, seeds=1,
-                                     expansion_cap=cap)
+                                     expansion_cap=cap, gamma=cfg.gamma)
                 off.append(int(out["expansions_mean"] or 0))
                 # plan_length beside expansions: fewer expansions is only a WIN if
                 # the plan is still optimal, so the quality check needs both, and

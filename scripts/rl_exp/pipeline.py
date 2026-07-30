@@ -77,6 +77,7 @@ if __name__ == "__main__":
             f"python3 scripts/rl_exp/plot_results_best_isolated.py {scoped}",
             f"python3 scripts/rl_exp/plot_by_pl.py {scoped}",
             f"python3 scripts/rl_exp/plot_fringe_comparison.py {scoped}",
+            f"python3 scripts/rl_exp/plot_rl_vs_bfs.py {scoped}",
         ]
 
         if opts.dry_run:

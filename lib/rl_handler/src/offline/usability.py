@@ -107,6 +107,14 @@ class InstanceVerdict:
     delta_root_matches_optimal: Optional[bool] = None  # diagnostic only
     poisoned_frac: float = 0.0  # diagnostic only
     sterile_frac: float = 0.0
+    # (fix 1A) share of reachable states whose delta=inf is a generation
+    # artifact (depth-bound leaf / h*-contradicted, propagated) -- these carry
+    # NO training label and are excluded from ranking judgments.
+    censored_frac: float = 0.0
+    # orphan edges: CSV rows whose predecessor never appears as a state,
+    # dropped at load. The docstring's "<1% anomalies" claim is now measured.
+    n_orphan_edges: int = 0
+    orphan_edge_frac: float = 0.0
     n_states: int = 0
     bfs_expansions: Optional[int] = None
     usable_for_fidelity: bool = False
@@ -197,10 +205,14 @@ def scorability(
         if key in seen:
             continue
         seen.add(key)
-        sizes.append(len(r.obs))
-        if len(r.obs) < 2:
+        # Censored-aware (fix 1A), mirroring selection.rankable_slots: censored
+        # slots carry no oracle verdict, so a frontier must keep >=2 rankable
+        # slots to be scorable.
+        keep = [v for v in r.obs if not inst.censored[v]]
+        sizes.append(len(keep))
+        if len(keep) < 2:
             continue
-        deltas = [inst.delta[v] for v in r.obs]
+        deltas = [inst.delta[v] for v in keep]
         if all(d >= INF_DELTA for d in deltas):
             continue
         n_scorable += 1
@@ -230,7 +242,10 @@ def check_instance(
     reach = inst._reachable()
     n = max(1, len(reach))
     poisoned = sum(1 for v in reach if inst.h_star[v] >= UNREACHABLE_DISTANCE)
-    sterile = sum(1 for v in reach if inst.delta[v] == INF_DELTA)
+    # sterile_frac now counts PROVABLY sterile only; censored (fix 1A) is the
+    # generation-artifact share, reported beside it, never summed into it.
+    sterile = sum(1 for v in reach if inst.provably_sterile(v))
+    censored = sum(1 for v in reach if inst.censored[v])
     opt = expected_optimal(inst.name)
     v = InstanceVerdict(
         instance=inst.name,
@@ -239,6 +254,9 @@ def check_instance(
         expected_optimal=opt,
         poisoned_frac=poisoned / n,
         sterile_frac=sterile / n,
+        censored_frac=censored / n,
+        n_orphan_edges=int(inst.n_orphan_edges),
+        orphan_edge_frac=inst.n_orphan_edges / max(1, inst.n_edge_rows),
         n_states=len(reach),
     )
 
@@ -272,6 +290,21 @@ def check_instance(
             f"[diagnostic] poisoned fraction {v.poisoned_frac:.3f}: states with "
             f"h*=1e6 -- either a generation ceiling truncated the tree or these are "
             f"ordinary non-goal leaves at the depth bound (not an exclusion)"
+        )
+    if v.censored_frac > POISONED_FRAC_NOTE_ABOVE:
+        v.reasons.append(
+            f"[diagnostic] censored fraction {v.censored_frac:.3f}: states whose "
+            f"delta=inf is a generation artifact (depth-bound leaf / h*-contradicted, "
+            f"propagated). They carry no training label -- their counterfactual "
+            f"dead-end rows are dropped and they are excluded from ranking judgments "
+            f"(fix 1A; not an exclusion)"
+        )
+    if v.orphan_edge_frac > POISONED_FRAC_NOTE_ABOVE:
+        v.reasons.append(
+            f"[diagnostic] orphan-edge fraction {v.orphan_edge_frac:.3f} "
+            f"({v.n_orphan_edges} rows): edges whose predecessor never appears as a "
+            f"state, dropped at load. Above the ~1% generator-anomaly rate the loader "
+            f"docstring assumes -- inspect the generation table (not an exclusion)"
         )
 
     # 3. can it discriminate for the fidelity gate? (a FLAG, not an exclusion)

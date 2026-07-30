@@ -109,14 +109,28 @@ def beam_metrics(
     beam: Sequence[int],
     logits: Sequence[float],
 ) -> Dict[str, Optional[float]]:
-    """Per-state ranking diagnostics. Averaged over states by the caller."""
-    deltas = [instance.delta[v] for v in beam]
+    """Per-state ranking diagnostics. Averaged over states by the caller.
+
+    CENSORED slots (fix 1A) are excluded from every judged metric: their
+    delta=inf is a generation artifact, so counting them as sterile would score
+    the model against an invented label. They are reported separately as
+    beam_censored_frac.
+    """
+    keep = [k for k, v in enumerate(beam) if not instance.censored[v]]
+    deltas = [instance.delta[beam[k]] for k in keep]
+    lg = [logits[k] for k in keep]
+    n_all = len(beam)
     return {
-        "viability_auc": viability_auc(logits, deltas),
-        "top1_oracle_agreement": top1_oracle_agreement(logits, deltas),
-        "spearman_logits_vs_delta": spearman_logits_vs_delta(logits, deltas),
+        "viability_auc": viability_auc(lg, deltas),
+        "top1_oracle_agreement": (
+            top1_oracle_agreement(lg, deltas) if keep else 0.0
+        ),
+        "spearman_logits_vs_delta": spearman_logits_vs_delta(lg, deltas),
         "beam_sterile_frac": (
-            sum(1 for d in deltas if d == INF_DELTA) / len(deltas) if deltas else 0.0
+            sum(1 for d in deltas if d == INF_DELTA) / n_all if n_all else 0.0
+        ),
+        "beam_censored_frac": (
+            (n_all - len(keep)) / n_all if n_all else 0.0
         ),
     }
 

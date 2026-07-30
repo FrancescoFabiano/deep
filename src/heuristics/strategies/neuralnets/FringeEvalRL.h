@@ -89,10 +89,14 @@ public:
    * \brief Get the scores for a set of states (fringe) using RL
    * using native C++ code \tparam StateRepr The state representation type.
    * \param states The set of states to evaluate.
+   * \param raw_scores Optional out-parameter receiving the raw model logits
+   * (higher = better) before rank conversion; used by the adaptive schedule
+   * to measure model confidence.
    * \return The relative score for the states in the fringe.
    */
   [[nodiscard]] std::vector<float>
-  get_score(const std::vector<State<StateRepr>> &states);
+  get_score(const std::vector<State<StateRepr>> &states,
+            std::vector<float> *raw_scores = nullptr);
 
   /** \brief Deleted copy constructor (singleton pattern). */
   FringeEvalRL(const FringeEvalRL &) = delete;

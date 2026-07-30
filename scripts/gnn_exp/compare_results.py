@@ -5,6 +5,11 @@ import numpy as np
 import re
 
 
+def _latex_us(s: str) -> str:
+    """Escape underscores for LaTeX. Kept out of f-string expressions so the
+    backslash literal stays legal on Python < 3.12 (PEP 701)."""
+    return s.replace("_", r"\_")
+
 
 def extract_table_data(tex_content: str, section_name: str, include_search: bool = False):
     """
@@ -139,10 +144,10 @@ def merge_and_generate_latex(
             # Full three-column header
             f.write(r"\begin{tabular}{l|ccc|ccc|cccc}" + "\n")
             f.write(
-                rf"\multirow{{2}}{{*}}{{\textbf{{{"Problem".replace('_', r'\_')}}}}} "
+                rf"\multirow{{2}}{{*}}{{\textbf{{{_latex_us('Problem')}}}}} "
                 r"& \multicolumn{3}{c|}{\textbf{Astar\_GNN}} "
                 r"& \multicolumn{3}{c|}{\textbf{BFS}} "
-                rf"& \multicolumn{{4}}{{c}}{{\textbf{{{custom_name.replace('_', r'\_')}}}}} \\" + "\n"
+                rf"& \multicolumn{{4}}{{c}}{{\textbf{{{_latex_us(custom_name)}}}}} \\" + "\n"
             )
             f.write(r"\cline{2-11}" + "\n")
             f.write(
@@ -154,7 +159,7 @@ def merge_and_generate_latex(
             f.write(r"\footnotesize" + "\n")
             f.write(r"\begin{tabular}{l|ccc|ccc}" + "\n")
             f.write(
-                rf"\multirow{2}{{*}}{{\textbf{{{"Problem".replace('_', r'\_')}}}}} "
+                rf"\multirow{2}{{*}}{{\textbf{{{_latex_us('Problem')}}}}} "
                 r"& \multicolumn{3}{c|}{\textbf{Astar\_GNN}} "
                 r"& \multicolumn{3}{c}{\textbf{BFS}} " r"\\" + "\n"
             )
@@ -213,7 +218,7 @@ def merge_and_generate_latex(
 
         # -- footer --
         f.write(r"\end{tabular}" + "\n")
-        f.write(rf"\caption{{{custom_name.replace("_", "-")}}}" + "\n")
+        f.write(rf"\caption{{{custom_name.replace('_', '-')}}}" + "\n")
         if label_tab:
             f.write(rf"\label{{tab:{label_tab}}}" + "\n")
         f.write(r"\end{table}" + "\n")

@@ -69,6 +69,81 @@ UNREACHABLE_DISTANCE = 1e6
 # delta for a node with no goal anywhere in its subtree.
 INF_DELTA = float("inf")
 
+# CENSORED vs STERILE -- the distinction fix-1A introduces.
+# ---------------------------------------------------------
+# delta(v) = inf conflates two different facts:
+#   PROVABLY STERILE: every path from v ends in a genuine dead end (a leaf the
+#     generator stopped at because it had NO fresh successors). The planner
+#     really would waste expansions in that subtree.
+#   CENSORED: the verdict is an artifact of generation, not a fact about the
+#     search space. Two cases:
+#       (a) a non-goal leaf sitting AT the generation depth bound -- the
+#           generator stopped writing children there, but at deployment the
+#           state expands normally and may sit on the shortest path
+#           (usability.py: 145/154 "poisoned" rows on CC pl_7 were exactly
+#           this);
+#       (b) delta(v)=inf while h*(v) is FINITE -- the generator itself asserts
+#           a goal is reachable from v in the DAG; the spanning-tree
+#           reconstruction merely lacks the edge.
+#     Censoredness propagates upward through inf-delta ancestors: an internal
+#     node whose inf verdict rests on a censored subtree is itself unknown,
+#     not proven dead.
+# Training must not teach "avoid v" from a censored label: that is inventing
+# a target (see two_head_baseline's masked MSE for the same principle).
+
+
+def compute_censored(
+    children: Sequence[Sequence[int]],
+    is_goal: Sequence[bool],
+    delta: Sequence[float],
+    h_star: Sequence[float],
+    depth: Sequence[int],
+    depth_bound: Optional[int] = None,
+) -> List[bool]:
+    """censored[v] = delta(v) is inf but the tree cannot PROVE sterility.
+
+    Seeds:
+      * bound-hit leaves: non-goal leaf, delta=inf, depth >= depth_bound;
+      * label contradictions: delta=inf but h* finite (the generator says a
+        goal IS reachable from v in the DAG).
+    Propagation: upward through parents whose delta is inf (a finite-delta
+    parent has a proven goal path; its verdict does not depend on the
+    censored branch).
+
+    `depth_bound` defaults to max(depth) -- a conservative stand-in for the
+    generator's --dataset_depth, which the CSV does not record (the dataspec
+    does; callers that know it should pass it). Conservative in the safe
+    direction: a genuine dead end at exactly the max depth is treated as
+    unknown rather than a genuine dead end mislabeled as such.
+    """
+    n = len(children)
+    if depth_bound is None:
+        depth_bound = max(depth) if n else 0
+    censored = [False] * n
+    q: deque[int] = deque()
+    for v in range(n):
+        if delta[v] != INF_DELTA:
+            continue
+        bound_hit_leaf = (
+            not children[v] and not is_goal[v] and depth[v] >= depth_bound
+        )
+        contradicted = h_star[v] < UNREACHABLE_DISTANCE
+        if bound_hit_leaf or contradicted:
+            censored[v] = True
+            q.append(v)
+
+    parents: List[List[int]] = [[] for _ in range(n)]
+    for v, cs in enumerate(children):
+        for c in cs:
+            parents[c].append(v)
+    while q:
+        v = q.popleft()
+        for p in parents[v]:
+            if delta[p] == INF_DELTA and not censored[p]:
+                censored[p] = True
+                q.append(p)
+    return censored
+
 
 @dataclass
 class TreeInstance:
@@ -88,10 +163,29 @@ class TreeInstance:
     # Driven by kind_of_data, NEVER by the presence of the `Goal` column (the
     # column is populated in merged runs too, but the file is not written there).
     goal_path: Optional[str] = None
+    # censored[v]: delta(v)=inf is a generation artifact (depth-bound leaf /
+    # h*-contradicted), NOT proven sterility -- see compute_censored. None (e.g.
+    # a hand-built test instance) normalises to all-False in __post_init__.
+    censored: Optional[List[bool]] = None
+    # Edge rows whose predecessor never appears as a state (dropped at load).
+    # Surfaced so a generator regression cannot silently discard structure.
+    n_orphan_edges: int = 0
+    n_edge_rows: int = 0
+
+    def __post_init__(self) -> None:
+        if self.censored is None:
+            self.censored = [False] * len(self.state_paths)
 
     @property
     def n_states(self) -> int:
         return len(self.state_paths)
+
+    def is_censored(self, v: int) -> bool:
+        return bool(self.censored[v])
+
+    def provably_sterile(self, v: int) -> bool:
+        """delta=inf AND the verdict does not rest on a censored subtree."""
+        return self.delta[v] == INF_DELTA and not self.censored[v]
 
     @property
     def delta_root(self) -> float:
@@ -174,6 +268,12 @@ class TreeInstance:
             "n_dead_end_leaves": len(dead),
             "sterile_leaf_density": round(len(dead) / n_reach, 4),
             "n_delta_inf": int(sum(1 for i in reachable if self.delta[i] == INF_DELTA)),
+            "n_censored": int(sum(1 for i in reachable if self.censored[i])),
+            "censored_frac": round(
+                sum(1 for i in reachable if self.censored[i]) / n_reach, 4),
+            "n_orphan_edges": int(self.n_orphan_edges),
+            "orphan_edge_frac": round(
+                self.n_orphan_edges / max(1, self.n_edge_rows), 4),
             "branching_internal_mean": (sum(internal) / len(internal)) if internal else 0.0,
             "root_branching": len(self.children[self.root_id]),
             "n_orphan_states": int(self.n_orphan_states),
@@ -254,6 +354,7 @@ def load_tree_instance(
     csv_path: str | Path,
     name: Optional[str] = None,
     kind_of_data: str = "merged",
+    depth_bound: Optional[int] = None,
 ) -> TreeInstance:
     """Reconstruct one instance from its generation table.
 
@@ -262,7 +363,12 @@ def load_tree_instance(
       - the root is the unique Depth-0 state (its CSV predecessor is a dummy
         `init.dot` that never appears as a state);
       - edges whose predecessor never appears as a state are dropped as orphans
-        (<1% generator anomalies); their subtrees never enter episodes.
+        (<1% generator anomalies, now COUNTED on the instance so a regression
+        past that rate is visible); their subtrees never enter episodes.
+
+    `depth_bound`: the generator's --dataset_depth for censoring (see
+    compute_censored). The CSV does not record it; the batch .dataspec does.
+    Defaults to max observed depth -- conservative, see compute_censored.
     """
     csv_path = Path(csv_path)
     with csv_path.open() as fh:
@@ -324,6 +430,8 @@ def load_tree_instance(
 
     is_goal = [d == 0.0 for d in h_star]
     delta = compute_delta(children, is_goal)
+    censored = compute_censored(children, is_goal, delta, h_star, depth,
+                                depth_bound=depth_bound)
 
     reachable = {root_id}
     stack = [root_id]
@@ -345,6 +453,9 @@ def load_tree_instance(
         n_orphan_states=len(state_paths) - len(reachable),
         delta=delta,
         goal_path=goal_path,
+        censored=censored,
+        n_orphan_edges=n_orphan_edges,
+        n_edge_rows=len(rows),
     )
 
 

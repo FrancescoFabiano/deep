@@ -74,7 +74,7 @@ N_CHECKPOINTS="${N_CHECKPOINTS:-20}"
 # instances; capped bounds that). The CLI/RunConfig default stays proportional --
 # only this production launcher opts in -- so existing scripts and reruns are
 # unaffected.
-SAMPLER="${SAMPLER:-capped}"
+SAMPLER="${SAMPLER:-proportional}"
 SAMPLER_K="${SAMPLER_K:-4}"
 CQL_ALPHA=1.0
 # ---- FAITHFUL GENERATION ----
@@ -87,7 +87,7 @@ CQL_ALPHA=1.0
 #     discard 0   -> delta_root  4, sterile  2.9%
 # Passed EXPLICITLY: create_all_training_data.py is shared with gnn_exp and its
 # default must not move under that pipeline's feet.
-DISCARD_FACTOR="${DISCARD_FACTOR:-0}"
+DISCARD_FACTOR="${DISCARD_FACTOR:-0.1}"
 
 # A depth bound that CONTAINS the optimal keeps the whole solution path while cutting
 # the tree where it no longer matters. CC optimals are ~4-7; SC needs the depth.
@@ -260,7 +260,7 @@ PYEOF
             fail "incompatible DATA_SOURCE (regenerate, or fix MODE/STRICT/DISCARD)"
         fi
     else
-        # No spec => provenance unknown => almost certainly a discard=0.4 batch.
+        # No spec => provenance unknown => almost certainly a discard too high batch.
         # Linking anyway would silently reintroduce the artifact.
         fail "${SRC_SPEC} missing — refusing to reuse data of unknown provenance"
     fi

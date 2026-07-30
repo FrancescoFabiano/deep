@@ -129,6 +129,7 @@ def load_records(results_dir: Path):
             records.append({
                 "label": label,
                 "split": split,
+                "file": row.get("File", "").strip(),
                 "pl": int(m.group(1)),
                 "solved": row.get("GoalFound", "").strip() == "Yes",
                 "NodesExpanded": num(row.get("NodesExpanded")),
@@ -150,6 +151,27 @@ def survivors_for_split(subset):
     return {
         lbl for lbl, tot in total.items()
         if tot > 0 and solved[lbl] / tot >= SUCCESS_RATE_THRESHOLD
+    }
+
+
+def common_solved_files(subset, labels):
+    """Files solved by EVERY approach in `labels` (the fair, common-solved set).
+
+    Only files attempted by all of `labels` and solved by all of them qualify, so
+    every plotted line is averaged over the exact same instances — no approach gets
+    an easier subset by silently dropping the instances it failed on.
+    """
+    attempted = defaultdict(set)
+    solved = defaultdict(set)
+    for r in subset:
+        if r["label"] not in labels:
+            continue
+        attempted[r["file"]].add(r["label"])
+        if r["solved"]:
+            solved[r["file"]].add(r["label"])
+    return {
+        f for f, labs in attempted.items()
+        if labs >= labels and solved[f] >= labels
     }
 
 
@@ -235,6 +257,20 @@ def main():
         survivors = survivors_for_split(subset)
         for metric in METRICS:
             make_figure(subset, survivors, metric, variant, domain, color_map, out)
+
+    # --- common-solved figures ---
+    # Fair head-to-head across all splits: restrict to the instances solved by
+    # EVERY approach, so the per-pl means for nodes / plan length / time compare the
+    # exact same instances (no approach gets an easier subset by dropping failures).
+    # Unlike the split figures, this uses all approaches, not just the near-100%
+    # survivors, since the whole point is a like-for-like multi-approach comparison.
+    # Produces 3 extra PNGs (one per metric).
+    all_labels = set(labels)
+    common = common_solved_files(records, all_labels)
+    common_subset = [r for r in records if r["file"] in common]
+    print(f"[info] common-solved set: {len(common)} instances across {len(all_labels)} approaches")
+    for metric in METRICS:
+        make_figure(common_subset, all_labels, metric, "common_solved", domain, color_map, out)
 
     print(f"[OK] plot_by_pl complete for domain={domain}")
 

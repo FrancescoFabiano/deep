@@ -61,8 +61,9 @@ def get_top(data):
         .reset_index()
     )
 
+    # order rows first by success rate, then by nodes expanded (fewer is better)
     ranking = ranking.sort_values(
-        by=["Solved", "NodesExpanded_mean"],
+        by=["SolvedPct", "NodesExpanded_mean"],
         ascending=[False, True]
     )
 
@@ -99,15 +100,23 @@ def plot_best_fringe(data, name):
         .reset_index()
     )
 
+    # pick the best fringe per approach: highest success rate, then fewest nodes
     best_rows = (
         best_rows.sort_values(
-            ["Solved", "NodesExpanded_mean"],
+            ["SolvedPct", "NodesExpanded_mean"],
             ascending=[False, True]
         )
         .groupby("Approach")
         .first()
         .reset_index()
     )
+
+    # groupby().first() collapses to one row per approach but re-sorts the rows
+    # alphabetically; restore the success-rate-then-nodes order for the heatmap.
+    best_rows = best_rows.sort_values(
+        ["SolvedPct", "NodesExpanded_mean"],
+        ascending=[False, True]
+    ).reset_index(drop=True)
 
     # build labels with % and fringe
     labels = []

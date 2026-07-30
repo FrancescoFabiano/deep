@@ -211,6 +211,15 @@ def pack_fringe(
     for slot, si in enumerate(state_indices):
         g = cache.states[int(si)]
         n = int(g.node_ids.numel())
+        if n == 0:
+            # Same contract as goal graphs (load_goal_graph): a 0-node state
+            # contributes no membership rows, so its pooled slot would be
+            # whatever scatter-init gives (zeros) -- silent corruption. The C++
+            # never produces one; only a truncated/corrupt DOT can.
+            raise ValueError(
+                f"state graph for slot {slot} (state id {int(si)}) has 0 nodes; "
+                f"refusing to pack a corrupt/truncated state DOT."
+            )
         node_parts.append(g.node_ids)
         membership_parts.append(torch.full((n,), slot, dtype=torch.int64))
         if g.edge_index.numel() > 0:
@@ -365,6 +374,12 @@ class GlobalFlatCache:
         fringe_lens = fringe_lens.to(d)
         nl = self.node_len[state_gids]
         el = self.edge_len[state_gids]
+        if bool((nl == 0).any()):
+            bad = state_gids[nl == 0][:5].tolist()
+            raise ValueError(
+                f"0-node state graph(s) in batch (global state ids {bad}); "
+                f"refusing to pack corrupt/truncated state DOTs."
+            )
         s_count = int(state_gids.numel())
 
         node_gather = self._gather_index(self.node_start[state_gids], nl)
@@ -530,6 +545,12 @@ def pack_fringe_batch(
         for local_slot, si in enumerate(state_indices):
             g = cache.states[int(si)]
             n = int(g.node_ids.numel())
+            if n == 0:
+                raise ValueError(
+                    f"state graph for fringe {b} slot {local_slot} (state id "
+                    f"{int(si)}) has 0 nodes; refusing to pack a corrupt/"
+                    f"truncated state DOT."
+                )
             node_parts.append(g.node_ids)
             membership_parts.append(
                 torch.full((n,), cand_offset + local_slot, dtype=torch.int64)

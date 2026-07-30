@@ -169,6 +169,18 @@ public:
   [[nodiscard]] std::string get_RL_heur_selection() const noexcept;
 
   /**
+   * @brief Whether the adaptive exploration schedule is enabled.
+   * @return True if exploration slots adapt during the search.
+   */
+  [[nodiscard]] bool get_RL_adaptive() const noexcept;
+
+  /**
+   * @brief Get the escalation signal used by the adaptive schedule.
+   * @return "subgoals" (heuristic stagnation) or "budget" (round counts).
+   */
+  [[nodiscard]] const std::string &get_RL_adaptive_signal() const noexcept;
+
+  /**
    * \brief Return the type of encoding used for the information in states.
    * \return the DatasetType used to encode the labels in the GNN states.
    */
@@ -341,6 +353,22 @@ private:
    * Converted to RL_Heur_type when accessed.
    */
   std::string m_RL_heur_selection = "MIN";
+
+  /**
+   * @brief Adaptive exploration schedule for RL search.
+   *
+   * When enabled, exploration slots start at zero and escalate on subgoal
+   * stagnation, overriding the static --RL_exploration split.
+   */
+  bool m_RL_adaptive = false;
+
+  /**
+   * @brief Escalation signal for the adaptive schedule.
+   *
+   * "subgoals" escalates on stagnation of the satisfied-subgoal count;
+   * "budget" advances regimes purely on expended search rounds.
+   */
+  std::string m_RL_adaptive_signal = "subgoals";
 
   bool m_exec_plan =
       false; ///< Flag to indicate if the plan should be executed.
