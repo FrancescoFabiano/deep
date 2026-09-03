@@ -13,7 +13,7 @@ show_usage() {
     echo "  debug           Build with Debug flags (default is Release)"
     echo "  use_gpu         Use GPU ONNX Runtime (Linux + NVIDIA only)"
     echo "  force_gpu       Force GPU ONNX install (Linux only)"
-    echo "  install_all     Install required system packages"
+    echo "  install_all     Install required system packages (apt on Linux, Homebrew on macOS)"
     echo "  no_onnx_test    Skip ONNX tests"
 }
 
@@ -85,19 +85,44 @@ if [[ "$OS" == "Linux" ]]; then
     fi
 
 elif [[ "$OS" == "Darwin" ]]; then
+    # Xcode Command Line Tools provide the Apple Clang compiler and make.
+    if ! xcode-select -p &>/dev/null; then
+        echo "ERROR: Xcode Command Line Tools are required."
+        echo "Install them with: xcode-select --install"
+        exit 1
+    fi
+
     if ! command -v brew &>/dev/null; then
-        echo "ERROR: Homebrew required. Install from https://brew.sh"
+        echo "ERROR: Homebrew is required on macOS."
+        echo 'Install it with:'
+        echo '/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"'
         exit 1
     fi
 
     REQUIRED_PACKAGES=(cmake bison flex boost unzip curl)
-
+    MISSING=()
     for pkg in "${REQUIRED_PACKAGES[@]}"; do
         if ! brew list "$pkg" &>/dev/null; then
-            echo "Installing $pkg..."
-            brew install "$pkg"
+            MISSING+=("$pkg")
         fi
     done
+
+    if [[ ${#MISSING[@]} -ne 0 ]]; then
+        echo "Missing Homebrew packages: ${MISSING[*]}"
+        if [[ "$INSTALL_ALL" == "ON" ]]; then
+            brew install "${MISSING[@]}"
+        else
+            echo "Run './build.sh install_all' (plus any other desired options) to install them automatically."
+            exit 1
+        fi
+    else
+        echo "All required Homebrew packages installed."
+    fi
+
+    # Homebrew's bison/flex are keg-only on common macOS/Homebrew setups.
+    # Put their binaries first and expose their prefixes to CMake/pkg-config.
+    export PATH="$(brew --prefix bison)/bin:$(brew --prefix flex)/bin:$PATH"
+    export CMAKE_PREFIX_PATH="$(brew --prefix boost);$(brew --prefix bison);$(brew --prefix flex)${CMAKE_PREFIX_PATH:+;$CMAKE_PREFIX_PATH}"
 fi
 
 # --------------------------
@@ -176,10 +201,17 @@ fi
 # ONNX Test
 # --------------------------
 if [[ "$ENABLE_NN" == "ON" && "$ONNX_TEST" == "ON" ]]; then
-    if [[ "$OS" == "Linux" ]]; then
-        ./utils/onnx_test/run_test.sh
+    if [[ -x ./utils/onnx_test/run_test.sh ]]; then
+        if [[ "$OS" == "Darwin" ]]; then
+            echo "Running ONNX test on macOS..."
+            # Allow the test executable to resolve libonnxruntime.dylib from the downloaded runtime.
+            DYLD_LIBRARY_PATH="$PWD/$ONNX_DIR/lib${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}" \
+                ./utils/onnx_test/run_test.sh
+        else
+            ./utils/onnx_test/run_test.sh
+        fi
     else
-        echo "Skipping ONNX test on macOS"
+        echo "WARNING: ./utils/onnx_test/run_test.sh is missing or not executable; skipping ONNX test."
     fi
 fi
 

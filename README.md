@@ -29,11 +29,39 @@ For a more detailed overview, please take a look at the works referenced in the 
 
 > CUDA is **not required**. GPU support via ONNX Runtime with CUDA is available but **not tested**.
 
-### Linux Dependencies
+### Platform Dependencies
+
+#### Linux
 
 Install required tools and libraries:
 
     sudo apt-get install build-essential cmake bison flex libboost-dev unzip curl
+
+Alternatively, the build script can install missing packages:
+
+    ./build.sh install_all
+
+#### macOS
+
+Both Intel (`x86_64`) and Apple Silicon (`arm64`) Macs are supported. Install the Xcode Command Line Tools first:
+
+    xcode-select --install
+
+The build uses [Homebrew](https://brew.sh/) for its remaining dependencies. If Homebrew is not installed, install it with:
+
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+Then either install the dependencies directly:
+
+    brew install cmake bison flex boost unzip curl
+
+or let the build script install missing Homebrew packages:
+
+    ./build.sh install_all
+
+The build script automatically adds the Homebrew `bison` and `flex` installations to the build environment. This is important on macOS because Homebrew may install these packages outside the default system search path.
+
+> macOS uses Apple Clang and does not support the project's CUDA/NVIDIA ONNX Runtime path. Neural-network heuristics still work with the CPU ONNX Runtime build.
 
 ## Installation
 
@@ -58,6 +86,12 @@ For example, a simple debug build:
 Or a release build with neural networks enabled (the one used for GNN testing):
 
     ./build.sh nn
+
+On macOS, `./build.sh nn` automatically downloads the matching ONNX Runtime C/C++ package for the current architecture (`osx-x86_64` for Intel or `osx-arm64` for Apple Silicon). CUDA options are Linux/NVIDIA-only and are disabled on macOS.
+
+For a fresh macOS setup, dependencies and the neural-network build can be handled together with:
+
+    ./build.sh install_all nn
 
 For more granular building options, please refer to the next two sections where the building process is explained without using the script.
 Note that the script abstracts away many details, so if you want to use more granular building options, please make sure to follow the installation procedure in `build.sh` to ensure you have all the necessary components.
