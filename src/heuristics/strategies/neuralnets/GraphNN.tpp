@@ -747,9 +747,9 @@ void GraphNN<StateRepr>::populate_with_goal() {
   const std::sregex_iterator end;
 
   if (!ArgumentParser::get_instance().get_dataset_separated()) {
-    constexpr auto epsilon_id =
+    const auto epsilon_id =
         TrainingDataset<KripkeState>::get_epsilon_node_id_int();
-    constexpr auto goal_parent_id =
+    const auto goal_parent_id =
         TrainingDataset<KripkeState>::get_goal_parent_id_int();
 
     add_edge(epsilon_id, goal_parent_id,

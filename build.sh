@@ -6,7 +6,7 @@ set -e
 # Help message
 # --------------------------
 show_usage() {
-    echo "Usage: ./build.sh [nn] [debug] [use_gpu] [force_gpu] [install_all]"
+    echo "Usage: ./build.sh [nn] [debug] [use_gpu] [force_gpu] [install_all] [clion]"
     echo ""
     echo "Options:"
     echo "  nn              Enable neural networks (downloads ONNX Runtime if not present)"
@@ -15,6 +15,7 @@ show_usage() {
     echo "  force_gpu       Force GPU ONNX install (Linux only)"
     echo "  install_all     Install required system packages (apt on Linux, Homebrew on macOS)"
     echo "  no_onnx_test    Skip ONNX tests"
+    echo "  clion           Create a local CLion run configuration for the first README example and select it"
 }
 
 # --------------------------
@@ -37,6 +38,7 @@ USE_GPU="OFF"
 FORCE_GPU="OFF"
 ONNX_TEST="ON"
 INSTALL_ALL="OFF"
+SETUP_CLION="OFF"
 
 for arg in "$@"; do
     arg_lc="$(echo "$arg" | tr '[:upper:]' '[:lower:]')"
@@ -47,10 +49,82 @@ for arg in "$@"; do
         force_gpu) FORCE_GPU="ON" ;;
         no_onnx_test) ONNX_TEST="OFF" ;;
         install_all) INSTALL_ALL="ON" ;;
+        clion) SETUP_CLION="ON" ;;
         -h|--help) show_usage; exit 0 ;;
         *) echo "Unknown option: $arg"; show_usage; exit 1 ;;
     esac
 done
+
+# --------------------------
+# Local CLion setup
+# --------------------------
+setup_clion() {
+    local idea_dir=".idea"
+    local run_dir="$idea_dir/runConfigurations"
+    local run_name="README - First Example"
+    local run_file="$run_dir/README_First_Example.xml"
+    local workspace="$idea_dir/workspace.xml"
+
+    mkdir -p "$run_dir"
+
+    cat > "$run_file" <<'EOF'
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="README - First Example" type="CMakeRunConfiguration" factoryName="Application">
+    <option name="TARGET_NAME" value="deep" />
+    <option name="CONFIG_NAME" value="release-nn" />
+    <option name="RUN_TARGET_PROJECT_NAME" value="deep" />
+    <option name="RUN_TARGET_NAME" value="deep" />
+    <option name="PROGRAM_PARAMETERS" value="exp/example.txt" />
+    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+    <method v="2">
+      <option name="CMake.BuildBeforeRun" enabled="true" />
+    </method>
+  </configuration>
+</component>
+EOF
+
+    # CLion keeps the selected toolbar run configuration in workspace.xml.
+    # Preserve the rest of the local workspace and only set RunManager's selection.
+    python3 - "$workspace" "$run_name" <<'PYEOF'
+import os
+import sys
+import xml.etree.ElementTree as ET
+
+workspace, run_name = sys.argv[1], sys.argv[2]
+os.makedirs(os.path.dirname(workspace), exist_ok=True)
+
+if os.path.exists(workspace):
+    try:
+        tree = ET.parse(workspace)
+        root = tree.getroot()
+    except ET.ParseError:
+        root = ET.Element("project", {"version": "4"})
+        tree = ET.ElementTree(root)
+else:
+    root = ET.Element("project", {"version": "4"})
+    tree = ET.ElementTree(root)
+
+run_manager = None
+for component in root.findall("component"):
+    if component.get("name") == "RunManager":
+        run_manager = component
+        break
+if run_manager is None:
+    run_manager = ET.SubElement(root, "component", {"name": "RunManager"})
+
+run_manager.set("selected", f"CMake Application.{run_name}")
+ET.indent(tree, space="  ")
+tree.write(workspace, encoding="UTF-8", xml_declaration=True)
+PYEOF
+
+    echo "CLion local configuration created: $run_file"
+    echo "Selected CLion run configuration: $run_name"
+    echo "This setup is local under .idea/; keep .idea/ out of Git."
+}
+
+if [[ "$SETUP_CLION" == "ON" ]]; then
+    setup_clion
+fi
 
 # --------------------------
 # macOS GPU restriction

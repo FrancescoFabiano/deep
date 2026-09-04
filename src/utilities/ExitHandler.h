@@ -136,6 +136,7 @@ public:
     NNMappingError = 881,           ///< Error in accessing NN mapped data.
     NNInstanceError = 882,          ///< NN singleton instance error.
     NNDirectoryCreationError = 883, ///< Error creating NN output directories.
+      DatasetGenerationTypeWrong = 884, ///< Wrong Dataset Type setting
 
     // --- GNN Related (890-899) ---
     GNNInstanceError = 890, ///< Error in creating GNN training files.

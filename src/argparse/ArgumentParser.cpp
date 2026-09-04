@@ -74,9 +74,9 @@ void ArgumentParser::parse(int argc, char **argv) {
           "activate dataset mode.");
     }
 
-    if (app.count("--dataset_type")) {
-      set_dataset_type();
-    }
+    // Normalize and convert dataset-related string options to their enums.
+    set_dataset_type();
+    set_dataset_generation_type();
 
     // --- Visited consistency check ---
     if (!m_check_visited && app.count("--strong_equality")) {
@@ -95,12 +95,17 @@ void ArgumentParser::parse(int argc, char **argv) {
     }
 
     // --- Heuristic consistency check ---
+    const bool dataset_hfs =
+        m_dataset_mode &&
+        m_dataset_generation_type == DatasetGenerationType::HFS;
+
     if (m_search_strategy != "HFS" && m_search_strategy != "Astar" &&
-        m_search_strategy != "RL" && app.count("--heuristics")) {
+        m_search_strategy != "RL" && !dataset_hfs &&
+        app.count("--heuristics")) {
       ExitHandler::exit_with_message(
           ExitHandler::ExitCode::ArgParseError,
-          "--heuristics can only be used with --search HFS, --search Astar, or "
-          "--search RL.");
+          "--heuristics can only be used with --search HFS, --search Astar, "
+          "--search RL, or --dataset --dataset_generation HFS.");
     }
 
     // RL heuristic can only be used with RL search
@@ -236,6 +241,15 @@ ArgumentParser::ArgumentParser() : app("deep") {
           "or BITMASK (bitmask representation of fluents and goals).")
       ->check(CLI::IsMember({"MAPPED", "HASHED", "BITMASK"}))
       ->default_val("HASHED");
+  dataset_group
+      ->add_option(
+          "--dataset_generation", m_dataset_generation_type_string,
+          "Specify the search strategy used for dataset generation. "
+          "Options: BFS (Breadth First Search), DFS (Depth First Search), "
+          "S_DFS (Stochastic Depth First Search), or HFS (Heuristic First "
+          "Search). When HFS is selected, --heuristics specifies the heuristic.")
+      ->check(CLI::IsMember({"BFS", "DFS", "S_DFS", "HFS"}))
+      ->default_val("S_DFS");
   dataset_group->add_flag("--dataset_separated", m_dataset_separated,
                           "Enable non-merged dataset generation mode.");
   dataset_group
@@ -512,6 +526,33 @@ void ArgumentParser::set_dataset_type() noexcept {
   }
 }
 
+
+void ArgumentParser::set_dataset_generation_type() noexcept {
+  std::string value = m_dataset_generation_type_string;
+
+  std::ranges::transform(value, value.begin(),
+                         [](const unsigned char c) { return std::toupper(c); });
+
+  if (value == "BFS") {
+    m_dataset_generation_type = DatasetGenerationType::BFS;
+  } else if (value == "DFS") {
+    m_dataset_generation_type = DatasetGenerationType::DFS;
+  } else if (value == "S_DFS") {
+    m_dataset_generation_type = DatasetGenerationType::S_DFS;
+  } else if (value == "HFS") {
+    m_dataset_generation_type = DatasetGenerationType::HFS;
+  } else {
+    ExitHandler::exit_with_message(
+        ExitHandler::ExitCode::ArgParseError,
+        "Invalid dataset generation type: " +
+            m_dataset_generation_type_string +
+            ". Expected one of: BFS, DFS, S_DFS, HFS." +
+            std::string(ExitHandler::arg_parse_suggestion));
+  }
+
+  m_dataset_generation_type_string = value;
+}
+
 bool ArgumentParser::get_dataset_separated() const noexcept {
   return m_dataset_separated;
 }
@@ -587,6 +628,21 @@ DatasetType ArgumentParser::get_dataset_type() const noexcept {
   return m_dataset_type;
 }
 
+
+DatasetGenerationType
+ArgumentParser::get_dataset_generation_type() const noexcept {
+  return m_dataset_generation_type;
+}
+
+std::string
+ArgumentParser::get_dataset_generation_type_string() const noexcept {
+  if (m_dataset_generation_type == DatasetGenerationType::HFS) {
+    return m_dataset_generation_type_string + " (" + m_heuristic_opt + ")";
+  }
+
+  return m_dataset_generation_type_string;
+}
+
 std::ostream &ArgumentParser::get_output_stream() const {
   return *m_output_stream;
 }
@@ -605,7 +661,7 @@ const std::string &ArgumentParser::get_config_file() const noexcept {
 
 void ArgumentParser::print_usage() const {
   std::cout << app.help() << std::endl;
-  const std::string prog_name = "deep";
+  constexpr std::string prog_name = "deep";
   std::cout << "\nEXAMPLES:\n";
   std::cout << "  " << prog_name << " domain.txt\n";
   std::cout << "    Find a plan for domain.txt\n\n";

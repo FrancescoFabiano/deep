@@ -18,6 +18,18 @@ enum class DatasetType {
   ///< false, the goal is also translated into a bitmask, with its extra
   ///< information placed at the beginning of the bitmask.
 };
+
+/**
+ * \enum DatasetGenerationType
+ * \brief The possible search strategies used for dataset generation.
+ */
+enum class DatasetGenerationType {
+  BFS,   ///< Breadth First Search.
+  DFS,   ///< Depth First Search.
+  S_DFS, ///< Stochastic Depth First Search.
+  HFS,   ///< Heuristic First Search.
+};
+
 /////////////////////////////////////////////////////////////////////////////////
 
 /**
@@ -186,6 +198,23 @@ public:
    */
   [[nodiscard]] DatasetType get_dataset_type() const noexcept;
 
+
+  /**
+   * \brief Returns the search strategy used for dataset generation.
+   * \return The dataset generation strategy as a DatasetGenerationType.
+   */
+  [[nodiscard]] DatasetGenerationType
+  get_dataset_generation_type() const noexcept;
+
+  /**
+   * \brief Returns the search strategy used for dataset generation as a string.
+   * \details When HFS is selected, the returned string also reports the
+   * heuristic selected through --heuristics.
+   * \return The dataset generation strategy as a string.
+   */
+  [[nodiscard]] std::string
+  get_dataset_generation_type_string() const noexcept;
+
   /**
    * \brief Gets the flag indicating if dataset entry point is the couple
    * goal,state. \return false if dataset entry point is the couple goal,state,
@@ -299,6 +328,12 @@ private:
                 ///< format.
   DatasetType m_dataset_type =
       DatasetType::HASHED; ///< Dataset node label type (HASHED by default).
+
+
+  std::string m_dataset_generation_type_string =
+      "S_DFS"; ///< Dataset generation strategy in string format.
+  DatasetGenerationType m_dataset_generation_type =
+      DatasetGenerationType::S_DFS; ///< Dataset generation strategy.
 
   bool m_dataset_separated = false; ///< Flag to indicate if dataset entry point
                                     ///< is the couple goal,state.
@@ -438,6 +473,12 @@ private:
    * \brief Sets the DatasetType from the input string.
    */
   void set_dataset_type() noexcept;
+
+
+  /**
+   * \brief Sets the DatasetGenerationType from the input string.
+   */
+  void set_dataset_generation_type() noexcept;
 
   friend class Configuration;
 };

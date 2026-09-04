@@ -47,9 +47,7 @@ Both Intel (`x86_64`) and Apple Silicon (`arm64`) Macs are supported. Install th
 
     xcode-select --install
 
-The build uses [Homebrew](https://brew.sh/) for its remaining dependencies. If Homebrew is not installed, install it with:
-
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+The build uses [Homebrew](https://brew.sh/) for its remaining dependencies.
 
 Then either install the dependencies directly:
 
@@ -98,6 +96,28 @@ Note that the script abstracts away many details, so if you want to use more gra
 
 > Note: This script and some dependencies may require execute permissions. Use the `chmod` command or a similar tool to grant the necessary permissions.
 > For example: `find . -type f -name "*.sh" -exec chmod +x {} \;`
+
+
+### CLion setup
+
+The repository includes `CMakePresets.json` with four portable CMake configurations:
+
+- `Debug`
+- `Release`
+- `Debug + NN`
+- `Release + NN`
+
+After cloning the repository and opening it in CLion, you can create the local default Run/Debug configuration with:
+
+    ./build.sh clion
+
+This creates a local CLion configuration named `README - First Example`, selects it as the current Run configuration, and configures it to run:
+
+    deep exp/example.txt
+
+with the repository root as the working directory (`$PROJECT_DIR$`). The generated files live under `.idea/` and are intended to remain local rather than being committed to GitHub.
+
+The default CLion example uses the `Release + NN` CMake preset. If NN dependencies are not installed yet, run `./build.sh nn` first.
 
 ##### CMake Build Options
 
