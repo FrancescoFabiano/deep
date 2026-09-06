@@ -102,6 +102,55 @@ def _depth_for(domain_name: str, args) -> int:
     return dm[domain_name]
 
 
+GENERATION_CHOICES = ("BFS", "DFS", "S_DFS", "HFS")
+
+
+def normalize_generation(value):
+    """Map user spellings (s-dfs, S-DFS, bfs, ...) onto the C++ enum names."""
+    v = value.strip().upper().replace("-", "_")
+    if v not in GENERATION_CHOICES:
+        raise argparse.ArgumentTypeError(
+            f"invalid --dataset-generation {value!r}; expected one of {GENERATION_CHOICES}")
+    return v
+
+
+# Discard factor defaults, PER STRATEGY. Only the stochastic DFS worker reads
+# --dataset_discard_factor (DFS and S_DFS differ in nothing else; BFS/HFS never
+# discard), so the knob is an S_DFS parameter:
+#   S_DFS                -> 0.6  (project default, set 2026-09-06)
+#   BFS / DFS / HFS      -> 0    (ignored by the C++; passed as 0 so the log is honest)
+#   flag omitted (legacy) -> 0.4 (the gnn_exp pipeline's historical default, untouched)
+# An explicit --discard_factor overrides all three.
+S_DFS_DEFAULT_DISCARD = 0.6
+LEGACY_DEFAULT_DISCARD = 0.4
+
+
+def _discard_for(generation, args):
+    if args.discard_factor is not None:
+        return args.discard_factor
+    if generation is None:
+        return LEGACY_DEFAULT_DISCARD
+    return S_DFS_DEFAULT_DISCARD if generation == "S_DFS" else 0.0
+
+
+def parse_generation_list(values):
+    """`--dataset-generation BFS HFS`, `BFS,HFS`, `all` -> C++ enum names in canonical
+    order, deduplicated. Empty/None -> [] (flag not passed; C++ default, flat layout).
+
+    The user picks WHICH behaviour policies exist by picking what to generate here:
+    one tree per strategy per instance, each under <dataset>/<STRAT>/<instance>/.
+    """
+    flat = []
+    for v in values or []:
+        flat.extend(x for x in str(v).replace(",", " ").split() if x)
+    if not flat:
+        return []
+    if any(x.lower() == "all" for x in flat):
+        return list(GENERATION_CHOICES)
+    got = {normalize_generation(x) for x in flat}
+    return [g for g in GENERATION_CHOICES if g in got]
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Run the per-domain training-data generator on all domain folders inside a batch folder."
@@ -110,12 +159,28 @@ def main():
     parser.add_argument("--deep_exe", default="cmake-release-nn/bin/deep", help="Path to the deep C++ executable")
     parser.add_argument("--no_goal", action="store_true", help="Add --dataset_separated to the C++ execution")
     parser.add_argument("--strong_equality", action="store_true", help="Add --strong_equality to the C++ execution")
-    parser.add_argument("--depth", type=int, default=25, help="Depth for dataset generation (default: 25)")
+    parser.add_argument("--depth", "--dataset-depth", dest="depth", type=int, default=25,
+                        help="Depth for dataset generation (default: 25). --dataset-depth is an alias.")
+    parser.add_argument("--dataset-generation", dest="dataset_generation", default=None, nargs="+",
+                        help="Search strategies used by the C++ tool to build the trees "
+                             "(--dataset_generation): any of BFS, DFS, S_DFS (stochastic DFS; "
+                             "'S-DFS' accepted), HFS (heuristic first, see --heuristics), or "
+                             "'all'. Several may be given (space- or comma-separated): the "
+                             "generator runs ONCE PER STRATEGY per instance and writes each to "
+                             "<dataset>/<STRAT>/<instance>/, so the behaviour policies coexist "
+                             "and rl_handler trains on whichever were generated (restrict "
+                             "further with train_models.py --strategies). Omitted: the flag "
+                             "is not passed, the C++ default applies (S_DFS at the time of "
+                             "writing) and the legacy flat layout is kept.")
+    parser.add_argument("--heuristics", dest="heuristics", default=None, help='Heuristic forwarded as --heuristics; only meaningful with --dataset-generation HFS (C++ default SUBGOALS).')
     parser.add_argument(
-        "--discard_factor", type=float, default=0.4,
-        help="Maximum discard factor (default: 0.4, unchanged -- this script is "
-             "SHARED with gnn_exp and its default must not move under that "
-             "pipeline's feet; callers that want usable trees pass 0 explicitly). "
+        "--discard_factor", type=float, default=None,
+        help="Maximum discard factor. Read ONLY by the stochastic DFS worker, so it is "
+             "an S_DFS parameter. Default when omitted: 0.6 for S_DFS, 0 for BFS/DFS/HFS "
+             "(they never discard), and 0.4 when --dataset-generation is omitted too "
+             "(legacy flat layout; this script is SHARED with gnn_exp and that "
+             "pipeline's default must not move under its feet). An explicit value "
+             "applies to every strategy. "
              "WARNING: the discard is BIASED, not uniform -- its probability rises "
              "with depth and gains +0.2 immediately after a goal is found "
              "(TrainingDataset.tpp:714-730), so it preferentially deletes the "
@@ -175,6 +240,13 @@ def main():
                         help="Path to the per-domain Python script to invoke.")
 
     args = parser.parse_args()
+    try:
+        generations = parse_generation_list(args.dataset_generation)
+    except argparse.ArgumentTypeError as e:
+        parser.error(str(e))
+    if args.heuristics and "HFS" not in generations:
+        print(f"[WARNING] --heuristics {args.heuristics} is only used by HFS, which is not "
+              f"among the requested strategies {generations or '(C++ default)'}.")
     batch_path = os.path.abspath(args.batch_path)
 
     if not os.path.isdir(batch_path):
@@ -193,6 +265,10 @@ def main():
     )
 
 
+    print(f"[INFO] Dataset generation strategies: "
+          f"{' '.join(generations) if generations else '(not passed -> C++ default, flat layout)'}")
+    print("[INFO] Discard factor per strategy: "
+          + ", ".join(f"{g or 'legacy'}={_discard_for(g, args)}" for g in (generations or [None])))
     print(f"[INFO] Base RNG seed: {args.seed}")
     print(f"[INFO] Max retries per instance: {args.max_retries}")
     print(
@@ -202,12 +278,17 @@ def main():
         f"[INFO] On success, per-dataset logs and seed summaries will be placed inside each dataset folder."
     )
     print(
-        f"[INFO] Successful seeds will be appended to: {batch_path}/_models/<domain_name>/{args.dataset_name}/seeds.txt"
+        f"[INFO] Successful seeds will be appended to: {batch_path}/_models/<domain_name>/"
+        f"{args.dataset_name}/{'<STRAT>/' if generations else ''}seeds.txt"
     )
 
+    # None = "flag not passed" (one legacy pass); otherwise one pass per strategy.
+    passes = generations or [None]
     for domain_rel_path in domains:
-        domain_name = domain_rel_path  # relative path like 'foo/bar'
-        print(f"\n=== Processing: {domain_name} ===")
+      domain_name = domain_rel_path  # relative path like 'foo/bar'
+      for generation in passes:
+        print(f"\n=== Processing: {domain_name}"
+              f"{f'  [strategy {generation}]' if generation else ''} ===")
 
         # Call the adapted per-domain script; it handles seed generation, retries, and logging.
         cmd = [
@@ -217,7 +298,7 @@ def main():
             domain_name,            # domain_name
             args.deep_exe,          # deep_exe
             "--depth", str(_depth_for(domain_name, args)),
-            "--discard_factor", str(args.discard_factor),
+            "--discard_factor", str(_discard_for(generation, args)),
             "--seed", str(args.seed),
             "--max_retries", str(args.max_retries),
             "--dataset_type", str(args.dataset_type),
@@ -230,12 +311,17 @@ def main():
             cmd.append("--no_goal")
         if args.strong_equality:
             cmd.append("--strong_equality")
+        if generation:
+            cmd += ["--dataset-generation", generation]
+        if args.heuristics and generation == "HFS":
+            cmd += ["--heuristics", args.heuristics]
 
         try:
             # Let the per-domain script print its own detailed progress & logs
             subprocess.run(cmd, check=True)
         except subprocess.CalledProcessError as e:
-            print(f"[ERROR] Per-domain script failed for {domain_name} (exit {e.returncode}).")
+            print(f"[ERROR] Per-domain script failed for {domain_name}"
+                  f"{f' [{generation}]' if generation else ''} (exit {e.returncode}).")
 
     print("\n=== Batch complete ===")
 

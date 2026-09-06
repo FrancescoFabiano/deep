@@ -33,7 +33,21 @@ mis-described. Describing data you did not generate is only safe if you are told
 
 from __future__ import annotations
 
-from typing import Dict, Mapping, Optional, Union
+from typing import Dict, Iterable, Mapping, Optional, Union
+
+from .strategies import dir_name
+
+
+def _render_generation(generation: Union[str, Iterable[str]]) -> str:
+    """`BFS,HFS` / ['bfs','hfs'] / 'all' -> sorted C++ spellings, comma-joined."""
+    if isinstance(generation, str):
+        parts = [p for p in generation.replace(";", ",").replace(" ", ",").split(",") if p]
+    else:
+        parts = list(generation)
+    if any(p.lower() == "all" for p in parts):
+        from .strategies import STRATEGIES
+        parts = list(STRATEGIES)
+    return ",".join(sorted({dir_name(p) for p in parts}))
 
 
 def _render_depth_map(depth_map: Union[str, Mapping[str, int]]) -> str:
@@ -52,6 +66,8 @@ def make_dataspec(
     max_creation: int,
     max_generation: int,
     seed: int,
+    generation: Union[str, Iterable[str]],
+    heuristics: Optional[str],
 ) -> str:
     """The fingerprint. Any run reusing this data must match it EXACTLY.
 
@@ -61,6 +77,18 @@ def make_dataspec(
     `max_creation`   : the WRITE ceiling (--dataset_max_creation)
     `max_generation` : the VISIT ceiling (--dataset_max_generation)
     `seed`           : the GENERATION seed (--dataset_seed)
+    `generation`     : the search strategies generated (--dataset_generation), one
+                       tree per strategy; `BFS,HFS,S_DFS` or a list, any spelling
+    `heuristics`     : the HFS heuristic (--heuristics); None when HFS is absent
+
+    THE STRATEGY IS PART OF THE DATA'S IDENTITY -- a strictly larger change than
+    the seed: a BFS tree and an S_DFS tree of the same instance are different
+    subgraphs with different labels AND a different behaviour policy on them. Before
+    this field a BFS batch and an S_DFS batch fingerprinted identically and would
+    have symlinked each other. Specs that predate it are refused (no field = not
+    described); the only generator then was the DFS worker, so a legacy batch can be
+    relabelled by appending `;generation=S_DFS;heuristics=none` to its .dataspec
+    AFTER checking its tables carry no strategy token.
 
     BOTH ceilings are fingerprinted, because two batches generated at different
     budgets are genuinely different data even at identical depth and discard. The
@@ -79,9 +107,12 @@ def make_dataspec(
     # run compared EQUAL to a CC+SC batch and would have reused it. Caught by
     # test_a_mixed_batch_spec_differs_from_a_cc_only_one.
     dm = _render_depth_map(depth_map)
+    gen = _render_generation(generation)
+    heur = (heuristics or "none").strip() if "HFS" in gen.split(",") else "none"
     return (f"mode={mode};strict={strict};discard={discard_factor};"
             f"depth_map={dm};max_creation={max_creation};"
-            f"max_generation={max_generation};seed={seed}")
+            f"max_generation={max_generation};seed={seed};"
+            f"generation={gen};heuristics={heur}")
 
 
 def parse_dataspec(spec: str) -> Dict[str, str]:
@@ -110,7 +141,10 @@ def compatible(have: str, want: str) -> tuple[bool, Optional[str]]:
             "(delta_root 10 vs a true optimal of 4 on CC_2_2_3__pl_4). Regenerate; "
             "do not reuse."
         )
-    for k in sorted(set(h) | set(w)):
-        if h.get(k) != w.get(k):
-            return False, f"{k}: source={h.get(k)!r} wanted={w.get(k)!r}"
+    # Report EVERY differing field, not the first: a legacy spec typically misses
+    # several at once and the operator should see all of them.
+    diffs = [f"{k}: source={h.get(k)!r} wanted={w.get(k)!r}"
+             for k in sorted(set(h) | set(w)) if h.get(k) != w.get(k)]
+    if diffs:
+        return False, "; ".join(diffs)
     return True, None

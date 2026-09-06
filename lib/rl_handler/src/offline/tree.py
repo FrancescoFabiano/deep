@@ -53,15 +53,41 @@ regardless: relative ranking never needed absolute optimality.
 
 Both quantities are ENVIRONMENT-SIDE ONLY: diagnostics, oracle behaviour and
 model selection. Neither is ever a feature or a training target.
+
+ONE TREE PER (INSTANCE, STRATEGY)  (2026-09-06)
+----------------------------------------------
+The generator now runs a chosen search (`--dataset_generation BFS|DFS|S_DFS|HFS`,
+see `strategies.py`), so an instance has one reconstructed tree PER behaviour
+policy and each is a different MDP: `name` is `<instance>@<strategy>`, `instance`
+is the bare problem name, `strategy` the canonical id.
+
+THE GENERATOR'S OWN EXPANSION ORDER IS RECOVERABLE FROM THE TABLE, and it is what
+the `trace` behaviour policy replays. The DOT file index (`RawFiles/.../000123.dot`)
+is a per-run creation counter, and a state's children are created the moment it is
+expanded -- BFS/HFS write the child rows at push time under the expanding parent,
+the DFS worker mints the child file as it recurses. So
+
+    expansion_time(v) = min { index(c) : c child of v, index(c) > index(v) }
+
+orders the expanded states exactly as the generator expanded them (verified on all
+four smoke strategies: order is monotone in creation for BFS/DFS/S_DFS and for HFS
+equals the order of first appearance in the `File Path Predecessor` column; root
+rank 0 everywhere; zero child indices <= parent index). Nothing else records it: the
+heuristic values are not written and the progress lines sit behind `#ifdef DEBUG`.
+A state with no fresh children has no expansion time -- an expansion that produced
+only duplicates is indistinguishable from no expansion at all.
 """
 
 from __future__ import annotations
 
 import csv
+import re
 from collections import deque
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence
+
+from .strategies import split_tree_name, strategy_of_table, tree_name
 
 # CSV marker for "no path to a goal in the DAG".
 UNREACHABLE_DISTANCE = 1e6
@@ -99,13 +125,20 @@ def compute_censored(
     h_star: Sequence[float],
     depth: Sequence[int],
     depth_bound: Optional[int] = None,
+    expanded: Optional[Sequence[bool]] = None,
 ) -> List[bool]:
     """censored[v] = delta(v) is inf but the tree cannot PROVE sterility.
 
     Seeds:
       * bound-hit leaves: non-goal leaf, delta=inf, depth >= depth_bound;
       * label contradictions: delta=inf but h* finite (the generator says a
-        goal IS reachable from v in the DAG).
+        goal IS reachable from v in the DAG);
+      * UNEXPANDED leaves (when `expanded` is given): non-goal leaf, delta=inf,
+        that the generation order shows was never expanded -- a BFS frontier cut
+        by the VISIT cap, the tail of a DFS run, the HFS queue at stop time. The
+        depth-bound rule cannot see these: a BFS tree cut at 1000 visits has
+        thousands of childless states at depth 5 of a 20 bound, and without this
+        seed every one of them would be labelled a proven dead end.
     Propagation: upward through parents whose delta is inf (a finite-delta
     parent has a proven goal path; its verdict does not depend on the
     censored branch).
@@ -115,6 +148,9 @@ def compute_censored(
     does; callers that know it should pass it). Conservative in the safe
     direction: a genuine dead end at exactly the max depth is treated as
     unknown rather than a genuine dead end mislabeled as such.
+
+    `expanded[v]`: True only where the table PROVES v was expanded (see
+    `provably_expanded`). None keeps the pre-strategy behaviour.
     """
     n = len(children)
     if depth_bound is None:
@@ -124,11 +160,11 @@ def compute_censored(
     for v in range(n):
         if delta[v] != INF_DELTA:
             continue
-        bound_hit_leaf = (
-            not children[v] and not is_goal[v] and depth[v] >= depth_bound
-        )
+        leaf = not children[v] and not is_goal[v]
+        bound_hit_leaf = leaf and depth[v] >= depth_bound
+        unexpanded_leaf = leaf and expanded is not None and not expanded[v]
         contradicted = h_star[v] < UNREACHABLE_DISTANCE
-        if bound_hit_leaf or contradicted:
+        if bound_hit_leaf or unexpanded_leaf or contradicted:
             censored[v] = True
             q.append(v)
 
@@ -145,9 +181,88 @@ def compute_censored(
     return censored
 
 
+_DOT_INDEX_RE = re.compile(r"(\d+)\.dot$")
+
+
+def dot_indices(state_paths: Sequence[str]) -> Optional[List[int]]:
+    """The per-run creation counter embedded in each DOT name, or None if any
+    path lacks one (then no expansion order can be recovered)."""
+    out: List[int] = []
+    for p in state_paths:
+        m = _DOT_INDEX_RE.search(p)
+        if not m:
+            return None
+        out.append(int(m.group(1)))
+    return out
+
+
+def compute_expansion_order(
+    children: Sequence[Sequence[int]],
+    index: Sequence[int],
+) -> tuple[List[Optional[int]], List[Optional[int]]]:
+    """(expansion_time, expansion_rank), both None where v was never (visibly)
+    expanded.
+
+    expansion_time(v) = min index of a child created AFTER v (index > index(v)).
+    A child with a smaller index is a dedup'd re-discovery edge (the DFS worker
+    records those), not evidence of when v was expanded, so it is ignored.
+    expansion_rank is the dense 0-based position of v in the generator's own
+    expansion sequence -- what the `trace` behaviour policy ranks by.
+    """
+    n = len(children)
+    time: List[Optional[int]] = [None] * n
+    for v in range(n):
+        later = [index[c] for c in children[v] if index[c] > index[v]]
+        if later:
+            time[v] = min(later)
+    order = sorted((t, v) for v, t in enumerate(time) if t is not None)
+    rank: List[Optional[int]] = [None] * n
+    for r, (_, v) in enumerate(order):
+        rank[v] = r
+    return time, rank
+
+
+def provably_expanded(
+    strategy: Optional[str],
+    index: Sequence[int],
+    expansion_time: Sequence[Optional[int]],
+    depth: Sequence[int],
+    depth_bound: Optional[int] = None,
+) -> List[bool]:
+    """expanded[v] = the table PROVES the generator expanded v.
+
+    Only what can be proven, because a false "expanded" turns an unknown leaf
+    into a labelled dead end the policy is then taught to avoid:
+      * a state with fresh children was expanded (any strategy);
+      * BFS / DFS / S_DFS expand in CREATION order (FIFO queue, recursive
+        descent), so every state created no later than the last expanded one
+        was expanded too -- unless it sits at the depth bound, where the
+        generator refuses to expand;
+      * HFS pops by heuristic, not by creation, so a childless state created
+        before the last expansion may still have been sitting in the queue:
+        nothing is proven for it.
+    Discarded states (S_DFS `--dataset_discard_factor` > 0) are written as
+    childless leaves and are NOT distinguishable here -- a pre-existing limit.
+    """
+    n = len(index)
+    out = [t is not None for t in expansion_time]
+    if strategy in ("bfs", "dfs", "s_dfs"):
+        last = max((index[v] for v in range(n) if expansion_time[v] is not None), default=None)
+        if last is not None:
+            for v in range(n):
+                if index[v] <= last and (depth_bound is None or depth[v] < depth_bound):
+                    out[v] = True
+    return out
+
+
 @dataclass
 class TreeInstance:
-    """One reconstructed instance. State ids are indices into `state_paths`."""
+    """One reconstructed instance. State ids are indices into `state_paths`.
+
+    `name` is `<instance>@<strategy>` -- one tree per behaviour policy -- and is
+    the key everywhere downstream (caches, rows, telemetry). `instance` is the bare
+    problem name (problem-file lookup, `expected_optimal`, `config_of`).
+    """
 
     name: str
     csv_path: str
@@ -171,14 +286,36 @@ class TreeInstance:
     # Surfaced so a generator regression cannot silently discard structure.
     n_orphan_edges: int = 0
     n_edge_rows: int = 0
+    # The problem this tree samples and the search that sampled it.
+    instance: str = ""
+    strategy: Optional[str] = None
+    # Generator's own expansion sequence (see compute_expansion_order): dense rank
+    # per state, None where the state was never (visibly) expanded. None as a whole
+    # = no trace available (hand-built trees; DOT names without an index).
+    expansion_rank: Optional[List[Optional[int]]] = None
+    # provably_expanded[v]; None = no expansion information (hand-built trees).
+    expanded: Optional[List[bool]] = None
 
     def __post_init__(self) -> None:
         if self.censored is None:
             self.censored = [False] * len(self.state_paths)
+        if not self.instance:
+            self.instance = split_tree_name(self.name)[0]
 
     @property
     def n_states(self) -> int:
         return len(self.state_paths)
+
+    @property
+    def has_trace(self) -> bool:
+        return self.expansion_rank is not None
+
+    @property
+    def n_expanded(self) -> int:
+        """States the generator visibly expanded (fresh children recorded)."""
+        if self.expansion_rank is None:
+            return 0
+        return sum(1 for r in self.expansion_rank if r is not None)
 
     def is_censored(self, v: int) -> bool:
         return bool(self.censored[v])
@@ -261,6 +398,10 @@ class TreeInstance:
             depth_hist[self.depth[i]] = depth_hist.get(self.depth[i], 0) + 1
         n_reach = max(1, len(reachable))
         return {
+            "instance": self.instance,
+            "strategy": self.strategy,
+            "has_trace": self.has_trace,
+            "n_expanded": self.n_expanded,
             "n_states": n,
             "n_reachable": len(reachable),
             "n_goal_states": int(sum(1 for i in reachable if self.is_goal[i])),
@@ -355,8 +496,9 @@ def load_tree_instance(
     name: Optional[str] = None,
     kind_of_data: str = "merged",
     depth_bound: Optional[int] = None,
+    strategy: Optional[str] = None,
 ) -> TreeInstance:
-    """Reconstruct one instance from its generation table.
+    """Reconstruct one (instance, strategy) tree from its generation table.
 
     Conventions (preserved from the previous loader):
       - duplicate `File Path` rows: the min-depth row wins;
@@ -366,11 +508,23 @@ def load_tree_instance(
         (<1% generator anomalies, now COUNTED on the instance so a regression
         past that rate is visible); their subtrees never enter episodes.
 
+    Identity: `instance` = the CSV's parent directory name (always); `strategy` =
+    the given one, else read off the path (`strategies.strategy_of_table`: the
+    `training_data/<STRAT>/` level, then the file token, else legacy S_DFS);
+    `name` = the given one, else `<instance>@<strategy>`.
+
     `depth_bound`: the generator's --dataset_depth for censoring (see
     compute_censored). The CSV does not record it; the batch .dataspec does.
     Defaults to max observed depth -- conservative, see compute_censored.
+
+    Columns are identical across all four strategies, so nothing here branches on
+    the strategy except `provably_expanded` (censoring) -- BFS/HFS write the
+    distance zero-padded (`0000000004`), which `float()` absorbs.
     """
     csv_path = Path(csv_path)
+    instance = csv_path.parent.name
+    strategy = strategy or strategy_of_table(csv_path)
+    name = name or tree_name(instance, strategy)
     with csv_path.open() as fh:
         rows = list(csv.DictReader(fh))
     if not rows:
@@ -430,8 +584,17 @@ def load_tree_instance(
 
     is_goal = [d == 0.0 for d in h_star]
     delta = compute_delta(children, is_goal)
+
+    # The generator's own expansion order (trace) + what it proves was expanded.
+    index = dot_indices(state_paths)
+    expansion_rank: Optional[List[Optional[int]]] = None
+    expanded: Optional[List[bool]] = None
+    if index is not None:
+        exp_time, expansion_rank = compute_expansion_order(children, index)
+        expanded = provably_expanded(strategy, index, exp_time, depth, depth_bound)
+
     censored = compute_censored(children, is_goal, delta, h_star, depth,
-                                depth_bound=depth_bound)
+                                depth_bound=depth_bound, expanded=expanded)
 
     reachable = {root_id}
     stack = [root_id]
@@ -442,7 +605,7 @@ def load_tree_instance(
                 stack.append(c)
 
     return TreeInstance(
-        name=name or csv_path.parent.name,
+        name=name,
         csv_path=str(csv_path),
         state_paths=state_paths,
         depth=depth,
@@ -456,6 +619,10 @@ def load_tree_instance(
         censored=censored,
         n_orphan_edges=n_orphan_edges,
         n_edge_rows=len(rows),
+        instance=instance,
+        strategy=strategy,
+        expansion_rank=expansion_rank,
+        expanded=expanded,
     )
 
 
@@ -529,10 +696,7 @@ def load_instances(
     in the run manifest -- an instance silently dropped is an instance nobody
     knows was dropped.
     """
-    loaded = [
-        load_tree_instance(p, name=Path(p).parent.name, kind_of_data=kind_of_data)
-        for p in csv_paths
-    ]
+    loaded = [load_tree_instance(p, kind_of_data=kind_of_data) for p in csv_paths]
     ok, bad = partition_solvable(loaded)
     excluded = [
         {

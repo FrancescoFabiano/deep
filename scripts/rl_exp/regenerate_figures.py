@@ -89,8 +89,9 @@ def backfill(fringe_dir: Path) -> str:
         kind = json.loads(sidecars[0].read_text()).get("kind_of_data", "separated")
 
     root = domain_dir / "training_data"
-    insts = [load_tree_instance(p, name=p.parent.name, kind_of_data=kind)
-             for p in sorted(root.glob("*/*_depth_*.csv"))]
+    from src.offline.strategies import tables_under
+    insts = [load_tree_instance(p, kind_of_data=kind)
+             for p in tables_under(root, verbose=False)]
     by_name = {i.name: i for i in insts}
     caches = {i.name: InstanceCache.from_paths(
         i.state_paths_abs(REPO), cache_file=domain_dir / "cache" / f"{i.name}.pt",

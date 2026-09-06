@@ -21,7 +21,8 @@ from src.offline.dataspec import compatible, make_dataspec, parse_dataspec
 
 # What a real run generates with. Stated here, not imported -- these tests pin the
 # GUARD's behaviour, not the generator's current settings.
-CLEAN = dict(discard_factor=0, max_creation=50000, max_generation=100000, seed=42)
+CLEAN = dict(discard_factor=0, max_creation=50000, max_generation=100000, seed=42,
+             generation="S_DFS", heuristics=None)
 
 
 def spec(mode="merged", strict="yes", depth_map="CC:25", **kw):
@@ -61,7 +62,7 @@ def test_make_dataspec_has_no_defaults_for_generation_params():
     generator's real setting. The caller that generated the data must say."""
     sig = inspect.signature(make_dataspec)
     for name in ("depth_map", "discard_factor", "max_creation", "max_generation",
-                 "seed"):
+                 "seed", "generation", "heuristics"):
         assert sig.parameters[name].default is inspect.Parameter.empty, (
             f"{name} must be required: this module fingerprints data, it does not "
             f"decide how data is made"
@@ -164,4 +165,48 @@ def test_roundtrip_parse():
     assert d["mode"] == "separated" and d["strict"] == "no" and d["discard"] == "0"
     assert d["max_creation"] == "50000"
     assert d["max_generation"] == "100000"
-    assert d["seed"] == "42", "the last field must still parse"
+    assert d["seed"] == "42"
+    assert d["generation"] == "S_DFS"
+    assert d["heuristics"] == "none", "the last field must still parse"
+
+
+# ------------------------------------- the GENERATION STRATEGY guards --------
+
+def test_generation_strategy_guards():
+    """THE strategy test. A BFS tree and an S_DFS tree of the same instance are
+    different subgraphs, different labels AND a different behaviour policy on them.
+    Before this field the two batches fingerprinted identically."""
+    ok, why = compatible(spec(generation="BFS"), spec(generation="S_DFS"))
+    assert not ok and "generation" in why
+
+
+def test_generation_set_is_order_and_spelling_insensitive():
+    a = spec(generation="bfs,s-dfs")
+    b = spec(generation=["S_DFS", "BFS"])
+    assert a == b and "generation=BFS,S_DFS" in a
+
+
+def test_all_expands_to_every_strategy():
+    assert "generation=BFS,DFS,HFS,S_DFS" in spec(generation="all", heuristics="SUBGOALS")
+
+
+def test_a_subset_does_not_match_the_full_set():
+    """A batch that generated only BFS must not be reused by a run wanting BFS+HFS:
+    the missing trees would be missing silently."""
+    ok, why = compatible(spec(generation="BFS"), spec(generation="BFS,HFS", heuristics="SUBGOALS"))
+    assert not ok and "generation" in why
+
+
+def test_heuristics_guards_only_when_hfs_is_generated():
+    """The heuristic changes the HFS tree; it is irrelevant to every other search."""
+    ok, why = compatible(spec(generation="HFS", heuristics="SUBGOALS"),
+                         spec(generation="HFS", heuristics="L_PG"))
+    assert not ok and "heuristics" in why
+    assert spec(generation="BFS", heuristics="SUBGOALS") == spec(generation="BFS", heuristics=None)
+
+
+def test_a_spec_predating_the_generation_field_is_refused():
+    legacy = ("mode=separated;strict=yes;discard=0;depth_map=CC:25;"
+              "max_creation=50000;max_generation=100000;seed=42")
+    ok, why = compatible(legacy, spec("separated", "yes", depth_map="CC:25"))
+    assert not ok and "generation" in why

@@ -28,9 +28,10 @@ from .dataset import generate_dataset
 from .determinism import determinism_report, set_determinism
 from .encoder import InstanceCache
 from .env import DEFAULT_GAMMA, default_expansion_cap, reference_budget
-from .usability import build_usable_pool, fidelity_names, usable_names
+from .usability import build_usable_pool, fidelity_names, pool_names, usable_names
 from .planner_config import exploitation_for, planner_flags
-from .policies import BEHAVIOUR_POLICIES, make_policy
+from .policies import BEHAVIOUR_POLICIES, TRACE_POLICY, make_policy
+from .strategies import dir_name
 from .qlearning import QTrainer, TrainConfig, default_reward_scale
 from .selection import (
     Candidate,
@@ -153,17 +154,27 @@ def load_pool(cfg: RunConfig, repo_root: Path) -> tuple[List, Dict[str, Instance
     missing = [str(p) for p in csvs if not p.exists()]
     if missing:
         raise FileNotFoundError(f"missing generation tables: {missing}")
-    loaded = [load_tree_instance(p, name=p.parent.name, kind_of_data=cfg.kind_of_data)
-              for p in csvs]
+    # One tree per (instance, strategy): the loader names it `<inst>@<strat>` from
+    # the table's location, so two strategies of one problem never collide.
+    loaded = [load_tree_instance(p, kind_of_data=cfg.kind_of_data) for p in csvs]
+    _report_trees(loaded)
     solvable, unsolvable = partition_solvable(loaded)
     pool_path = _fringe_dir(cfg).parent / "usable_pool.json"
-    pool = (json.loads(pool_path.read_text()) if pool_path.exists()
-            else build_usable_pool(solvable, out_path=pool_path))
+    pool = json.loads(pool_path.read_text()) if pool_path.exists() else None
+    if pool is not None and not {i.name for i in loaded} <= set(pool_names(pool)):
+        # A pool written for a different tree set (a pre-strategy run keyed by bare
+        # instance names, or a batch that since gained a strategy) would silently
+        # empty the training set. Rebuild instead of trusting it.
+        print(f"[run] usable_pool.json at {pool_path} does not cover the loaded trees "
+              f"-- rebuilding it")
+        pool = None
+    if pool is None:
+        pool = build_usable_pool(solvable, out_path=pool_path)
     keep = set(usable_names(pool))
     insts = [i for i in solvable if i.name in keep]
     if not insts:
         raise ValueError(
-            f"no USABLE instance among {[p.parent.name for p in csvs]}. "
+            f"no USABLE tree among {[i.name for i in loaded]}. "
             f"Regenerate at --dataset_discard_factor 0 -- the shipped discard=0.4 "
             f"tables have their shallow goals deleted and are a DIFFERENT search "
             f"problem. See usable_pool.json for the per-instance reason."
@@ -190,11 +201,13 @@ def _load_goals(cfg: RunConfig, csvs, insts) -> Optional[Dict[str, object]]:
     """
     if cfg.kind_of_data != "separated":
         return None
-    goal_path = {Path(p).parent.name: Path(p).parent / "goal_tree.dot" for p in csvs}
     goals: Dict[str, object] = {}
     for i in insts:
-        gp = goal_path.get(i.name)
-        if gp is None or not gp.exists():
+        # Beside THIS tree's CSV: two strategies of one instance live in two folders,
+        # each with its own goal_tree.dot, so the lookup keys on the tree, not the
+        # instance name.
+        gp = Path(i.csv_path).parent / "goal_tree.dot"
+        if not gp.exists():
             raise FileNotFoundError(
                 f"separated mode (kind_of_data=separated) requires a goal_tree.dot for "
                 f"every usable instance, but it is missing for {i.name!r}: expected "
@@ -219,7 +232,7 @@ def _load_test_instances(cfg: RunConfig, repo_root: Path,
     if not cfg.test_csvs:
         return []
     csvs = [Path(p) for p in cfg.test_csvs]
-    loaded = [load_tree_instance(p, name=p.parent.name, kind_of_data=cfg.kind_of_data)
+    loaded = [load_tree_instance(p, kind_of_data=cfg.kind_of_data)
               for p in csvs if p.exists()]
     solvable, _ = partition_solvable(loaded)
     for i in solvable:
@@ -279,8 +292,15 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
     print(f"[run] eval_mode={eval_mode}  train_instances={len(train_i)}  "
           f"test_instances={len(test_i)}  cap={cap} scale={scale:.4f}")
 
+    # Behaviour policies for the dataset. Default `trace`: each tree is rolled out
+    # under the expansion order of the search that generated it (its pi_b). Every
+    # loaded table carries a trace (DOT names are creation-indexed); a tree without
+    # one is a data defect and make_policy raises with the tree's name.
+    behaviour = list(cfg.behaviour_policies or (TRACE_POLICY,))
+    print(f"[run] behaviour policies={behaviour}  strategies="
+          f"{sorted({dir_name(i.strategy) for i in train_i if i.strategy})}")
     rows, dsum = generate_dataset(train_i, cfg.fringe_size,
-                                  policies=cfg.behaviour_policies or BEHAVIOUR_POLICIES,
+                                  policies=behaviour,
                                   seeds_per_policy=cfg.seeds_per_policy,
                                   expansion_cap=cap,
                                   counterfactual=cfg.counterfactual,
@@ -351,7 +371,13 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
     baselines: Dict[str, Optional[float]] = {}
     baseline_top1: Dict[str, float] = {}
     baseline_ndcg: Dict[str, float] = {}
-    for b in BEHAVIOUR_POLICIES:
+    # The synthetic rankings are the reference points; `trace` (the generating
+    # search replayed) joins them when every evaluated tree carries a trace -- it is
+    # the "what pi_b itself does under this F" number the RL must beat to matter.
+    baseline_policies = list(BEHAVIOUR_POLICIES)
+    if cov_instances and all(i.has_trace for i in cov_instances):
+        baseline_policies.append(TRACE_POLICY)
+    for b in baseline_policies:
         out = evaluate_split(cov_instances, lambda n, _b=b: make_policy(by_name[n], _b, seed=0),
                              cfg.fringe_size, seeds=cfg.eval_seeds, expansion_cap=cap,
                              gamma=cfg.gamma)
@@ -486,7 +512,7 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
                 _agree_rankers = {
                     p: (lambda name, beam, _p=p: make_policy(
                         by_name[name], _p, seed=AGREEMENT_TIEBREAK_SEED)(list(beam)))
-                    for p in BEHAVIOUR_POLICIES
+                    for p in baseline_policies
                 }
                 rmm = heldout_ranking_micro_macro(
                     heldout_rows, by_name, logits_for=score_for,
@@ -594,7 +620,7 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
                 # the plan is still optimal, so the quality check needs both, and
                 # both must survive a gate failure.
                 exp_n, plen_n = run_planner_metrics(
-                    cfg.deep_exe, _problem_for(repo_root, n), onnx,
+                    cfg.deep_exe, _problem_for(repo_root, by_name[n].instance), onnx,
                     cfg.fringe_size, separated=(cfg.kind_of_data == "separated"),
                     repo_root=repo_root)
                 live.append(exp_n)
@@ -686,6 +712,23 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
 def _mk(p: Path) -> Path:
     p.mkdir(parents=True, exist_ok=True)
     return p
+
+
+def _report_trees(trees: Sequence) -> None:
+    """One line per (instance, strategy) tree, BEFORE any gate: a degenerate tree
+    (HFS on CC is ~99% goal states because the generator keeps expanding goals; a
+    BFS cut by the visit cap is mostly unexpanded frontier) must be visible here,
+    not discovered from a regret number three stages later."""
+    print(f"[run] {len(trees)} tree(s) loaded  (instance @ strategy: states, goals, "
+          f"expanded, delta_root, censored)")
+    for t in trees:
+        s = t.stats()
+        dr = "inf" if t.delta_root == float("inf") else f"{t.delta_root:.0f}"
+        strat = dir_name(t.strategy) if t.strategy else "?"
+        print(f"[run]   {t.instance:24} @ {strat:6} states={s['n_reachable']:>6} "
+              f"goals={s['n_goal_states']:>6} ({100 * s['goal_density']:5.1f}%) "
+              f"expanded={t.n_expanded:>6}{'' if t.has_trace else ' (NO TRACE)'} "
+              f"delta_root={dr:>4} censored={100 * s['censored_frac']:5.1f}%")
 
 
 def _fringe_dir(cfg: RunConfig) -> Path:

@@ -16,6 +16,12 @@ ceilings explicitly (--dataset-max-creation, the WRITE cap, and
 on purpose: a default is a second opinion about how data was generated and drifts
 from what callers actually pass.
 
+--dataset-generation BFS DFS S_DFS HFS (any subset, or `all`) picks the behaviour
+policies: the generator runs once per strategy and writes each tree to
+_models/<domain>/<dataset>/<STRAT>/<instance>/, and rl_handler trains one
+reconstructed tree per (instance, strategy), replaying that search's own expansion
+order as the behaviour (lib/rl_handler/src/offline/strategies.py, policies.py).
+
 Examples (run from project root):
   python3 scripts/rl_exp/create_all_training_data.py exp/rl_exp/batch0 \\
       --deep_exe cmake-build-release-nn/bin/deep \\

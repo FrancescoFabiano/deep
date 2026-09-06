@@ -99,8 +99,12 @@ SCORABILITY_PROBE_F = 32
 
 @dataclass
 class InstanceVerdict:
-    instance: str
+    instance: str                 # the TREE name, `<problem>@<strategy>` (the pool key)
     usable: bool
+    problem: Optional[str] = None       # bare problem name
+    strategy: Optional[str] = None      # generation strategy (behaviour policy pi_b)
+    has_trace: Optional[bool] = None    # generator's expansion order recovered
+    n_expanded: Optional[int] = None    # states the generator visibly expanded
     reasons: List[str] = field(default_factory=list)
     delta_root: Optional[float] = None
     expected_optimal: Optional[int] = None
@@ -246,10 +250,14 @@ def check_instance(
     # generation-artifact share, reported beside it, never summed into it.
     sterile = sum(1 for v in reach if inst.provably_sterile(v))
     censored = sum(1 for v in reach if inst.censored[v])
-    opt = expected_optimal(inst.name)
+    opt = expected_optimal(inst.instance)
     v = InstanceVerdict(
         instance=inst.name,
         usable=True,
+        problem=inst.instance,
+        strategy=inst.strategy,
+        has_trace=inst.has_trace,
+        n_expanded=inst.n_expanded,
         delta_root=(None if inst.delta_root == INF_DELTA else float(inst.delta_root)),
         expected_optimal=opt,
         poisoned_frac=poisoned / n,
@@ -431,6 +439,11 @@ def build_usable_pool(
 
 def usable_names(pool: Dict[str, object]) -> List[str]:
     return [v["instance"] for v in pool["usable"]]
+
+
+def pool_names(pool: Dict[str, object]) -> List[str]:
+    """Every tree the pool judged, usable or not -- for staleness checks."""
+    return [v["instance"] for v in pool["usable"]] + [v["instance"] for v in pool["excluded"]]
 
 
 def fidelity_names(pool: Dict[str, object]) -> List[str]:

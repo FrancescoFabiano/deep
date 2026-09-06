@@ -178,6 +178,7 @@ def test_Tg_separated_missing_goal_dot_fails_loud(tmp_path):
 
     class _I:
         name = "CC_x"
+        csv_path = str(csv)          # the goal is looked up beside THIS tree's CSV
     with pytest.raises(FileNotFoundError, match="CC_x"):
         _load_goals(cfg, [str(csv)], [_I()])
 

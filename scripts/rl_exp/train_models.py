@@ -9,9 +9,15 @@ single-seed run — installs the exported ONNX where the eval consumer
 
     <exp_dir>/_models/<domain>/frontier_policy_<F>.onnx
 
-Domain/data convention:
+Domain/data convention (one tree per (instance, generation strategy)):
+    <exp_dir>/_models/<domain>/training_data/<STRAT>/<instance>/<instance>_<TOKEN>_depth_*.csv
+    <exp_dir>/_models/<domain>/test_data/<STRAT>/<instance>/<instance>_<TOKEN>_depth_*.csv
+    (legacy, pre-strategy, == S_DFS:)
     <exp_dir>/_models/<domain>/training_data/<instance>/<instance>_depth_*.csv
-    <exp_dir>/_models/<domain>/test_data/<instance>/<instance>_depth_*.csv
+Discovery is lib/rl_handler/src/offline/strategies.py: it reads both layouts and
+REFUSES ambiguity (two tables for one strategy, a table whose folder and name
+disagree, a mixed layout). --strategies restricts training to a subset of the
+generated behaviour policies; asking for one that was never generated is an error.
 
 Split: NO auto-split. TRAIN = all of training_data (kept whole); held-out TEST =
 all of test_data (diagnostic only — never selects; selection is TRAIN-based in
@@ -56,6 +62,11 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 OFFLINE_MAIN = REPO_ROOT / "lib" / "rl_handler" / "offline_main.py"
+sys.path.insert(0, str(REPO_ROOT / "lib" / "rl_handler"))
+from src.offline.strategies import (  # noqa: E402
+    available_strategies, describe, dir_name, discover_tables, parse_strategy_list,
+    select_tables,
+)
 
 
 # fe3d2a9 ("dead paths") deleted these four while leaving every call site, so this
@@ -74,30 +85,45 @@ def find_domains(models_root: Path) -> list[str]:
     return domains
 
 
-def _instance_csvs(subdir: Path) -> list[Path]:
-    """All per-instance generation tables under a data subdir, sorted by name."""
-    csvs: list[Path] = []
+def _instance_csvs(subdir: Path, strategies: list[str] | None = None) -> list[Path]:
+    """All (instance, strategy) generation tables under a data subdir.
+
+    Both layouts (strategy level / legacy flat); ambiguity is an error, not a
+    `matches[0]` (which would have silently trained BFS whenever a folder held two
+    tables, `_BFS_` sorting before `_S_DFS_`)."""
     if not subdir.is_dir():
-        return csvs
-    for inst_dir in sorted(p for p in subdir.iterdir() if p.is_dir()):
-        matches = sorted(inst_dir.glob(f"{inst_dir.name}_depth_*.csv"))
-        if not matches:
-            matches = sorted(inst_dir.glob("*_depth_*.csv"))
-        if matches:
-            csvs.append(matches[0])
-    return csvs
+        return []
+    tables = discover_tables(subdir)
+    if tables:
+        print(f"[data] {subdir}: strategies on disk = "
+              f"{[dir_name(s) for s in available_strategies(tables)]}")
+        print(describe(tables))
+    return select_tables(tables, strategies)
 
 
-def domain_train_csvs(models_root: Path, domain: str) -> list[Path]:
-    """TRAIN instances = everything under <domain>/training_data, kept whole.
-    NO auto-split: the script never carves a val set out of train."""
-    return _instance_csvs(models_root / domain / "training_data")
+def domain_train_csvs(models_root: Path, domain: str,
+                      strategies: list[str] | None = None) -> list[Path]:
+    """TRAIN trees = everything under <domain>/training_data (restricted to
+    `strategies` if given), kept whole. NO auto-split."""
+    return _instance_csvs(models_root / domain / "training_data", strategies)
 
 
-def domain_test_csvs(models_root: Path, domain: str) -> list[Path]:
-    """Held-out diagnostic TEST instances = everything under <domain>/test_data
-    (never feeds selection; only the per-regime diagnostic plots / final numbers)."""
-    return _instance_csvs(models_root / domain / "test_data")
+def domain_test_csvs(models_root: Path, domain: str,
+                     strategies: list[str] | None = None) -> list[Path]:
+    """Held-out diagnostic TEST trees = everything under <domain>/test_data
+    (never feeds selection; only the per-regime diagnostic plots / final numbers).
+    A test folder lacking a requested strategy is skipped, not an error: test data
+    is optional and may predate the strategy."""
+    sub = models_root / domain / "test_data"
+    if not sub.is_dir():
+        return []
+    tables = discover_tables(sub)
+    if strategies:
+        have = set(available_strategies(tables))
+        strategies = [s for s in strategies if s in have]
+        if not strategies:
+            return []
+    return select_tables(tables, strategies)
 
 
 def run_one(cmd: list[str], prefix: str, domain: str = "?") -> int:
@@ -175,19 +201,24 @@ def train_domain(
     forwarded: list[str],
     no_goal: bool = False,
     model: str = "dqn",
+    strategies: list[str] | None = None,
 ) -> None:
     # NO auto-split: TRAIN = all training_data (kept whole); held-out TEST = all
     # test_data (diagnostic only). Selection is TRAIN-based in offline_main's
     # regime path; the script never supplies --val-csv.
-    train_csvs = domain_train_csvs(models_root, domain)
-    test_csvs = domain_test_csvs(models_root, domain)
+    train_csvs = domain_train_csvs(models_root, domain, strategies)
+    test_csvs = domain_test_csvs(models_root, domain, strategies)
     if not train_csvs:
         print(f"[WARNING] No training_data CSVs for domain '{domain}', skipping.")
         return
+
+    def _label(p: Path) -> str:
+        from src.offline.strategies import strategy_of_table
+        return f"{p.parent.name}@{strategy_of_table(p)}"
     print(
         f"[split] domain '{domain}': "
-        f"train={[p.parent.name for p in train_csvs]} "
-        f"test(diagnostic)={[p.parent.name for p in test_csvs]}"
+        f"train={[_label(p) for p in train_csvs]} "
+        f"test(diagnostic)={[_label(p) for p in test_csvs]}"
     )
     if not test_csvs:
         print(f"[INFO] domain '{domain}' has no test_data; running train-only "
@@ -320,7 +351,17 @@ def main() -> None:
         help="Pass '--kind-of-data separated' to offline_main.py (normal "
         "training only).",
     )
+    parser.add_argument(
+        "--strategies",
+        nargs="+",
+        default=None,
+        help="Generation strategies (behaviour policies pi_b) to train on: any of "
+        "BFS DFS S_DFS HFS (or 'all'; case-insensitive, '-' == '_'). Default: every "
+        "strategy found under training_data/. One that was never generated is an "
+        "ERROR, never a fallback. Legacy flat training_data/ counts as S_DFS.",
+    )
     args, forwarded = parser.parse_known_args()
+    strategies = parse_strategy_list(args.strategies) if args.strategies else None
     # Allow an explicit `--` separator before the forwarded block.
     if forwarded and forwarded[0] == "--":
         forwarded = forwarded[1:]
@@ -341,7 +382,8 @@ def main() -> None:
 
     print(
         f"[INFO] exp_dir={exp_dir} model={args.model} domains={domains} "
-        f"seeds={args.seeds} fringe_sizes={args.fringe_sizes}"
+        f"seeds={args.seeds} fringe_sizes={args.fringe_sizes} "
+        f"strategies={[dir_name(s) for s in strategies] if strategies else 'all generated'}"
     )
     if forwarded:
         print(f"[INFO] forwarding to offline_main.py: {' '.join(forwarded)}")
@@ -349,7 +391,7 @@ def main() -> None:
     for domain in domains:
         train_domain(
             exp_dir, models_root, domain, args.seeds, args.fringe_sizes,
-            forwarded, args.no_goal, args.model,
+            forwarded, args.no_goal, args.model, strategies,
         )
 
     # BELT-AND-SUSPENDERS: regenerate figures for EVERY run in the batch, unconditionally,

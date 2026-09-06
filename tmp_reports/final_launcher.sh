@@ -48,6 +48,17 @@ FORCE_REGEN="${FORCE_REGEN:-false}"       # true -> regenerate even if data exis
 # measurements -- fine for a sweep, wrong for a run whose numbers you need.
 RUN_INFERENCE="${RUN_INFERENCE:-true}"    # true | false
 
+# --- behaviour policies = generation strategies (one tree per strategy) ---
+# The C++ generator runs the search named here (--dataset_generation) and the RL
+# trains on ONE reconstructed tree PER (instance, strategy), replaying that search's
+# own expansion order as the behaviour policy. Space-separated, any of
+# BFS DFS S_DFS HFS, or "all". Each lands in training_data/<STRAT>/<instance>/.
+# Which pi_b enter training is decided HERE, by what is generated; TRAIN_STRATEGIES
+# may restrict training to a subset of them (default: everything generated).
+STRATEGIES="${STRATEGIES:-S_DFS}"
+TRAIN_STRATEGIES="${TRAIN_STRATEGIES:-${STRATEGIES}}"
+HEURISTICS="${HEURISTICS:-SUBGOALS}"      # HFS only; the C++ default, passed explicitly
+
 # --- what stays fixed across runs ---
 FRINGE_SIZES="${FRINGE_SIZES:-4 8 16 32}"
 DOMAINS="${DOMAINS:-CC}"                  # domains to symlink/check, e.g. "CC SC SCRich"
@@ -87,7 +98,9 @@ CQL_ALPHA=1.0
 #     discard 0   -> delta_root  4, sterile  2.9%
 # Passed EXPLICITLY: create_all_training_data.py is shared with gnn_exp and its
 # default must not move under that pipeline's feet.
-DISCARD_FACTOR="${DISCARD_FACTOR:-0.1}"
+# Read ONLY by the stochastic DFS worker: it is an S_DFS parameter (BFS/DFS/HFS never
+# discard). Project default 0.6 (set 2026-09-06); fingerprinted in the dataspec.
+DISCARD_FACTOR="${DISCARD_FACTOR:-0.4}"
 
 # A depth bound that CONTAINS the optimal keeps the whole solution path while cutting
 # the tree where it no longer matters. CC optimals are ~4-7; SC needs the depth.
@@ -145,6 +158,17 @@ GEN_FLAG=""
 [[ "$MODE"   == "separated" ]] && GEN_FLAG+=" --no_goal"
 [[ "$STRICT" == "yes"       ]] && GEN_FLAG+=" --strong_equality"
 GEN_FLAG="${GEN_FLAG# }"
+# Strategies: normalised (S-DFS -> S_DFS, upper-case) so the fingerprint and the
+# generator agree; "all" expands. HEURISTICS is only forwarded when HFS is generated.
+STRATEGIES="$(echo "${STRATEGIES}" | tr 'a-z-' 'A-Z_')"
+[[ " ${STRATEGIES} " == *" ALL "* ]] && STRATEGIES="BFS DFS S_DFS HFS"
+TRAIN_STRATEGIES="$(echo "${TRAIN_STRATEGIES}" | tr 'a-z-' 'A-Z_')"
+[[ " ${TRAIN_STRATEGIES} " == *" ALL "* ]] && TRAIN_STRATEGIES="${STRATEGIES}"
+GEN_STRAT_FLAG="--dataset-generation ${STRATEGIES}"
+[[ " ${STRATEGIES} " == *" HFS "* ]] && GEN_STRAT_FLAG+=" --heuristics ${HEURISTICS}"
+DATASPEC_GEN="$(echo "${STRATEGIES}" | tr ' ' '\n' | sort -u | paste -sd, -)"
+DATASPEC_HEUR="none"
+[[ " ${STRATEGIES} " == *" HFS "* ]] && DATASPEC_HEUR="${HEURISTICS}"
 
 # Data fingerprint: any run reusing this data must match it.
 # discard=, depth_map=, max_generation= and seed= are NOT optional. Without discard=,
@@ -155,7 +179,10 @@ GEN_FLAG="${GEN_FLAG# }"
 # generated at another. Without seed=, a run would reuse a DIFFERENT SAMPLE of the
 # state space: the tree is a seed-dependent DFS walk, and on CC_2_2_3__pl_4 the seed
 # alone moves delta_root 14/6/7 (seeds 42/43/44) on a fixed true optimal of 4.
-DATASPEC="mode=${MODE};strict=${STRICT};discard=${DISCARD_FACTOR};depth_map=${DEPTH_MAP};max_creation=${TRAIN_MAX_CREATION};max_generation=${TRAIN_MAX_GENERATION};seed=${SEED}"
+# generation= is the SEARCH that built the trees (one tree per strategy): a BFS batch
+# and an S_DFS batch are different subgraphs, different labels AND a different
+# behaviour policy on them, and before this field they fingerprinted identically.
+DATASPEC="mode=${MODE};strict=${STRICT};discard=${DISCARD_FACTOR};depth_map=${DEPTH_MAP};max_creation=${TRAIN_MAX_CREATION};max_generation=${TRAIN_MAX_GENERATION};seed=${SEED};generation=${DATASPEC_GEN};heuristics=${DATASPEC_HEUR}"
 
 # ---- training flags ----
 TRAIN_FLAG=""
@@ -188,6 +215,8 @@ echo "  BATCH:   ${BATCH_DIR}"
 echo "  algo=${ALGO}  mode=${MODE}  strict=${STRICT}"
 echo "  ctx=${CTX}"
 echo "  fringes: ${FRINGE_SIZES}"
+echo "  strategies (pi_b): generate=${STRATEGIES}  train=${TRAIN_STRATEGIES}  hfs heuristic=${DATASPEC_HEUR}"
+echo "  dataspec: ${DATASPEC}"
 echo "  gen  flags: ${GEN_FLAG:-<none>}  discard=${DISCARD_FACTOR}  depth_map=${DEPTH_MAP}"
 echo "  train flags: ${TRAIN_FLAG} ${TRAIN_EXTRA}"
 echo "  data source: ${DATA_SOURCE:-<generate here>}"
@@ -279,12 +308,15 @@ PYEOF
 
 else
     # ---- generate in place (unless already present) ----
+    # Present == every requested strategy has its training_data/<STRAT>/ folder.
     NEED_GEN=false
     for dom in ${DOMAINS}; do
         D="$(data_dir_for "${dom}")"
-        if [[ ! -d "${D}" ]] || [[ -z "$(ls -A "${D}" 2>/dev/null)" ]]; then
-            NEED_GEN=true
-        fi
+        for strat in ${STRATEGIES}; do
+            if [[ ! -d "${D}/${strat}" ]] || [[ -z "$(ls -A "${D}/${strat}" 2>/dev/null)" ]]; then
+                NEED_GEN=true
+            fi
+        done
     done
     [[ "${FORCE_REGEN}" == "true" ]] && NEED_GEN=true
 
@@ -297,6 +329,7 @@ else
             --dataset-max-creation "${TRAIN_MAX_CREATION}" \
             --dataset-max-generation "${TRAIN_MAX_GENERATION}" \
             --seed "${SEED}" \
+            ${GEN_STRAT_FLAG} \
             ${GEN_FLAG} \
             || fail "step 1 (generate train data)"
         [[ "${DRY_RUN}" == "true" ]] || { echo "${DATASPEC}" > "${BATCH_DIR}/.dataspec"; rm -rf out; }
@@ -318,6 +351,7 @@ else
             --dataset-max-creation "${TEST_MAX_CREATION}" \
             --dataset-max-generation "${TEST_MAX_GENERATION}" \
             --seed "${SEED}" \
+            ${GEN_STRAT_FLAG} \
             ${GEN_FLAG} \
             || fail "step 1b (generate test data)"
         rm -rf out
@@ -341,12 +375,15 @@ python3 - "${BATCH_DIR}" ${DOMAINS} <<'PYEOF' || fail "step 1b (path staleness c
 import csv, sys
 from pathlib import Path
 
+sys.path.insert(0, "lib/rl_handler")
+from src.offline.strategies import tables_under
 batch_dir, domains = sys.argv[1], sys.argv[2:]
 rc = 0
 for dom in domains:
     root = Path(batch_dir) / "_models" / dom / "training_data"
+    tables = tables_under(root, verbose=False)   # both layouts; ambiguity raises
     broken = []
-    for csv_path in sorted(root.glob("*/*_depth_*.csv")):
+    for csv_path in tables:
         with csv_path.open(newline="") as fh:
             rdr = csv.DictReader(fh)
             cols = [c for c in (rdr.fieldnames or []) if "Path" in c or c == "Goal"]
@@ -374,7 +411,7 @@ for dom in domains:
     # A resolving-but-foreign prefix is legal (hardlinked batches) yet fragile:
     # report the donor trees once per domain so the dependency is visible.
     donors = set()
-    for csv_path in sorted(root.glob("*/*_depth_*.csv")):
+    for csv_path in tables:
         with csv_path.open(newline="") as fh:
             rdr = csv.DictReader(fh)
             first = next(rdr, None)
@@ -382,7 +419,7 @@ for dom in domains:
             continue
         v = (first.get("File Path") or "").strip()
         if v.endswith(".dot") and not Path(v).resolve().is_relative_to(csv_path.parent.resolve()):
-            donors.add(str(Path(v).parents[3]))
+            donors.add(str(Path(v).resolve().parents[3]))
     if donors:
         print(f"[1b] {dom}: WARNING tables point at {len(donors)} foreign tree(s): "
               f"{', '.join(sorted(donors))}\n"
@@ -401,12 +438,13 @@ fi
 # applies however the launcher is invoked.
 echo "[1c] usability gate ..."
 if [[ "${DRY_RUN}" == "true" ]]; then echo "[DRY] usability gate -> ${BATCH_DIR}/_models/<dom>/usable_pool.json (refuses training if n_usable==0)"; else
-REQUIRE_SCORABLE="${REQUIRE_SCORABLE:-false}" \
+REQUIRE_SCORABLE="${REQUIRE_SCORABLE:-false}" TRAIN_STRATEGIES="${TRAIN_STRATEGIES}" \
 python3 - "${BATCH_DIR}" "${MODE}" ${DOMAINS} <<'PYEOF' || fail "step 1c (usability gate)"
 import os
 import sys
 from pathlib import Path
 sys.path.insert(0, "lib/rl_handler")
+from src.offline.strategies import parse_strategy_list, tables_under
 from src.offline.tree import load_tree_instance, partition_solvable
 from src.offline.usability import build_usable_pool
 
@@ -415,14 +453,17 @@ from src.offline.usability import build_usable_pool
 # existing batch. REQUIRE_SCORABLE=true promotes it to an exclusion -- use it for
 # runs whose whole point is a held-out ranking claim, and expect a smaller pool.
 require_scorable = os.environ.get("REQUIRE_SCORABLE", "false") == "true"
+# The gate judges exactly the trees training will see: the requested strategies
+# (one tree per (instance, strategy)); a requested-but-absent strategy raises here.
+strategies = parse_strategy_list(os.environ.get("TRAIN_STRATEGIES", "").split()) or None
 batch_dir, mode, domains = sys.argv[1], sys.argv[2], sys.argv[3:]
 rc = 0
 for dom in domains:
     root = Path(batch_dir) / "_models" / dom / "training_data"
-    csvs = sorted(root.glob("*/*_depth_*.csv"))
+    csvs = tables_under(root, strategies)
     if not csvs:
         print(f"[1c] {dom}: no generation tables under {root}"); rc = 1; continue
-    insts = [load_tree_instance(p, name=p.parent.name, kind_of_data=mode) for p in csvs]
+    insts = [load_tree_instance(p, kind_of_data=mode) for p in csvs]
     ok, _ = partition_solvable(insts)
     pool = build_usable_pool(ok, out_path=Path(batch_dir) / "_models" / dom / "usable_pool.json",
                              require_scorable=require_scorable)
@@ -451,6 +492,7 @@ echo "[2/3] training (model=${ALGO}, F=${FRINGE_SIZES}, batch=${BATCH_SIZE}, epo
 # (DOMAINS is never empty: the `:-CC` default above substitutes on unset AND empty.)
 run_stage python3 scripts/rl_exp/train_models.py "${BATCH_DIR}" \
     --domains ${DOMAINS} \
+    --strategies ${TRAIN_STRATEGIES} \
     --fringe-sizes ${FRINGE_SIZES} \
     --model "${ALGO}" \
     ${TRAIN_FLAG} \

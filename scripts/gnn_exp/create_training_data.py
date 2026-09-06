@@ -13,6 +13,38 @@ import hashlib
 
 LOG_LOCK = threading.Lock()
 
+GENERATION_CHOICES = ("BFS", "DFS", "S_DFS", "HFS")
+# BFS and HFS use no RNG: every seed reproduces the same tree byte for byte, so a
+# retry with the next seed is pure waste (CC_2_3_4__pl_7 BFS ~ 3 min + >1 GB per
+# attempt). DFS / S_DFS shuffle the action order with the seed and DO differ.
+SEEDLESS_GENERATIONS = ("BFS", "HFS")
+
+
+def normalize_generation(value):
+    """Map user spellings (s-dfs, S-DFS, bfs, ...) onto the C++ enum names."""
+    v = value.strip().upper().replace("-", "_")
+    if v not in GENERATION_CHOICES:
+        raise argparse.ArgumentTypeError(
+            f"invalid --dataset-generation {value!r}; expected one of {GENERATION_CHOICES}")
+    return v
+
+
+def strategy_target_folder(dataset_folder, dataset_generation):
+    """Where one strategy's instance folders go.
+
+    LAYOUT: `<dataset>/<STRAT>/<instance>/` when a strategy is passed explicitly;
+    the legacy flat `<dataset>/<instance>/` when it is not (the C++ default then
+    applies, and the gnn_exp pipeline -- which never passes the flag -- keeps the
+    layout it expects). One level per strategy is what lets several behaviour
+    policies coexist in one batch: `postprocess_and_move_output` rmtree's the
+    target instance folder, and the DOT files under RawFiles/ are numbered per run,
+    so two strategies in ONE instance folder would destroy each other. rl_handler
+    reads both layouts (lib/rl_handler/src/offline/strategies.py).
+    """
+    if not dataset_generation:
+        return dataset_folder
+    return os.path.join(dataset_folder, dataset_generation)
+
 
 def create_models_folder(base_folder, domain_name, dataset_name):
     models_folder = os.path.join(base_folder, "_models", domain_name, dataset_name)
@@ -63,6 +95,8 @@ def run_cpp_once(
         dataset_type,
         dataset_max_creation,
         dataset_max_generation,
+        dataset_generation=None,
+        heuristics=None,
 ):
     """Run the C++ tool once with a given seed. Returns (exit_code, output_string).
 
@@ -87,6 +121,10 @@ def run_cpp_once(
         "--dataset_max_generation", str(dataset_max_generation),
         "--dataset_type", str(dataset_type),
     ]
+    if dataset_generation:
+        command += ["--dataset_generation", str(dataset_generation)]
+    if heuristics:
+        command += ["--heuristics", str(heuristics)]
     if no_goal:
         command.append("--dataset_separated")
     if strong_equality:
@@ -232,12 +270,18 @@ def process_file_with_retries(
         failed_root,
         global_logs_dir,
         models_folder,
+        dataset_generation=None,
+        heuristics=None,
 ):
     file_name = os.path.basename(file_path)
     instance_name = os.path.splitext(file_name)[0]
     output_target = os.path.join(target_folder, instance_name)
 
     # Generate per-instance unique seeds (deterministic from base_seed + instance)
+    if dataset_generation in SEEDLESS_GENERATIONS and max_retries > 1:
+        print(f"[INFO] {dataset_generation} ignores the seed; 1 attempt for {file_name} "
+              f"(not {max_retries})")
+        max_retries = 1
     seeds = _generate_instance_seeds(base_seed, instance_name, max_retries)
 
     failed_seeds = []
@@ -257,6 +301,8 @@ def process_file_with_retries(
                 dataset_type,
                 dataset_max_creation,
                 dataset_max_generation,
+                dataset_generation,
+                heuristics,
             )
 
         except Exception as e:
@@ -337,9 +383,16 @@ def run_cpp_on_training_files_multithreaded(
         dataset_type,
         failed_root,
         logs_dir,
+        dataset_generation=None,
+        heuristics=None,
 ):
     if not os.path.isdir(training_folder):
         raise FileNotFoundError(f"Input training folder not found: {training_folder}")
+
+    # Per-strategy level (see strategy_target_folder); seeds.txt lives beside the
+    # instance folders it describes.
+    target_folder = strategy_target_folder(models_folder, dataset_generation)
+    os.makedirs(target_folder, exist_ok=True)
 
     files = sorted(
         os.path.join(training_folder, f)
@@ -355,7 +408,7 @@ def run_cpp_on_training_files_multithreaded(
         process_file_with_retries(
             deep_exe,
             file_path,
-            models_folder,
+            target_folder,
             no_goal,
             strong_equality,
             depth,
@@ -367,7 +420,9 @@ def run_cpp_on_training_files_multithreaded(
             dataset_type,
             failed_root,
             logs_dir,
-            models_folder,
+            target_folder,
+            dataset_generation,
+            heuristics,
         )
 
     with ThreadPoolExecutor(max_workers=max_threads) as executor:
@@ -405,10 +460,30 @@ def main():
     )
     parser.add_argument("--strong_equality", action="store_true", help="Add --strong_equality to the C++ execution")
     parser.add_argument(
-        "--depth",
+        "--depth", "--dataset-depth",
+        dest="depth",
         type=int,
         default=25,
-        help="Depth for dataset generation (default: 25)",
+        help="Depth for dataset generation (default: 25). --dataset-depth is an alias.",
+    )
+    parser.add_argument(
+        "--dataset-generation",
+        dest="dataset_generation",
+        default=None,
+        type=normalize_generation,
+        help="Search strategy used by the C++ tool to build the tree (--dataset_generation): "
+             "BFS, DFS, S_DFS (stochastic DFS; 'S-DFS' is accepted and normalised) or HFS "
+             "(heuristic first, see --heuristics). ONE strategy per invocation -- "
+             "create_all_training_data.py loops over several. When given, output goes to "
+             "<dataset>/<STRAT>/<instance>/ so strategies coexist; omitted: the flag is not "
+             "passed, the C++ default applies (S_DFS at the time of writing) and the legacy "
+             "flat <dataset>/<instance>/ layout is kept.",
+    )
+    parser.add_argument(
+        "--heuristics",
+        dest="heuristics",
+        default=None,
+        help='Heuristic forwarded as --heuristics; only meaningful with --dataset-generation HFS (C++ default SUBGOALS).',
     )
     parser.add_argument(
         "--discard_factor",
@@ -496,6 +571,8 @@ def main():
         args.dataset_type,
         failed_root,
         logs_dir,
+        args.dataset_generation,
+        args.heuristics,
     )
 
 
