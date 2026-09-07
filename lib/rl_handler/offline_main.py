@@ -127,8 +127,14 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--no-global-context", dest="use_global_context",
                    action="store_false")
     # ---- data generation (offline dataset) ----
-    p.add_argument("--behaviour-policies", nargs="+",
-                   default=["bfs", "dfs", "hfs_oracle", "random"])
+    p.add_argument("--behaviour-policies", nargs="+", default=["trace"],
+                   help="ranking policies rolled out on each tree to produce the "
+                        "dataset. Default `trace`: replay the generator's own expansion "
+                        "order, i.e. the behaviour policy pi_b that generated that tree "
+                        "(BFS/DFS/S_DFS/HFS -- one tree per strategy, chosen at "
+                        "generation time and by train_models.py --strategies). The "
+                        "synthetic rankings `bfs dfs hfs_oracle random` remain available "
+                        "for ablation (they reproduce the pre-strategy dataset on any tree).")
     p.add_argument("--seeds-per-policy", type=int, default=3)
     p.add_argument("--counterfactual-actions", choices=["all", "none"], default="all")
     p.add_argument("--n-refill-samples", type=int, default=1)

@@ -18,9 +18,11 @@ if str(PKG_ROOT) not in sys.path:
 
 REPO_ROOT = PKG_ROOT.parents[1]
 
+from src.offline.strategies import LEGACY_STRATEGY, dir_name, strategy_of_table  # noqa: E402
 from src.offline.tree import (  # noqa: E402
     TreeInstance,
     compute_delta,
+    compute_expansion_order,
     load_tree_instance,
 )
 
@@ -33,13 +35,26 @@ from src.offline.tree import (  # noqa: E402
 SHIPPED_INSTANCES = ("CC_2_3_4__pl_7", "SC_R_10_10__pl_10")
 
 
-def find_generation_table(instance: str) -> Optional[Path]:
-    """Newest `<instance>_depth_*.csv` under any exp/rl_exp batch."""
-    hits = sorted(
-        REPO_ROOT.glob(f"exp/*/*/_models/*/training_data/{instance}/{instance}_depth_*.csv"),
-        key=lambda p: p.stat().st_mtime,
-        reverse=True,
-    )
+# Where generation tables may live: the repo's batches (rotated by the launcher) and
+# the strategy smoke runs (out of tree: /tmp is RAM here, so they sit in /var/tmp).
+TABLE_ROOTS = [REPO_ROOT / "exp", Path("/var/tmp")]
+
+
+def find_generation_table(instance: str, strategy: str = LEGACY_STRATEGY) -> Optional[Path]:
+    """Newest table of `instance` generated with `strategy` (default: the legacy
+    S_DFS tables the design's numbers are pinned to), in either layout:
+    `.../training_data/<STRAT>/<instance>/*_depth_*.csv` or the flat legacy one."""
+    hits = []
+    for root in TABLE_ROOTS:
+        if not root.is_dir():
+            continue
+        for p in root.glob(f"*/*/_models/*/training_data/**/{instance}/*_depth_*.csv"):
+            try:
+                if strategy_of_table(p) == strategy:
+                    hits.append(p)
+            except ValueError:
+                continue
+    hits.sort(key=lambda p: p.stat().st_mtime, reverse=True)
     return hits[0] if hits else None
 
 
@@ -49,6 +64,8 @@ def make_tree(
     name: str = "synthetic",
     root_id: int = 0,
     h_star: Optional[Sequence[float]] = None,
+    dot_index: Optional[Sequence[int]] = None,
+    strategy: Optional[str] = None,
 ) -> TreeInstance:
     """Build a TreeInstance directly from a child-list spec (no CSV).
 
@@ -57,8 +74,15 @@ def make_tree(
     fixtures satisfy `delta >= h*` with equality. The delta-vs-h* GAP is a
     property of the real generator's DFS-spanning-tree reconstruction and is
     tested against the shipped CSVs instead.
+
+    `dot_index`: per-state creation counter (what the real DOT names carry). When
+    given, the generator's expansion order is recovered from it exactly as the
+    loader does, so the `trace` behaviour can be tested on a synthetic tree.
     """
     n = len(children)
+    expansion_rank = None
+    if dot_index is not None:
+        _, expansion_rank = compute_expansion_order(children, list(dot_index))
     is_goal = [i in set(goals) for i in range(n)]
     depth = [-1] * n
     depth[root_id] = 0
@@ -81,6 +105,8 @@ def make_tree(
         root_id=root_id,
         n_orphan_states=0,
         delta=delta,
+        strategy=strategy,
+        expansion_rank=expansion_rank,
     )
 
 
@@ -152,4 +178,25 @@ def shipped_instances() -> Dict[str, TreeInstance]:
             f"generation tables not found for {missing}; regenerate with "
             f"scripts/gnn_exp/create_all_training_data.py"
         )
+    return out
+
+
+# One real table per strategy of ONE instance, when the strategy smoke runs exist
+# (/var/tmp/smoke_batch1_{BFS,DFS,S-DFS,HFS}, merged, 1000 visits, depth 20). Tests
+# that need them skip otherwise: they are the only place all four searches were run
+# on the same problem.
+STRATEGY_INSTANCE = "CC_2_2_3__pl_4"
+
+
+@pytest.fixture(scope="session")
+def strategy_tables() -> Dict[str, TreeInstance]:
+    out: Dict[str, TreeInstance] = {}
+    for s in ("bfs", "dfs", "s_dfs", "hfs"):
+        p = find_generation_table(STRATEGY_INSTANCE, s)
+        if p is not None:
+            out[s] = load_tree_instance(p, kind_of_data="merged")
+    if len(out) < 4:
+        pytest.skip(f"need {STRATEGY_INSTANCE} tables for all four strategies "
+                    f"(have {[dir_name(s) for s in out]}); run the strategy smoke "
+                    f"generation into /var/tmp/smoke_batch1_<STRAT>")
     return out

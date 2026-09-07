@@ -661,7 +661,7 @@ const std::string &ArgumentParser::get_config_file() const noexcept {
 
 void ArgumentParser::print_usage() const {
   std::cout << app.help() << std::endl;
-  constexpr std::string prog_name = "deep";
+  std::string prog_name = "deep";
   std::cout << "\nEXAMPLES:\n";
   std::cout << "  " << prog_name << " domain.txt\n";
   std::cout << "    Find a plan for domain.txt\n\n";

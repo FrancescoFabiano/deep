@@ -3,8 +3,9 @@
 The tree is fixed and fully in memory, so the transition is a MODEL. |A(s)| <= F
 <= 64, so every action can be ENUMERATED rather than sampled:
 
-    for pi in {bfs, dfs, hfs_oracle, random}:
-      for seed in seeds:
+    for tree in trees:                       # one tree per (instance, pi_b)
+      for pi in behaviour policies:          # default: `trace` = replay pi_b's own order
+        for seed in seeds:
         (B, R) <- reset()
         while not terminal:
             for v in B:                  # ALL actions -- emit a row for each
@@ -33,7 +34,7 @@ from dataclasses import asdict, dataclass, field
 from typing import Dict, Iterable, List, Optional, Sequence
 
 from .env import FringeEnv, default_expansion_cap
-from .policies import BEHAVIOUR_POLICIES, make_policy
+from .policies import ALL_POLICIES, BEHAVIOUR_POLICIES, make_policy
 from .tree import TreeInstance
 
 COUNTERFACTUAL_MODES = ("all", "none")
@@ -203,8 +204,8 @@ def generate_dataset(
     """
     policies = list(policies)
     for p in policies:
-        if p not in BEHAVIOUR_POLICIES:
-            raise ValueError(f"unknown behaviour policy {p!r}")
+        if p not in ALL_POLICIES:
+            raise ValueError(f"unknown behaviour policy {p!r}; expected one of {ALL_POLICIES}")
     cap = int(expansion_cap) if expansion_cap is not None else default_expansion_cap(instances)
 
     rows: List[Transition] = []
@@ -228,8 +229,16 @@ def generate_dataset(
             f"actions/state={summary['actions_per_state']:.2f} "
             f"forced_states={summary['forced_state_frac']:.3f} "
             f"truncated_frac={summary['truncated_frac']:.4f} "
-            f"censored_rows={'dropped ' if drop_censored else ''}{n_censored_rows}"
+            f"censored_rows={'dropped ' if drop_censored else ''}{n_censored_rows} "
+            f"trajectories={summary['n_trajectories']} "
+            f"(distinct {summary['n_distinct_trajectories']})"
         )
+        if summary["duplicate_trajectory_frac"] > 0.5:
+            print(f"[dataset] WARNING {100 * summary['duplicate_trajectory_frac']:.0f}% of "
+                  f"the rollouts duplicate another rollout of the same (tree, policy): a "
+                  f"deterministic behaviour on a tree whose open set never exceeds F={fringe_size} "
+                  f"yields the same trajectory at every seed. More seeds add rows, not "
+                  f"information, and a held-out trajectory may be a copy of a trained one.")
     return rows, summary
 
 
@@ -256,7 +265,25 @@ def dataset_summary(rows: Sequence[Transition], fringe_size: int,
     on_traj = sum(1 for r in rows if r.on_trajectory)
     advs = [r.advantage for r in rows if not r.forced and not r.terminated]
     zero_adv = sum(1 for a in advs if abs(a) < 1e-9)
+    # Trajectory identity = the followed sequence of (beam AS A SET, expanded state).
+    # Slot ORDER is refill noise (a node parked in R comes back at a random slot) and
+    # must not make two identical searches look different. Two seeds of a
+    # deterministic behaviour coincide unless refill (open set > F) or a tie
+    # separated them; with `trace` this is the normal case on small trees.
+    traj: Dict[tuple, List[tuple]] = {}
+    for r in rows:
+        if r.on_trajectory:
+            traj.setdefault((r.instance, r.policy, r.seed), []).append(
+                (r.t, tuple(sorted(r.obs)), r.obs[r.action]))
+    distinct: Dict[tuple, set] = {}
+    for (inst, pol, _seed), steps in traj.items():
+        distinct.setdefault((inst, pol), set()).add(tuple(sorted(steps)))
+    n_traj = len(traj)
+    n_distinct = sum(len(s) for s in distinct.values())
     return {
+        "n_trajectories": n_traj,
+        "n_distinct_trajectories": n_distinct,
+        "duplicate_trajectory_frac": (1.0 - n_distinct / n_traj) if n_traj else 0.0,
         "n_rows": n,
         "n_states": len(states),
         "fringe_size": fringe_size,

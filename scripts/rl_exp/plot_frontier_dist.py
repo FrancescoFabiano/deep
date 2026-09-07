@@ -34,8 +34,9 @@ def main():
 
     import torch
     torch.set_num_threads(4)
-    csvs = sorted(a.training_data.glob("*/*_depth_*.csv"))
-    insts = [load_tree_instance(p, name=p.parent.name, kind_of_data=a.mode) for p in csvs]
+    from src.offline.strategies import tables_under
+    csvs = tables_under(a.training_data)
+    insts = [load_tree_instance(p, kind_of_data=a.mode) for p in csvs]
 
     ncol = 2
     nrow = (len(a.fringes) + 1) // 2

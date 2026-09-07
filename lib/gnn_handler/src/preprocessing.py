@@ -1,15 +1,47 @@
+"""Generation table -> (balanced, split) rows -> indices into a GraphStore.
+
+The distance estimator is a per-STATE regressor: one state graph in (goal
+inlined in merged mode, or the instance's goal graph beside it in separated
+mode), one score out. No tree, no fringe. So a sample is just
+    (index of the state graph, index of the goal graph or -1, depth, target).
+The graphs themselves live once in a GraphStore (src/graph_store.py), parsed
+once per instance and cached; batches are assembled by index. `samples.pt`
+holds the dataframes, the index tensors and the cache manifest -- no graph
+objects.
+
+Layout read (flat, one level; the GNN never uses the strategy layout):
+    <training_data>/<instance>/<instance>[_<TOKEN>]_depth_<D>.csv
+                              /RawFiles/hash_{merged,separated}/NNNNNN.dot
+                              /goal_tree.dot                (separated)
+The CSV name token (BFS/S_DFS/...) and the zero-padded distances the newer
+generator writes are both handled; a strategy directory level is refused with
+an explicit message (see _build_df).
+"""
+
 from __future__ import annotations
 
 import os
+import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import pandas as pd
 import torch
 from sklearn.model_selection import train_test_split
-from tqdm import tqdm
 
-from src.utils import preprocess_sample, KEYWORD_BITMASK
+from src.graph_store import GraphStore, dot_paths_in_csv
+from src.utils import KEYWORD_BITMASK
+
+# Directory names the multi-strategy generator writes; the GNN reads the flat
+# S_DFS layout only, so meeting these one level up is a wrong --folder-raw-data.
+_STRATEGY_DIRS = {"BFS", "DFS", "S_DFS", "HFS"}
+_DEPTH_RE = re.compile(r"_depth_(\d+)\.csv$")
+
+
+def generation_depth_of(csv_path: str | Path) -> Optional[int]:
+    """`<inst>_S_DFS_depth_25.csv` -> 25; None if the name carries no depth."""
+    m = _DEPTH_RE.search(Path(csv_path).name)
+    return int(m.group(1)) if m else None
 
 
 class GraphDataPipeline:
@@ -54,12 +86,17 @@ class GraphDataPipeline:
 
         self.train_df: Optional[pd.DataFrame] = None
         self.test_df: Optional[pd.DataFrame] = None
-        self.train_samples: List[Dict[str, Any]] = []
-        self.test_samples: List[Dict[str, Any]] = []
         self._instance_dirs: List[Path] = []
+        self._csv_paths: List[Path] = []
+        # Filled by build_store(): one GraphStore over every instance, and the
+        # per-split index tensors (see module docstring).
+        self.store: Optional[GraphStore] = None
+        self.train_index: Dict[str, torch.Tensor] = {}
+        self.test_index: Dict[str, torch.Tensor] = {}
+        self.cache_files: List[str] = []
+        self.generation_depths: Dict[str, Optional[int]] = {}
 
         self._build_df()
-        self._load_samples()
 
     def _get_all_items(self, folder: Path) -> List[Path]:
         return list(folder.iterdir())
@@ -195,91 +232,124 @@ class GraphDataPipeline:
     def _build_df(self):
         train_frames, test_frames = [], []
 
-        for prob_dir in self._get_all_items(self.folder_data):
+        if not self.folder_data.is_dir():
+            raise FileNotFoundError(f"training_data folder not found: {self.folder_data}")
+        subdirs = sorted(p for p in self._get_all_items(self.folder_data) if p.is_dir())
+        strat = [p.name for p in subdirs if p.name in _STRATEGY_DIRS]
+        if strat:
+            raise ValueError(
+                f"{self.folder_data} holds the per-strategy layout ({strat}); the GNN "
+                f"distance estimator reads the flat layout <training_data>/<instance>/ "
+                f"(S_DFS, the generator's default). Point --folder-raw-data at a batch "
+                f"generated WITHOUT --dataset-generation, or at one strategy folder."
+            )
+
+        for prob_dir in subdirs:
             if len(self.list_subset_train) > 0:
                 if os.path.basename(prob_dir) not in self.list_subset_train:
                     continue
-            csv = next(
-                (p for p in self._get_all_items(prob_dir) if p.suffix == ".csv"), None
-            )
-            if not csv:
+            csvs = sorted(p for p in self._get_all_items(prob_dir) if p.suffix == ".csv")
+            if not csvs:
                 continue
+            if len(csvs) > 1:
+                raise ValueError(
+                    f"{prob_dir} holds {len(csvs)} generation tables ({[c.name for c in csvs]}); "
+                    f"one table per instance folder -- remove the extra one."
+                )
+            csv = csvs[0]
             df = self._read_csv(csv)
+            df["_instance"] = prob_dir.name
             df = self._balance_dataset(df)
             train_df, test_df = self._my_train_test_split(df)
             train_frames.append(train_df)
             test_frames.append(test_df)
             self._instance_dirs.append(Path(prob_dir))
+            self._csv_paths.append(csv)
+            self.generation_depths[prob_dir.name] = generation_depth_of(csv)
 
         if len(train_frames) == 0 or len(test_frames) == 0:
             raise ValueError(
-                f"train samples = {len(train_frames)}, test samples = {len(test_frames)}"
+                f"train samples = {len(train_frames)}, test samples = {len(test_frames)} "
+                f"(no instance folder with a .csv under {self.folder_data}"
+                f"{' matching ' + str(self.list_subset_train) if self.list_subset_train else ''})"
             )
         self.train_df = pd.concat(train_frames, ignore_index=True)
-        # self.train_df = self._balance_dataset(self.train_df)
         self.test_df = pd.concat(test_frames, ignore_index=True)
-        # self.test_df = self._balance_dataset(self.test_df)
 
-    def _load_graph_cache(self) -> Optional[Dict[str, Any]]:
-        """Merge pre-serialized graph caches (see preprocess_dot_to_pt.py).
+    # ---- graphs: parse once per instance, cache, index -----------------------
 
-        Each training instance dir may hold a graph_cache_<DATASET_TYPE>.pt
-        with {resolved_dot_path: Data}.  Missing caches are fine — DOT files
-        not found in the cache are parsed on the fly by preprocess_sample().
+    def build_store(self, cache_dir: Optional[str | Path] = None,
+                    workers: Optional[int] = None, verbose: bool = True) -> GraphStore:
+        """Parse every DOT the tables reference (all rows, not just the kept
+        ones, so the cache is reusable across seeds/balancing) and map each
+        kept row to its graph index.
+
+        Cache: <cache_dir>/<instance>.<DATASET_TYPE>.pt, one per instance. A
+        cache whose path list differs from the table's is rebuilt.
         """
-        cache: Dict[str, Any] = {}
-        for inst_dir in self._instance_dirs:
-            cache_file = inst_dir / f"graph_cache_{self.dataset_type}.pt"
-            if cache_file.is_file():
-                cache.update(torch.load(cache_file, weights_only=False))
-        return cache or None
-
-    def _load_samples(self):
-
-        s = [self.train_samples, self.test_samples]
-        t = [self.train_df, self.test_df]
-
-        graph_cache = self._load_graph_cache()
-
-        # kind_of_data drives the separate goal graph, NOT use_goal alone:
-        #   separated -> feed goal_tree.dot (CSV `Goal`) as a separate graph
-        #                (state DOT is goal-free; guaranteed use_goal by __init__)
-        #   merged    -> goal is inlined in the state DOT; never feed it again
-        #                (avoids double-counting; merged goal_tree.dot is absent)
+        bitmask = self.dataset_type == KEYWORD_BITMASK
         load_separate_goal = self.data_kind == "separated" and self.use_goal
+        # Merged tables still carry a `Goal` column, but the file is never
+        # written in merged mode (the goal is inlined in every state DOT).
+        columns = ("File Path", "Goal") if load_separate_goal else ("File Path",)
+        stores: List[GraphStore] = []
+        self.cache_files = []
+        for inst_dir, csv in zip(self._instance_dirs, self._csv_paths):
+            paths = dot_paths_in_csv(csv, columns=columns)
+            cache_file = None
+            if cache_dir is not None:
+                cache_file = Path(cache_dir) / f"{inst_dir.name}.{self.dataset_type}.pt"
+                self.cache_files.append(str(cache_file))
+            stores.append(GraphStore.from_paths(paths, bitmask=bitmask, cache_file=cache_file,
+                                                workers=workers, verbose=verbose))
+        self.store = GraphStore.concat(stores)
+        self.train_index = self._index_split(self.train_df, load_separate_goal)
+        self.test_index = self._index_split(self.test_df, load_separate_goal)
+        return self.store
 
-        for i, df in enumerate(t):
-            if df is None:
-                raise ValueError("Call build_df() first.")
+    def _index_split(self, df: pd.DataFrame, with_goal: bool) -> Dict[str, torch.Tensor]:
+        idx = self.store.index
+        try:
+            state = torch.tensor([idx[p.strip()] for p in df["File Path"]], dtype=torch.int64)
+        except KeyError as e:
+            raise KeyError(f"state DOT {e} referenced by the table is not in the graph store") from e
+        out = {
+            "state": state,
+            "target": torch.tensor(df["Distance From Goal"].to_numpy(), dtype=torch.float32),
+            "depth": torch.tensor(df["Depth"].to_numpy(), dtype=torch.float32),
+        }
+        if with_goal:
+            out["goal"] = torch.tensor([idx[p.strip()] for p in df["Goal"]], dtype=torch.int64)
+        return out
 
-            desc = "Building train samples..." if i == 0 else "Building test samples..."
-
-            for _, row in tqdm(df.iterrows(), total=len(df), desc=desc):
-                sample = preprocess_sample(
-                    row["File Path"],
-                    int(row["Depth"]) if self.use_depth else None,
-                    int(row["Distance From Goal"]),
-                    row["Goal"] if load_separate_goal else None,
-                    bitmask=self.dataset_type == KEYWORD_BITMASK,
-                    graph_cache=graph_cache,
-                )
-                s[i].append(sample)
+    def instance_names(self) -> List[str]:
+        return [p.name for p in self._instance_dirs]
 
     def save(self, out_dir: str, extra_params: Optional[Dict[str, Any]] = None):
+        """samples.pt: dataframes, index tensors and the cache manifest. The
+        graphs are NOT in here -- they are in the per-instance caches."""
+        if self.store is None:
+            raise ValueError("call build_store() before save()")
         out = Path(out_dir)
         payload = {
+            "format": 2,
             "params": {
                 "folder_data": str(self.folder_data),
                 "ordering": self.dataset_type,
                 "data_kind": self.data_kind,
                 "max_percentage_per_class": self.max_percentage_per_class,
                 "use_goal": self.use_goal,
+                "use_depth": self.use_depth,
+                "instances": self.instance_names(),
+                "generation_depths": dict(self.generation_depths),
+                "cache_files": list(self.cache_files),
                 **(extra_params or {}),
             },
             "train_df": self.train_df,
             "test_df": self.test_df,
-            "train_samples": self.train_samples,
-            "test_samples": self.test_samples,
+            "train_index": self.train_index,
+            "test_index": self.test_index,
+            "store_paths": self.store.paths,
         }
         torch.save(payload, out)
         return out

@@ -115,7 +115,7 @@ __pycache__/
 **/__pycache__/
 **/*.pyc
 
-# Graph caches (regenerate with scripts/gnn_exp/preprocess_dot_to_pt.py)
+# Graph caches (per-instance stores under _models/<domain>/cache/; regenerate with scripts/gnn_exp/preprocess_dot_to_pt.py)
 graph_cache_*.pt
 
 # GNN experiment artifacts (trained models, ONNX exports, eval results)

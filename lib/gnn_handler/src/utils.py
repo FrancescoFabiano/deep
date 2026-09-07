@@ -21,6 +21,7 @@ from torch.utils.data import DataLoader, Dataset
 from torch_geometric.data import Batch, Data
 from torch_geometric.utils import from_networkx
 
+from src.graph_store import BITMASK_DIM, GraphBatch, GraphStore
 from src.model import BaseModel
 from src.models.distance_estimator import (
     DistanceEstimator,
@@ -108,30 +109,52 @@ class PrecomputedGraphDataset(Dataset):
         return self.samples[idx]
 
 
-def get_dataloaders(
-    train_samples,
-    eval_samples,
-    batch_size=256,
-    shuffle=True,
-    seed=42,
-    num_workers=0,
-):
-    # Torch RNG shared by both loaders so shuffling is reproducible
-    g = torch.Generator()
-    g.manual_seed(seed)
+class IndexBatcher:
+    """Batches straight out of a GraphStore by index -- the replacement for the
+    DataLoader + collate over per-row PyG objects.
 
-    def _build_loader(samples, is_train):
-        return DataLoader(
-            PrecomputedGraphDataset(samples),
-            batch_size=batch_size,
-            shuffle=(shuffle and is_train),
-            collate_fn=graph_collate_fn,
-            num_workers=num_workers,
-            generator=g,
-            worker_init_fn=lambda wid: seed_everything(seed + wid),
-        )
+    Yields the dict the model and the loss read:
+        state_graph: GraphBatch, goal_graph: GraphBatch | None,
+        depth: float32 [B,1] | None, target: float32 [B]
+    The store may live on the training device, so packing is device-side and
+    nothing is pickled per step. Shuffling uses a seeded torch.Generator.
+    """
 
-    return _build_loader(train_samples, True), _build_loader(eval_samples, False)
+    def __init__(self, store: GraphStore, index: Dict[str, torch.Tensor],
+                 batch_size: int, shuffle: bool, seed: int = 42,
+                 use_depth: bool = False):
+        self.store = store
+        self.state = index["state"]
+        self.goal = index.get("goal")
+        self.target = index["target"]
+        self.depth = index["depth"] if use_depth else None
+        self.batch_size = int(batch_size)
+        self.shuffle = shuffle
+        self.gen = torch.Generator()
+        self.gen.manual_seed(seed)
+
+    def __len__(self) -> int:
+        return max(1, math.ceil(self.state.numel() / self.batch_size))
+
+    def __iter__(self):
+        n = self.state.numel()
+        order = torch.randperm(n, generator=self.gen) if self.shuffle else torch.arange(n)
+        for i in range(0, n, self.batch_size):
+            sel = order[i:i + self.batch_size]
+            batch = {
+                "state_graph": self.store.pack(self.state[sel]),
+                "goal_graph": self.store.pack(self.goal[sel]) if self.goal is not None else None,
+                "depth": self.depth[sel].view(-1, 1) if self.depth is not None else None,
+                "target": self.target[sel],
+            }
+            yield batch
+
+
+def get_batchers(store: GraphStore, train_index: Dict[str, torch.Tensor],
+                 test_index: Dict[str, torch.Tensor], batch_size: int = 256,
+                 seed: int = 42, use_depth: bool = False):
+    return (IndexBatcher(store, train_index, batch_size, True, seed, use_depth),
+            IndexBatcher(store, test_index, batch_size, False, seed, use_depth))
 
 
 def seed_everything(seed: int = 42):
@@ -824,6 +847,15 @@ class DistanceEstimatorModel(BaseModel):
 
         dynamic_axes["distance"] = {0: "B"}
 
+        # The planner (GraphNN.tpp) feeds exactly the state tensors, plus the
+        # goal tensors in separated mode. It never feeds a depth, so a model
+        # that needs one cannot be deployed: refuse rather than export it.
+        if with_depth:
+            raise ValueError(
+                "with_depth=True: the planner never feeds a depth input, so this "
+                "model would fail at load. Train with --use-depth false."
+            )
+
         # The wrapper holds a *reference* to self.model, so wrapper.cpu()
         # moves the shared core model to CPU.  Restore the original device
         # afterwards (even on export failure) so later predict_* calls don't
@@ -831,6 +863,11 @@ class DistanceEstimatorModel(BaseModel):
         original_device = next(self.model.parameters()).device
         wrapper = Wrapper(self.model).eval()
         try:
+            # dynamo=False pins the TorchScript exporter: one self-contained
+            # file. The dynamo exporter (default since torch 2.9) writes the
+            # weights to a sidecar `<name>.onnx.data`, which breaks as soon as
+            # the .onnx is referenced or copied on its own -- and it is what
+            # lib/rl_handler's export pins too.
             torch.onnx.export(
                 wrapper.cpu(),
                 tuple(dummy_inputs),
@@ -840,9 +877,59 @@ class DistanceEstimatorModel(BaseModel):
                 output_names=["distance"],
                 dynamic_axes=dynamic_axes,
                 do_constant_folding=False,
+                dynamo=False,
             )
         finally:
             self.model.to(original_device)
+        sidecar = onnx_path.with_name(onnx_path.name + ".data")
+        if sidecar.exists():
+            raise RuntimeError(
+                f"export wrote external data {sidecar}: the planner loads a single "
+                f"file. The exporter did not honour dynamo=False."
+            )
+        assert_onnx_contract(onnx_path, with_goal=with_goal,
+                             bitmask=getattr(self.model, "bit_input", None) is not None)
+
+    def verify_onnx(
+        self,
+        onnx_path: str | Path,
+        store: GraphStore,
+        state_indices: Sequence[int],
+        goal_indices: Optional[Sequence[int]] = None,
+        atol: float = 1e-4,
+    ) -> Dict[str, float]:
+        """THE fidelity check: feed graphs to the exported ONNX exactly as the
+        C++ planner does (one state per call, int64 ids / uint8 bits, int64
+        edge_index, int64 edge_attr [E,1], all-zero batch) and compare with
+        the torch model's score on the same graph. Raises on a mismatch."""
+        import onnxruntime as ort
+
+        sess = ort.InferenceSession(str(onnx_path), providers=["CPUExecutionProvider"])
+        names = [i.name for i in sess.get_inputs()]
+        self.model.eval()
+        worst = 0.0
+        n = 0
+        for k, g in enumerate(state_indices):
+            feed = store.planner_feed(int(g), "state")
+            batch = {"state_graph": store.pack([int(g)]), "goal_graph": None, "depth": None}
+            if goal_indices is not None:
+                gg = int(goal_indices[k])
+                feed.update(store.planner_feed(gg, "goal"))
+                batch["goal_graph"] = store.pack([gg])
+            missing = [nm for nm in names if nm not in feed]
+            if missing:
+                raise RuntimeError(f"ONNX declares inputs {missing} the planner never feeds")
+            onnx_out = float(sess.run(["distance"], {nm: feed[nm] for nm in names})[0].reshape(-1)[0])
+            with torch.no_grad():
+                torch_out = float(self.predict_batch(batch).view(-1)[0])
+            worst = max(worst, abs(onnx_out - torch_out))
+            n += 1
+        if worst > atol:
+            raise RuntimeError(
+                f"ONNX/torch disagree on {n} planner-style single-state feeds: max "
+                f"|diff|={worst:.3e} > {atol}. The exported graph is not what was trained."
+            )
+        return {"n_checked": n, "max_abs_diff": worst}
 
 
 def preprocess_for_onnx(
@@ -851,7 +938,7 @@ def preprocess_for_onnx(
     goal_dot_files: Optional[Sequence[str | Path]] = None,
     *,
     bitmask: bool = True,
-    bit_len: int = 64,  # must match ONNX input feature dim (your model prints [-1, 64])
+    bit_len: int = BITMASK_DIM,  # == C++ BITMASK_DIM == model bit_input (42)
 ) -> Dict[str, np.ndarray]:
     """
     Build ONNX feed dict for a batch of graphs.
@@ -1100,28 +1187,67 @@ def select_model(
             DistanceEstimator,
             use_goal=use_goal,
             use_depth=use_depth,
-            bit_input=42 if bitmask else None,
+            bit_input=BITMASK_DIM if bitmask else None,
         )
         return model
     else:
         raise NotImplementedError
 
 
-def print_values(samples):
-    d = {}
-    for s in samples:
-        ss = s["target"].item()
-        if ss in d.keys():
-            d[ss] += 1
-        else:
-            d[ss] = 1
+# The planner contract, by mode. GraphNN.tpp pushes these tensors positionally
+# in the model's declared order and reads output[0] as float.
+ONNX_INPUTS = {
+    ("ids", False): ["state_node_ids", "state_edge_index", "state_edge_attr", "state_batch"],
+    ("bits", False): ["state_node_bits", "state_edge_index", "state_edge_attr", "state_batch"],
+}
+ONNX_INPUTS[("ids", True)] = ONNX_INPUTS[("ids", False)] + [
+    "goal_node_ids", "goal_edge_index", "goal_edge_attr", "goal_batch"]
+ONNX_INPUTS[("bits", True)] = ONNX_INPUTS[("bits", False)] + [
+    "goal_node_bits", "goal_edge_index", "goal_edge_attr", "goal_batch"]
+_ONNX_INT64, _ONNX_UINT8, _ONNX_FLOAT = 7, 2, 1
 
-    x = ""
-    z = 0
-    for target in sorted(d):
-        x += f"| Target {target}: {d[target]}"
-        z += d[target]
-    print(x, " -- Total samples: ", z)
+
+def assert_onnx_contract(onnx_path: str | Path, with_goal: bool, bitmask: bool) -> Dict[str, object]:
+    """Names, order, dtypes and ranks of the exported graph must be what the
+    planner feeds; a single file; one float output `distance`."""
+    import onnx
+
+    m = onnx.load(str(onnx_path), load_external_data=False)
+    if any(t.data_location == onnx.TensorProto.EXTERNAL for t in m.graph.initializer):
+        raise RuntimeError(f"{onnx_path}: weights stored externally; the planner loads one file")
+    want = ONNX_INPUTS[("bits" if bitmask else "ids", with_goal)]
+    got = [i.name for i in m.graph.input]
+    if got != want:
+        raise RuntimeError(f"{onnx_path}: inputs {got} != planner contract {want}")
+    for i in m.graph.input:
+        et = i.type.tensor_type.elem_type
+        rank = len(i.type.tensor_type.shape.dim)
+        if i.name.endswith("_node_bits"):
+            ok = et == _ONNX_UINT8 and rank == 2 and i.type.tensor_type.shape.dim[1].dim_value == BITMASK_DIM
+        elif i.name.endswith("_edge_index"):
+            ok = et == _ONNX_INT64 and rank == 2
+        elif i.name.endswith("_edge_attr"):
+            ok = et == _ONNX_INT64 and rank == 2
+        else:  # node_ids / batch
+            ok = et == _ONNX_INT64 and rank == 1
+        if not ok:
+            raise RuntimeError(f"{onnx_path}: input {i.name} has elem_type {et} rank {rank}, "
+                               f"not what GraphNN.tpp feeds")
+    outs = [o.name for o in m.graph.output]
+    if outs != ["distance"] or m.graph.output[0].type.tensor_type.elem_type != _ONNX_FLOAT:
+        raise RuntimeError(f"{onnx_path}: outputs {outs} must be a single float `distance`")
+    return {"inputs": got, "outputs": outs,
+            "opset": [(o.domain, o.version) for o in m.opset_import]}
+
+
+def print_values(targets) -> None:
+    """Histogram of raw targets (a 1-D tensor/array)."""
+    vals = torch.as_tensor(targets).view(-1).tolist()
+    d: Dict[float, int] = {}
+    for v in vals:
+        d[v] = d.get(v, 0) + 1
+    x = "".join(f"| Target {t:g}: {d[t]}" for t in sorted(d))
+    print(x, " -- Total samples: ", len(vals))
 
 
 def f(value, slope, min_value_nn, if_forward: bool = True):
@@ -1131,48 +1257,38 @@ def f(value, slope, min_value_nn, if_forward: bool = True):
         return (value - min_value_nn) / slope
 
 
-def prepare_samples(
-    t_s_copy: List[Dict], t_t_copy: List[Dict], unreachable_state_value
+# Historical fixed range of the target map. Kept as the fallback when the
+# generation depth cannot be read off the table name.
+LEGACY_MAX_DEPTH = 50
+MIN_V_NN = 1e-3
+
+
+def normalization_params(max_depth: int) -> Dict[str, float]:
+    """target = distance * slope + intercept, in (0, 1). The planner inverts it
+    with the SAME two numbers from distance_estimator_C.txt, so any max_depth is
+    faithful; deriving it from the generation depth (instead of a fixed 50)
+    just stops a depth-25 domain from using half the sigmoid's range."""
+    max_v = 1.0 - MIN_V_NN
+    return {"slope": (max_v - MIN_V_NN) / float(max_depth), "intercept": MIN_V_NN}
+
+
+def prepare_targets(
+    train_index: Dict[str, torch.Tensor],
+    test_index: Dict[str, torch.Tensor],
+    unreachable_state_value: float,
+    max_depth: Optional[int] = None,
 ):
+    """Drop unreachable rows (1e6) from both splits and map the remaining raw
+    distances into (0, 1). Returns (train_index, test_index, params) with the
+    index dicts filtered consistently across all their tensors."""
+    max_depth = int(max_depth) if max_depth else LEGACY_MAX_DEPTH
+    params = normalization_params(max_depth)
 
-    t_s_copy = [s for s in t_s_copy if s["target"].item() != unreachable_state_value]
-    t_t_copy = [s for s in t_t_copy if s["target"].item() != unreachable_state_value]
+    def _apply(index):
+        keep = index["target"] != unreachable_state_value
+        out = {k: v[keep] for k, v in index.items()}
+        out["raw_target"] = out["target"].clone()
+        out["target"] = f(out["target"], params["slope"], params["intercept"]).to(torch.float32)
+        return out
 
-    """def find_max(sss):
-        max_v = -1
-        for s in sss:
-            v = s["target"].item()
-            if v > max_v and v != UNREACHABLE_STATE_VALUE:
-                max_v = v
-        return max_v
-
-    max_train = find_max(t_s_copy)
-    max_test = find_max(t_t_copy)
-
-    max_tot = max(max_train, max_test)"""
-
-    MIN_DEPTH = 0
-    MAX_DEPTH = 50  # if max_tot * 2 > 50 else max_tot * 2
-
-    MIN_V_NN = 1e-3
-    MAX_V_NN = 1 - MIN_V_NN
-
-    slope = (MAX_V_NN - MIN_V_NN) / (MAX_DEPTH - MIN_DEPTH)
-
-    params = {"slope": slope, "intercept": MIN_V_NN}
-
-    for s in t_s_copy:
-        v = s["target"].item()
-        if v != unreachable_state_value:
-            s["target"] = torch.tensor(f(v, slope, MIN_V_NN), dtype=torch.float)
-        else:
-            s["target"] = torch.tensor(f(MAX_DEPTH, slope, MIN_V_NN), dtype=torch.float)
-
-    for s in t_t_copy:
-        v = s["target"].item()
-        if v != unreachable_state_value:
-            s["target"] = torch.tensor(f(v, slope, MIN_V_NN), dtype=torch.float)
-        else:
-            s["target"] = torch.tensor(f(MAX_DEPTH, slope, MIN_V_NN), dtype=torch.float)
-
-    return t_s_copy, t_t_copy, params
+    return _apply(train_index), _apply(test_index), params

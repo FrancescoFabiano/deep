@@ -602,7 +602,43 @@ fallback.
 
 Generation-table CSVs, unchanged:
 `File Path, Depth, Distance From Goal, Goal, File Path Predecessor, Action` under
-`<exp_dir>/_models/<domain>/{training_data,test_data}/<instance>/`.
+`<exp_dir>/_models/<domain>/{training_data,test_data}/<STRAT>/<instance>/`
+(`<STRAT>` ∈ BFS, DFS, S_DFS, HFS; the legacy flat `.../training_data/<instance>/`
+is read as S_DFS, the only generator that existed before the flag).
+
+**One tree per (instance, generation strategy)** (2026-09-06). The C++ generator
+runs the search named by `--dataset_generation`; the user picks which behaviour
+policies exist by picking what to generate (`create_all_training_data.py
+--dataset-generation BFS HFS ...`, the launcher's `STRATEGIES`), and may restrict
+training to a subset (`train_models.py --strategies`). A strategy asked for but not
+generated is an error, never a fallback. Discovery is `src/offline/strategies.py`;
+it refuses ambiguity (two tables for one strategy, a folder whose name disagrees
+with the file token, a mixed layout). Tree identity: `name = <instance>@<strategy>`,
+`instance` = the CSV's parent dir, `strategy` from the path.
+
+**The behaviour policy is the generator's own expansion order, replayed.** The DOT
+creation counter in every `File Path` orders states as the search created them, and
+a state's children are created when it is expanded, so
+`expansion_time(v) = min{index(c) : c child of v, index(c) > index(v)}` recovers the
+expansion sequence exactly (verified on all four smoke strategies; root rank 0). The
+`trace` policy ranks a beam by it — "which of these did pi_b expand first" — so the
+rollout follows pi_b as far as the F-window and random refill allow. `trace` is the
+default behaviour for data generation; the synthetic rankings below remain as
+evaluation baselines (with `trace` added as a fifth when every tree carries one) and
+for ablation. Rollouts of a deterministic behaviour coincide wherever the open set
+never exceeds F; the dataset summary reports `duplicate_trajectory_frac`.
+
+**Censoring is expansion-aware.** A childless non-goal state the table shows was
+never expanded is CENSORED (unknown), not sterile: a BFS cut by the visit cap is
+mostly such frontier, well below the depth bound. What can be proven: BFS/DFS/S_DFS
+expand in creation order, so every state created no later than the last expanded
+one (and below the depth bound) was expanded; HFS pops by heuristic, so only states
+with children are proven. Discarded S_DFS states remain indistinguishable (pre-existing).
+
+**Known property, not a defect:** the generator keeps expanding goal states, so on
+CC (the goal persists) HFS trees are ~99% goal rows and DFS trees ~92%; BFS trees
+are mostly unexpanded frontier. `run.py` prints one line per tree (states, goals,
+expanded, delta_root, censored) before any gate so this is visible up front.
 
 Reconstruction: duplicate `File Path` → min-depth row wins; root = the unique
 Depth-0 state; edges whose predecessor never appears are dropped as orphans

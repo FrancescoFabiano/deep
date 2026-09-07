@@ -93,6 +93,23 @@ Example command with a different dataset type:
 python3 scripts/gnn_exp/train_models.py exp/gnn_exp/batch1 --dataset_type BITMASK
 ```
 
+The trainer parses every state DOT once per instance and caches the result in
+`_models/{domain}/cache/` (rebuilt automatically when the tables change), then
+exports `distance_estimator.onnx` and checks it: the ONNX inputs must be exactly
+what the planner feeds (int64 node ids or uint8 bits, int64 edge index, int64
+edge attributes, batch vector) and its scores must match the PyTorch model on
+single states fed the planner's way. `distance_estimator_info.txt` records the
+instances, the generation depth used for the target normalisation and the ONNX
+inputs.
+
+Separated data (generated with `--no_goal`) is trained with
+`python3 scripts/gnn_exp/train_models.py exp/gnn_exp/batch1 --no_goal`: the
+instance's `goal_tree.dot` is fed as a second graph and the ONNX declares the
+`goal_*` inputs as well. Note that the planner's GNN heuristic does not yet
+accept separated mode (`GraphNN::run_inference` refuses `--dataset_separated`),
+so such a model trains and exports but cannot be run in Step 3 until that C++
+branch feeds the goal tensors.
+
 ### 3. Run evaluation and aggregate results
 
 Run inference using the trained models and aggregate the results into
