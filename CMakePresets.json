@@ -4,7 +4,6 @@
     {
       "name": "debug",
       "displayName": "Debug",
-      "generator": "Ninja",
       "binaryDir": "${sourceDir}/cmake-build-debug",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
@@ -15,7 +14,6 @@
     {
       "name": "release",
       "displayName": "Release",
-      "generator": "Ninja",
       "binaryDir": "${sourceDir}/cmake-build-release",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
@@ -26,7 +24,6 @@
     {
       "name": "debug-nn",
       "displayName": "Debug + NN",
-      "generator": "Ninja",
       "binaryDir": "${sourceDir}/cmake-build-debug-nn",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
@@ -37,7 +34,6 @@
     {
       "name": "release-nn",
       "displayName": "Release + NN",
-      "generator": "Ninja",
       "binaryDir": "${sourceDir}/cmake-build-release-nn",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",

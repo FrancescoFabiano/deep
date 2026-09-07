@@ -702,11 +702,11 @@ bool TrainingDataset<StateRepr>::priority_exploration(
 
   struct QueueEntry {
     StateType state;
-    size_t node_id{};
-    size_t depth{};
+    size_t node_id;
+    size_t depth;
     std::string filename;
-    int priority{};
-    size_t sequence{};
+    int priority;
+    size_t sequence;
   };
 
   struct Compare {
@@ -729,26 +729,27 @@ bool TrainingDataset<StateRepr>::priority_exploration(
 
   using VisitedMap = std::map<StateType, size_t>;
 
-  std::priority_queue<QueueEntry, std::vector<QueueEntry>, Compare> queue;
+  std::priority_queue<
+      QueueEntry,
+      std::vector<QueueEntry>,
+      Compare>
+      queue;
 
   /*
-   * Only already-expanded states live here.
-   *
-   * This is bounded to the latest 10k expanded states.
+   * Only expanded states are kept here.
    */
   VisitedMap visited_states;
 
   /*
-   * Stores iterators only, not another copy of State.
-   * Used to remove the oldest visited state.
+   * Only iterators are stored here, not another State copy.
+   * The front is always the oldest expanded state.
    */
   std::queue<typename VisitedMap::iterator> visited_order;
 
   /*
-   * Lightweight information kept for every generated dataset node.
+   * Lightweight graph information used for reverse BFS.
    */
   std::vector<NodeInfo> nodes;
-
   std::queue<size_t> reverse_queue;
 
   size_t sequence = 0;
@@ -772,7 +773,7 @@ bool TrainingDataset<StateRepr>::priority_exploration(
   }
 
   /*
-   * Keep the CSV open throughout generation.
+   * Keep the CSV open during the whole exploration.
    */
   std::fstream csv_file(
       m_filepath_csv,
@@ -821,8 +822,11 @@ bool TrainingDataset<StateRepr>::priority_exploration(
       };
 
   /*
-   * Initial state
+   * ============================================================
+   * INITIAL STATE
+   * ============================================================
    */
+
   int initial_priority = 0;
 
   if (use_heuristic) {
@@ -857,15 +861,6 @@ bool TrainingDataset<StateRepr>::priority_exploration(
 
   nodes.push_back(initial_info);
 
-  /*
-   * Important:
-   *
-   * Initial state starts in the frontier.
-   * It is NOT added to visited_states yet.
-   *
-   * A state becomes "visited" only when it is actually popped
-   * and expanded.
-   */
   queue.push({
       initial_state,
       0,
@@ -882,12 +877,19 @@ bool TrainingDataset<StateRepr>::priority_exploration(
    * FORWARD BFS / HFS
    * ============================================================
    */
+
   while (!queue.empty() &&
          m_current_nodes < m_threshold_node_generation) {
 
     QueueEntry current = queue.top();
     queue.pop();
 
+    /*
+     * Moving one state from frontier to explored does not change
+     * the total number of generated nodes:
+     *
+     *   explored + frontier
+     */
     ++m_current_nodes;
 
 #ifdef DEBUG
@@ -959,6 +961,11 @@ bool TrainingDataset<StateRepr>::priority_exploration(
            << "Frontier:"
            << " "
            << queue.size()
+           << " "
+           << std::setw(15)
+           << "Generated:"
+           << " "
+           << (m_current_nodes + queue.size())
            << std::endl;
       }
     }
@@ -966,33 +973,43 @@ bool TrainingDataset<StateRepr>::priority_exploration(
 #endif
 
     /*
-     * ----------------------------------------------------------
-     * The state is now being expanded.
+     * ==========================================================
+     * DUPLICATE AMONG RECENTLY EXPANDED STATES
+     * ==========================================================
      *
-     * Add it to the bounded visited cache.
-     * ----------------------------------------------------------
+     * Frontier duplicates are intentionally allowed.
+     *
+     * If another copy of this state was already expanded recently,
+     * we do not expand this copy again.
      */
     auto already_visited =
         visited_states.find(current.state);
 
     if (already_visited != visited_states.end()) {
 
+      const size_t existing_node_id =
+          already_visited->second;
+
       /*
-       * Another copy of this state was already expanded while this
-       * one was waiting in the frontier.
-       *
-       * Preserve the edge to the already-existing node and do not
-       * expand it again.
+       * Redirect the predecessors of this duplicate node to the
+       * already expanded copy.
        */
-      nodes[already_visited->second]
-          .predecessors
-          .insert(
-              nodes[already_visited->second].predecessors.end(),
-              nodes[current.node_id].predecessors.begin(),
-              nodes[current.node_id].predecessors.end());
+      for (const size_t predecessor :
+           nodes[current.node_id].predecessors) {
+
+        nodes[existing_node_id]
+            .predecessors
+            .push_back(predecessor);
+      }
 
       continue;
     }
+
+    /*
+     * ==========================================================
+     * ADD EXPANDED STATE TO RECENT VISITED CACHE
+     * ==========================================================
+     */
 
     auto visited_entry =
         visited_states.emplace(
@@ -1003,9 +1020,10 @@ bool TrainingDataset<StateRepr>::priority_exploration(
         visited_entry.first);
 
     /*
-     * Remove the oldest expanded state when the cache exceeds 10k.
+     * Keep only the latest 10,000 expanded states.
      */
     if (visited_states.size() > max_visited_states) {
+
       visited_states.erase(
           visited_order.front());
 
@@ -1013,10 +1031,11 @@ bool TrainingDataset<StateRepr>::priority_exploration(
     }
 
     /*
-     * ----------------------------------------------------------
-     * Goal
-     * ----------------------------------------------------------
+     * ==========================================================
+     * GOAL
+     * ==========================================================
      */
+
     if (current.state.is_goal()) {
       ++m_goal_founds;
 
@@ -1024,15 +1043,22 @@ bool TrainingDataset<StateRepr>::priority_exploration(
       nodes[current.node_id].is_goal = true;
     }
 
+    /*
+     * ==========================================================
+     * DEPTH LIMIT
+     * ==========================================================
+     */
+
     if (current.depth >= max_depth) {
       continue;
     }
 
     /*
-     * ----------------------------------------------------------
-     * Generate successors
-     * ----------------------------------------------------------
+     * ==========================================================
+     * GENERATE SUCCESSORS
+     * ==========================================================
      */
+
     for (const auto &action : *actions) {
 
       if (!current.state.is_executable(action)) {
@@ -1047,8 +1073,7 @@ bool TrainingDataset<StateRepr>::priority_exploration(
       }
 
       /*
-       * Only check against states that have already been expanded
-       * and are still inside the recent 10k cache.
+       * Check only recently expanded states.
        */
       auto existing =
           visited_states.find(next_state);
@@ -1057,8 +1082,6 @@ bool TrainingDataset<StateRepr>::priority_exploration(
 
         /*
          * current -> existing
-         *
-         * Keep this edge for the later reverse BFS.
          */
         nodes[existing->second]
             .predecessors
@@ -1068,11 +1091,29 @@ bool TrainingDataset<StateRepr>::priority_exploration(
       }
 
       /*
-       * The successor is not inside the visited cache.
+       * ========================================================
+       * GENERATION LIMIT
+       * ========================================================
        *
-       * It may already exist somewhere in the frontier, but we
-       * deliberately do not care about detecting that here.
+       * m_current_nodes = already explored nodes
+       * queue.size()    = generated nodes still in frontier
+       *
+       * Together they are the total number of generated nodes.
+       *
+       * Never allow another node once this reaches the requested
+       * generation threshold.
        */
+      if (m_current_nodes + queue.size() >=
+          m_threshold_node_generation) {
+        break;
+      }
+
+      /*
+       * ========================================================
+       * NEW NODE
+       * ========================================================
+       */
+
       int priority = 0;
 
       if (use_heuristic) {
@@ -1110,7 +1151,7 @@ bool TrainingDataset<StateRepr>::priority_exploration(
           current.node_id);
 
       /*
-       * Write the dataset row immediately.
+       * Write the row immediately.
        */
       next_info.score_position =
           write_row(
@@ -1125,9 +1166,9 @@ bool TrainingDataset<StateRepr>::priority_exploration(
       ++m_added_to_dataset;
 
       /*
-       * The full state stays in the frontier until it is expanded.
+       * The full state stays in the frontier until expansion.
        *
-       * It does NOT enter visited_states yet.
+       * It is NOT added to visited_states yet.
        */
       queue.push({
           std::move(next_state),
@@ -1146,12 +1187,8 @@ bool TrainingDataset<StateRepr>::priority_exploration(
    * ============================================================
    * REVERSE MULTI-SOURCE BFS
    * ============================================================
-   *
-   * Every discovered goal starts at distance 0.
-   *
-   * Following predecessor edges backwards gives the shortest
-   * distance to a discovered goal in the generated graph.
    */
+
   for (size_t node_id = 0;
        node_id < nodes.size();
        ++node_id) {
@@ -1179,7 +1216,6 @@ bool TrainingDataset<StateRepr>::priority_exploration(
 
       if (nodes[predecessor_id].score !=
           m_failed_state) {
-
         continue;
       }
 
@@ -1196,6 +1232,7 @@ bool TrainingDataset<StateRepr>::priority_exploration(
    * UPDATE SCORES IN CSV
    * ============================================================
    */
+
   size_t reachable_count = 0;
   size_t failed_count = 0;
 
@@ -1226,6 +1263,14 @@ bool TrainingDataset<StateRepr>::priority_exploration(
 
   os << "[DEBUG] Total generated states: "
      << nodes.size()
+     << std::endl;
+
+  os << "[DEBUG] Explored states: "
+     << m_current_nodes
+     << std::endl;
+
+  os << "[DEBUG] Remaining frontier: "
+     << queue.size()
      << std::endl;
 
   os << "[DEBUG] States with finite distance-to-goal: "
