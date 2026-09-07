@@ -1,6 +1,15 @@
+"""Spot-check a trained distance estimator: torch vs ONNX vs table label on
+random training states of every instance under <batch>/_models/<domain>/.
+
+Reads the normalisation from distance_estimator_C.txt (what the planner reads),
+finds the table by its depth pattern (the generator now embeds the strategy in
+the file name), and uses the planner's 42-bit width in BITMASK mode.
+"""
+
 from __future__ import annotations
 
 import argparse
+import glob
 import os
 import random
 
@@ -10,6 +19,17 @@ from pathlib import Path
 from tqdm import tqdm
 
 from src.utils import select_model
+
+
+def read_constants(path: str) -> tuple[float, float]:
+    """`slope = ...` / `intercept = ...` -- the two lines the C++ parses."""
+    vals = {}
+    with open(path, encoding="utf-8") as fh:
+        for line in fh:
+            if "=" in line:
+                k, v = line.split("=", 1)
+                vals[k.strip()] = float(v)
+    return vals["slope"], vals["intercept"]
 
 
 def get_subfolders(root: str):
@@ -60,24 +80,28 @@ def run_test(
     goal_dot: str | None = None,
     depth: int | None = None,
     bitmask: bool = False,
+    constants: tuple[float, float] = (0.01996, 0.001),
 ):
-    model = select_model("distance_estimator", False, False)
+    slope, intercept = constants
+    model = select_model("distance_estimator", goal_dot is not None, False, bitmask=bitmask)
     model.load_model(model_path)
 
     # PyTorch
     out = model.predict_single(
         state_dot, depth=depth, goal_dot=goal_dot, bitmask=bitmask
     )
-    final_out = int((out - 0.001) / 0.01996)
-    # print(f"PyTorch output: {out} -> {final_out}")
+    final_out = int((out - intercept) / slope)
 
     # ONNX
-    out_onnx = model.try_onnx(onnx_model_path, [state_dot], bitmask=bitmask)
+    out_onnx = model.try_onnx(
+        onnx_model_path, [state_dot], bitmask=bitmask,
+        goal_dot_files=[goal_dot] if goal_dot is not None else None,
+    )
     # Ensure scalar
     out_onnx_scalar = (
         float(out_onnx[0]) if hasattr(out_onnx, "__len__") else float(out_onnx)
     )
-    final_out_onnx = int((out_onnx_scalar - 0.001) / 0.01996)
+    final_out_onnx = int((out_onnx_scalar - intercept) / slope)
     # print(f"ONNX output: {out_onnx} -> {final_out_onnx}")
 
     # Compare with an absolute tolerance (in bins)
@@ -100,12 +124,19 @@ def main(path_experiment_batch: str, n_trials: int):
     for domain in domains:
         domain_problems = get_subfolders(os.path.join(domain, "training_data"))
 
+        constants = read_constants(os.path.join(domain, "distance_estimator_C.txt"))
         for problem in domain_problems:
             print(f"Problem: {problem}")
             problem_name = os.path.basename(problem)
 
-            csv_path = os.path.join(problem, f"{problem_name}_depth_25.csv")
-            csv_file = pd.read_csv(csv_path)
+            tables = sorted(glob.glob(os.path.join(problem, "*_depth_*.csv")))
+            if len(tables) != 1:
+                print(f"[WARN] expected one generation table in {problem}, found {len(tables)}")
+                continue
+            csv_file = pd.read_csv(tables[0])
+            goal_dot = os.path.join(problem, "goal_tree.dot")
+            separated = os.path.isdir(os.path.join(problem, "RawFiles", "hash_separated")) \
+                and os.path.isfile(goal_dot)
 
             raw_dir = os.path.join(problem, "RawFiles")
             # choose first subfolder inside RawFiles
@@ -115,7 +146,7 @@ def main(path_experiment_batch: str, n_trials: int):
                 continue
 
             state_root = subdirs[0]
-            if_bitmask = os.path.basename(state_root) == "mask_merged"
+            if_bitmask = os.path.basename(state_root).startswith("mask")
             samples_root = sample_dot_files(state_root, n_trials)
 
             for state_dot in tqdm(samples_root, desc=problem_name):
@@ -129,7 +160,9 @@ def main(path_experiment_batch: str, n_trials: int):
                     onnx_path,
                     str(state_dot),
                     ground_truth,
+                    goal_dot=goal_dot if separated else None,
                     bitmask=if_bitmask,
+                    constants=constants,
                 )
 
 

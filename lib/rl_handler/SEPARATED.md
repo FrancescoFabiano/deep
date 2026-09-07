@@ -51,7 +51,7 @@ of step with `candidate_batch`.
   encoder's goal packing and the C++ `m_goal_graph_tensor` remains pending a C++
   fringe/goal tensor dump. Inference succeeds, but exact node-order equivalence
   is not yet asserted.
-- **gnn_handler / gnn_handler_plus = training + export ready; deployment pending
+- **gnn_handler = training + export ready (gnn_handler_plus removed 2026-09-07); deployment pending
   the C++ `run_inference` separated branch.** A separated distance-estimator ONNX
   exports the goal inputs (`goal_node_ids, goal_edge_index, goal_edge_attr,
   goal_batch`). Deployment requires the C++ `GraphNN::run_inference` separated

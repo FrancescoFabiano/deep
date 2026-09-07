@@ -1,9 +1,14 @@
 import os
+import sys
 import time
 import argparse
 import subprocess
 import concurrent.futures
 import multiprocessing
+
+# The multi-strategy generator's directory level. The GNN distance estimator
+# reads the flat S_DFS layout only (one state in, one score out; no strategies).
+STRATEGY_DIRS = {"BFS", "DFS", "S_DFS", "HFS"}
 
 
 def find_training_data_folders(batch_root):
@@ -33,11 +38,17 @@ def run_training(training_data_folder, batch_root, no_goal, dataset_type):
     if not instance_names:
         print(f"[WARNING] No training instances found in {training_data_folder}")
         return
+    strat = sorted(set(instance_names) & STRATEGY_DIRS)
+    if strat:
+        print(f"[ERROR] {training_data_folder} holds the per-strategy layout {strat}; the "
+              f"GNN reads the flat <training_data>/<instance>/ layout (generate WITHOUT "
+              f"--dataset-generation). Skipping.")
+        return
 
     model_dir = os.path.dirname(training_data_folder)
 
     cmd = [
-        "python3",
+        sys.executable,          # the interpreter running this script, not whatever `python3` is
         "lib/gnn_handler/__main__.py",
         "--folder-raw-data",
         training_data_folder,
@@ -52,8 +63,10 @@ def run_training(training_data_folder, batch_root, no_goal, dataset_type):
     ]
 
     if no_goal:
-        cmd.append("--kind-of-data")
-        cmd.append("separated")
+        # Separated data: the state DOT is goal-free, so the instance's
+        # goal_tree.dot is fed as a second graph (both halves are required by
+        # the trainer; sending only the first was why this path never ran).
+        cmd += ["--kind-of-data", "separated", "--use-goal", "true"]
 
     print(" ".join(cmd))
     # print(f"[INFO] Launching training for {training_data_folder}")
@@ -67,8 +80,11 @@ def run_training(training_data_folder, batch_root, no_goal, dataset_type):
         print(f"{prefix} Showing one log line every 15 seconds...")
 
         last_print_time = 0  # epoch time
+        from collections import deque
+        recent = deque(maxlen=40)   # the tail of the child's output, for failures
 
         for line in iter(process.stdout.readline, ""):
+            recent.append(line.rstrip())
             now = time.time()
             if now - last_print_time >= 15:
                 print(f"{prefix} {line.strip()}")
@@ -80,7 +96,11 @@ def run_training(training_data_folder, batch_root, no_goal, dataset_type):
         if return_code == 0:
             print(f"{prefix} [SUCCESS] Training completed.")
         else:
-            print(f"{prefix} [ERROR] Training failed with code {return_code}")
+            # A swallowed traceback is a failure nobody can act on: show the tail.
+            print(f"{prefix} [ERROR] Training failed with code {return_code}; last "
+                  f"{len(recent)} lines of its output:")
+            for ln in recent:
+                print(f"{prefix}   {ln}")
 
     except Exception as e:
         print(f"[ERROR] Unexpected error during training {training_data_folder}: {e}")

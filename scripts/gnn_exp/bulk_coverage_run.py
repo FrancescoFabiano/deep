@@ -136,10 +136,10 @@ def process_domain_split(binary_path, split_path, threads, binary_args, search_p
     return results
 
 def generate_domain_combined_tex(run_folder, domain_name, training_rows, test_rows, search_prefix):
-    training_solved, training_total, training_avg = compute_summary(training_rows) if training_rows else (0, 0, {c: "-" for c in NUMERIC_COLUMNS})
-    test_solved, test_total, test_avg = compute_summary(test_rows) if test_rows else (0, 0, {c: "-" for c in NUMERIC_COLUMNS})
+    training_solved, training_total, training_avg = compute_summary(training_rows) if training_rows else (0, 0, {**{c: "-" for c in NUMERIC_COLUMNS}, "Solved": "0/0 (0\\%)"})
+    test_solved, test_total, test_avg = compute_summary(test_rows) if test_rows else (0, 0, {**{c: "-" for c in NUMERIC_COLUMNS}, "Solved": "0/0 (0\\%)"})
     combined_rows = training_rows + test_rows
-    combined_solved, combined_total, combined_avg = compute_summary(combined_rows) if combined_rows else (0, 0, {c: "-" for c in NUMERIC_COLUMNS})
+    combined_solved, combined_total, combined_avg = compute_summary(combined_rows) if combined_rows else (0, 0, {**{c: "-" for c in NUMERIC_COLUMNS}, "Solved": "0/0 (0\\%)"})
 
     tex_lines = [
         "\\documentclass{article}",
@@ -196,7 +196,7 @@ def generate_monolithic_combined_tex(run_folder, all_training, all_test, search_
 
     def compute_avg(rows):
         if not rows:
-            return {c: "-" for c in NUMERIC_COLUMNS}
+            return {**{c: "-" for c in NUMERIC_COLUMNS}, "Solved": "0/0 (0\\%)"}
         return compute_summary(rows)[2]
 
     training_avg = compute_avg(all_training)

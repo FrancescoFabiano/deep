@@ -1,14 +1,28 @@
+"""Distance-estimator trainer: build data, train, export ONNX for the planner.
+
+Per-STATE regressor: one state graph in (merged: goal inlined in the DOT;
+separated: the instance's goal_tree.dot fed as a second graph), one score out.
+No tree, no fringe. Data path: GraphDataPipeline (rows) + GraphStore (graphs
+parsed once per instance, cached under <dir-save-data>/cache/, batched by
+index). Export: TorchScript exporter, single file, then a contract check and a
+planner-style single-state parity check against onnxruntime -- what leaves
+this script is what the C++ GraphNN feeds.
+
+Driven by scripts/gnn_exp/train_models.py; the flags are its interface.
+"""
+
 import argparse
 import os
 
 import torch
 
+from src.graph_store import GraphStore
 from src.preprocessing import (
     GraphDataPipeline,
 )
 from src.utils import (
-    get_dataloaders,
-    prepare_samples,
+    get_batchers,
+    prepare_targets,
     print_values,
     seed_everything,
     select_model,
@@ -206,12 +220,26 @@ def main(args):
             "state DOTs are goal-free, so the goal_tree.dot must be fed as a "
             "separate goal graph."
         )
+    if kind_of_data == "merged" and use_goal:
+        raise SystemExit(
+            "kind_of_data='merged' with --use-goal true: the goal is already inlined "
+            "in every merged state DOT and there is no goal_tree.dot to feed, so the "
+            "goal branch would never receive a graph (and the planner feeds none in "
+            "merged mode). Use --use-goal false, or separated data."
+        )
+    if use_depth:
+        raise SystemExit(
+            "--use-depth true: the planner never feeds a depth input to the distance "
+            "estimator, so such a model cannot be deployed. Use --use-depth false."
+        )
 
     print("\n************************************************")
     print(
         f"subset_train: {list_subset_train} | {dataset_type} | {kind_of_data} | Use goal: {use_goal} | Use depth: {use_depth} | Model name: {model_name} | Train: {if_train} | Build Data: {if_build_data}",
     )
 
+    cache_dir = os.path.join(path_data, "cache")
+    bitmask = dataset_type == KEYWORD_BITMASK
     if if_build_data:
         pipe = GraphDataPipeline(
             folder_data=folder_raw_data,
@@ -225,35 +253,50 @@ def main(args):
             use_depth=use_depth,
             random_state=seed,
         )
+        # Graphs: parsed once per instance, cached; rows become indices.
+        store = pipe.build_store(cache_dir=cache_dir, verbose=True)
+        pipe.save(out_dir=data_path, extra_params={})
+        data = torch.load(data_path, weights_only=False)
+    else:
+        data = torch.load(data_path, weights_only=False)
+        if data.get("format") != 2:
+            raise SystemExit(
+                f"{data_path} predates the graph-store format; rerun with --build-data true"
+            )
+        # Rebuild the store from the per-instance caches recorded at build time.
+        stores = []
+        for cf in data["params"]["cache_files"]:
+            payload = torch.load(cf, weights_only=False)
+            stores.append(GraphStore(payload["paths"], payload.get("node_ids"), payload.get("node_bits"),
+                                     payload["edge_index"], payload["edge_attr"],
+                                     payload["node_ptr"], payload["edge_ptr"]))
+        store = GraphStore.concat(stores)
+        if store.paths != data["store_paths"]:
+            raise SystemExit("graph caches changed since samples.pt was built; rerun with "
+                             "--build-data true")
 
-        pipe.save(
-            out_dir=data_path,
-            extra_params={},
-        )
-
-    data = torch.load(data_path, weights_only=False)
-    train_samples = data["train_samples"]
-    test_samples = data["test_samples"]
-
-    train_samples_copy = train_samples.copy()
-    test_samples_copy = test_samples.copy()
-
-    train_samples_copy, test_samples_copy, params_f = prepare_samples(
-        train_samples_copy, test_samples_copy, unreachable_state_value
+    train_index, test_index = data["train_index"], data["test_index"]
+    depths = [d for d in data["params"].get("generation_depths", {}).values() if d]
+    generation_depth = max(depths) if depths else None
+    train_index, test_index, params_f = prepare_targets(
+        train_index, test_index, unreachable_state_value, max_depth=generation_depth
     )
+    print(f"train samples: {train_index['state'].numel()}  test samples: "
+          f"{test_index['state'].numel()}  graphs in store: {len(store)}  "
+          f"max_depth for normalisation: {generation_depth or 'legacy 50'}")
 
     if verbose:
         print("Train values:")
-        print_values(train_samples_copy)
+        print_values(train_index["raw_target"])
         print("Test values:")
-        print_values(test_samples_copy)
+        print_values(test_index["raw_target"])
         print("\n")
         print("Normalization parameters: ", params_f)
 
-    train_loader, val_loader = get_dataloaders(
-        train_samples_copy,
-        test_samples_copy,
-        batch_size=batch_size,
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    store.to(device)
+    train_loader, val_loader = get_batchers(
+        store, train_index, test_index, batch_size=batch_size, seed=seed, use_depth=use_depth,
     )
 
     path_model = path_save_model
@@ -293,13 +336,23 @@ def main(args):
     onnx_model_path = f"{path_model}/{model_name}.onnx"
     m.to_onnx(onnx_model_path, use_goal, use_depth)
 
+    # Planner-style parity: single states fed exactly as GraphNN.tpp does.
+    n_check = min(32, test_index["state"].numel())
+    check = m.verify_onnx(
+        onnx_model_path, store,
+        test_index["state"][:n_check].tolist(),
+        test_index["goal"][:n_check].tolist() if use_goal else None,
+    )
+    print(f"[onnx] contract OK; torch vs onnxruntime on {check['n_checked']} single-state "
+          f"feeds: max |diff| = {check['max_abs_diff']:.2e}")
+
     if kind_of_data == "separated":
         print(
-            "\n[NOTE] kind_of_data='separated': this distance-estimator ONNX "
-            "exports the goal_* inputs. Deployment requires the C++ "
-            "GraphNN::run_inference separated branch to feed get_goal_tensor() "
-            "into them, mirroring FringeEvalRL. Training/export here is the "
-            "ready precursor.\n"
+            "\n[NOTE] kind_of_data='separated': this ONNX declares the goal_* inputs "
+            "(8 inputs). The planner's GraphNN::run_inference currently refuses "
+            "--dataset_separated and pushes only the 4 state tensors; deploying this "
+            "model needs that C++ branch to feed get_goal_tensor() as FringeEvalRL "
+            "does. Training/export/parity here are complete.\n"
         )
 
     if if_try_example:
@@ -339,8 +392,20 @@ def main(args):
     ) as fh:
         for name, value in vars(args).items():
             fh.write(f"{name} = {value}\n")
+        # Provenance the planner-side reader needs to check a deployment against.
+        fh.write(f"instances = {data['params'].get('instances')}\n")
+        fh.write(f"generation_depths = {data['params'].get('generation_depths')}\n")
+        fh.write(f"normalization_max_depth = {generation_depth or 50}\n")
+        fh.write(f"onnx_inputs = {check_inputs(onnx_model_path)}\n")
+        fh.write(f"onnx_parity_max_abs_diff = {check['max_abs_diff']}\n")
 
     return onnx_model_path
+
+
+def check_inputs(onnx_model_path: str):
+    import onnx
+    m = onnx.load(onnx_model_path, load_external_data=False)
+    return [(i.name, i.type.tensor_type.elem_type) for i in m.graph.input]
 
 
 if __name__ == "__main__":
