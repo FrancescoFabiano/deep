@@ -118,14 +118,14 @@ public:
    * routine during search using the exploitation percentage.
    * @return RL the number of states to add.
    */
-  [[nodiscard]] int get_succesors_to_analyze() const noexcept;
+  [[nodiscard]] int get_successors_to_analyze() const noexcept;
 
   /**
    * @brief Get the number of states to randomly explore during RL routine using
    * the exploration percentage.
    * @return RL the number of states to randomly explore.
    */
-  [[nodiscard]] int get_exploration_nodes() const noexcept;
+  [[nodiscard]] static int get_exploration_nodes() noexcept;
 
   /**
    * @brief Get the RL heuristic selection.

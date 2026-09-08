@@ -32,7 +32,16 @@ mkdir -p "$BUILD_DIR"
 cd "$BUILD_DIR"
 
 cmake ..
-make -j$(nproc)
+
+if command -v nproc >/dev/null 2>&1; then
+    JOBS=$(nproc)
+elif [[ "$(uname -s)" == "Darwin" ]]; then
+    JOBS=$(sysctl -n hw.ncpu)
+else
+    JOBS=1
+fi
+
+make -j"$JOBS"
 
 cd ..
 if ./build/onnx_test; then

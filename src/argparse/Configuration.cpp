@@ -118,7 +118,7 @@ void Configuration::set_heuristic_opt(const std::string &val,
   }
 }
 
-int Configuration::get_succesors_to_analyze() const noexcept {
+int Configuration::get_successors_to_analyze() const noexcept {
   // Maybe make the various fields dependent on the Configuration rather than on
   // Argparse for better multi-threading options
   if (m_search_strategy_enum != SearchType::RL) {
@@ -129,7 +129,7 @@ int Configuration::get_succesors_to_analyze() const noexcept {
                           instance.get_RL_exploitation_percentage() / 100.0);
 }
 
-int Configuration::get_exploration_nodes() const noexcept {
+int Configuration::get_exploration_nodes() noexcept {
   // Maybe make the various fields dependent on the Configuration rather than on
   // Argparse for better multi-threading options
   const auto &instance = ArgumentParser::get_instance();
@@ -298,7 +298,7 @@ void Configuration::print(std::ostream &os) const {
     // instance.get_RL_exploration_percentage() / 100.0) << " nodes)\n";
     os << "    RL exploitation percentage: "
        << instance.get_RL_exploitation_percentage() << "% ("
-       << get_succesors_to_analyze() << " nodes)" << std::endl;
+       << get_successors_to_analyze() << " nodes)" << std::endl;
   }
   if (m_heuristic_enum == Heuristics::RL_H) {
     os << "    RL heuristics used is: " << m_RL_heuristics_opt << std::endl;

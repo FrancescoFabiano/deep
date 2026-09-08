@@ -59,9 +59,9 @@ done
 # Local CLion setup
 # --------------------------
 setup_clion() {
-    local run_dir=".run"
+    local run_dir=".idea/runConfigurations"
     local run_name="deep"
-    local run_file="$run_dir/deep.run.xml"
+    local run_file="$run_dir/deep.xml"
     local workspace=".idea/workspace.xml"
 
     mkdir -p "$run_dir"

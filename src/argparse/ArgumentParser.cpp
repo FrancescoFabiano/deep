@@ -358,22 +358,6 @@ ArgumentParser::ArgumentParser() : app("deep") {
       ->check(CLI::IsMember({"MIN", "MAX", "AVG", "RNG"}))
       ->default_val("MIN");
 
-  search_group->add_flag(
-      "--RL_adaptive", m_RL_adaptive,
-      "Adapt the exploration slots during the RL search: start fully "
-      "exploitative and escalate random reservoir sampling when the best "
-      "number of satisfied subgoals stagnates, resetting on progress. "
-      "Overrides the static --RL_exploration split.");
-
-  search_group
-      ->add_option("--RL_adaptive_signal", m_RL_adaptive_signal,
-                   "Escalation signal for --RL_adaptive. 'subgoals' escalates "
-                   "on stagnation of the satisfied-subgoal count; 'budget' is "
-                   "heuristic-free and advances regimes on expended search "
-                   "rounds alone (iterative-deepening style).")
-      ->check(CLI::IsMember({"subgoals", "budget"}))
-      ->default_val("subgoals");
-
   dataset_group
       ->add_option("--RL_seed", m_RL_seed,
                    "Set the seed used for RL exploration and RNG heuristics. "
@@ -595,11 +579,6 @@ int ArgumentParser::get_RL_exploitation_percentage() const noexcept {
   return m_RL_exploitation_percentage;
 }
 
-bool ArgumentParser::get_RL_adaptive() const noexcept { return m_RL_adaptive; }
-
-const std::string &ArgumentParser::get_RL_adaptive_signal() const noexcept {
-  return m_RL_adaptive_signal;
-}
 
 std::string ArgumentParser::get_RL_heur_selection() const noexcept {
   return m_RL_heur_selection;

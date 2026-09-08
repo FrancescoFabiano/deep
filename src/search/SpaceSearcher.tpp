@@ -109,7 +109,7 @@ bool SpaceSearcher<StateRepr, Strategy>::search_sequential(
 
   const auto &configuration = Configuration::get_instance();
 
-  const int RL_node_to_add = configuration.get_succesors_to_analyze();
+  const int RL_node_to_add = configuration.get_successors_to_analyze();
   const bool is_RL_search =
       configuration.get_search_strategy() == SearchType::RL;
 
