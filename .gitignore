@@ -69,6 +69,7 @@ results/
 # MacOS
 *.DS_Store
 .DS_Store
+**/.DS_Store
 exp/.DS_Store
 exp/ICAPS20/.DS_Store
 
