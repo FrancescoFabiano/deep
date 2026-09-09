@@ -151,6 +151,23 @@ def build_parser() -> argparse.ArgumentParser:
              "exploratory=true, cross_config=true. Not a transfer result.")
     p.add_argument("--eval-seeds", type=int, default=5)
     p.add_argument("--eval-expansion-cap", type=int, default=None)
+    # ---- unified graph + frozen evaluation set (unify.py / frozen_eval.py) ----
+    p.add_argument("--unified", action="store_true",
+                   help="merge every strategy's tree of one problem into ONE graph of "
+                        "content-unique states (delta recomputed on the union), train "
+                        "on EVERY trajectory of EVERY behaviour policy (trace:<s> per "
+                        "strategy, nothing held out), and score the ranking metrics on "
+                        "a FROZEN set of random-policy fringes drawn once from a pinned "
+                        "seed. Off (default): one tree per strategy + held-out "
+                        "trajectories, byte-identical to before.")
+    p.add_argument("--frozen-eval-m", type=int, default=64,
+                   help="frozen fringes per instance (--unified only)")
+    p.add_argument("--frozen-eval-rollouts", type=int, default=16,
+                   help="random rollouts pooled per instance before drawing M "
+                        "(--unified only)")
+    p.add_argument("--frozen-eval-seed", type=int, default=None,
+                   help="seed of the frozen set; default seed + 7919 so two runs at "
+                        "the same seed score the same fringes")
     p.add_argument("--device", default=None)
     # ---- export + gates ----
     p.add_argument("--export-onnx", dest="export_onnx", action="store_true", default=True)
@@ -198,6 +215,9 @@ def main(argv=None) -> int:
             fidelity_instances=a.fidelity_instances, deep_exe=a.deep_exe,
             device=a.device, export_onnx=a.export_onnx, dataset_type=a.dataset_type,
             behaviour_policies=a.behaviour_policies,
+            unified=a.unified, frozen_eval_m=a.frozen_eval_m,
+            frozen_eval_rollouts=a.frozen_eval_rollouts,
+            frozen_eval_seed=a.frozen_eval_seed,
         )
         out = run(cfg, REPO)
         # The run fails only on an ARMED, BLOCKING gate that did not pass.

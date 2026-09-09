@@ -53,7 +53,7 @@ path, so the env needs all of it.
 from __future__ import annotations
 
 import random
-from typing import Callable, List, Sequence
+from typing import Callable, List, Optional, Sequence
 
 from .tree import INF_DELTA, TreeInstance
 
@@ -62,8 +62,46 @@ from .tree import INF_DELTA, TreeInstance
 BEHAVIOUR_POLICIES = ("bfs", "dfs", "hfs_oracle", "random")
 # The generator's own expansion order, replayed. Needs a tree WITH a trace.
 TRACE_POLICY = "trace"
-# Everything make_policy accepts.
+# On a UNIFIED graph (unify.py) one graph carries one trace PER strategy, so the
+# behaviour is named `trace:<strategy>` (`trace:bfs`, `trace:s_dfs`, ...). Bare
+# `trace` is ambiguous there and make_policy refuses it; dataset.generate_dataset
+# expands `trace` into every `trace:<s>` the graph carries.
+TRACE_PREFIX = TRACE_POLICY + ":"
+# Everything make_policy accepts by exact name (plus the `trace:<s>` family, see
+# is_policy_name).
 ALL_POLICIES = BEHAVIOUR_POLICIES + (TRACE_POLICY,)
+
+
+def is_policy_name(name: str) -> bool:
+    if name in ALL_POLICIES:
+        return True
+    if name.startswith(TRACE_PREFIX):
+        from .strategies import STRATEGIES
+        return name[len(TRACE_PREFIX):] in STRATEGIES
+    return False
+
+
+def trace_policies_of(instance: TreeInstance) -> List[str]:
+    """The trace behaviours this instance can replay: `trace:<s>` per strategy on a
+    unified graph, bare `trace` on a per-strategy tree, nothing on a traceless one."""
+    traces = getattr(instance, "traces", None)
+    if traces:
+        from .strategies import STRATEGIES
+        return [TRACE_PREFIX + s for s in STRATEGIES if s in traces]
+    return [TRACE_POLICY] if instance.has_trace else []
+
+
+def expand_policies(instance: TreeInstance, policies: Sequence[str]) -> List[str]:
+    """Resolve `trace` per instance (-> `trace:<s>` on a unified graph); everything
+    else passes through. Order preserved, duplicates dropped."""
+    out: List[str] = []
+    for p in policies:
+        names = trace_policies_of(instance) if p == TRACE_POLICY and getattr(
+            instance, "traces", None) else [p]
+        for n in names:
+            if n not in out:
+                out.append(n)
+    return out
 # Sentinel rank for states the generator never expanded: after every traced state,
 # tied among themselves (the random tie-break then decides).
 _TRACE_UNEXPANDED = 1e18
@@ -92,6 +130,11 @@ def _trace_sigma(instance: TreeInstance, v: int) -> float:
     return float(r) if r is not None else _TRACE_UNEXPANDED
 
 
+def _strategy_trace_sigma(ranks: Sequence[Optional[int]], v: int) -> float:
+    r = ranks[v]
+    return float(r) if r is not None else _TRACE_UNEXPANDED
+
+
 def _sigma_fn(instance: TreeInstance, name: str, rng: random.Random):
     if name == "bfs":
         return lambda v: float(instance.depth[v])
@@ -101,7 +144,24 @@ def _sigma_fn(instance: TreeInstance, name: str, rng: random.Random):
         return lambda v: _oracle_sigma(instance, v)
     if name == "random":
         return lambda v: rng.random()
+    if name.startswith(TRACE_PREFIX):
+        strat = name[len(TRACE_PREFIX):]
+        traces = getattr(instance, "traces", None) or {}
+        if strat not in traces:
+            raise ValueError(
+                f"instance {instance.name!r} carries no {strat!r} trace "
+                f"(has {sorted(traces) or 'none'}); `{name}` needs a unified graph "
+                f"whose member trees include a {strat} tree."
+            )
+        ranks = traces[strat]
+        return lambda v: _strategy_trace_sigma(ranks, v)
     if name == TRACE_POLICY:
+        if getattr(instance, "traces", None):
+            raise ValueError(
+                f"instance {instance.name!r} is a unified graph with traces "
+                f"{sorted(instance.traces)}: bare 'trace' is ambiguous there. Use "
+                f"trace:<strategy>, or let dataset.generate_dataset expand it."
+            )
         if not instance.has_trace:
             raise ValueError(
                 f"instance {instance.name!r} carries no generation trace (hand-built "

@@ -34,7 +34,13 @@ from dataclasses import asdict, dataclass, field
 from typing import Dict, Iterable, List, Optional, Sequence
 
 from .env import FringeEnv, default_expansion_cap
-from .policies import ALL_POLICIES, BEHAVIOUR_POLICIES, make_policy
+from .policies import (
+    ALL_POLICIES,
+    BEHAVIOUR_POLICIES,
+    expand_policies,
+    is_policy_name,
+    make_policy,
+)
 from .tree import TreeInstance
 
 COUNTERFACTUAL_MODES = ("all", "none")
@@ -204,13 +210,16 @@ def generate_dataset(
     """
     policies = list(policies)
     for p in policies:
-        if p not in ALL_POLICIES:
-            raise ValueError(f"unknown behaviour policy {p!r}; expected one of {ALL_POLICIES}")
+        if not is_policy_name(p):
+            raise ValueError(f"unknown behaviour policy {p!r}; expected one of "
+                             f"{ALL_POLICIES} or trace:<strategy>")
     cap = int(expansion_cap) if expansion_cap is not None else default_expansion_cap(instances)
 
     rows: List[Transition] = []
     for inst in instances:
-        for pol in policies:
+        # On a unified graph `trace` means EVERY behaviour policy that built it:
+        # one rollout family per `trace:<s>` (see policies.expand_policies).
+        for pol in expand_policies(inst, policies):
             for s in range(int(seeds_per_policy)):
                 rows.extend(generate_episode(
                     inst, fringe_size, pol, s, cap, counterfactual,

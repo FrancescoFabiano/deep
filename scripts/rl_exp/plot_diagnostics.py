@@ -295,7 +295,11 @@ def main():
         print("[plot] no val checkpoints in telemetry"); return
     F = a.fringe
     held = "heldout_top1" in val[-1]
-    metric = "held-out top1 (oracle agreement)" if held else "coverage @ reference budget"
+    # UNIFIED runs (schema 5) score the heldout_* fields on the FROZEN random-fringe
+    # set; same keys, different fringes -- say so on the selection audit.
+    frozen = val[-1].get("eval_fringes") == "frozen_random"
+    where = "frozen random fringes" if frozen else "held-out"
+    metric = f"{where} top1 (oracle agreement)" if held else "coverage @ reference budget"
     field = "heldout_top1" if held else "coverage_at_reference_budget"
 
     fig_selection_audit(val, base, out / "selection_audit.png", F, metric, field)
@@ -306,6 +310,13 @@ def main():
     fig_metric_curve(val, base, out / "ndcg_vs_frames.png", F, "heldout_ndcg", "NDCG")
     fig_metric_curve(val, base, out / "js_divergence_vs_frames.png", F, "heldout_js",
                      "JS divergence (model vs oracle)", lower_better=True)
+    # regret at decision: delta(picked) - min delta over the beam, on the frontiers
+    # where the pick is alive (None where the pick is dead -> see picked_dead)
+    fig_metric_curve(val, base, out / "regret_at_decision_vs_frames.png", F,
+                     "heldout_regret_at_decision", "regret at decision (expansions)",
+                     lower_better=True)
+    fig_metric_curve(val, base, out / "picked_dead_vs_frames.png", F,
+                     "heldout_picked_dead", "picked-dead rate", lower_better=True)
     fig_ranking_bars(val, base, out / "ranking_bars.png", F)
     fig_line(val, base, out / "coverage_vs_checkpoint.png", F,
              "coverage_at_reference_budget", "coverage @ reference budget")

@@ -59,6 +59,18 @@ STRATEGIES="${STRATEGIES:-S_DFS}"
 TRAIN_STRATEGIES="${TRAIN_STRATEGIES:-${STRATEGIES}}"
 HEURISTICS="${HEURISTICS:-SUBGOALS}"      # HFS only; the C++ default, passed explicitly
 
+# --- unified graph + frozen evaluation set (2026-09-09) ---
+# UNIFIED=true merges every strategy's tree of one problem into ONE graph of
+# content-unique states (lib/rl_handler/src/offline/unify.py: delta recomputed on
+# the union), trains on EVERY trajectory of EVERY behaviour policy (nothing held
+# out), and scores the ranking metrics on a FROZEN set of FROZEN_EVAL_M random-
+# policy fringes per instance drawn once from a pinned seed (frozen_eval.py).
+# The generated data is untouched, so the .dataspec does not change and a
+# DATA_SOURCE reuse is legal; only training and evaluation differ.
+UNIFIED="${UNIFIED:-false}"               # true | false
+FROZEN_EVAL_M="${FROZEN_EVAL_M:-64}"      # frozen fringes per instance
+FROZEN_EVAL_ROLLOUTS="${FROZEN_EVAL_ROLLOUTS:-16}"   # random rollouts pooled per instance
+
 # --- what stays fixed across runs ---
 FRINGE_SIZES="${FRINGE_SIZES:-4 8 16 32}"
 DOMAINS="${DOMAINS:-CC}"                  # domains to symlink/check, e.g. "CC SC SCRich"
@@ -204,6 +216,7 @@ TRAIN_EXTRA+=" --context-mode ${CTX}"
 # the node channel contributes nothing, so any RL-vs-baseline gap comes from topology
 # and edge labels alone. Stamped exploratory=true in the selection sidecar.
 [[ "${ALLOW_CROSS_CONFIG:-false}" == "true" ]] && TRAIN_EXTRA+=" --allow-cross-config"
+[[ "${UNIFIED}" == "true" ]] && TRAIN_EXTRA+=" --unified --frozen-eval-m ${FROZEN_EVAL_M} --frozen-eval-rollouts ${FROZEN_EVAL_ROLLOUTS}"
 TRAIN_EXTRA="${TRAIN_EXTRA# }"
 
 # ============================================================
@@ -216,6 +229,7 @@ echo "  algo=${ALGO}  mode=${MODE}  strict=${STRICT}"
 echo "  ctx=${CTX}"
 echo "  fringes: ${FRINGE_SIZES}"
 echo "  strategies (pi_b): generate=${STRATEGIES}  train=${TRAIN_STRATEGIES}  hfs heuristic=${DATASPEC_HEUR}"
+echo "  unified: ${UNIFIED}$( [[ "${UNIFIED}" == "true" ]] && echo "  (frozen eval: M=${FROZEN_EVAL_M} x ${FROZEN_EVAL_ROLLOUTS} rollouts/instance)" )"
 echo "  dataspec: ${DATASPEC}"
 echo "  gen  flags: ${GEN_FLAG:-<none>}  discard=${DISCARD_FACTOR}  depth_map=${DEPTH_MAP}"
 echo "  train flags: ${TRAIN_FLAG} ${TRAIN_EXTRA}"
@@ -235,6 +249,12 @@ fail() { echo "[FAIL] ${BATCH_DIR} — $1"; rm -rf out; exit 1; }
 # for the whole training run.
 [[ "${RUN_INFERENCE}" == "true" || "${RUN_INFERENCE}" == "false" ]] \
     || fail "RUN_INFERENCE must be true|false, got '${RUN_INFERENCE}'"
+[[ "${UNIFIED}" == "true" || "${UNIFIED}" == "false" ]] \
+    || fail "UNIFIED must be true|false, got '${UNIFIED}'"
+[[ "${FROZEN_EVAL_M}" =~ ^[1-9][0-9]*$ ]] \
+    || fail "FROZEN_EVAL_M must be a positive integer, got '${FROZEN_EVAL_M}'"
+[[ "${FROZEN_EVAL_ROLLOUTS}" =~ ^[1-9][0-9]*$ ]] \
+    || fail "FROZEN_EVAL_ROLLOUTS must be a positive integer, got '${FROZEN_EVAL_ROLLOUTS}'"
 
 # Same reasoning for the numeric knobs: argparse would reject a bad value, but not
 # until step 2, i.e. after generation has already run. Reject here instead.
