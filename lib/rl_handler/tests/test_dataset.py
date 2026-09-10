@@ -176,3 +176,85 @@ def test_instance_diagnostics_has_every_F8_field(t19):
     assert d["b_v_hist"] == {0: 9, 1: 5, 2: 3, 3: 1, 4: 1}
     assert sum(d["b_v_hist"].values()) == 19
     assert d["delta_root"] == 4
+
+
+# ------------------------------------------------------- fill the non-full beams ----
+
+def _ternary_tree(depth: int = 4, goal_leaves=(80, 100, 120)):
+    """A complete ternary tree: the open set grows by 2 per expansion, so a random
+    growth from the root's 3 children passes any F <= 32 within the budget."""
+    n = sum(3 ** d for d in range(depth + 1))
+    children = [[] for _ in range(n)]
+    nxt = 1
+    for v in range(n):
+        for _ in range(3):
+            if nxt < n:
+                children[v].append(nxt)
+                nxt += 1
+    return make_tree(children, goals=list(goal_leaves), name="ternary")
+
+
+def test_fill_off_adds_nothing_and_fill_on_leaves_the_parent_untouched():
+    from src.offline.dataset import FILL_SEED_STRIDE
+    inst = _ternary_tree()
+    base = generate_episode(inst, fringe_size=8, policy_name="bfs", seed=1,
+                            expansion_cap=400)
+    assert not any(r.filled for r in base)
+    assert all(r.seed == 1 for r in base)
+    stats = {}
+    both = generate_episode(inst, fringe_size=8, policy_name="bfs", seed=1,
+                            expansion_cap=400, fill_fringes=True, fill_k=2,
+                            fill_stats=stats)
+    parent = [r for r in both if not r.filled]
+    assert [r.to_row() for r in parent] == [r.to_row() for r in base], (
+        "the parent rollout must be byte-identical with the fill on")
+    fill = [r for r in both if r.filled]
+    assert fill, "a ternary tree at F=8 has non-full decision states to branch from"
+    assert all(r.seed >= FILL_SEED_STRIDE for r in fill)
+    assert {r.seed % FILL_SEED_STRIDE for r in fill} == {1}
+    n_nonfull = len({r.t for r in base if not r.forced and len(r.obs) < 8})
+    assert stats["branch_points"] == n_nonfull
+    assert stats["attempts"] == 2 * n_nonfull
+    assert stats["kept"] + stats["discarded_goal"] + stats["discarded_ended"] \
+        + stats["discarded_budget"] == stats["attempts"]
+    assert stats["kept"] == len({r.seed for r in fill})
+
+
+def test_every_fill_branch_starts_from_a_full_legal_beam():
+    inst = _ternary_tree()
+    F = 8
+    rows = generate_episode(inst, fringe_size=F, policy_name="bfs", seed=3,
+                            expansion_cap=400, fill_fringes=True, fill_k=3)
+    by_branch = {}
+    for r in rows:
+        if r.filled:
+            by_branch.setdefault(r.seed, []).append(r)
+    assert by_branch
+    for seed, brows in by_branch.items():
+        first_t = min(r.t for r in brows)
+        first = [r for r in brows if r.t == first_t]
+        assert len(first[0].obs) == F, "the first recorded beam of a branch is full"
+        assert not first[0].forced
+        assert len(first) == F, "every slot of the full beam is enumerated"
+        for r in brows:
+            # legal by construction: no goal ever sits in a beam, and no node is
+            # its own ancestor's sibling twice (state ids are unique in the beam)
+            assert not any(inst.is_goal[v] for v in r.obs)
+            assert len(set(r.obs)) == len(r.obs)
+
+
+def test_fill_summary_reports_full_beam_fractions():
+    inst = _ternary_tree()
+    rows, s = generate_dataset([inst], 8, policies=["bfs"], seeds_per_policy=2,
+                               expansion_cap=400, verbose=False,
+                               fill_fringes=True, fill_k=2)
+    assert s["fill_fringes"] is True and s["fill_k"] == 2
+    assert s["n_fill_rows"] == sum(1 for r in rows if r.filled) > 0
+    assert 0.0 <= s["parent_full_beam_state_frac"] <= 1.0
+    assert s["fill_full_beam_state_frac"] > s["parent_full_beam_state_frac"]
+    assert s["fill"]["kept"] >= 1
+    rows0, s0 = generate_dataset([inst], 8, policies=["bfs"], seeds_per_policy=2,
+                                 expansion_cap=400, verbose=False)
+    assert s0["fill_fringes"] is False and s0["n_fill_rows"] == 0
+    assert s0["fill"]["attempts"] == 0
+    assert len(rows0) == len([r for r in rows if not r.filled])

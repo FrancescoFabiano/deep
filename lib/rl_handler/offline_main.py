@@ -168,6 +168,16 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--frozen-eval-seed", type=int, default=None,
                    help="seed of the frozen set; default seed + 7919 so two runs at "
                         "the same seed score the same fringes")
+    # ---- fill the non-full beams (dataset.py: fill branches) ----
+    p.add_argument("--fill-fringes", action="store_true",
+                   help="from every NON-FULL decision state of a behaviour rollout, "
+                        "roll --fill-k extra episodes: grow the open set with random "
+                        "expansions (no rows) until the beam holds F nodes, then "
+                        "continue under the same behaviour policy emitting rows "
+                        "(flagged filled=True). The parent rollouts are untouched. "
+                        "Off (default): nothing is added. Meant for --unified graphs.")
+    p.add_argument("--fill-k", type=int, default=4,
+                   help="fill branches per non-full decision state (--fill-fringes only)")
     p.add_argument("--device", default=None)
     # ---- export + gates ----
     p.add_argument("--export-onnx", dest="export_onnx", action="store_true", default=True)
@@ -218,6 +228,7 @@ def main(argv=None) -> int:
             unified=a.unified, frozen_eval_m=a.frozen_eval_m,
             frozen_eval_rollouts=a.frozen_eval_rollouts,
             frozen_eval_seed=a.frozen_eval_seed,
+            fill_fringes=a.fill_fringes, fill_k=a.fill_k,
         )
         out = run(cfg, REPO)
         # The run fails only on an ARMED, BLOCKING gate that did not pass.

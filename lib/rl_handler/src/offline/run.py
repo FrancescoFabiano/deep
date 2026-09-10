@@ -158,6 +158,14 @@ class RunConfig:
     frozen_eval_m: int = 128                # frozen fringes per instance (fewer if fewer exist)
     frozen_eval_rollouts: int = 128         # random rollouts pooled per instance
     frozen_eval_seed: Optional[int] = None  # default: seed + FROZEN_SEED_OFFSET
+    # FILL the non-full beams (dataset.py module docstring): from every non-full
+    # decision state of a behaviour rollout, fill_k extra rollouts are grown (random
+    # expansions, no rows) to a full beam and then rolled under the same behaviour
+    # policy (rows, flagged filled=True). Off = the parent rollouts only, byte-
+    # identical to before. Meant for unified graphs, where every strategy's
+    # expansions are available to the growth.
+    fill_fringes: bool = False
+    fill_k: int = 4
 
 
 def _net(cfg: RunConfig, max_delta: float):
@@ -354,6 +362,11 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
     # loaded table carries a trace (DOT names are creation-indexed); a tree without
     # one is a data defect and make_policy raises with the tree's name.
     behaviour = list(cfg.behaviour_policies or (TRACE_POLICY,))
+    if cfg.fill_fringes and not cfg.unified:
+        print("[run] WARNING --fill-fringes on PER-STRATEGY trees: a growth expansion "
+              "of a censored leaf is a fabricated dead end (only the rows expanding "
+              "such leaves are dropped, the grown beam itself stays). The fill is "
+              "designed for --unified graphs.")
     print(f"[run] behaviour policies={behaviour}  strategies="
           f"{sorted({_strat_label(i) for i in train_i if i.strategy})}"
           + ("  (unified: `trace` expands to "
@@ -365,7 +378,9 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
                                   expansion_cap=cap,
                                   counterfactual=cfg.counterfactual,
                                   n_refill_samples=cfg.n_refill_samples,
-                                  gamma=cfg.gamma)
+                                  gamma=cfg.gamma,
+                                  fill_fringes=cfg.fill_fringes,
+                                  fill_k=cfg.fill_k)
 
     # H2: per-instance ROW SHARE at assembly. One instance owning 48-60% of the gradient
     # (batch1 pl_7) must be VISIBLE in the log, not require forensics.
@@ -815,6 +830,15 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
                                          if isinstance(i, UnifiedInstance)}
                                         if cfg.unified else None),
                    "behaviour_policies_rolled": sorted(dsum.get("policies", [])),
+                   "fill_fringes": bool(cfg.fill_fringes),
+                   "fill_k": int(cfg.fill_k) if cfg.fill_fringes else 0,
+                   "fill": dsum.get("fill"),
+                   "beam_full_frac": {
+                       "all_decision_states": dsum.get("full_beam_state_frac"),
+                       "parent": dsum.get("parent_full_beam_state_frac"),
+                       "fill": dsum.get("fill_full_beam_state_frac"),
+                       "n_fill_rows": dsum.get("n_fill_rows"),
+                   },
                    "selection_window": SELECTION_WINDOW,
                    "selection_metric": ("heldout_ndcg"
                                         if ranking_eval
