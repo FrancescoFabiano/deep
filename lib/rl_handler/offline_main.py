@@ -160,9 +160,9 @@ def build_parser() -> argparse.ArgumentParser:
                         "a FROZEN set of random-policy fringes drawn once from a pinned "
                         "seed. Off (default): one tree per strategy + held-out "
                         "trajectories, byte-identical to before.")
-    p.add_argument("--frozen-eval-m", type=int, default=64,
+    p.add_argument("--frozen-eval-m", type=int, default=128,
                    help="frozen fringes per instance (--unified only)")
-    p.add_argument("--frozen-eval-rollouts", type=int, default=16,
+    p.add_argument("--frozen-eval-rollouts", type=int, default=128,
                    help="random rollouts pooled per instance before drawing M "
                         "(--unified only)")
     p.add_argument("--frozen-eval-seed", type=int, default=None,

@@ -49,8 +49,8 @@ from .tree import INF_DELTA, TreeInstance
 
 FROZEN_EVAL_VERSION = 1
 # Rollouts pooled per instance before drawing M fringes.
-DEFAULT_ROLLOUTS_PER_INSTANCE = 16
-DEFAULT_M_PER_INSTANCE = 64
+DEFAULT_ROLLOUTS_PER_INSTANCE = 128
+DEFAULT_M_PER_INSTANCE = 128
 # Offset added to the run seed when no explicit frozen-eval seed is given, so the
 # eval rollouts never coincide with a behaviour rollout seeded 0..k.
 FROZEN_SEED_OFFSET = 7919

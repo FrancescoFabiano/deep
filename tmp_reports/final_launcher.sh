@@ -68,8 +68,8 @@ HEURISTICS="${HEURISTICS:-SUBGOALS}"      # HFS only; the C++ default, passed ex
 # The generated data is untouched, so the .dataspec does not change and a
 # DATA_SOURCE reuse is legal; only training and evaluation differ.
 UNIFIED="${UNIFIED:-false}"               # true | false
-FROZEN_EVAL_M="${FROZEN_EVAL_M:-64}"      # frozen fringes per instance
-FROZEN_EVAL_ROLLOUTS="${FROZEN_EVAL_ROLLOUTS:-16}"   # random rollouts pooled per instance
+FROZEN_EVAL_M="${FROZEN_EVAL_M:-128}"     # frozen fringes per instance (all of them if fewer exist)
+FROZEN_EVAL_ROLLOUTS="${FROZEN_EVAL_ROLLOUTS:-128}"  # random rollouts pooled per instance
 
 # --- what stays fixed across runs ---
 FRINGE_SIZES="${FRINGE_SIZES:-4 8 16 32}"
@@ -111,7 +111,9 @@ CQL_ALPHA=1.0
 # Passed EXPLICITLY: create_all_training_data.py is shared with gnn_exp and its
 # default must not move under that pipeline's feet.
 # Read ONLY by the stochastic DFS worker: it is an S_DFS parameter (BFS/DFS/HFS never
-# discard). Project default 0.6 (set 2026-09-06); fingerprinted in the dataspec.
+# discard). Fingerprinted in the .dataspec as `discard=` -- that field IS the S_DFS
+# discard factor, and a batch reusing this data must match it. batch1_cc_strat /
+# batch1_cc_unified were generated at 0.4.
 DISCARD_FACTOR="${DISCARD_FACTOR:-0.4}"
 
 # A depth bound that CONTAINS the optimal keeps the whole solution path while cutting
@@ -355,8 +357,10 @@ else
         [[ "${DRY_RUN}" == "true" ]] || { echo "${DATASPEC}" > "${BATCH_DIR}/.dataspec"; rm -rf out; }
     else
         echo "[1/3] training data already present — skipping generation."
-        # refresh spec if absent
-        [[ -f "${BATCH_DIR}/.dataspec" ]] || echo "${DATASPEC}" > "${BATCH_DIR}/.dataspec"
+        # refresh spec if absent -- NOT under DRY_RUN: a dry run must not leave a
+        # .dataspec built from whatever env vars that dry run happened to carry
+        # (it did once, stamping max_generation=100000 on a 10k batch).
+        [[ "${DRY_RUN}" == "true" || -f "${BATCH_DIR}/.dataspec" ]] || echo "${DATASPEC}" > "${BATCH_DIR}/.dataspec"
     fi
 
     # ---- optional test data ----

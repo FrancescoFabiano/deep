@@ -155,8 +155,8 @@ class RunConfig:
     # evaluate the ranking metrics on a FROZEN set of random-policy fringes drawn
     # once (frozen_eval.py). Off = the per-strategy trees + held-out trajectories.
     unified: bool = False
-    frozen_eval_m: int = 64                 # frozen fringes per instance
-    frozen_eval_rollouts: int = 16          # random rollouts pooled per instance
+    frozen_eval_m: int = 128                # frozen fringes per instance (fewer if fewer exist)
+    frozen_eval_rollouts: int = 128         # random rollouts pooled per instance
     frozen_eval_seed: Optional[int] = None  # default: seed + FROZEN_SEED_OFFSET
 
 
@@ -395,12 +395,19 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
         # fringes per instance, drawn ONCE here from a pinned seed and written to
         # disk, so every checkpoint (and every run sharing the seed) is scored on
         # the same beams.
+        # WHICH graphs the random rollouts run on (2026-09-10): the unified TEST
+        # graphs when test tables were generated (cross-instance: the frozen fringes
+        # then come from problems the model never trains on), else the unified
+        # TRAIN graphs (same problems; the overlap below says how much is shared).
         fseed = (cfg.frozen_eval_seed if cfg.frozen_eval_seed is not None
                  else cfg.seed + FROZEN_SEED_OFFSET)
+        frozen_src = test_i if test_i else train_i
         heldout_rows, fmanifest = build_frozen_fringes(
-            train_i, cfg.fringe_size, seed=fseed, expansion_cap=cap,
+            frozen_src, cfg.fringe_size, seed=fseed, expansion_cap=cap,
             m_per_instance=cfg.frozen_eval_m,
             rollouts_per_instance=cfg.frozen_eval_rollouts, gamma=cfg.gamma)
+        fmanifest["source"] = "test_instances" if test_i else "train_instances"
+        fmanifest["source_instances"] = sorted(i.name for i in frozen_src)
         fmanifest["training_overlap"] = training_overlap(heldout_rows, rows)
         save_frozen(run_dir / "frozen_eval.json", heldout_rows, fmanifest)
         train_rows = rows
@@ -413,7 +420,8 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
         cov_instances = test_i or train_i
         ov = fmanifest["training_overlap"]
         print(f"[run] frozen eval set: {len(heldout_rows)} fringes over "
-              f"{fmanifest['n_instances']} instances (seed {fseed}, M={cfg.frozen_eval_m}, "
+              f"{fmanifest['n_instances']} {fmanifest['source'].replace('_', ' ')} "
+              f"(seed {fseed}, M={cfg.frozen_eval_m}, "
               f"{cfg.frozen_eval_rollouts} random rollouts each) -> "
               f"{run_dir / 'frozen_eval.json'}")
         print(f"[run] frozen-vs-training overlap: exact beam "
@@ -468,8 +476,14 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
     # The synthetic rankings are the reference points; `trace` (the generating
     # search replayed) joins them when every evaluated tree carries a trace -- it is
     # the "what pi_b itself does under this F" number the RL must beat to matter.
-    baseline_policies = list(BEHAVIOUR_POLICIES)
-    if cov_instances and all(i.has_trace for i in cov_instances):
+    if cfg.unified:
+        # UNIFIED: the comparison is model vs the clairvoyant oracle on the SAME
+        # frozen fringes, nothing else -- no synthetic bfs/dfs/random rankers and no
+        # trace rollouts (2026-09-10). The oracle is the ceiling, not a competitor.
+        baseline_policies = ["hfs_oracle"]
+    else:
+        baseline_policies = list(BEHAVIOUR_POLICIES)
+    if not cfg.unified and cov_instances and all(i.has_trace for i in cov_instances):
         # per-strategy trees: `trace`; unified graphs: every `trace:<s>` that ALL
         # evaluated graphs carry (a strategy generated for one problem only would
         # otherwise raise inside make_policy on the others).
@@ -756,7 +770,23 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
         # compares held-out top1 (higher better) vs each baseline's top1; PRIMARY
         # compares held-out-transfer regret. Gating on the fallback's train-set regret
         # would PASS on the optimistic number selection was moved away from.
-        if ranking_eval:
+        if eval_mode == EVAL_FROZEN:
+            # No competitor baseline in unified mode: report the gap to the oracle
+            # ceiling on the frozen set for the record (armed=False: not a verdict).
+            _sel = next((c for c in cands if c.step == best.step), best)
+            _rec = tel.read()
+            _row = next((r for r in _rec if r.get("step") == best.step
+                         and r.get("split") == "val"), {})
+            gates.append(GateResult(
+                "oracle_gap", True,
+                f"frozen set n={_row.get('heldout_n')}: model ndcg "
+                f"{best.select_score:.3f} top1 {_row.get('heldout_top1')} "
+                f"regret_at_decision {_row.get('heldout_regret_at_decision')} "
+                f"picked_dead {_row.get('heldout_picked_dead')} vs hfs_oracle "
+                f"ndcg {baseline_ndcg.get('hfs_oracle')} (ceiling; no competitor "
+                f"baseline is evaluated in unified mode)",
+                armed=False, blocking=False))
+        elif ranking_eval:
             gates.append(gate_beats_baselines(
                 best.select_score, baseline_ndcg,
                 higher_is_better=True, metric="heldout_ndcg"))
