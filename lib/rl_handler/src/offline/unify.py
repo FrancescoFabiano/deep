@@ -33,8 +33,8 @@ expansion rank of v in strategy s (None where s never expanded v), so the
 
 WHAT IS THE IDENTITY OF A STATE
 -------------------------------
-Exactly what the model sees: the edge multiset of the DOT file (world hashes and
-agent labels), order-independent. In separated mode the C++ does NOT write the
+The raw bytes of the DOT file: the belief edges over world ids (hash of the
+fluent set plus repetition, the planner's own world identity) with agent labels. In separated mode the C++ does NOT write the
 pointed world (HelperPrint.cpp, the `doublecircle` line is commented out), so two
 planner states that differ only in the pointed world collapse to one here. That is
 model-equivalence -- the network cannot tell them apart either -- but it is not
@@ -44,8 +44,8 @@ the identity is exact.
 
 MEMORY / TIME
 -------------
-The fingerprint pass reads each file once, sorts its edge lines and hashes them
-(16 bytes per state kept, nothing else). No graph tensors are built here; only the
+The fingerprint pass reads each file once and hashes its raw bytes (16 bytes per
+state kept, nothing else; the writer's edge order is deterministic, verified). No graph tensors are built here; only the
 REPRESENTATIVE DOT of each unique state is later parsed into the encoder cache, so
 the cache shrinks to the unique count. Fingerprints are cached per tree
 (`<cache_dir>/<tree name>.fp.json`, keyed on the CSV path and state count).
@@ -81,7 +81,7 @@ from .tree import (
 # strategies.STRATEGIES: it is not a generator, and dir_name() must keep refusing it.
 UNIFIED_STRATEGY = "unified"
 
-FINGERPRINT_VERSION = 1
+FINGERPRINT_VERSION = 2   # 2: raw-bytes digest (was sorted edge lines)
 
 
 def unified_tree_name(instance: str) -> str:
@@ -95,15 +95,27 @@ def unified_tree_name(instance: str) -> str:
 # ----------------------------------------------------------------------------
 
 def fingerprint_dot_bytes(data: bytes) -> bytes:
-    """16-byte digest of the ORDER-INDEPENDENT edge multiset of a planner DOT.
+    """16-byte digest of the RAW BYTES of a planner DOT (2026-09-10, per the user:
+    the binary content IS the identity).
 
-    Every line with `->` is an edge (`  a -> b [label="x"];`); the header, the
-    closing brace and blank lines are dropped. Lines are compared as bytes after
-    stripping surrounding whitespace, so the same state written twice by the same
-    writer in a different edge order fingerprints identically. Node ids are the
-    C++ world hashes (HASHED) or bitmasks (BITMASK) -- content, not run-local
-    counters -- which is what makes the digest comparable across runs.
+    The C++ writer (HelperPrint::print_dataset_format) iterates ordered containers,
+    so two writes of the same state are byte-identical: measured on batch1_cc_strat
+    CC, 231,345 files give 223,640 unique digests both by raw bytes and by the
+    order-independent sorted-edge variant -- no difference. Raw bytes is the
+    stricter of the two (any formatting difference keeps two files apart, which
+    can only UNDER-merge, never wrongly merge), and it needs no parsing.
+
+    Whatever the writer puts in the file is part of the identity: in merged mode
+    that includes the epsilon->pointed edge and the goal subgraph; in separated
+    mode the file holds the belief edges only (no pointed world -- see the module
+    docstring).
     """
+    return hashlib.blake2b(data, digest_size=16).digest()
+
+
+def fingerprint_edges_sorted(data: bytes) -> bytes:
+    """Order-independent variant (sorted edge lines): a diagnostic to detect a
+    writer whose edge order is NOT deterministic (then raw != sorted counts)."""
     edges = sorted(ln.strip() for ln in data.splitlines() if b"->" in ln)
     h = hashlib.blake2b(digest_size=16)
     for e in edges:

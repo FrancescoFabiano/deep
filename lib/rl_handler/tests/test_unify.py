@@ -17,6 +17,7 @@ from src.offline.unify import (
     UnifiedInstance,
     fingerprint_dot,
     fingerprint_dot_bytes,
+    fingerprint_edges_sorted,
     fingerprints_for_tree,
     unified_tree_name,
     unify_instances,
@@ -30,12 +31,14 @@ DOT_A_REORDERED = b'digraph G {\n  2 -> 1 [label="9"];\n  1 -> 2 [label="8"];\n}
 DOT_B = b'digraph G {\n  1 -> 2 [label="8"];\n  2 -> 2 [label="9"];\n}\n'
 
 
-def test_fingerprint_is_order_independent_and_content_sensitive():
-    assert fingerprint_dot_bytes(DOT_A) == fingerprint_dot_bytes(DOT_A_REORDERED)
+def test_fingerprint_is_the_raw_bytes():
+    # identity = binary content: same bytes -> same digest, any difference -> different
+    assert fingerprint_dot_bytes(DOT_A) == fingerprint_dot_bytes(bytes(DOT_A))
     assert fingerprint_dot_bytes(DOT_A) != fingerprint_dot_bytes(DOT_B)
-    # whitespace and the header/closing lines do not matter
-    assert fingerprint_dot_bytes(b"digraph G {\n1 -> 2 [label=\"8\"];\n2 -> 1 [label=\"9\"];\n}") \
-        == fingerprint_dot_bytes(DOT_A)
+    assert fingerprint_dot_bytes(DOT_A) != fingerprint_dot_bytes(DOT_A_REORDERED)
+    # the sorted-edge diagnostic is the order-independent one
+    assert fingerprint_edges_sorted(DOT_A) == fingerprint_edges_sorted(DOT_A_REORDERED)
+    assert fingerprint_edges_sorted(DOT_A) != fingerprint_edges_sorted(DOT_B)
 
 
 def test_fingerprint_dot_reads_files(tmp_path):
