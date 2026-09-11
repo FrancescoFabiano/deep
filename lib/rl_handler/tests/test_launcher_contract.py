@@ -49,6 +49,10 @@ def accepted_flags() -> set[str]:
 LAUNCHER_SENDS = [
     "--fringe-sizes", "--model", "--no_goal", "--batch-size", "--epochs",
     "--sampler", "--sampler-k", "--n-checkpoints", "--context-mode", "--cql-alpha",
+    # UNIFIED=true cells (unify.py / frozen_eval.py)
+    "--unified", "--frozen-eval-m", "--frozen-eval-rollouts",
+    # FILL_FRINGES=true cells (dataset.py fill branches)
+    "--fill-fringes", "--fill-k",
 ]
 TRAIN_MODELS_SENDS = [
     "--seed", "--dir-save-model", "--train-csv", "--test-csv", "--kind-of-data",
