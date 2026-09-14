@@ -24,169 +24,189 @@ public:
    *
    * Codes are grouped by subsystem for clarity.
    */
-  enum class ExitCode : int {
-    // --- General ---
-    ExitForCompiler = -1, ///< Used to satisfy the compiler when it does not
-                          ///< recognize that the branch will exit.
-    SuccessFoundGoal = 0, ///< Program completed successfully finding a goal.
-    SuccessNotFoundGoal =
-        1, ///< Program completed successfully without finding a goal.
-    SuccessNotPlanningMode =
-        2, ///< Program completed successfully without planning mode.
-    SuccessNotPlanningModeWarning = 3, ///< Program completed successfully but
-                                       ///< something is not as it should be.
+enum class ExitCode : int {
+  // --- General (0-99) ---
+  ExitForCompiler = -1, ///< Used to satisfy the compiler when it does not
+                         ///< recognize that the branch will exit.
+  SuccessFoundGoal = 0, ///< Program completed successfully finding a goal.
+  SuccessNotFoundGoal =
+      1, ///< Program completed successfully without finding a goal.
+  SuccessNotPlanningMode =
+      2, ///< Program completed successfully without planning mode.
+  SuccessNotPlanningModeWarning =
+      3, ///< Program completed successfully but something is not as it
+         ///< should be.
 
-    // --- ArgumentParser Related (100-119) ---
-    ArgParseError =
-        100, ///< Error occurred during argument parsing in ArgumentParser.
-    ArgParseInstanceError =
-        101, ///< Error occurred during ArgumentParser singleton instance.
+  // ========================================================================
+  // Argument / Input
+  // ========================================================================
 
-    // --- Parsing Related (150-169) ---
-    ParsingError = 150, ///< Error occurred during parsing in Reader.
+  // --- ArgumentParser Related (100-119) ---
+  ArgParseError = 100,
+  ArgParseInstanceError = 101,
 
-    // --- Domain Related (200-219) ---
-    DomainFileOpenError = 200,    ///< Failed to open domain input file.
-    DomainInstanceError = 201,    ///< Domain singleton instance error.
-    DomainBuildError = 202,       ///< Error during domain build process.
-    DomainUndeclaredFluent = 203, ///< Undeclared fluent error.
-    DomainUndeclaredAgent = 204,  ///< Undeclared agent error.
-    DomainUndeclaredAction = 205, ///< Undeclared action error.
-    DomainInitialStateRestrictionError =
-        206,                           ///< Initial State restriction error.
-    DomainInitialStateTypeError = 207, ///< Initial State type error.
+  // Reserved: 102-119
 
-    // --- Action Related (300-319) ---
-    ActionTypeConflict = 300,    ///< Conflicting action types detected.
-    ActionInvalidExecutor = 301, ///< Invalid executor for action.
-    ActionEffectError = 302,     ///< Error adding or processing action effect.
+  // --- Parsing Related (150-169) ---
+  ParsingError = 150,
 
-    // --- Formula/Helper Related (400-419) ---
-    FormulaNonDeterminismError =
-        400,                     ///< Non-determinism in formula not supported.
-    FormulaBadDeclaration = 401, ///< Bad formula declaration.
-    FormulaEmptyEffect = 402,    ///< Empty action effect.
-    FormulaConsistencyError =
-        403, ///< Consistency check failed in formula helper.
+  // Reserved: 151-169
 
-    // --- HelperPrint Related (500-519) ---
-    PrintUnsetGrounderError = 500, ///< Attempted to print with unset grounder.
-    PrintNullPointerError = 501,   ///< Null pointer encountered during print.
+  // ========================================================================
+  // Domain / Action / Event Model
+  // ========================================================================
 
-    // --- BeliefFormula Related (600-619) ---
-    BeliefFormulaTypeUnset = 600,   ///< BeliefFormula type not set properly.
-    BeliefFormulaEmptyFluent = 601, ///< BeliefFormula has empty fluent formula.
-    BeliefFormulaNotGrounded =
-        602, ///< BeliefFormula not grounded when required.
-    BeliefFormulaMissingNested = 603, ///< BeliefFormula missing nested formula.
-    BeliefFormulaOperatorUnset =
-        604, ///< BeliefFormula operator not set properly.
-    BeliefFormulaEmptyAgentGroup =
-        605, ///< BeliefFormula has empty agent group.
+  // --- Domain Related (200-219) ---
+  DomainFileOpenError = 200,
+  DomainInstanceError = 201,
+  DomainBuildError = 202,
+  DomainUndeclaredFluent = 203,
+  DomainUndeclaredAgent = 204,
+  DomainUndeclaredAction = 205,
+  DomainInitialStateRestrictionError = 206,
+  DomainInitialStateTypeError = 207,
 
-    // --- Heuristics Related (650-669) ---
-    HeuristicsBadDeclaration =
-        650, ///< Heuristic type not declared properly in HeuristicsManager.
+  // Reserved: 208-219
 
-    // --- Bisimulation Related (670-679) ---
-    SearchBisimulationError =
-        670, ///< Bisimulation reduction failed. Some formulae are entailed
-             ///< differently from bisimilar states.
+  // --- Action / Event Model Related (300-319) ---
+  ActionTypeConflict = 300,
+  ActionInvalidExecutor = 301,
+  ActionEffectError = 302,
+  ActionDuplicatePostcondition = 303,
 
-    // --- KripkeWorldPointer/Storage Related (700-719) ---
-    KripkeWorldPointerNullError =
-        700, ///< Null pointer dereference in KripkeWorldPointer.
-    KripkeWorldPointerIdError =
-        701, ///< KripkeWorldPointer id overflow or underflow.
-    KripkeStorageInsertError =
-        702, ///< Failed to insert or find KripkeWorld in KripkeStorage.
-    KripkeWorldEntailmentError =
-        703, ///< Failed to check for entailment in KripkeWorld.
+  // Reserved for future Event / DEL errors:
+  // 304-309
 
-    // --- Bisimulation Related (800-819) ---
-    BisimulationFailed = 800, ///< Bisimulation minimization failed.
-    BisimulationWrapperOutOfBounds =
-        801, ///< Accessed out of bounds in Bisimulation wrapper.
+  // Reserved for future Action errors:
+  // 310-319
 
-    // --- BreadthFirst Related (850-869) ---
-    SearchNoActions =
-        850, ///< No actions available in the domain for the search.
+  // ========================================================================
+  // Formulae
+  // ========================================================================
 
-    // --- PlanningGraph Related (851-859) ---
-    PlanningGraphErrorInitialState = 851,
-    ///< Error in initial state of PlanningGraph, it is goal so we should not
-    ///< generate it.
+  // --- Formula/Helper Related (400-419) ---
+  FormulaNonDeterminismError = 400,
+  FormulaBadDeclaration = 401,
+  FormulaEmptyEffect = 402,
+  FormulaConsistencyError = 403,
 
-    // --- PortfolioSearch Related (860-879) ---
-    PortfolioConfigFileError =
-        860, ///< Could not open portfolio configuration file.
-    PortfolioConfigError = 861, ///< Internal error in portfolio search.
-    PortfolioConfigFieldError =
-        862, ///< Error in reading a field in portfolio configuration file.
-    SearchParallelNotImplemented =
-        863, ///< Parallel search is not implemented yet.
+  // Reserved: 404-419
 
-    SearchMethodNotImplemented =
-        864, ///< Method in search is not implemented yet.
+  // --- HelperPrint Related (500-519) ---
+  PrintUnsetGrounderError = 500,
+  PrintNullPointerError = 501,
 
-    SearchMethodError = 865, ///< Error in some searcher method.
+  // Reserved: 502-519
 
-    // --- NN Related (880-889) ---
-    NNTrainingFileError = 880,      ///< Error opening NN training files.
-    NNMappingError = 881,           ///< Error in accessing NN mapped data.
-    NNInstanceError = 882,          ///< NN singleton instance error.
-    NNDirectoryCreationError = 883, ///< Error creating NN output directories.
-      DatasetGenerationTypeWrong = 884, ///< Wrong Dataset Type setting
+  // --- BeliefFormula Related (600-619) ---
+  BeliefFormulaTypeUnset = 600,
+  BeliefFormulaEmptyFluent = 601,
+  BeliefFormulaNotGrounded = 602,
+  BeliefFormulaMissingNested = 603,
+  BeliefFormulaOperatorUnset = 604,
+  BeliefFormulaEmptyAgentGroup = 605,
 
-    // --- GNN Related (890-899) ---
-    GNNInstanceError = 890, ///< Error in creating GNN training files.
-    GNNFileError = 891,     ///< Error in accessing a file.
-    GNNScriptError = 892,   ///< Error in running the GNN script file.
-    GNNMappedNotSupportedError =
-        893, ///< Error indicating that we do not support the mapped version
-             ///< with the inference in C++ (it is useless, hashing should be
-             ///< better)
-    GNNTensorTranslationError = 894, ///< Error indicating that the translation
-                                     ///< from state to Tensor did not work
-    GNNModelLoadError = 895,         ///< Error loading the GNN model.
-    GNNBitmaskLengthError =
-        896, ///< Error indicating that the bitmask length required
-    ///< exceeds the maximum allowed length defined by MAX_FLUENT_NUMBER.
-    GNNBitmaskRepetitionError =
-        897, ///< Error indicating that the repetition number
-             ///< exceeds the maximum value that can be represented with
-             ///< MAX_REPETITION_BITS bits.
-    GNNBitmaskGOALError =
-        897, ///< Error indicating that the GOAL encoding is not working.
+  // Reserved: 606-619
 
-    // --- FringeEvalRL Related (900-919) ---
-    FringeEvalInstanceError = 900, ///< Error in creating GNN training files.
-    FringeEvalFileError = 901,     ///< Error in accessing a file.
-    FringeEvalScriptError = 902,   ///< Error in running the GNN script file.
-    FringeEvalMappedNotSupportedError =
-        903, ///< Error indicating that we do not support the mapped version
-             ///< with the inference in C++ (it is useless, hashing should be
-             ///< better)
-    FringeEvalTensorTranslationError =
-        904, ///< Error indicating that the translation
-    ///< from state to Tensor did not work
-    FringeEvalModelLoadError = 905, ///< Error loading the GNN model.
-    FringeEvalBitmaskLengthError =
-        906, ///< Error indicating that the bitmask length required
-    ///< exceeds the maximum allowed length defined by MAX_FLUENT_NUMBER.
-    FringeEvalBitmaskRepetitionError =
-        907, ///< Error indicating that the repetition number
-             ///< exceeds the maximum value that can be represented with
-             ///< MAX_REPETITION_BITS bits.
-    FringeEvalBitmaskGOALError =
-        907, ///< Error indicating that the GOAL encoding is not working.
-    FringeNotImplementedError = 919, ///< Error indicating that functionality
-                                     ///< has not been implemented yet.
+  // ========================================================================
+  // Search / Heuristics / Bisimulation
+  // ========================================================================
 
-    // --- State/Action Related (1000-1019) ---
-    StateActionNotExecutableError =
-        1000, ///< Action not executable in state where it is supposed to be.
-  };
+  // --- Heuristics Related (650-669) ---
+  HeuristicsBadDeclaration = 650,
+
+  // Reserved: 651-669
+
+  // --- Bisimulation Related (670-679) ---
+  SearchBisimulationError = 670,
+
+  // Reserved: 671-679
+
+  // --- KripkeWorldPointer / Storage Related (700-719) ---
+  KripkeWorldPointerNullError = 700,
+  KripkeWorldPointerIdError = 701,
+  KripkeStorageInsertError = 702,
+  KripkeWorldEntailmentError = 703,
+
+  // Reserved: 704-719
+
+  // --- Bisimulation Related (800-819) ---
+  BisimulationFailed = 800,
+  BisimulationWrapperOutOfBounds = 801,
+
+  // Reserved: 802-819
+
+  // --- BreadthFirst Related (850-869) ---
+  SearchNoActions = 850,
+
+  // --- PlanningGraph Related (851-859) ---
+  PlanningGraphErrorInitialState = 851,
+
+  // Reserved: 852-859
+
+  // --- PortfolioSearch Related (860-879) ---
+  PortfolioConfigFileError = 860,
+  PortfolioConfigError = 861,
+  PortfolioConfigFieldError = 862,
+  SearchParallelNotImplemented = 863,
+  SearchMethodNotImplemented = 864,
+  SearchMethodError = 865,
+
+  // Reserved: 866-879
+
+  // ========================================================================
+  // Neural Networks
+  // ========================================================================
+
+  // --- NN Related (880-889) ---
+  NNTrainingFileError = 880,
+  NNMappingError = 881,
+  NNInstanceError = 882,
+  NNDirectoryCreationError = 883,
+  DatasetGenerationTypeWrong = 884,
+
+  // Reserved: 885-889
+
+  // --- GNN Related (890-899) ---
+  GNNInstanceError = 890,
+  GNNFileError = 891,
+  GNNScriptError = 892,
+  GNNMappedNotSupportedError = 893,
+  GNNTensorTranslationError = 894,
+  GNNModelLoadError = 895,
+  GNNBitmaskLengthError = 896,
+  GNNBitmaskRepetitionError = 897,
+  GNNBitmaskGOALError = 898,
+
+  // Reserved: 899
+
+  // --- FringeEvalRL Related (900-919) ---
+  FringeEvalInstanceError = 900,
+  FringeEvalFileError = 901,
+  FringeEvalScriptError = 902,
+  FringeEvalMappedNotSupportedError = 903,
+  FringeEvalTensorTranslationError = 904,
+  FringeEvalModelLoadError = 905,
+  FringeEvalBitmaskLengthError = 906,
+  FringeEvalBitmaskRepetitionError = 907,
+  FringeEvalBitmaskGOALError = 908,
+  FringeNotImplementedError = 919,
+
+  // Reserved: 909-918
+
+  // ========================================================================
+  // State / Action Execution
+  // ========================================================================
+
+  // --- State / Action Related (1000-1019) ---
+  StateActionNotExecutableError = 1000,
+
+  // Reserved for future state-transition / DEL errors:
+  // 1001-1009
+
+  // Reserved for future state-model errors:
+  // 1010-1019
+};
 
   // ArgumentParser Related
   /**

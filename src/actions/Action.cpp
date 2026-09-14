@@ -1,164 +1,167 @@
-/**
- * \brief Implementation of \ref Action.h.
- *
- * \copyright GNU Public License.
- *
- * \author Francesco Fabiano.
- * \date May 14, 2025
- */
-
 #include "Action.h"
 
-#include <utility>
+#include <stdexcept>
 
-#include "ArgumentParser.h"
-#include "Domain.h"
-#include "HelperPrint.h"
-#include "actions/Proposition.h"
-#include "utilities/ExitHandler.h"
+Action::Action(
+    const std::string &name,
+    ActionId id)
+    : m_name(name),
+      m_id(std::move(id)) {}
 
-// Constructor
-Action::Action(const std::string &name, ActionId id) {
-  set_name(name);
-  set_id(std::move(id));
+// === Identity ===
+
+const std::string &
+Action::get_name() const noexcept {
+  return m_name;
 }
 
-std::string Action::get_name() const { return m_name; }
-
-void Action::set_name(const std::string &name) { m_name = name; }
-
-Agent Action::get_executor() const { return m_executor; }
-
-void Action::set_executor(const Agent &executor) { m_executor = executor; }
-
-ActionId Action::get_id() const { return m_id; }
-
-void Action::set_id(ActionId id) { m_id = std::move(id); }
-
-PropositionType Action::get_type() const { return m_type; }
-
-void Action::set_type(PropositionType type) {
-  if (type != PropositionType::NOTSET) {
-    if (m_type == PropositionType::NOTSET) {
-      m_type = type;
-    } else if (m_type != type) {
-      ExitHandler::exit_with_message(ExitHandler::ExitCode::ActionTypeConflict,
-                                     "Conflicting action types for action '" +
-                                         m_name + "'.");
-    }
-  }
+void Action::set_name(
+    const std::string &name) {
+  m_name = name;
 }
 
-const FormulaeList &Action::get_executability() const {
-  return m_executability;
+const ActionId &
+Action::get_id() const noexcept {
+  return m_id;
 }
 
-const EffectsMap &Action::get_effects() const { return m_effects; }
-
-const ObservabilitiesMap &Action::get_fully_observants() const {
-  return m_fully_observants;
+void Action::set_id(
+    const ActionId &id) {
+  m_id = id;
 }
 
-const ObservabilitiesMap &Action::get_partially_observants() const {
-  return m_partially_observants;
+// === Events ===
+
+const Events &
+Action::get_events() const noexcept {
+  return m_events;
 }
 
-void Action::add_executability(const BeliefFormula &exec) {
-  m_executability.push_back(exec);
+const Event &
+Action::get_event(
+    const EventId event_id) const {
+
+  return m_events.at(event_id);
 }
 
-void Action::add_effect(const FluentFormula &effect,
-                        const BeliefFormula &condition) {
-  auto [it, inserted] =
-      m_effects.insert(EffectsMap::value_type(effect, condition));
+
+bool Action::has_event(
+    const EventId event_id) const noexcept {
+
+  return m_events.contains(event_id);
+}
+
+void Action::add_event(
+    const Event &event) {
+
+  const auto [iterator, inserted] =
+      m_events.emplace(
+          event.get_id(),
+          event);
+
   if (!inserted) {
-    ExitHandler::exit_with_message(ExitHandler::ExitCode::ActionEffectError,
-                                   "Failed to add effect to action '" + m_name +
-                                       "'.");
+    throw std::invalid_argument(
+        "Duplicate event id in action '" +
+        m_name + "'.");
   }
 }
 
-void Action::add_fully_observant(const Agent &fully,
-                                 const BeliefFormula &condition) {
-  m_fully_observants.insert(ObservabilitiesMap::value_type(fully, condition));
+// === Designated Events ===
+
+const DesignatedEvents &
+Action::get_designated_events() const noexcept {
+
+  return m_designated_events;
 }
 
-void Action::add_partially_observant(const Agent &partial,
-                                     const BeliefFormula &condition) {
-  m_partially_observants.insert(
-      ObservabilitiesMap::value_type(partial, condition));
+bool Action::is_designated(
+    EventId event_id) const noexcept {
+
+  return m_designated_events.contains(
+      event_id);
 }
 
-void Action::add_proposition(const Proposition &to_add) {
-  switch (to_add.get_type()) {
-  case PropositionType::ONTIC:
-    set_type(PropositionType::ONTIC);
-    add_effect(to_add.get_action_effect(),
-               BeliefFormula(to_add.get_executability_conditions()));
-    break;
-  case PropositionType::SENSING:
-    set_type(PropositionType::SENSING);
-    add_effect(to_add.get_action_effect(),
-               BeliefFormula(to_add.get_executability_conditions()));
-    break;
-  case PropositionType::ANNOUNCEMENT:
-    set_type(PropositionType::ANNOUNCEMENT);
-    add_effect(to_add.get_action_effect(),
-               BeliefFormula(to_add.get_executability_conditions()));
-    break;
-  case PropositionType::OBSERVANCE:
-    set_type(PropositionType::NOTSET);
-    add_fully_observant(to_add.get_agent(),
-                        BeliefFormula(to_add.get_observability_conditions()));
-    break;
-  case PropositionType::AWARENESS:
-    set_type(PropositionType::NOTSET);
-    add_partially_observant(
-        to_add.get_agent(),
-        BeliefFormula(to_add.get_observability_conditions()));
-    break;
-  case PropositionType::EXECUTABILITY:
-    set_type(PropositionType::NOTSET);
-    add_executability(BeliefFormula(to_add.get_executability_conditions()));
-    break;
-  default:
-    break;
+void Action::add_designated_event(
+    EventId event_id) {
+
+  if (!has_event(event_id)) {
+    throw std::invalid_argument(
+        "Cannot designate unknown event in action '" +
+        m_name + "'.");
   }
+
+  m_designated_events.insert(
+      event_id);
 }
 
-bool Action::operator<(const Action &act) const { return m_id < act.get_id(); }
+// === Accessibility Relations ===
 
-void Action::print() const {
-  auto &os = ArgumentParser::get_instance().get_output_stream();
-  const auto grounder = HelperPrint::get_instance().get_grounder();
-  os << "\nAction " << get_name() << ":" << std::endl;
-  os << "    ID: " << get_id() << ":" << std::endl;
-  os << "    Type: " << Proposition::type_to_string(get_type()) << std::endl;
+const EventRelations &
+Action::get_event_relations() const noexcept {
 
-  os << "    Executability:";
-  for (const auto &exec : m_executability) {
-    os << " | ";
-    exec.print();
+  return m_event_relations;
+}
+
+const EventRelation &
+Action::get_event_relation(
+    const Agent &agent) const {
+
+  static const EventRelation empty_relation;
+
+  const auto iterator =
+      m_event_relations.find(agent);
+
+  if (iterator == m_event_relations.end()) {
+    return empty_relation;
   }
 
-  os << "\n    Effects:";
-  for (const auto &[effect, condition] : m_effects) {
-    os << " | ";
-    HelperPrint::get_instance().print_list(effect);
-    os << " if ";
-    condition.print();
+  return iterator->second;
+}
+
+bool Action::has_event_edge(
+    const Agent &agent,
+    EventId from,
+    EventId to) const {
+
+  const auto relation =
+      m_event_relations.find(agent);
+
+  if (relation == m_event_relations.end()) {
+    return false;
   }
 
-  os << "\n    Fully Observant:";
-  for (const auto &[agent, condition] : m_fully_observants) {
-    os << " | " << grounder.deground_agent(agent) << " if ";
-    condition.print();
+  return relation->second.contains(
+      EventEdge{from, to});
+}
+
+void Action::add_event_edge(
+    const Agent &agent,
+    EventId from,
+    EventId to) {
+
+  if (!has_event(from) ||
+      !has_event(to)) {
+
+    throw std::invalid_argument(
+        "Event edge references unknown event "
+        "in action '" +
+        m_name + "'.");
   }
 
-  os << "\n    Partially Observant:";
-  for (const auto &[agent, condition] : m_partially_observants) {
-    os << " | " << grounder.deground_agent(agent) << " if ";
-    condition.print();
-  }
-  os << std::endl;
+  m_event_relations[agent].insert(
+      EventEdge{from, to});
+}
+
+// === Operators ===
+
+bool Action::operator<(
+    const Action &other) const {
+
+  return m_id < other.m_id;
+}
+
+bool Action::operator==(
+    const Action &other) const {
+
+  return m_id == other.m_id;
 }

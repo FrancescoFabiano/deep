@@ -206,6 +206,8 @@ public:
    */
   static KripkeWorldId hash_string_into_id(const std::string &string);
 
+ static uint64_t hash_kripke_state(const KripkeState &state);
+
   /**
    * \brief Check if a set of fluents is consistent.
    * \param[in] to_check The set to check.

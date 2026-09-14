@@ -182,61 +182,50 @@ bool KripkeEqualityHelper::internal_smaller(
       });
 }
 
-bool KripkeEqualityHelper::shallow_less_operator(
-    const KripkeState &reference, const KripkeState &to_compare) {
-  if (reference.get_pointed() != to_compare.get_pointed())
-    return reference.get_pointed() < to_compare.get_pointed();
+bool KripkeEqualityHelper::less_operator(
+    const KripkeState &reference,
+    const KripkeState &to_compare) {
 
-  if (reference.get_worlds() != to_compare.get_worlds())
-    return reference.get_worlds() < to_compare.get_worlds();
+  const auto reference_hash = reference.get_hash();
+  const auto to_compare_hash = to_compare.get_hash();
 
-  const auto &beliefs1 = reference.get_beliefs();
-  const auto &beliefs2 = to_compare.get_beliefs();
+  if (reference_hash != to_compare_hash)
+    return reference_hash < to_compare_hash;
 
-  auto it1 = beliefs1.begin();
-  auto it2 = beliefs2.begin();
+  // Hash collision / same hash:
+  // perform the actual strong structural ordering.
 
-  while (it1 != beliefs1.end() && it2 != beliefs2.end()) {
-    if (it1->first != it2->first)
-      return it1->first < it2->first;
+  const auto reference_designated =
+      canonicalize_worlds(
+          reference.get_designated_worlds());
 
-    const auto &map1 = it1->second;
-    const auto &map2 = it2->second;
+  const auto to_compare_designated =
+      canonicalize_worlds(
+          to_compare.get_designated_worlds());
 
-    auto m1 = map1.begin();
-    auto m2 = map2.begin();
+  if (!internal_equal(
+          reference_designated,
+          to_compare_designated)) {
+    return internal_smaller(
+        reference_designated,
+        to_compare_designated);
+          }
 
-    while (m1 != map1.end() && m2 != map2.end()) {
-      if (m1->first != m2->first)
-        return m1->first < m2->first;
-      if (m1->second != m2->second)
-        return m1->second < m2->second;
-      ++m1;
-      ++m2;
-    }
-    if (m1 != map1.end())
-      return false;
-    if (m2 != map2.end())
-      return true;
+  const auto &reference_worlds =
+      reference.get_worlds_vec();
 
-    ++it1;
-    ++it2;
-  }
-  return (it1 == beliefs1.end()) && (it2 != beliefs2.end());
-}
+  const auto &to_compare_worlds =
+      to_compare.get_worlds_vec();
 
-bool KripkeEqualityHelper::strong_less_operator(const KripkeState &reference,
-                                                const KripkeState &to_compare) {
-  if (!reference.get_pointed().internal_equal(to_compare.get_pointed())) {
-    return reference.get_pointed().internal_smaller(to_compare.get_pointed());
-  }
+  if (!internal_equal(
+          reference_worlds,
+          to_compare_worlds)) {
+    return internal_smaller(
+        reference_worlds,
+        to_compare_worlds);
+          }
 
-  const auto ref_world = reference.get_worlds_vec();
-  const auto to_compare_world = to_compare.get_worlds_vec();
-  if (!internal_equal(ref_world, to_compare_world)) {
-    return internal_smaller(ref_world, to_compare_world);
-  }
-
-  return internal_smaller(reference.get_beliefs_vec(),
-                          to_compare.get_beliefs_vec());
+  return internal_smaller(
+      reference.get_beliefs_vec(),
+      to_compare.get_beliefs_vec());
 }

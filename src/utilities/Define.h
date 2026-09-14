@@ -202,6 +202,49 @@ using EffectsMap = std::map<FluentFormula, BeliefFormula>; ///< Action effect to
                                                            ///< its conditions.
 ///@}
 
+
+/// \name DEL Related
+///@{
+class BeliefFormula;
+using EventId = std::uint64_t;
+
+using Postconditions = std::map<Fluent, BeliefFormula>;
+
+
+class Event;
+/**
+ * Events indexed by their identifier.
+ */
+using Events =
+    std::map<EventId, Event>;
+
+/**
+ * Multi-pointed component of the event model.
+ */
+using DesignatedEvents =
+    std::set<EventId>;
+
+/**
+ * Directed edge between two events.
+ */
+using EventEdge =
+    std::pair<EventId, EventId>;
+
+/**
+ * Accessibility relation for one agent.
+ */
+using EventRelation =
+    std::set<EventEdge>;
+
+/**
+ * Agent-indexed event accessibility relations.
+ */
+using EventRelations =
+    std::map<Agent, EventRelation>;
+///@}
+
+
+
 /**
  * \enum event_type
  * \brief Types of events.

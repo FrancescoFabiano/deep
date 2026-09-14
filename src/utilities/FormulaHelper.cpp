@@ -290,6 +290,104 @@ KripkeWorldId FormulaHelper::hash_string_into_id(const std::string &string) {
   // return boost::hash_range(string.begin(), string.end());
 }
 
+
+uint64_t FormulaHelper::hash_kripke_state(
+    const KripkeState &state) {
+
+  XXH3_state_t *hash_state = XXH3_createState();
+
+  if (hash_state == nullptr) {
+    ExitHandler::exit_with_message(
+        ExitHandler::ExitCode::SearchMethodError,
+        "Failed to create XXH3 hash state.");
+  }
+
+  XXH3_64bits_reset(hash_state);
+
+  const auto update =
+      [&](const auto &value) {
+        XXH3_64bits_update(
+            hash_state,
+            &value,
+            sizeof(value));
+      };
+
+  // --------------------------------------------------------------------------
+  // Worlds
+  // --------------------------------------------------------------------------
+
+  const uint64_t worlds_tag = 1;
+  update(worlds_tag);
+
+  const uint64_t worlds_size =
+      static_cast<uint64_t>(state.get_worlds().size());
+  update(worlds_size);
+
+  for (const auto &world : state.get_worlds()) {
+    update(world.get_fluent_based_id());
+  }
+
+
+  // --------------------------------------------------------------------------
+  // Designated worlds
+  // --------------------------------------------------------------------------
+
+  const uint64_t designated_tag = 2;
+  update(designated_tag);
+
+  const uint64_t designated_size =
+      static_cast<uint64_t>(
+          state.get_designated_worlds().size());
+  update(designated_size);
+
+  for (const auto &world :
+       state.get_designated_worlds()) {
+
+    update(world.get_fluent_based_id());
+  }
+
+
+  // --------------------------------------------------------------------------
+  // Belief relation
+  // --------------------------------------------------------------------------
+
+  const uint64_t beliefs_tag = 3;
+  update(beliefs_tag);
+
+  for (const auto &[from, agent_map] :
+       state.get_beliefs()) {
+
+    update(from.get_fluent_based_id());
+
+    for (const auto &[agent, targets] :
+         agent_map) {
+
+      /*
+       * We need a stable representation of Agent.
+       * Since Agent is already an ordered key in the map,
+       * use its value directly if Agent is an integral type.
+       */
+      update(agent);
+
+      const uint64_t targets_size =
+          static_cast<uint64_t>(targets.size());
+      update(targets_size);
+
+      for (const auto &to : targets) {
+        update(to.get_fluent_based_id());
+      }
+    }
+  }
+
+
+  const uint64_t result =
+      XXH3_64bits_digest(hash_state);
+
+  XXH3_freeState(hash_state);
+
+  return result;
+}
+
 bool FormulaHelper::consistent(const FluentsSet &to_check) {
   for (auto it = to_check.begin(); it != to_check.end(); ++it) {
     /* If the pointed fluent is in modulo 2 it means is the positive and if
@@ -352,34 +450,6 @@ void FormulaHelper::checkSameKState(const KripkeState &first,
   if (first.entails(to_check3) != second.entails(to_check3)) {
     are_bisimilar = false;
     fail_case = "goal_description";
-  }
-
-  for (const auto &tmp_action : domain_instance.get_actions()) {
-    for (auto condition : tmp_action.get_effects() | std::views::values) {
-      if (first.entails(condition) != second.entails(condition)) {
-        are_bisimilar = false;
-        fail_case = "action_effects of action " + tmp_action.get_name();
-      }
-    }
-    auto to_check5 = tmp_action.get_executability();
-    if (first.entails(to_check5) != second.entails(to_check5)) {
-      are_bisimilar = false;
-      fail_case = "action_executability of action  " + tmp_action.get_name();
-    }
-    for (auto condition :
-         tmp_action.get_fully_observants() | std::views::values) {
-      if (first.entails(condition) != second.entails(condition)) {
-        are_bisimilar = false;
-        fail_case = "Full Observability of action " + tmp_action.get_name();
-      }
-    }
-    for (auto condition :
-         tmp_action.get_partially_observants() | std::views::values) {
-      if (first.entails(condition) != second.entails(condition)) {
-        are_bisimilar = false;
-        fail_case = "Full Observability of action " + tmp_action.get_name();
-      }
-    }
   }
 
   if (!are_bisimilar) {

@@ -100,17 +100,10 @@ private:
    * to_compare The state to check against reference. \return True if equal,
    * false otherwise.
    */
-  static bool strong_less_operator(const KripkeState &reference,
+  static bool less_operator(const KripkeState &reference,
                                    const KripkeState &to_compare);
 
-  /**
-   * \brief Check if a State is equal to another using PointerID (repetition
-   * included). \param[in] reference The reference state. \param[in] to_compare
-   * The state to check against reference. \return True if equal, false
-   * otherwise.
-   */
-  static bool shallow_less_operator(const KripkeState &reference,
-                                    const KripkeState &to_compare);
+
 
   ///@}
   ///

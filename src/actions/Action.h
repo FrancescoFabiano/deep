@@ -1,162 +1,137 @@
 #pragma once
 
+#include <map>
 #include <set>
 #include <string>
+#include <utility>
 #include <vector>
 
-#include "Proposition.h"
-#include "formulae/BeliefFormula.h"
+#include "Event.h"
 #include "utilities/Define.h"
 
 /**
  * \class Action
- * \brief Stores an action and all its information.
- * \author Francesco Fabiano
- * \date May 16, 2025
- * \copyright GNU Public License.
+ * \brief A grounded multi-pointed DEL event model.
+ *
+ * An Action is:
+ *
+ *   A = (E, R, D)
+ *
+ * where:
+ *
+ *   E = events;
+ *   R = accessibility relations between events for each agent;
+ *   D = designated events.
+ *
+ * Event preconditions and postconditions are stored inside Event.
  */
 class Action {
 public:
-  /// \name Constructors
-  ///@{
-  /** \brief Default constructor. */
+
   Action() = default;
 
-  /**
-   * \brief Constructor with a given name and id.
-   * \param[in] name The value to assign to \ref m_name.
-   * \param[in] id The value to assign to \ref m_id.
-   */
-  Action(const std::string &name, ActionId id);
+  Action(
+      const std::string &name,
+      ActionId id);
 
-  /**
-   * \brief Copy constructor.
-   * \param other The Action to copy from.
-   */
   Action(const Action &) = default;
   Action(Action &&) noexcept = default;
+
+  ~Action() = default;
+
+  // === Identity ===
+
+  [[nodiscard]] const std::string &
+  get_name() const noexcept;
+
+  void set_name(
+      const std::string &name);
+
+  [[nodiscard]] const ActionId &
+  get_id() const noexcept;
+
+  void set_id(
+      const ActionId &id);
+
+  // === Events ===
+
+  [[nodiscard]] const Events &
+  get_events() const noexcept;
+
+  [[nodiscard]] const Event &
+  get_event(EventId event_id) const;
+
+  [[nodiscard]] bool
+  has_event(EventId event_id) const noexcept;
+
+  void add_event(
+      const Event &event);
+
+  // === Designated Events ===
+
+  [[nodiscard]] const DesignatedEvents &
+  get_designated_events() const noexcept;
+
+  [[nodiscard]] bool
+  is_designated(EventId event_id) const noexcept;
+
+  void add_designated_event(
+      EventId event_id);
+
+  // === Accessibility Relations ===
+
+  [[nodiscard]] const EventRelations &
+  get_event_relations() const noexcept;
+
+  [[nodiscard]] const EventRelation &
+  get_event_relation(
+      const Agent &agent) const;
+
+  [[nodiscard]] bool
+  has_event_edge(
+      const Agent &agent,
+      EventId from,
+      EventId to) const;
+
+  void add_event_edge(
+      const Agent &agent,
+      EventId from,
+      EventId to);
+
+  // === Operators ===
+
   Action &operator=(const Action &) = default;
   Action &operator=(Action &&) noexcept = default;
-  ~Action() = default;
-  ///@}
 
-  /// \name Getters and Setters
-  ///@{
-  /** \brief Gets the name of this action. */
-  [[nodiscard]] std::string get_name() const;
+  [[nodiscard]] bool
+  operator<(const Action &other) const;
 
-  /** \brief Sets the name of this action.
-   *  \param[in] name The value to assign to \ref m_name.
-   */
-  void set_name(const std::string &name);
-
-  /** \brief Gets the executor agent of this action. */
-  [[nodiscard]] Agent get_executor() const;
-
-  /** \brief Sets the executor agent of this action.
-   *  \param[in] executor The value to assign to \ref m_executor.
-   */
-  void set_executor(const Agent &executor);
-
-  /** \brief Gets the unique id of this action. */
-  [[nodiscard]] ActionId get_id() const;
-
-  /** \brief Sets the unique id of this action.
-   *  \param[in] id The value to assign to \ref m_id.
-   */
-  void set_id(ActionId id);
-
-  /** \brief Gets the proposition type of this action. */
-  [[nodiscard]] PropositionType get_type() const;
-
-  /** \brief Sets the proposition type of this action.
-   *  \param[in] type The value to assign to \ref m_type.
-   */
-  void set_type(PropositionType type);
-
-  /** \brief Gets the executability conditions of this action. */
-  [[nodiscard]] const FormulaeList &get_executability() const;
-
-  /** \brief Gets the effects of this action. */
-  [[nodiscard]] const EffectsMap &get_effects() const;
-
-  /** \brief Gets the fully observant agents and their conditions. */
-  [[nodiscard]] const ObservabilitiesMap &get_fully_observants() const;
-
-  /** \brief Gets the partially observant agents and their conditions. */
-  [[nodiscard]] const ObservabilitiesMap &get_partially_observants() const;
-  ///@}
-
-  /// \name Main Methods
-  ///@{
-  /**
-   * \brief Parses a proposition and adds its information to this action.
-   *
-   * Uses add_executability, add_effect, add_fully_observant, and
-   * add_partially_observant to add the appropriate behavior to this action.
-   * \param[in] to_add The proposition to add.
-   */
-  void add_proposition(const Proposition &to_add);
-
-  /** \brief Prints this action.*/
-  void print() const;
-
-  /** \brief Operator < implemented to use Action in std::set. */
-  bool operator<(const Action &) const;
-
-  ///@}
+  [[nodiscard]] bool
+  operator==(const Action &other) const;
 
 private:
-  /// \name Fields
-  ///@{
-  std::string m_name; ///< The name of this action.
-  ActionId m_id; ///< The unique id of this action (calculated with grounder).
-  Agent m_executor; ///< The agent that executes the action.
-  PropositionType m_type =
-      PropositionType::NOTSET; ///< The proposition type of this action.
+  std::string m_name;
 
-  FormulaeList m_executability; ///< Executability conditions.
-  ObservabilitiesMap
-      m_fully_observants; ///< Fully observant agents and their conditions.
-  ObservabilitiesMap m_partially_observants; ///< Partially observant agents and
-                                             ///< their conditions.
-  EffectsMap m_effects;                      ///< Effects and their conditions.
-  ///@}
-
-  /// \name Private Methods
-  ///@{
-  /**
-   * \brief Adds an executability condition to this action.
-   * \param[in] to_add The belief_formula representing the executability
-   * condition to add.
-   */
-  void add_executability(const BeliefFormula &to_add);
+  ActionId m_id;
 
   /**
-   * \brief Adds an effect (with its conditions) to this action.
-   * \param[in] to_add The fluent_formula representing the effect to add.
-   * \param[in] condition The condition of to_add.
+   * E: events of the event model.
    */
-  void add_effect(const FluentFormula &to_add, const BeliefFormula &condition);
+  Events m_events;
 
   /**
-   * \brief Adds a fully observant agent (with its conditions) to this action.
-   * \param[in] ag The agent that is fully observant if condition holds.
-   * \param[in] condition The condition for ag to be fully observant.
+   * D: designated events.
+   *
+   * More than one event may be designated.
    */
-  void add_fully_observant(const Agent &ag, const BeliefFormula &condition);
+  DesignatedEvents m_designated_events;
 
   /**
-   * \brief Adds a partially observant agent (with its conditions) to this
-   * action. \param[in] ag The agent that is partially observant if condition
-   * holds. \param[in] condition The condition for ag to be partially observant.
+   * R_a: accessibility relation over events for each agent.
    */
-  void add_partially_observant(const Agent &ag, const BeliefFormula &condition);
-  ///@}
+  EventRelations m_event_relations;
 };
 
-/// \brief A set of Action objects.
 using ActionsSet = std::set<Action>;
 
-/// \brief A sequential execution of Action objects.
 using ActionList = std::vector<Action>;

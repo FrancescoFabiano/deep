@@ -93,7 +93,7 @@ bool KripkeEntailmentHelper::entails(const BeliefFormula &to_check,
 
 bool KripkeEntailmentHelper::entails(const BeliefFormula &to_check,
                                      const KripkeState &kstate) {
-  return entails(to_check, kstate.get_pointed(), kstate);
+  return entails(to_check, kstate.get_designated_worlds(), kstate);
 }
 
 /**

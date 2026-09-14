@@ -87,7 +87,9 @@ if(ENABLE_NEURALNETS)
     )
 endif()
 
-set(SOURCES ${TEMPLATIC_HEADERS})
+set(SOURCES ${TEMPLATIC_HEADERS}
+        src/actions/Event.cpp
+        src/actions/Event.h)
 
 
 # === Automatically collect all .cpp sources ===
