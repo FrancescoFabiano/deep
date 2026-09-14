@@ -76,7 +76,10 @@ exp/ICAPS20/.DS_Store
 # CMake
 cmake-build-*/
 cmake-build*/
+build-cmake/
 cmake-*/
+*-cmake/
+
 
 # Torch binary files
 lib/libtorch/

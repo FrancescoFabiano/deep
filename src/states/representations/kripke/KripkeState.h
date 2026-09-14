@@ -60,7 +60,15 @@ public:
 
 
   // --- Getters ---
-  /** \brief Get the set of worlds in this KripkeState.
+
+
+    [[nodiscard]] const KripkeWorldPointersVec &
+get_designated_worlds_vec() const noexcept {
+        return m_designated_worlds_vec;
+    }
+
+
+    /** \brief Get the set of worlds in this KripkeState.
    *  \return The set of KripkeWorld pointers.
    */
   [[nodiscard]] const KripkeWorldPointersSet &get_worlds() const noexcept;
@@ -77,6 +85,8 @@ public:
   get_designated_worlds() const noexcept;
 
     [[nodiscard]] uint64_t get_hash() const noexcept;
+
+  void set_designated_worlds_vec();
 
 
   /** \brief Check whether a world is designated. */
@@ -206,6 +216,9 @@ private:
   /** \brief Beliefs of each agent in every world. */
   KripkeWorldPointersTransitiveMap m_beliefs;
 
+
+    KripkeWorldPointersVec m_designated_worlds_vec;
+
   /** \brief Set of pointers to each world in the structure -- empty otherwise.
    */
   KripkeWorldPointersVec m_worlds_vec;
@@ -247,10 +260,11 @@ private:
 
   /** \brief Add a world with old repetition tracking.
    *  \param[in] to_add The KripkeWorld to add.
-   *  \param[in] old_repetition Used to distinguish from same level but
+   *  \param[in] repetition Used to distinguish from same level but
    * different origins. \return Pointer to the newly inserted KripkeWorld.*/
-  KripkeWorldPointer add_rep_world(const KripkeWorld &to_add,
-                                   unsigned short old_repetition);
+    KripkeWorldPointer add_rep_world(
+        const KripkeWorld &to_add,
+        unsigned short repetition);
 
   /** \brief Add a world with repetition and newness tracking.
    *  \param[in] to_add The KripkeWorld to add.

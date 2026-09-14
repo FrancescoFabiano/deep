@@ -47,11 +47,13 @@ void KripkeState::set_worlds_vec() {
 void KripkeState::set_designated_worlds(
     const KripkeWorldPointersSet &to_set) {
   m_designated_worlds = to_set;
+  set_designated_worlds_vec();
 }
 
 void KripkeState::add_designated_world(
     const KripkeWorldPointer &to_add) {
   m_designated_worlds.insert(to_add);
+  set_designated_worlds_vec();
 }
 
 void KripkeState::set_beliefs(
@@ -108,6 +110,7 @@ KripkeState &KripkeState::operator=(const KripkeState &to_copy) {
     m_worlds = to_copy.m_worlds;
     m_designated_worlds = to_copy.m_designated_worlds;
     m_beliefs = to_copy.m_beliefs;
+    m_beliefs_vec = to_copy.m_beliefs_vec;
     m_worlds_vec = to_copy.m_worlds_vec;
     m_beliefs_vec = to_copy.m_beliefs_vec;
     m_hash = to_copy.m_hash;
@@ -337,6 +340,10 @@ void KripkeState::remove_initial_edge_bf(const BeliefFormula &to_check) {
 
 
 void KripkeState::recompute_hash() {
+
+  set_designated_worlds_vec();
+  set_worlds_vec();
+  set_beliefs_vec();
   m_hash = FormulaHelper::hash_kripke_state(*this);
 }
 
@@ -344,6 +351,11 @@ uint64_t KripkeState::get_hash() const noexcept {
   return m_hash;
 }
 
+void KripkeState::set_designated_worlds_vec() {
+  m_designated_worlds_vec =
+      KripkeEqualityHelper::canonicalize_worlds(
+          m_designated_worlds);
+}
 
 // --- Transition ---
 
@@ -772,6 +784,7 @@ KripkeState::KripkeState(
     : m_worlds(other.m_worlds),
       m_designated_worlds(other.m_designated_worlds),
       m_beliefs(other.m_beliefs),
+      m_designated_worlds_vec(other.m_designated_worlds_vec),
       m_worlds_vec(other.m_worlds_vec),
       m_beliefs_vec(other.m_beliefs_vec),
       m_hash(other.m_hash) {}

@@ -26,21 +26,21 @@ KripkeWorldPointersVec KripkeEqualityHelper::canonicalize_worlds(
     result.push_back(w);
   }
 
-  std::sort(result.begin(), result.end(),
-            [](const KripkeWorldPointer &a, const KripkeWorldPointer &b) {
-              const auto ida = a.get_internal_world_id();
-              const auto idb = b.get_internal_world_id();
+  std::ranges::sort(result,
+                    [](const KripkeWorldPointer &a, const KripkeWorldPointer &b) {
+                      const auto ida = a.get_internal_world_id();
+                      const auto idb = b.get_internal_world_id();
 
-              if (ida != idb) {
-                return ida < idb;
-              }
+                      if (ida != idb) {
+                        return ida < idb;
+                      }
 
-              if (a.internal_equal(b)) {
-                return false;
-              }
+                      if (a.internal_equal(b)) {
+                        return false;
+                      }
 
-              return a.internal_smaller(b);
-            });
+                      return a.internal_smaller(b);
+                    });
 
   return result;
 }
@@ -195,13 +195,12 @@ bool KripkeEqualityHelper::less_operator(
   // Hash collision / same hash:
   // perform the actual strong structural ordering.
 
-  const auto reference_designated =
-      canonicalize_worlds(
-          reference.get_designated_worlds());
+  const auto& reference_designated =
+    reference.get_designated_worlds_vec();
 
-  const auto to_compare_designated =
-      canonicalize_worlds(
-          to_compare.get_designated_worlds());
+  const auto& to_compare_designated =
+          to_compare.get_designated_worlds_vec();
+
 
   if (!internal_equal(
           reference_designated,

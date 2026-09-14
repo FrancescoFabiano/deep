@@ -7,6 +7,7 @@
 #include "ExitHandler.h"
 #include "HelperPrint.h"
 #include "KripkeEntailmentHelper.h"
+#include "KripkeEqualityHelper.h"
 #include "State.h"
 #include "states/representations/kripke/KripkeState.h"
 #include "xxhash.h"
@@ -312,38 +313,57 @@ uint64_t FormulaHelper::hash_kripke_state(
             sizeof(value));
       };
 
+  const auto update_bytes =
+      [&](const void *data, const std::size_t size) {
+        XXH3_64bits_update(
+            hash_state,
+            data,
+            size);
+      };
+
+
   // --------------------------------------------------------------------------
   // Worlds
   // --------------------------------------------------------------------------
 
-  const uint64_t worlds_tag = 1;
+  constexpr uint64_t worlds_tag = 1;
   update(worlds_tag);
 
+  const auto &worlds =
+      state.get_worlds_vec();
+
   const uint64_t worlds_size =
-      static_cast<uint64_t>(state.get_worlds().size());
+      static_cast<uint64_t>(worlds.size());
+
   update(worlds_size);
 
-  for (const auto &world : state.get_worlds()) {
-    update(world.get_fluent_based_id());
+  for (const auto &world : worlds) {
+    update(world.get_internal_world_id());
   }
 
 
   // --------------------------------------------------------------------------
   // Designated worlds
+  //
+  // There is no cached canonical vector for designated worlds, so canonicalize
+  // them here. This removes the dependence on pointer repetition ordering.
   // --------------------------------------------------------------------------
 
-  const uint64_t designated_tag = 2;
+  constexpr uint64_t designated_tag = 2;
   update(designated_tag);
+
+  const auto designated_worlds =
+      KripkeEqualityHelper::canonicalize_worlds(
+          state.get_designated_worlds());
 
   const uint64_t designated_size =
       static_cast<uint64_t>(
-          state.get_designated_worlds().size());
+          designated_worlds.size());
+
   update(designated_size);
 
-  for (const auto &world :
-       state.get_designated_worlds()) {
-
-    update(world.get_fluent_based_id());
+  for (const auto &world : designated_worlds) {
+    update(world.get_internal_world_id());
   }
 
 
@@ -351,30 +371,51 @@ uint64_t FormulaHelper::hash_kripke_state(
   // Belief relation
   // --------------------------------------------------------------------------
 
-  const uint64_t beliefs_tag = 3;
+  constexpr uint64_t beliefs_tag = 3;
   update(beliefs_tag);
 
-  for (const auto &[from, agent_map] :
-       state.get_beliefs()) {
+  const auto &beliefs =
+      state.get_beliefs_vec();
 
-    update(from.get_fluent_based_id());
+  const uint64_t beliefs_size =
+      static_cast<uint64_t>(beliefs.size());
+
+  update(beliefs_size);
+
+  for (const auto &[source_world, agent_map] :
+       beliefs) {
+
+    update(source_world.get_internal_world_id());
+
+    const uint64_t agent_map_size =
+        static_cast<uint64_t>(agent_map.size());
+
+    update(agent_map_size);
 
     for (const auto &[agent, targets] :
          agent_map) {
 
-      /*
-       * We need a stable representation of Agent.
-       * Since Agent is already an ordered key in the map,
-       * use its value directly if Agent is an integral type.
-       */
-      update(agent);
+      // Agent is a boost::dynamic_bitset, so hash its semantic bit
+      // representation rather than its object memory representation.
+      std::string agent_bits;
+      boost::to_string(agent, agent_bits);
+
+      const uint64_t agent_size =
+          static_cast<uint64_t>(agent_bits.size());
+
+      update(agent_size);
+
+      update_bytes(
+          agent_bits.data(),
+          agent_bits.size());
 
       const uint64_t targets_size =
           static_cast<uint64_t>(targets.size());
+
       update(targets_size);
 
-      for (const auto &to : targets) {
-        update(to.get_fluent_based_id());
+      for (const auto &target : targets) {
+        update(target.get_internal_world_id());
       }
     }
   }
@@ -387,6 +428,7 @@ uint64_t FormulaHelper::hash_kripke_state(
 
   return result;
 }
+
 
 bool FormulaHelper::consistent(const FluentsSet &to_check) {
   for (auto it = to_check.begin(); it != to_check.end(); ++it) {
