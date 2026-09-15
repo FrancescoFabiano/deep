@@ -10,7 +10,6 @@
 
 #pragma once
 
-#include "epg/PlanningGraph.h"
 
 #include "strategies/SatisfiedGoals.h"
 #include "utilities/Define.h"
@@ -85,6 +84,7 @@ private:
   FormulaeList
       m_goals{}; ///< The goal description, possibly expanded for heuristic use.
 
+  /*
   /// \name Planning Graph Related
   ///@{
   PG_FluentsScoreMap
@@ -97,6 +97,7 @@ private:
   int m_pg_max_score =
       0; ///< Maximum score for the planning graph (used for normalization).
   ///@}
+  */
 
   /**
    * \brief Expands group formulae to generate more subgoals.

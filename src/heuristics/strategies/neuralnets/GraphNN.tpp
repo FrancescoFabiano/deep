@@ -796,12 +796,19 @@ GraphNN<StateRepr>::state_to_tensor_minimal(const KripkeState &kstate) {
   int world_counter = training_dataset.get_shift_state_ids();
 
   if (!ArgumentParser::get_instance().get_dataset_separated()) {
-    const auto &state_parent = kstate.get_pointed();
-    const auto state_parent_id = state_parent.get_id_casted();
+    const auto &designated_worlds =
+        kstate.get_designated_worlds();
 
-    add_edge(TrainingDataset<KripkeState>::get_epsilon_node_id_int(),
-             state_parent_id, state_parent,
-             TrainingDataset<KripkeState>::get_to_state_edge_id_int());
+    for (const auto &state_parent : designated_worlds) {
+      const auto state_parent_id =
+          state_parent.get_id_casted();
+
+      add_edge(
+          TrainingDataset<KripkeState>::get_epsilon_node_id_int(),
+          state_parent_id,
+          state_parent,
+          TrainingDataset<KripkeState>::get_to_state_edge_id_int());
+    }
   }
 
   // Assign IDs ///\todo remove this for efficiency. The hash can be used

@@ -10,3 +10,6 @@
 	path = lib/plank
 	url = https://github.com/a-burigana/plank.git
 	branch = main
+[submodule "lib/benchmarks/ipc2026"]
+	path = lib/benchmarks/ipc2026
+	url = https://github.com/ipc2026-epistemic/benchmarks.git

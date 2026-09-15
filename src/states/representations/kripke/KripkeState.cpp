@@ -16,7 +16,6 @@
 #include "Domain.h"
 #include "FormulaHelper.h"
 #include "HelperPrint.h"
-#include "InitialStateInformation.h"
 #include "KripkeEntailmentHelper.h"
 #include "KripkeReachabilityHelper.h"
 #include "KripkeState.h"
@@ -110,9 +109,14 @@ KripkeState &KripkeState::operator=(const KripkeState &to_copy) {
     m_worlds = to_copy.m_worlds;
     m_designated_worlds = to_copy.m_designated_worlds;
     m_beliefs = to_copy.m_beliefs;
-    m_beliefs_vec = to_copy.m_beliefs_vec;
-    m_worlds_vec = to_copy.m_worlds_vec;
-    m_beliefs_vec = to_copy.m_beliefs_vec;
+
+    m_designated_worlds_vec =
+        to_copy.m_designated_worlds_vec;
+    m_worlds_vec =
+        to_copy.m_worlds_vec;
+    m_beliefs_vec =
+        to_copy.m_beliefs_vec;
+
     m_hash = to_copy.m_hash;
   }
 
@@ -189,81 +193,48 @@ void KripkeState::add_edge(const KripkeWorldPointer &from,
 
 
 void KripkeState::build_initial() {
-  FluentsSet permutation;
-  const InitialStateInformation ini_conditions =
-      Domain::get_instance().get_initial_description();
-  generate_initial_worlds(permutation, 0,
-                          ini_conditions.get_initially_known_fluents());
-  generate_initial_edges();
-  recompute_hash();
-}
+  const auto &initial_state =
+      Domain::get_instance().get_initial_state();
 
-void KripkeState::generate_initial_worlds(FluentsSet &permutation,
-                                          const unsigned int index,
-                                          const FluentsSet &initially_known) {
-  auto const fluent_number = Domain::get_instance().get_fluent_number();
-  auto const bit_size = Domain::get_instance().get_size_fluent();
-
-  if (index == fluent_number) {
-    const KripkeWorld to_add(permutation);
-    add_initial_world(to_add);
-    return;
+  if (!initial_state) {
+    ExitHandler::exit_with_message(
+        ExitHandler::ExitCode::DomainBuildError,
+        "Cannot build KripkeState: initial EPDDL state is null.");
   }
 
-  FluentsSet permutation_2 = permutation;
-  boost::dynamic_bitset<> bitSetToFindPositive(bit_size, index);
-  boost::dynamic_bitset<> bitSetToFindNegative(bit_size, index);
-  bitSetToFindNegative.set(bitSetToFindPositive.size() - 1, true);
-  bitSetToFindPositive.set(bitSetToFindPositive.size() - 1, false);
+  const auto &positive_fluents =
+      Domain::get_instance().get_positive_fluents();
 
-  if (!initially_known.contains(bitSetToFindNegative)) {
-    permutation.insert(bitSetToFindPositive);
-    generate_initial_worlds(permutation, index + 1, initially_known);
-  }
-  if (!initially_known.contains(bitSetToFindPositive)) {
-    permutation_2.insert(bitSetToFindNegative);
-    generate_initial_worlds(permutation_2, index + 1, initially_known);
-  }
-}
+  const auto worlds_number =
+      initial_state->get_worlds_number();
 
-void KripkeState::add_initial_world(const KripkeWorld &possible_add) {
-  const InitialStateInformation ini_conditions =
-      Domain::get_instance().get_initial_description();
-  const auto &ff_forS5 = ini_conditions.get_ff_forS5();
-  FluentFormula ff_forS5_nonempty;
-  for (const auto &s : ff_forS5) {
-    if (!s.empty()) {
-      ff_forS5_nonempty.insert(s);
-    }
-  }
-  if (ff_forS5_nonempty.empty() ||
-      KripkeEntailmentHelper::entails(ff_forS5_nonempty, possible_add)) {
-    add_world(possible_add);
-    if (KripkeEntailmentHelper::entails(
-            ini_conditions.get_pointed_world_conditions(), possible_add)) {
-      add_designated_world(
-          KripkeWorldPointer(possible_add));
-    }
-  } else {
-    KripkeStorage::get_instance().add_world(possible_add);
-  }
-}
+  for (plank::del::world_id w = 0;
+       w < worlds_number;
+       ++w) {
 
-void KripkeState::generate_initial_edges() {
-  for (auto it_pwps_1 = m_worlds.begin(); it_pwps_1 != m_worlds.end();
-       ++it_pwps_1) {
-    for (auto it_pwps_2 = it_pwps_1; it_pwps_2 != m_worlds.end(); ++it_pwps_2) {
-      for (const auto &agent : Domain::get_instance().get_agents()) {
-        add_edge(*it_pwps_1, *it_pwps_2, agent);
-        add_edge(*it_pwps_2, *it_pwps_1, agent);
+    FluentsSet description;
+
+    const auto &label = initial_state->get_label(w);
+
+    for (std::size_t atom = 0;
+         atom < positive_fluents.size();
+         ++atom) {
+
+      Fluent literal = positive_fluents[atom];
+
+      if (!label[atom]) {
+        // Your last bit distinguishes positive/negative literals.
+        literal.set(literal.size() - 1, false);
       }
-    }
-  }
 
-  const auto &ini_conditions = Domain::get_instance().get_initial_description();
-  for (const auto &bf : ini_conditions.get_initial_conditions()) {
-    remove_initial_edge_bf(bf);
-  }
+      description.insert(literal);
+         }
+
+    const KripkeWorld world(description);
+    add_world(world);
+       }
+
+  recompute_hash();
 }
 
 void KripkeState::remove_edge(const KripkeWorldPointer &from,

@@ -1,5 +1,6 @@
 #include "FormulaHelper.h"
 #include <cmath>
+#include <random>
 #include <ranges>
 
 #include "ArgumentParser.h"
@@ -352,9 +353,7 @@ uint64_t FormulaHelper::hash_kripke_state(
   constexpr uint64_t designated_tag = 2;
   update(designated_tag);
 
-  const auto designated_worlds =
-      KripkeEqualityHelper::canonicalize_worlds(
-          state.get_designated_worlds());
+  const auto& designated_worlds = state.get_designated_worlds_vec();
 
   const uint64_t designated_size =
       static_cast<uint64_t>(
@@ -453,52 +452,198 @@ bool FormulaHelper::consistent(const FluentsSet &to_check) {
   return true;
 }
 
-void FormulaHelper::checkSameKState(const KripkeState &first,
-                                    const KripkeState &second) {
+BeliefFormula FormulaHelper::make_random_atom(
+    const std::vector<Fluent> &fluents,
+    std::mt19937 &rng) {
 
-  bool are_bisimilar = true;
+  std::uniform_int_distribution<std::size_t> fluent_dist(
+      0, fluents.size() - 1);
 
-  auto &os = ArgumentParser::get_instance().get_output_stream();
+  BeliefFormula formula;
+  formula.set_formula_type(
+      BeliefFormulaType::FLUENT_FORMULA);
+  formula.set_fluent_formula_from_fluent(
+      fluents[fluent_dist(rng)]);
 
-  // ReSharper disable once CppDFAConstantConditions
+  return formula;
+}
+
+BeliefFormula FormulaHelper::make_random_propositional_formula(
+    const std::vector<Fluent> &fluents,
+    std::mt19937 &rng) {
+
+  std::uniform_int_distribution<int> op_dist(0, 1);
+
+  BeliefFormula formula;
+  formula.set_formula_type(
+      BeliefFormulaType::PROPOSITIONAL_FORMULA);
+
+  formula.set_operator(
+      op_dist(rng) == 0
+          ? BeliefFormulaOperator::BF_AND
+          : BeliefFormulaOperator::BF_OR);
+
+  formula.set_bf1(
+      make_random_atom(fluents, rng));
+  formula.set_bf2(
+      make_random_atom(fluents, rng));
+
+  return formula;
+}
+
+BeliefFormula FormulaHelper::make_random_modal_formula(
+    BeliefFormula inner,
+    const std::vector<Agent> &agents,
+    const unsigned int depth,
+    std::mt19937 &rng) {
+
+  std::uniform_int_distribution<int> modality_dist(0, 1);
+  std::uniform_int_distribution<std::size_t> agent_dist(
+      0, agents.size() - 1);
+  std::bernoulli_distribution include_agent(0.5);
+
+  for (unsigned int i = 0; i < depth; ++i) {
+    BeliefFormula outer;
+
+    if (modality_dist(rng) == 0) {
+      outer.set_formula_type(
+          BeliefFormulaType::BELIEF_FORMULA);
+
+      outer.set_agent(
+          agents[agent_dist(rng)]);
+    } else {
+      outer.set_formula_type(
+          BeliefFormulaType::C_FORMULA);
+
+      AgentsSet group;
+
+      for (const auto &agent : agents) {
+        if (include_agent(rng)) {
+          group.insert(agent);
+        }
+      }
+
+      if (group.empty()) {
+        group.insert(
+            agents[agent_dist(rng)]);
+      }
+
+      outer.set_group_agents(group);
+    }
+
+    outer.set_bf1(inner);
+    inner = std::move(outer);
+  }
+
+  return inner;
+}
+
+BeliefFormula FormulaHelper::make_random_formula(
+    const std::vector<Fluent> &fluents,
+    const std::vector<Agent> &agents,
+    const unsigned int modal_depth,
+    std::mt19937 &rng) {
+
+  auto formula =
+      make_random_propositional_formula(
+          fluents, rng);
+
+  if (modal_depth > 0) {
+    formula =
+        make_random_modal_formula(
+            std::move(formula),
+            agents,
+            modal_depth,
+            rng);
+  }
+
+  return formula;
+}
+
+
+void FormulaHelper::checkSameKState(
+    const KripkeState &first,
+    const KripkeState &second,
+    const unsigned int modal_depth,
+    const unsigned int formula_count,
+    const std::uint32_t seed) {
+
   if (second == first) {
-    // If the state is already bisimilar, no need to check further
     return;
   }
-  // ReSharper disable once CppDFAUnreachableCode
-  os << "[DEBUG] Checking equivalence for possibly different "
-        "states.";
 
-  std::string fail_case;
+  auto &os =
+      ArgumentParser::get_instance().get_output_stream();
 
-  auto &domain_instance = Domain::get_instance();
-  auto to_check1 =
-      domain_instance.get_initial_description().get_initial_conditions();
-  if (first.entails(to_check1) != second.entails(to_check1)) {
-    are_bisimilar = false;
-    fail_case = "initial_conditions";
-  }
+  const auto &domain = Domain::get_instance();
 
-  auto to_check2 = domain_instance.get_initial_description().get_ff_forS5();
-  // ReSharper disable once CppDFAUnreachableCode
-  // ReSharper disable once CppDFAUnreachableCode
-  if (!to_check2.empty() &&
-      (first.entails(to_check2) != second.entails(to_check2))) {
-    are_bisimilar = false;
-    fail_case = "ff_forS5";
-  }
+  const auto &fluents =
+      domain.get_positive_fluents();
 
-  auto to_check3 = domain_instance.get_goal_description();
-  if (first.entails(to_check3) != second.entails(to_check3)) {
-    are_bisimilar = false;
-    fail_case = "goal_description";
-  }
+  const auto &agents_set =
+      domain.get_agents();
 
-  if (!are_bisimilar) {
+  if (fluents.empty()) {
     ExitHandler::exit_with_message(
         ExitHandler::ExitCode::SearchBisimulationError,
-        "Bisimulation reduction failed: there is some discrepancy in " +
-            fail_case + ". Use debugger to investigate.");
+        "Cannot check bisimulation equivalence: "
+        "the domain contains no fluents.");
   }
-  os << " All good:)" << std::endl;
+
+  if (modal_depth > 0 && agents_set.empty()) {
+    ExitHandler::exit_with_message(
+        ExitHandler::ExitCode::SearchBisimulationError,
+        "Cannot generate modal formulas: "
+        "the domain contains no agents.");
+  }
+
+  const std::vector<Agent> agents(
+      agents_set.begin(),
+      agents_set.end());
+
+  std::mt19937 rng(seed);
+
+  os << "[DEBUG] Checking state equivalence with "
+     << formula_count
+     << " random formulas"
+     << " (modal depth=" << modal_depth
+     << ", seed=" << seed << ").";
+
+  for (unsigned int i = 0;
+       i < formula_count;
+       ++i) {
+
+    const BeliefFormula formula =
+        make_random_formula(
+            fluents,
+            agents,
+            modal_depth,
+            rng);
+
+    const bool first_result =
+        first.entails(formula);
+
+    const bool second_result =
+        second.entails(formula);
+
+    if (first_result != second_result) {
+      std::ostringstream message;
+
+      message
+          << "Bisimulation reduction failed on random "
+             "formula #"
+          << i
+          << " (seed=" << seed
+          << ", modal depth=" << modal_depth
+          << ", first=" << first_result
+          << ", second=" << second_result
+          << ").";
+
+      ExitHandler::exit_with_message(
+          ExitHandler::ExitCode::SearchBisimulationError,
+          message.str());
+    }
+  }
+
+  os << " All good :)" << std::endl;
 }

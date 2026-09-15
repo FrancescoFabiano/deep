@@ -123,16 +123,23 @@ void KripkeReachabilityHelper::clean_unreachable_worlds(KripkeState &kstate) {
   KripkeWorldPointersSet reached_worlds;
   KripkeWorldPointersTransitiveMap reached_edges;
 
-  const auto &pointed_world = kstate.get_pointed();
-  reached_worlds.insert(pointed_world);
-
+  const auto &designated_worlds = kstate.get_designated_worlds();
   const auto &beliefs = kstate.get_beliefs();
-  if (const auto it = beliefs.find(pointed_world); it != beliefs.end()) {
-    reached_edges.emplace(pointed_world, it->second);
-  }
 
-  get_all_reachable_worlds(pointed_world, reached_worlds, reached_edges,
-                           kstate);
+  for (const auto &designated_world : designated_worlds) {
+    reached_worlds.insert(designated_world);
+
+    if (const auto it = beliefs.find(designated_world);
+        it != beliefs.end()) {
+      reached_edges.emplace(designated_world, it->second);
+        }
+
+    get_all_reachable_worlds(
+        designated_world,
+        reached_worlds,
+        reached_edges,
+        kstate);
+  }
 
   kstate.set_worlds(reached_worlds);
   kstate.set_beliefs(reached_edges);

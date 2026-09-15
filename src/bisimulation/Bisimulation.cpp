@@ -1768,105 +1768,139 @@ BisAutomata Bisimulation::kstate_to_automaton(
   BisLabelsMap label_map;
 
   const auto &worlds = kstate.get_worlds();
+  const auto &designated_worlds = kstate.get_designated_worlds();
   const auto &agents = Domain::get_instance().get_agents();
-  int Nvertex = static_cast<int>(worlds.size());
-  const int ag_set_size = static_cast<int>(agents.size());
 
-  VectorBisWrapper<Bis_vElem> Vertex(Nvertex);
+  const int n_vertices = static_cast<int>(worlds.size());
+  const int agents_size = static_cast<int>(agents.size());
 
-  const auto &pointed = kstate.get_pointed();
-  index_map[pointed] = 0;
-  pworld_vec.push_back(pointed);
-  compact_indices[static_cast<int>(pointed.get_internal_world_id())] = 0;
+  // Agent labels occupy [0, agents_size). Reserve one additional
+  // behavioural label to preserve designatedness during minimization.
+  const BisLabel designated_label = static_cast<BisLabel>(agents_size);
+  const int world_label_offset = agents_size + 1;
 
-  Vertex[0].ne = 0;
+  VectorBisWrapper<Bis_vElem> vertex(n_vertices);
 
-  int idx = 1, compact_id = 1;
+  int idx = 0;
+  int compact_id = 0;
 
   for (const auto &world : worlds) {
-    if (world != pointed) {
-      index_map[world] = idx;
-      pworld_vec.push_back(world);
+    index_map.emplace(world, idx);
+    pworld_vec.push_back(world);
+    vertex[idx].ne = 0;
 
-      if (compact_indices.insert({world.get_internal_world_id(), compact_id})
-              .second) {
-        compact_id++;
-      }
+    const int internal_id =
+        static_cast<int>(world.get_internal_world_id());
 
-      Vertex[idx].ne = 0;
-      ++idx;
+    const auto [compact_it, inserted] =
+        compact_indices.emplace(internal_id, compact_id);
+    if (inserted) {
+      ++compact_id;
     }
 
+    // Preserve the world label/valuation using the same self-loop encoding
+    // as before, shifted by one to leave room for designatedness.
     label_map[world][world].insert(
-        compact_indices[static_cast<int>(world.get_internal_world_id())] +
-        ag_set_size);
+        world_label_offset + compact_it->second);
+
+    if (designated_worlds.contains(world)) {
+      label_map[world][world].insert(designated_label);
+    }
+
+    ++idx;
   }
 
-  int bhtabSize = ag_set_size + compact_id;
+  const int bhtab_size = world_label_offset + compact_id;
 
+  // Encode epistemic accessibility relations.
   for (const auto &[source, belief_map] : kstate.get_beliefs()) {
     for (const auto &[agent, targets] : belief_map) {
       for (const auto &target : targets) {
         label_map[source][target].insert(agent_to_label.at(agent));
-        Vertex[index_map[source]].ne++;
       }
     }
   }
 
-  for (int i = 0; i < Nvertex; ++i) {
-    Vertex[i].ne++; // For self-loop?
-    Vertex[i].e = VectorBisWrapper<Bis_eElem>(Vertex[i].ne);
+  // Allocate exactly the number of encoded transitions required for each
+  // source world. This also correctly handles multiple self-loop labels
+  // (valuation + designatedness).
+  for (const auto &[from_world, edges] : label_map) {
+    const int from = index_map.at(from_world);
+    int transitions = 0;
+
+    for (const auto &[to_world, labels] : edges) {
+      (void)to_world;
+      transitions += static_cast<int>(labels.size());
+    }
+
+    vertex[from].ne = transitions;
+    vertex[from].e = VectorBisWrapper<Bis_eElem>(transitions);
   }
 
   for (const auto &[from_world, edges] : label_map) {
-    int from = index_map[from_world];
+    const int from = index_map.at(from_world);
     int j = 0;
 
     for (const auto &[to_world, labels] : edges) {
-      const int to = index_map[to_world];
+      const int to = index_map.at(to_world);
 
       for (const auto &label : labels) {
-        Vertex[from].e[j].nbh = 1;
-        Vertex[from].e[j].bh = VectorBisWrapper<int>(1);
-        Vertex[from].e[j].tv = to;
-        Vertex[from].e[j].bh[0] = label;
+        vertex[from].e[j].nbh = 1;
+        vertex[from].e[j].bh = VectorBisWrapper<int>(1);
+        vertex[from].e[j].tv = to;
+        vertex[from].e[j].bh[0] = label;
         ++j;
       }
     }
   }
 
-  BisAutomata a;
-  a.Nvertex = Nvertex;
-  a.Nbehavs = bhtabSize;
-  a.Vertex = Vertex;
+  BisAutomata automaton;
+  automaton.Nvertex = n_vertices;
+  automaton.Nbehavs = bhtab_size;
+  automaton.Vertex = std::move(vertex);
 
-  return a;
+  return automaton;
 }
 
 void Bisimulation::automaton_to_kstate(
-    const BisAutomata &a, const VectorBisWrapper<KripkeWorldPointer> &world_vec,
-    const std::map<BisLabel, Agent> &label_to_agent, KripkeState &kstate) {
+    const BisAutomata &a,
+    const VectorBisWrapper<KripkeWorldPointer> &world_vec,
+    const std::map<BisLabel, Agent> &label_to_agent,
+    KripkeState &kstate) {
   KripkeWorldPointersSet worlds;
+  KripkeWorldPointersSet designated_worlds;
   kstate.clear_beliefs();
 
-  auto agents_size = Domain::get_instance().get_agents().size();
+  const auto agents_size = Domain::get_instance().get_agents().size();
+  const BisLabel designated_label =
+      static_cast<BisLabel>(agents_size);
 
-  for (int i = 0; i < a.Nvertex; i++) {
-    if (a.Vertex[i].ne > 0) {
-      worlds.insert(world_vec[i]);
-      for (int j = 0; j < a.Vertex[i].ne; j++) {
-        for (int k = 0; k < a.Vertex[i].e[j].nbh; k++) {
-          if (const int label = a.Vertex[i].e[j].bh[k];
-              static_cast<size_t>(label) < agents_size) {
-            kstate.add_edge(world_vec[i], world_vec[a.Vertex[i].e[j].tv],
-                            label_to_agent.at(label));
-          }
+  for (int i = 0; i < a.Nvertex; ++i) {
+    if (a.Vertex[i].ne <= 0) {
+      continue;
+    }
+
+    const auto &source_world = world_vec[i];
+    worlds.insert(source_world);
+
+    for (int j = 0; j < a.Vertex[i].ne; ++j) {
+      const auto &edge = a.Vertex[i].e[j];
+
+      for (int k = 0; k < edge.nbh; ++k) {
+        const BisLabel label = edge.bh[k];
+
+        if (static_cast<size_t>(label) < agents_size) {
+          kstate.add_edge(source_world, world_vec[edge.tv],
+                          label_to_agent.at(label));
+        } else if (label == designated_label) {
+          designated_worlds.insert(source_world);
         }
       }
     }
   }
 
   kstate.set_worlds(worlds);
+  kstate.set_designated_worlds(designated_worlds);
 }
 
 void Bisimulation::calc_min_bisimilar(KripkeState &kstate) {

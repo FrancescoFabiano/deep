@@ -298,10 +298,15 @@ void HelperPrint::print_state(const KripkeState &kstate) const {
   auto &os = ArgumentParser::get_instance().get_output_stream();
 
   os << std::endl;
-  os << "The Pointed World has id ";
-  print_list(kstate.get_pointed().get_fluent_set());
-  os << "-" << kstate.get_pointed().get_repetition();
-  os << std::endl;
+  os << "The Designated Worlds are:" << std::endl;
+
+  for (const auto &designated_world : kstate.get_designated_worlds()) {
+    os << "  ";
+    print_list(designated_world.get_fluent_set());
+    os << "-" << designated_world.get_repetition();
+    os << std::endl;
+  }
+
   os << "*******************************************************************"
      << std::endl;
 
@@ -342,8 +347,7 @@ void HelperPrint::print_state(const KripkeState &kstate) const {
 void HelperPrint::print_dot_format(const KripkeState &kstate,
                                    std::ofstream &ofs) const {
   auto &worlds = kstate.get_worlds();
-  auto &pointed = kstate.get_pointed();
-  ofs << "digraph K {" << std::endl;
+const auto &designated_worlds = kstate.get_designated_worlds();  ofs << "digraph K {" << std::endl;
   ofs << "\n\trankdir=BT;" << std::endl;
 
   ofs << "\n\t//WORLDS List:" << std::endl;
@@ -356,8 +360,10 @@ void HelperPrint::print_dot_format(const KripkeState &kstate,
 
   for (const auto &world_ptr : worlds) {
     ofs << "\tnode [shape = "
-        << ((world_ptr == pointed) ? "doublecircle" : "circle") << "] ";
-
+        << (designated_worlds.contains(world_ptr)
+                ? "doublecircle"
+                : "circle")
+        << "] ";
     const auto &tmp_fs = world_ptr.get_fluent_based_id();
     if (!map_world_to_index.contains(tmp_fs)) {
       map_world_to_index[tmp_fs] = found_fs++;
@@ -636,9 +642,6 @@ void HelperPrint::print_dataset_format(const KripkeState &kstate,
 
   ofs << "digraph G {" << std::endl;
 
-  // Pointed world
-  const auto pointed_hash = kstate.get_pointed().get_id_casted();
-
   /// For now, we do not adjust if we use hash. The overlap should be minimal
   /// and not relevant If it becomes relevant, simply add the shift to the hash
   /// (checking for overflow)
@@ -652,10 +655,19 @@ void HelperPrint::print_dataset_format(const KripkeState &kstate,
         << std::endl;
     ofs << training_dataset->get_goal_string();
 
-    ofs << "  " << training_dataset->get_epsilon_node_id_string() << " -> "
-        << world_map[pointed_hash] << " [label=\""
-        << training_dataset->get_to_state_edge_id_string() << "\"];"
-        << std::endl;
+    for (const auto &designated_world : kstate.get_designated_worlds()) {
+      const auto designated_hash =
+          designated_world.get_id_casted();
+
+      ofs << "  "
+          << training_dataset->get_epsilon_node_id_string()
+          << " -> "
+          << world_map.at(designated_hash)
+          << " [label=\""
+          << training_dataset->get_to_state_edge_id_string()
+          << "\"];"
+          << std::endl;
+    }
   }
 
   // Print nodes Removed to minimize the size of the dataset

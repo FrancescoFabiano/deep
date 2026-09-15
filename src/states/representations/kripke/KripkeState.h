@@ -252,12 +252,6 @@ private:
   void add_edge(const KripkeWorldPointer &from, const KripkeWorldPointer &to,
                 const Agent &ag);
 
-  /** \brief Add a world with repetition tracking.
-   *  \param[in] to_add The KripkeWorld to add.
-   *  \return Pointer to the newly inserted KripkeWorld.
-
-  KripkeWorldPointer add_rep_world(const KripkeWorld &to_add);*/
-
   /** \brief Add a world with old repetition tracking.
    *  \param[in] to_add The KripkeWorld to add.
    *  \param[in] repetition Used to distinguish from same level but
@@ -266,32 +260,7 @@ private:
         const KripkeWorld &to_add,
         unsigned short repetition);
 
-  /** \brief Add a world with repetition and newness tracking.
-   *  \param[in] to_add The KripkeWorld to add.
-   *  \param[in] repetition Used to distinguish from other levels.
-   *  \param[out] is_new Indicates if the world was already present.
-   *  \return Pointer to the newly inserted KripkeWorld.
-
-  KripkeWorldPointer add_rep_world(const KripkeWorld &to_add,
-                                   unsigned short repetition, bool &is_new); */
-
   // --- Structure Building ---
-
-  /** \brief Generate all possible permutations of the domain's fluents.
-   *  \param[out] permutation The permutation in construction.
-   *  \param[in] index The index of the fluent to add.
-   *  \param[in] initially_known The set of initially known fluents.
-   */
-  void generate_initial_worlds(FluentsSet &permutation, unsigned int index,
-                               const FluentsSet &initially_known);
-
-  /** \brief Check if a KripkeWorld respects initial conditions and add it if
-   * so. \param[in] possible_add The KripkeWorld to check.
-   */
-  void add_initial_world(const KripkeWorld &possible_add);
-
-  /** \brief Generate all initial edges for the KripkeState. */
-  void generate_initial_edges();
 
   /** \brief Remove an edge for an agent between two worlds.
    *  \param[in] from The KripkeWorld pointer to remove the edge from.

@@ -50,7 +50,6 @@ include_directories(
         src/formulae
         src/heuristics
         src/heuristics/strategies
-        src/heuristics/strategies/epg
         src/parse
         src/states
         src/states/representations/kripke
@@ -60,14 +59,13 @@ include_directories(
         lib/bisimulation
 )
 
+#src/heuristics/strategies/epg
 
 # === Templatic headers ===
 
 set(TEMPLATIC_HEADERS
         src/heuristics/HeuristicsManager.h
         src/heuristics/strategies/SatisfiedGoals.h
-        src/heuristics/strategies/epg/StateLevel.h
-        src/heuristics/strategies/epg/PlanningGraph.h
         src/heuristics/strategies/neuralnets/TrainingDataset.h
         src/search/SpaceSearcher.h
         src/search/search_strategies/BreadthFirst.h
@@ -78,6 +76,9 @@ set(TEMPLATIC_HEADERS
         src/states/State.h
         src/utilities/SetHelper.h
 )
+
+#src/heuristics/strategies/epg/StateLevel.h
+#src/heuristics/strategies/epg/PlanningGraph.h
 
 if(ENABLE_NEURALNETS)
     list(APPEND TEMPLATIC_HEADERS
@@ -105,31 +106,6 @@ foreach(dir ${INCLUDE_DIRS})
     list(APPEND SOURCES ${TMP_SOURCES})
 endforeach()
 
-
-# === Flex and Bison ===
-
-# Keep the legacy Deep parser while EPDDL integration is developed.
-find_package(FLEX REQUIRED)
-find_package(BISON REQUIRED)
-
-FLEX_TARGET(
-        Lexer
-        src/parse/lcp.lex
-        ${BUILD_DIR}/lex.cpp
-)
-
-BISON_TARGET(
-        Parser
-        src/parse/lcp.y
-        ${BUILD_DIR}/bison.cpp
-)
-
-ADD_FLEX_BISON_DEPENDENCY(Lexer Parser)
-
-list(APPEND SOURCES
-        ${FLEX_Lexer_OUTPUTS}
-        ${BISON_Parser_OUTPUTS}
-)
 
 
 # === Doxygen ===

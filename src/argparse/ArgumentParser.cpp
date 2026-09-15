@@ -46,18 +46,34 @@ void ArgumentParser::parse(int argc, char **argv) {
     app.parse(argc, argv);
     // After parsing, if log is enabled, generate the log file path using
     // HelperPrint
-    if (m_log_enabled) {
-      m_log_file_path = HelperPrint::generate_log_file_path(m_input_file);
-      m_log_ofstream.open(m_log_file_path);
-      if (!m_log_ofstream.is_open()) {
-        ExitHandler::exit_with_message(ExitHandler::ExitCode::ArgParseError,
-                                       "Failed to open log file: " +
-                                           m_log_file_path);
+#include <filesystem>
+
+      if (m_log_enabled) {
+          const std::string domain_name =
+              std::filesystem::path(m_domain_file).stem().string();
+
+          const std::string problem_name =
+              std::filesystem::path(m_problem_file).stem().string();
+
+          const std::string log_input =
+              domain_name + "_" + problem_name;
+
+          m_log_file_path =
+              HelperPrint::generate_log_file_path(log_input);
+
+          m_log_ofstream.open(m_log_file_path);
+
+          if (!m_log_ofstream.is_open()) {
+              ExitHandler::exit_with_message(
+                  ExitHandler::ExitCode::ArgParseError,
+                  "Failed to open log file: " +
+                      m_log_file_path);
+          }
+
+          m_output_stream = &m_log_ofstream;
+      } else {
+          m_output_stream = &std::cout;
       }
-      m_output_stream = &m_log_ofstream;
-    } else {
-      m_output_stream = &std::cout;
-    }
 
     // --- Dataset mode consistency check ---
     if (!m_dataset_mode &&
@@ -167,10 +183,23 @@ void ArgumentParser::parse(int argc, char **argv) {
 }
 
 ArgumentParser::ArgumentParser() : app("deep") {
-  app.add_option("input_file", m_input_file,
-                 "Specify the input problem file (e.g., problem.txt). This "
-                 "file defines the planning problem.")
+    app.add_option(
+      "domain_file",
+      m_domain_file,
+      "Specify the EPDDL domain file.")
       ->required();
+
+    app.add_option(
+        "problem_file",
+        m_problem_file,
+        "Specify the EPDDL problem file.")
+        ->required();
+
+    app.add_option(
+    "--act_lib",
+    m_library_files,
+    "Specify a Plank EPDDL action library path. "
+    "Can be provided multiple times.");
 
   // Debug/logging group
   auto *debug_group = app.add_option_group("Debug/Logging");
@@ -426,9 +455,19 @@ ArgumentParser::~ArgumentParser() {
   }
 }
 
-// Getters
-const std::string &ArgumentParser::get_input_file() const noexcept {
-  return m_input_file;
+const std::string &
+ArgumentParser::get_domain_file() const noexcept {
+    return m_domain_file;
+}
+
+const std::string &
+ArgumentParser::get_problem_file() const noexcept {
+    return m_problem_file;
+}
+
+const std::vector<std::string> &
+ArgumentParser::get_library_files() const noexcept {
+    return m_library_files;
 }
 
 bool ArgumentParser::get_verbose() const noexcept { return m_verbose; }

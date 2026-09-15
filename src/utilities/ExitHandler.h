@@ -25,6 +25,9 @@ public:
    * Codes are grouped by subsystem for clarity.
    */
 enum class ExitCode : int {
+
+    NotImplementedError = -100,
+
   // --- General (0-99) ---
   ExitForCompiler = -1, ///< Used to satisfy the compiler when it does not
                          ///< recognize that the branch will exit.

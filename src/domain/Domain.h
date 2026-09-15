@@ -1,9 +1,10 @@
 #pragma once
 #include "Grounder.h"
-#include "InitialStateInformation.h"
 #include "actions/Action.h"
 #include "utilities/Define.h"
 #include <string>
+
+#include "del/semantics/planning_task.h"
 
 /**
  * \class Domain
@@ -55,9 +56,11 @@ public:
   [[nodiscard]] unsigned int get_agent_number() const noexcept;
   /** \brief Getter of the field \ref m_name. */
   [[nodiscard]] const std::string &get_name() const noexcept;
-  /** \brief Getter of the field \ref m_initial_description. */
-  [[nodiscard]] const InitialStateInformation &
-  get_initial_description() const noexcept;
+
+    [[nodiscard]] const plank::del::state_ptr &
+  get_initial_state() const noexcept;
+
+
   /** \brief Getter of the field \ref m_goal_description. */
   [[nodiscard]] const FormulaeList &get_goal_description() const noexcept;
 
@@ -69,7 +72,11 @@ public:
 private:
   std::string
       m_name; ///< The name of the file that contains the description of *this*.
-  // Grounder m_grounder; ///< A \ref grounder object used to store the name of
+
+
+    plank::del::planning_task m_plank_task;
+
+    // Grounder m_grounder; ///< A \ref grounder object used to store the name of
   // the information.
   FluentsSet m_fluents; ///< Set containing all the (grounded) Fluent of
                         ///< the domain.
@@ -80,8 +87,6 @@ private:
                           ///< conditions, obs etc.) of the domain.
   AgentsSet
       m_agents; ///< Set containing all the (grounded) Agent of the domain.
-  InitialStateInformation
-      m_initial_description;       ///< The description of the initial State.
   FormulaeList m_goal_description; ///< The formula that describes the goal.
 
   /**
@@ -104,13 +109,6 @@ private:
    */
   void build_actions(Grounder &grounder);
 
-  /** \brief Function that adds each proposition to the correct action.
-   */
-  void build_propositions();
-
-  /** \brief Function that builds the initial state static description.
-   */
-  void build_initially();
 
   /** \brief Function that builds the goal description.     */
   void build_goal();
