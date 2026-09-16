@@ -96,11 +96,6 @@ public:
    */
   void print_list_ag(const AgentsSet &to_print) const;
 
-  /**
-   * \brief Print the parsed bf.
-   * \param to_print The BeliefFormulaParsed to print.
-   */
-  static void print_belief_formula_parsed(const BeliefFormulaParsed &to_print);
 
   /**
    * \brief Print a belief formula using grounder.

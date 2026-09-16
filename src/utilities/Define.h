@@ -192,6 +192,28 @@ enum class RLHeuristicType {
 
 /// \name Belief Formulae Related
 ///@{
+///
+
+enum class BeliefFormulaType {
+    FLUENT_FORMULA,
+    BELIEF_FORMULA,
+    PROPOSITIONAL_FORMULA,
+    E_FORMULA,
+    C_FORMULA,
+    TRUE_FORMULA,
+    FALSE_FORMULA,
+    BF_EMPTY,
+    BF_TYPE_FAIL
+  };
+
+enum class BeliefFormulaOperator {
+    BF_NOT,
+    BF_AND,
+    BF_OR,
+    BF_INPAREN,
+    BF_FAIL
+  };
+
 class BeliefFormula;
 using FormulaeList =
     std::list<BeliefFormula>; ///< CNF formula of BeliefFormula.
@@ -225,38 +247,54 @@ using DesignatedEvents =
     std::set<EventId>;
 
 /**
- * Directed edge between two events.
+ * Events reachable from one source event.
  */
-using EventEdge =
-    std::pair<EventId, EventId>;
+using EventTargets =
+    std::set<EventId>;
 
 /**
- * Accessibility relation for one agent.
+ * Event accessibility relation represented as:
+ *
+ *   source event -> target events
  */
 using EventRelation =
-    std::set<EventEdge>;
+    std::map<EventId, EventTargets>;
 
 /**
  * Agent-indexed event accessibility relations.
  */
 using EventRelations =
     std::map<Agent, EventRelation>;
-///@}
 
 
+using ObservabilityType = unsigned int;
 
 /**
- * \enum event_type
- * \brief Types of events.
+ * Relation over events associated with each EPDDL observability type.
+ *
+ * obs_type -> R_obs
  */
-enum class event_type {
-  EPSILON, ///< Null event.
-  SIGMA,   ///< Event corresponding to ...
-  TAU      ///< Event corresponding to ...
-};
+using ObservabilityRelations =
+    std::map<ObservabilityType, EventRelation>;
 
-using event_type_set = std::set<event_type>;
-using event_type_relation = std::set<std::pair<event_type, event_type>>;
+/**
+ * For one agent:
+ *
+ * obs_type -> condition under which that observability type applies.
+ */
+using AgentObservabilityConditions =
+    std::map<ObservabilityType, BeliefFormula>;
+
+/**
+ * For all agents:
+ *
+ * agent -> (obs_type -> condition)
+ */
+using ObservabilityConditions =
+    std::map<Agent, AgentObservabilityConditions>;
+
+///@}
+
 
 /// \name eState
 ///@{

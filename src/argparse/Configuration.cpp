@@ -47,6 +47,8 @@ Configuration &Configuration::get_instance() {
     const ArgumentParser &parser = ArgumentParser::get_instance();
     instance.set_bisimulation(parser.get_bisimulation());
     instance.set_bisimulation_type(parser.get_bisimulation_type());
+    instance.set_bisimulation_interval(
+    parser.get_bisimulation_interval());
     instance.set_check_visited(parser.get_check_visited());
     instance.set_search_strategy(parser.get_search_strategy());
     instance.set_heuristic_opt(parser.get_heuristic(), true);
@@ -83,6 +85,18 @@ bool Configuration::get_bisimulation_type_bool() const noexcept {
 void Configuration::set_bisimulation_type_bool() {
   m_bisimulation_type_bool = get_bisimulation_type() != "PT";
 }
+
+std::size_t
+Configuration::get_bisimulation_interval() const noexcept {
+  return m_bisimulation_interval;
+}
+
+void Configuration::set_bisimulation_interval(
+    const std::size_t interval) noexcept {
+
+  m_bisimulation_interval = interval;
+}
+
 
 bool Configuration::get_check_visited() const noexcept {
   return m_check_visited;
@@ -160,6 +174,10 @@ void Configuration::set_field_by_name(const std::string &field,
     set_bisimulation(value);
   else if (field == "bisimulation_type")
     set_bisimulation_type(value);
+  else if (field == "bisimulation_interval")
+    set_bisimulation_interval(
+        static_cast<std::size_t>(
+            std::stoull(trim(value))));
   else if (field == "check_visited" || field == "c")
     set_check_visited(value);
   else if (field == "search" || field == "s")
@@ -275,6 +293,9 @@ void Configuration::print(std::ostream &os) const {
     else
       os << "Paige and Tarjan";
     os << '\n';
+    os << "    Bisimulation depth interval: "
+   << m_bisimulation_interval
+   << '\n';
   }
   os << "    Already visited state check: "
      << (m_check_visited ? "active" : "inactive") << '\n';

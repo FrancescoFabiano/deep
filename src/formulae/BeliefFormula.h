@@ -24,7 +24,6 @@
 
 #include <memory>
 
-#include "BeliefFormulaParsed.h"
 #include "utilities/Define.h"
 
 class BeliefFormula {
@@ -34,13 +33,6 @@ public:
   /** \brief Empty Constructor */
   BeliefFormula() = default;
 
-  /** \brief Constructor that takes a \ref BeliefFormulaParsed object.
-   *  \details This constructor is used to create a \ref BeliefFormula from a
-   * parsed one.
-   *
-   *  \param[in] to_ground The \ref BeliefFormulaParsed to copy in *this*.
-   */
-  explicit BeliefFormula(const BeliefFormulaParsed &to_ground);
 
   /** \brief Copy Constructor
    *  \param[in] to_copy The \ref BeliefFormula to copy in *this*.
@@ -94,20 +86,6 @@ public:
    *  \param[in] to_set The \ref BeliefFormula to be pointed by m_bf2.
    */
   void set_bf2(const BeliefFormula &to_set);
-
-  /** \brief Setter of the field m_bf1 given a \ref BeliefFormulaParsed.
-   *  This setter takes a \ref BeliefFormulaParsed and sets m_bf1 to be its
-   * pointer. \param[in] to_set The \ref BeliefFormulaParsed to be pointed by
-   * m_bf1.
-   */
-  void set_bf1(const BeliefFormulaParsed &to_set);
-
-  /** \brief Setter of the field m_bf2 given a \ref BeliefFormulaParsed.
-   *  This setter takes a \ref BeliefFormulaParsed and sets m_bf2 to be its
-   * pointer. \param[in] to_set The \ref BeliefFormulaParsed to be pointed by
-   * m_bf2.
-   */
-  void set_bf2(const BeliefFormulaParsed &to_set);
 
   /** \brief Setter for the field m_formula_type.
    *  \param[in] to_set The \ref BeliefFormulaType object to copy in

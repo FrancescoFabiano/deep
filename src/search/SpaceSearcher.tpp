@@ -151,13 +151,30 @@ bool SpaceSearcher<StateRepr, Strategy>::search_sequential(
       if (current.is_executable(action)) {
         State successor = current.compute_successor(action);
 
+
+
+          if (configuration.get_bisimulation()) {
+
+              const std::size_t bisimulation_interval =
+                  configuration.get_bisimulation_interval();
+
+              const auto depth =
+                  successor.get_plan_length();
+
+              const bool should_contract =
+                  bisimulation_interval > 0 &&
+                  depth > 0 &&
+                  depth % bisimulation_interval == 0;
+
+              if (should_contract) {
+
 #ifdef DEBUG
-        check_bisimulation_equivalence(successor);
+                  check_bisimulation_equivalence(successor);
 #endif
 
-        if (configuration.get_bisimulation()) {
-          successor.contract_with_bisimulation();
-        }
+                  successor.contract_with_bisimulation();
+              }
+          }
 
         if (successor.is_goal()) {
           m_plan_actions_id = successor.get_executed_actions();
@@ -493,9 +510,8 @@ void SpaceSearcher<StateRepr, Strategy>::check_bisimulation_equivalence(
 
   State<StateRepr> temp = state;
   temp.contract_with_bisimulation();
-  auto &os = ArgumentParser::get_instance().get_output_stream();
 
-  os << "[BISIMULATION]";
   FormulaHelper::checkSameKState(state.get_representation(),
                                  temp.get_representation());
+
 }

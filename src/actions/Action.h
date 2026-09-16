@@ -31,7 +31,7 @@ public:
   Action() = default;
 
   Action(
-      const std::string &name,
+      std::string name,
       ActionId id);
 
   Action(const Action &) = default;
@@ -78,25 +78,7 @@ public:
   void add_designated_event(
       EventId event_id);
 
-  // === Accessibility Relations ===
 
-  [[nodiscard]] const EventRelations &
-  get_event_relations() const noexcept;
-
-  [[nodiscard]] const EventRelation &
-  get_event_relation(
-      const Agent &agent) const;
-
-  [[nodiscard]] bool
-  has_event_edge(
-      const Agent &agent,
-      EventId from,
-      EventId to) const;
-
-  void add_event_edge(
-      const Agent &agent,
-      EventId from,
-      EventId to);
 
   // === Operators ===
 
@@ -108,6 +90,37 @@ public:
 
   [[nodiscard]] bool
   operator==(const Action &other) const;
+
+
+    // === EPDDL Observability ===
+
+    [[nodiscard]]
+    const ObservabilityRelations &
+    get_observability_relations() const noexcept;
+
+    [[nodiscard]]
+    const EventRelation &
+    get_observability_relation(
+        ObservabilityType type) const;
+
+    void add_observability_edge(
+        ObservabilityType type,
+        EventId from,
+        EventId to);
+
+    [[nodiscard]]
+    const ObservabilityConditions &
+    get_observability_conditions() const noexcept;
+
+    [[nodiscard]]
+    const AgentObservabilityConditions &
+    get_observability_conditions(
+        const Agent &agent) const;
+
+    void add_observability_condition(
+        const Agent &agent,
+        ObservabilityType type,
+        const BeliefFormula &condition);
 
 private:
   std::string m_name;
@@ -126,10 +139,21 @@ private:
    */
   DesignatedEvents m_designated_events;
 
-  /**
-   * R_a: accessibility relation over events for each agent.
-   */
-  EventRelations m_event_relations;
+
+    /**
+ * Relations over events defined for each EPDDL observability type.
+ *
+ * These are part of the grounded action specification.
+ */
+    ObservabilityRelations m_observability_relations;
+
+    /**
+     * Formula-valued observability conditions for each agent.
+     *
+     * These determine which observability relation applies when
+     * executing this action in a particular epistemic state.
+     */
+    ObservabilityConditions m_observability_conditions;
 };
 
 using ActionsSet = std::set<Action>;

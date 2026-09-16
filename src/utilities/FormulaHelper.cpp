@@ -569,6 +569,15 @@ void FormulaHelper::checkSameKState(
     const std::uint32_t seed) {
 
   if (second == first) {
+    if (ArgumentParser::get_instance().get_verbose()) {
+      auto &os =
+          ArgumentParser::get_instance().get_output_stream();
+
+      os << "[DEBUG] Bisimulation contraction produced "
+            "an identical state; random formula check skipped."
+         << std::endl;
+    }
+
     return;
   }
 

@@ -228,6 +228,11 @@ ArgumentParser::ArgumentParser() : app("deep") {
                    "default) or 'PT' (Paige and Tarjan).")
       ->check(CLI::IsMember({"FB", "PT"}))
       ->default_val("FB");
+    bis_group->add_option(
+    "--bisimulation-interval",
+    m_bisimulation_interval,
+    "Apply bisimulation contraction every N search-depth levels (0 means no contraction is ever applied)")
+    ->default_val(3);
 
   // Dataset group
   auto *dataset_group = app.add_option_group("Dataset");
@@ -483,6 +488,11 @@ bool ArgumentParser::get_bisimulation() const noexcept {
 
 const std::string &ArgumentParser::get_bisimulation_type() const noexcept {
   return m_bisimulation_type;
+}
+
+std::size_t
+ArgumentParser::get_bisimulation_interval() const noexcept {
+    return m_bisimulation_interval;
 }
 
 bool ArgumentParser::get_dataset_mode() const noexcept {

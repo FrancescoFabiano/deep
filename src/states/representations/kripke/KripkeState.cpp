@@ -69,6 +69,7 @@ void KripkeState::set_beliefs_vec() {
 
 void KripkeState::clear_beliefs() {
   m_beliefs.clear();
+    m_beliefs_vec.clear();
 }
 
 // --- Getters ---
@@ -170,143 +171,194 @@ KripkeWorldPointer KripkeState::add_rep_world(
   return tmp;
 }
 
-void KripkeState::add_edge(const KripkeWorldPointer &from,
-                           const KripkeWorldPointer &to, const Agent &ag) {
-  auto from_beliefs = m_beliefs.find(from);
+void KripkeState::add_edge(
+    const KripkeWorldPointer &from,
+    const KripkeWorldPointer &to,
+    const Agent &ag) {
 
-  if (from_beliefs != m_beliefs.end()) {
-    auto &beliefs_map = from_beliefs->second;
-    auto ag_beliefs = beliefs_map.find(ag);
-
-    if (ag_beliefs != beliefs_map.end()) {
-      if (ag_beliefs->second.insert(to).second) {
-      }
-    } else {
-      beliefs_map.emplace(ag, KripkeWorldPointersSet{to});
-    }
-  } else {
-    KripkeWorldPointersMap pwm;
-    pwm.emplace(ag, KripkeWorldPointersSet{to});
-    m_beliefs.emplace(from, std::move(pwm));
-  }
+    m_beliefs[from][ag].insert(to);
 }
 
-
 void KripkeState::build_initial() {
-  const auto &initial_state =
-      Domain::get_instance().get_initial_state();
+  const auto &domain = Domain::get_instance();
+  const auto &plank_state = domain.get_initial_state();
 
-  if (!initial_state) {
+  if (!plank_state) {
     ExitHandler::exit_with_message(
         ExitHandler::ExitCode::DomainBuildError,
-        "Cannot build KripkeState: initial EPDDL state is null.");
+        "Cannot build initial Kripke state: "
+        "plank initial state is null.");
   }
 
   const auto &positive_fluents =
-      Domain::get_instance().get_positive_fluents();
+      domain.get_positive_fluents();
+
+  const auto &agents =
+      domain.get_agents();
 
   const auto worlds_number =
-      initial_state->get_worlds_number();
+      plank_state->get_worlds_number();
 
-  for (plank::del::world_id w = 0;
-       w < worlds_number;
-       ++w) {
+  // Temporary mapping only:
+  // plank world id -> canonical DEEP world pointer.
+  std::vector<KripkeWorldPointer> world_map;
+  world_map.reserve(worlds_number);
+
+  // ---------------------------------------------------------
+  // Worlds, labels and designated worlds.
+  // ---------------------------------------------------------
+
+  for (plank::del::world_id world_id = 0;
+       world_id < worlds_number;
+       ++world_id) {
+
+    const auto &label =
+        plank_state->get_label(world_id);
 
     FluentsSet description;
 
-    const auto &label = initial_state->get_label(w);
+    for (std::size_t atom_id = 0;
+         atom_id < positive_fluents.size();
+         ++atom_id) {
 
-    for (std::size_t atom = 0;
-         atom < positive_fluents.size();
-         ++atom) {
+      Fluent fluent =
+          positive_fluents[atom_id];
 
-      Fluent literal = positive_fluents[atom];
+      if (!label[
+              static_cast<plank::del::atom>(atom_id)]) {
 
-      if (!label[atom]) {
-        // Your last bit distinguishes positive/negative literals.
-        literal.set(literal.size() - 1, false);
+        // Last bit distinguishes positive/negative literals
+        // in DEEP.
+        fluent.set(
+            fluent.size() - 1,
+            false);
       }
 
-      description.insert(literal);
-         }
+      description.insert(std::move(fluent));
+    }
 
     const KripkeWorld world(description);
-    add_world(world);
-       }
 
+    const auto world_ptr =
+        KripkeStorage::get_instance()
+            .add_world(world);
+
+    m_worlds.insert(world_ptr);
+
+    world_map.push_back(world_ptr);
+
+    if (plank_state->is_designated(world_id)) {
+      m_designated_worlds.insert(world_ptr);
+    }
+  }
+
+  // ---------------------------------------------------------
+  // Accessibility relations.
+  // ---------------------------------------------------------
+
+  std::size_t agent_id = 0;
+
+    for (const auto &agent : agents) {
+        for (plank::del::world_id from_id = 0;
+             from_id < worlds_number;
+             ++from_id) {
+
+            const auto &possible_worlds =
+                plank_state->get_agent_possible_worlds(
+                    static_cast<plank::del::agent>(agent_id),
+                    from_id);
+
+            for (const plank::del::world_id to_id : possible_worlds) {
+                add_edge(
+                    world_map[from_id],
+                    world_map[to_id],
+                    agent);
+            }
+             }
+
+        ++agent_id;
+    }
+
+
+  if (m_designated_worlds.empty()) {
+    ExitHandler::exit_with_message(
+        ExitHandler::ExitCode::DomainBuildError,
+        "Cannot build initial Kripke state: "
+        "plank produced no designated worlds.");
+  }
+
+  // IMPORTANT:
+  // This canonicalizes:
+  //
+  //   m_worlds             -> m_worlds_vec
+  //   m_designated_worlds  -> m_designated_worlds_vec
+  //   m_beliefs            -> m_beliefs_vec
+  //
+  // before computing the hash.
   recompute_hash();
-}
 
-void KripkeState::remove_edge(const KripkeWorldPointer &from,
-                              const KripkeWorldPointer &to, const Agent &ag) {
-  auto from_beliefs = m_beliefs.find(from);
-  if (from_beliefs == m_beliefs.end()) {
-    return;
-  }
 
-  auto ag_beliefs = from_beliefs->second.find(ag);
-  if (ag_beliefs == from_beliefs->second.end()) {
-    return;
-  }
+#ifdef DEBUG
+    if (ArgumentParser::get_instance().get_verbose()) {
+        auto &os = ArgumentParser::get_instance().get_output_stream();
 
-  ag_beliefs->second.erase(to);
-}
+        os << "\n[EPDDL] Initial Kripke state imported:"
+           << "\n  Worlds: " << m_worlds.size()
+           << "\n  Designated worlds: " << m_designated_worlds.size()
+           << "\n  Agents: " << Domain::get_instance().get_agents().size()
+           << std::endl;
 
-void KripkeState::remove_initial_edge(const FluentFormula &known_ff,
-                                      const Agent &ag) {
-  for (const auto &pwptr_tmp1 : m_worlds) {
-    for (const auto &pwptr_tmp2 : m_worlds) {
-      if (pwptr_tmp1 == pwptr_tmp2)
-        continue;
-      const bool entails1 =
-          KripkeEntailmentHelper::entails(known_ff, pwptr_tmp1);
-      const bool entails2 =
-          KripkeEntailmentHelper::entails(known_ff, pwptr_tmp2);
-      if (entails1 && !entails2) {
-        remove_edge(pwptr_tmp1, pwptr_tmp2, ag);
-        remove_edge(pwptr_tmp2, pwptr_tmp1, ag);
-      } else if (entails2 && !entails1) {
-        remove_edge(pwptr_tmp2, pwptr_tmp1, ag);
-        remove_edge(pwptr_tmp1, pwptr_tmp2, ag);
-      }
-    }
-  }
-}
+        std::size_t edges = 0;
 
-void KripkeState::remove_initial_edge_bf(const BeliefFormula &to_check) {
-  if (to_check.get_formula_type() == BeliefFormulaType::C_FORMULA) {
-    const BeliefFormula &tmp = to_check.get_bf1();
-    switch (tmp.get_formula_type()) {
-    case BeliefFormulaType::PROPOSITIONAL_FORMULA:
-      if (tmp.get_operator() == BeliefFormulaOperator::BF_OR) {
-        auto known_ff_ptr = FluentFormula();
-        FormulaHelper::check_Bff_notBff(tmp.get_bf1(), tmp.get_bf2(),
-                                        known_ff_ptr);
-        if (!known_ff_ptr.empty()) {
-          remove_initial_edge(known_ff_ptr, tmp.get_bf2().get_agent());
+        for (const auto &[source, agent_map] : m_beliefs) {
+            for (const auto &[agent, targets] : agent_map) {
+                edges += targets.size();
+            }
         }
-      } else if (tmp.get_operator() != BeliefFormulaOperator::BF_AND) {
-        ExitHandler::exit_with_message(
-            ExitHandler::ExitCode::FormulaBadDeclaration,
-            "Error: Invalid type of initial formula (FIFTH) in "
-            "remove_initial_edge_bf.");
-      }
-      break;
-    case BeliefFormulaType::FLUENT_FORMULA:
-    case BeliefFormulaType::BELIEF_FORMULA:
-    case BeliefFormulaType::BF_EMPTY:
-      return;
-    default:
-      ExitHandler::exit_with_message(
-          ExitHandler::ExitCode::FormulaBadDeclaration,
-          "Error: Invalid type of initial formula (SIXTH) in "
-          "remove_initial_edge_bf.");
+
+        os << "  Accessibility edges: " << edges
+           << std::endl;
     }
-  } else {
-    ExitHandler::exit_with_message(ExitHandler::ExitCode::FormulaBadDeclaration,
-                                   "Error: Invalid type of initial formula "
-                                   "(SEVENTH) in remove_initial_edge_bf.");
-  }
+#endif
+
+}
+
+bool KripkeState::is_executable(
+    const Action &action) const {
+
+    const auto &designated_events =
+        action.get_designated_events();
+
+    if (designated_events.empty()) {
+        return false;
+    }
+
+    for (const auto &world :
+         m_designated_worlds) {
+
+        bool executable_in_world = false;
+
+        for (const EventId event_id :
+             designated_events) {
+
+            const Event &event =
+                action.get_event(event_id);
+
+            if (is_event_applicable(
+                    event,
+                    world)) {
+
+                executable_in_world = true;
+                break;
+                    }
+             }
+
+        if (!executable_in_world) {
+            return false;
+        }
+         }
+
+    return true;
 }
 
 
@@ -328,265 +380,255 @@ void KripkeState::set_designated_worlds_vec() {
           m_designated_worlds);
 }
 
+
 // --- Transition ---
 
-KripkeState KripkeState::compute_successor(
-    const Action &action) const {
+bool KripkeState::is_event_applicable(
+    const Event &event,
+    const KripkeWorldPointer &world) const {
 
+    return KripkeEntailmentHelper::entails(
+        event.get_precondition(),
+        world,
+        *this);
+}
 
-#ifdef DEBUG
+bool KripkeState::is_event_applicable_cached(
+    const Event &event,
+    const KripkeWorldPointer &world,
+    ApplicabilityCache &cache) const {
 
-  if (m_designated_worlds.empty() ||
-      action.get_designated_events().empty()) {
+    const ProductWorld key{
+        world,
+        event.get_id()
+    };
 
-    ExitHandler::exit_with_message(
-        ExitHandler::ExitCode::StateActionNotExecutableError,
-        "Action '" + action.get_name() +
-            "' cannot be applied: missing designated worlds "
-            "or designated events.");
-      }
+    const auto it =
+        cache.find(key);
 
-  for (const auto &world : m_designated_worlds) {
+    if (it != cache.end()) {
+        return it->second;
+    }
 
-    bool has_applicable_event = false;
+    const bool applicable =
+        is_event_applicable(
+            event,
+            world);
 
-    for (const auto event_id :
-         action.get_designated_events()) {
+    cache.emplace(
+        key,
+        applicable);
 
-      const Event &event =
-          action.get_event(event_id);
+    return applicable;
+}
 
-      if (KripkeEntailmentHelper::entails(
-              event.get_precondition(),
-              world,
-              *this)) {
+FluentsSet KripkeState::apply_event_postconditions(
+    const Event &event,
+    const KripkeWorldPointer &world) const {
 
-        has_applicable_event = true;
-        break;
-              }
+    FluentsSet description =
+        world.get_fluent_set();
+
+    /*
+     * DEL postconditions:
+     *
+     *     p -> phi
+     *
+     * phi is evaluated in the source epistemic model/world.
+     */
+    for (const auto &[fluent, postcondition] :
+         event.get_postconditions()) {
+
+        const bool value =
+            KripkeEntailmentHelper::entails(
+                postcondition,
+                world,
+                *this);
+
+        /*
+         * Normalize the postcondition key to its positive fluent.
+         */
+        const Fluent positive_fluent =
+            FormulaHelper::is_negated(fluent)
+                ? FormulaHelper::negate_fluent(fluent)
+                : fluent;
+
+        /*
+         * Remove both possible truth assignments before inserting
+         * the new value.
+         */
+        description.erase(
+            positive_fluent);
+
+        description.erase(
+            FormulaHelper::negate_fluent(
+                positive_fluent));
+
+        description.insert(
+            value
+                ? positive_fluent
+                : FormulaHelper::negate_fluent(
+                      positive_fluent));
          }
 
-    if (!has_applicable_event) {
-      ExitHandler::exit_with_message(
-          ExitHandler::ExitCode::StateActionNotExecutableError,
-          "Action '" + action.get_name() +
-              "' is not executable in one of the designated worlds.");
-    }
-  }
+    return description;
+}
 
-#endif
+KripkeState::ResolvedObservability
+KripkeState::resolve_observability_types(
+    const Action &action) const {
 
+    ResolvedObservability result;
 
-  using ProductWorld =
-      std::pair<KripkeWorldPointer, EventId>;
+    /*
+     * Action already contains:
+     *
+     *   agent -> (observability type -> condition)
+     *
+     * Therefore there is no need to ask Domain for an agent list.
+     */
+    for (const auto &[agent, conditions] :
+         action.get_observability_conditions()) {
 
-  KripkeState successor;
-
-  /*
-   * Exact semantic identity of a product world:
-   *
-   *     (source world, event)
-   *
-   * This map, rather than the repetition number, determines
-   * whether a product world has already been created.
-   */
-  std::map<ProductWorld, KripkeWorldPointer> product_worlds;
-
-  /*
-   * Product worlds whose outgoing accessibility edges still
-   * need to be expanded.
-   */
-  std::queue<ProductWorld> pending;
-
-  /*
-   * Repetition is only implementation metadata used by
-   * KripkeWorldPointer. It no longer encodes the source-world
-   * depth as in the old transition function.
-   */
-  unsigned short next_repetition = 0;
-
-
-  // --------------------------------------------------------------------------
-  // Helpers
-  // --------------------------------------------------------------------------
-
-  const auto is_applicable =
-      [&](const KripkeWorldPointer &world,
-          const Event &event) {
-
-        return KripkeEntailmentHelper::entails(
-            event.get_precondition(),
-            world,
-            *this);
-      };
-
-
-  const auto apply_postconditions =
-      [&](const KripkeWorldPointer &world,
-          const Event &event) {
-
-        FluentsSet description =
-            world.get_fluent_set();
+        bool found = false;
+        ObservabilityType selected_type{};
 
         /*
-         * DEL postconditions have the form:
+         * Match plank's state-level observability resolution.
          *
-         *     p -> phi
-         *
-         * where phi is evaluated in the source world.
+         * Conditions are evaluated against the complete source
+         * epistemic state, once before product construction.
          */
-        for (const auto &[fluent, postcondition] :
-             event.get_postconditions()) {
+        for (const auto &[obs_type, condition] :
+             conditions) {
 
-          const bool value =
-              KripkeEntailmentHelper::entails(
-                  postcondition,
-                  world,
-                  *this);
+            if (!KripkeEntailmentHelper::entails(
+                    condition,
+                    *this)) {
+                continue;
+                    }
 
-          /*
-           * Deep stores fluents with polarity.
-           * Normalize the key to the positive fluent first.
-           */
-          const Fluent positive_fluent =
-              FormulaHelper::is_negated(fluent)
-                  ? FormulaHelper::negate_fluent(fluent)
-                  : fluent;
+            /*
+             * Preserve plank's behaviour if multiple conditions
+             * happen to hold: the last satisfied type is retained.
+             */
+            selected_type = obs_type;
+            found = true;
+             }
 
-          description.erase(positive_fluent);
-          description.erase(
-              FormulaHelper::negate_fluent(
-                  positive_fluent));
-
-          description.insert(
-              value
-                  ? positive_fluent
-                  : FormulaHelper::negate_fluent(
-                        positive_fluent));
+        if (!found) {
+            ExitHandler::exit_with_message(
+                ExitHandler::ExitCode::DomainBuildError,
+                "No observability condition holds for an agent "
+                "while executing action '" +
+                    action.get_name() + "'.");
         }
 
-        return description;
-      };
+        result.emplace(
+            agent,
+            selected_type);
+         }
+
+    return result;
+}
 
 
-  const auto get_or_create_product_world =
-      [&](const KripkeWorldPointer &source_world,
-          const Event &event) {
+KripkeWorldPointer
+KripkeState::get_or_create_product_world(
+    const KripkeWorldPointer &source_world,
+    const Event &event,
+    KripkeState &successor,
+    ProductWorldMap &product_worlds,
+    ProductWorldQueue &pending,
+    unsigned short &next_repetition) const {
 
-        const ProductWorld product{
-            source_world,
-            event.get_id()
-        };
+    const ProductWorld product{
+        source_world,
+        event.get_id()
+    };
 
-        /*
-         * Exact check: this is the actual product-node identity.
-         */
-        const auto existing =
-            product_worlds.find(product);
+    const auto existing =
+        product_worlds.find(product);
 
-        if (existing != product_worlds.end()) {
-          return existing->second;
-        }
-
-        /*
-         * Create the valuation of (source_world, event).
-         */
-        const FluentsSet description =
-            apply_postconditions(
-                source_world,
-                event);
-
-        /*
-         * Give the new KripkeWorld a fresh repetition.
-         */
-        const unsigned short repetition =
-            next_repetition++;
-
-        const KripkeWorldPointer product_world =
-            successor.add_rep_world(
-                KripkeWorld(description),
-                repetition);
-
-        /*
-         * Store the exact correspondence between:
-         *
-         *     (source world, event)
-         *
-         * and
-         *
-         *     successor world
-         */
-        product_worlds.emplace(
-            product,
-            product_world);
-
-        /*
-         * Its outgoing product edges still need to be generated.
-         */
-        pending.push(product);
-
-        return product_world;
-      };
-
-
-  // --------------------------------------------------------------------------
-  // 1. Create designated successor worlds
-  // --------------------------------------------------------------------------
-
-  /*
-   * The designated points of the successor are:
-   *
-   *     (w, e)
-   *
-   * where w is designated in the source state,
-   * e is designated in the action,
-   * and e is applicable in w.
-   */
-  for (const auto &source_world :
-       m_designated_worlds) {
-
-    for (const EventId event_id :
-         action.get_designated_events()) {
-
-      const Event &event =
-          action.get_event(event_id);
-
-      if (!is_applicable(
-              source_world,
-              event)) {
-        continue;
-      }
-
-      const KripkeWorldPointer product_world =
-          get_or_create_product_world(
-              source_world,
-              event);
-
-      successor.add_designated_world(
-          product_world);
+    if (existing != product_worlds.end()) {
+        return existing->second;
     }
-  }
 
+    const FluentsSet description =
+        apply_event_postconditions(
+            event,
+            source_world);
 
-  // --------------------------------------------------------------------------
-  // 2. Expand the DEL product relation
-  // --------------------------------------------------------------------------
+    const KripkeWorldPointer product_world =
+        successor.add_rep_world(
+            KripkeWorld(description),
+            next_repetition++);
 
-  /*
-   * For every product world (w,e), construct:
-   *
-   *     (w,e) R'_a (v,f)
-   *
-   * exactly when:
-   *
-   *     w R_a v
-   *
-   * and
-   *
-   *     e R^A_a f
-   *
-   * and f is applicable in v.
-   */
+    product_worlds.emplace(
+        product,
+        product_world);
+
+    pending.push(product);
+
+    return product_world;
+}
+
+void KripkeState::create_designated_product_worlds(
+    const Action &action,
+    KripkeState &successor,
+    ProductWorldMap &product_worlds,
+    ProductWorldQueue &pending,
+    ApplicabilityCache &applicability_cache,
+    unsigned short &next_repetition) const {
+
+    for (const auto &source_world :
+         m_designated_worlds) {
+
+        for (const EventId event_id :
+             action.get_designated_events()) {
+
+            const Event &event =
+                action.get_event(event_id);
+
+            if (!is_event_applicable_cached(
+                    event,
+                    source_world,
+                    applicability_cache)) {
+                continue;
+                    }
+
+            const KripkeWorldPointer product_world =
+                get_or_create_product_world(
+                    source_world,
+                    event,
+                    successor,
+                    product_worlds,
+                    pending,
+                    next_repetition);
+
+            successor.m_designated_worlds.insert(
+                product_world);
+             }
+         }
+
+    if (successor.get_designated_worlds().empty()) {
+        ExitHandler::exit_with_message(
+            ExitHandler::ExitCode::StateActionNotExecutableError,
+            "Action '" +
+                action.get_name() +
+                "' produced no designated successor worlds.");
+    }
+}
+
+void KripkeState::expand_product_relations(
+    const Action &action,
+    const ResolvedObservability &observability,
+    KripkeState &successor,
+    ProductWorldMap &product_worlds,
+    ProductWorldQueue &pending,
+    ApplicabilityCache &applicability_cache,
+    unsigned short &next_repetition) const {
+
   while (!pending.empty()) {
 
     const ProductWorld current =
@@ -601,12 +643,12 @@ KripkeState KripkeState::compute_successor(
         action.get_event(
             current.second);
 
-    const KripkeWorldPointer& product_source =
+    const KripkeWorldPointer &product_source =
         product_worlds.at(current);
 
-
     /*
-     * Get the original Kripke successors of w.
+     * Find the outgoing epistemic relations of the original
+     * source world.
      */
     const auto source_beliefs =
         m_beliefs.find(source_world);
@@ -615,48 +657,96 @@ KripkeState KripkeState::compute_successor(
       continue;
     }
 
-
+    /*
+     * For every agent having outgoing accessibility edges
+     * from source_world.
+     */
     for (const auto &[agent, world_targets] :
          source_beliefs->second) {
 
       /*
-       * Get the event accessibility relation for agent a.
+       * Observability was resolved once for the complete
+       * source epistemic state.
        */
-      const auto &event_relation =
-          action.get_event_relation(agent);
+      const auto obs_it =
+          observability.find(agent);
 
+      if (obs_it == observability.end()) {
+        ExitHandler::exit_with_message(
+            ExitHandler::ExitCode::DomainBuildError,
+            "Missing resolved observability type for an agent "
+            "while executing action '" +
+                action.get_name() + "'.");
+      }
 
+      /*
+       * Select the event relation associated with the
+       * observability type resolved for this agent.
+       *
+       * EventRelation:
+       *
+       *   source event -> target events
+       */
+      const EventRelation &event_relation =
+          action.get_observability_relation(
+              obs_it->second);
+
+      /*
+       * We only need the event successors of the current
+       * source event.
+       */
+      const auto event_targets_it =
+          event_relation.find(
+              source_event.get_id());
+
+      if (event_targets_it ==
+          event_relation.end()) {
+        continue;
+      }
+
+      const EventTargets &target_events =
+          event_targets_it->second;
+
+      /*
+       * Product relation:
+       *
+       *   (w,e) R'_a (v,f)
+       *
+       * iff:
+       *
+       *   w R_a v
+       *   e R^A_a f
+       *   M,v |= pre(f)
+       */
       for (const auto &target_world :
            world_targets) {
 
-        /*
-         * Pair the current event e with every event f that
-         * is accessible from e for this agent.
-         */
-        for (const auto &[from_event, to_event] :
-             event_relation) {
-
-          if (from_event !=
-              source_event.get_id()) {
-            continue;
-          }
+        for (const EventId target_event_id :
+             target_events) {
 
           const Event &target_event =
-              action.get_event(to_event);
+              action.get_event(
+                  target_event_id);
 
           /*
-           * (v,f) exists only when f's precondition holds in v.
+           * Product world (v,f) exists only if the
+           * target event is applicable in v.
            */
-          if (!is_applicable(
-                  target_world,
-                  target_event)) {
+            if (!is_event_applicable_cached(
+                    target_event,
+                    target_world,
+                    applicability_cache)) {
             continue;
           }
 
           const KripkeWorldPointer product_target =
               get_or_create_product_world(
                   target_world,
-                  target_event);
+                  target_event,
+                  successor,
+                  product_worlds,
+                  pending,
+                  next_repetition);
 
           successor.add_edge(
               product_source,
@@ -666,10 +756,68 @@ KripkeState KripkeState::compute_successor(
       }
     }
   }
-
-  successor.recompute_hash();
-  return successor;
 }
+
+
+KripkeState KripkeState::compute_successor(
+    const Action &action) const {
+
+#ifdef DEBUG
+    if (!is_executable(action)) {
+        ExitHandler::exit_with_message(
+            ExitHandler::ExitCode::StateActionNotExecutableError,
+            "Action '" +
+                action.get_name() +
+                "' is not executable in the current Kripke state.");
+    }
+#endif
+
+    KripkeState successor;
+
+    ProductWorldMap product_worlds;
+    ProductWorldQueue pending;
+    ApplicabilityCache applicability_cache;
+
+
+    unsigned short next_repetition = 0;
+
+    /*
+     * Plank resolves one observability type per agent against
+     * the complete source epistemic state.
+     */
+    const ResolvedObservability observability =
+        resolve_observability_types(action);
+
+    /*
+     * Seed the reachable product model with designated
+     * (world,event) pairs.
+     */
+    create_designated_product_worlds(
+        action,
+        successor,
+        product_worlds,
+        pending,
+        applicability_cache,
+        next_repetition);
+
+    /*
+     * Expand all reachable product worlds and accessibility
+     * relations.
+     */
+    expand_product_relations(
+        action,
+        observability,
+        successor,
+        product_worlds,
+        pending,
+        applicability_cache,
+        next_repetition);
+
+    successor.recompute_hash();
+
+    return successor;
+}
+
 
 bool KripkeState::entails(const Fluent &to_check) const {
   if (m_designated_worlds.empty()) {

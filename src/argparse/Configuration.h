@@ -76,6 +76,13 @@ public:
    */
   [[nodiscard]] bool get_bisimulation_type_bool() const noexcept;
 
+
+    [[nodiscard]]
+std::size_t get_bisimulation_interval() const noexcept;
+
+    void set_bisimulation_interval(
+        std::size_t interval) noexcept;
+
   /**
    * \brief Checks if visited state checking is enabled.
    * \return true if enabled, false otherwise.
@@ -205,7 +212,8 @@ private:
       0; ///< Counter to keep track of hwo many times Bisimulation failed so we
          ///< can deactivate it.
   bool m_bisimulation_type_bool = true;  ///< Bisimulation type as boolean.
-  bool m_check_visited = false;          ///< Visited state checking flag.
+    std::size_t m_bisimulation_interval = 3;
+    bool m_check_visited = false;          ///< Visited state checking flag.
   std::string m_search_strategy = "BFS"; ///< Search strategy string.
   SearchType m_search_strategy_enum =
       SearchType::BFS;                      ///< Search strategy enum.

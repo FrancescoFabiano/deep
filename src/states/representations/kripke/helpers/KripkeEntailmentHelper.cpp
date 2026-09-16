@@ -145,6 +145,12 @@ bool KripkeEntailmentHelper::entails(const BeliefFormula &to_check,
                        to_check.get_group_agents(), world, kstate),
                    kstate);
 
+
+    case BeliefFormulaType::TRUE_FORMULA:
+      return true;
+
+    case BeliefFormulaType::FALSE_FORMULA:
+      return false;
   case BeliefFormulaType::BF_EMPTY:
     return true;
 

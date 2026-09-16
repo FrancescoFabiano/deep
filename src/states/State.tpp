@@ -171,12 +171,10 @@ void State<StateRepr>::contract_with_bisimulation() {
 }
 
 template <StateRepresentation StateRepr>
-bool State<StateRepr>::is_executable(const Action & /*act*/) const {
-  ExitHandler::exit_with_message(
-      ExitHandler::ExitCode::DomainBuildError,
-      "Legacy action executability is unavailable during EPDDL integration.");
+bool State<StateRepr>::is_executable(
+    const Action &act) const {
 
-  return false;
+  return m_representation.is_executable(act);
 }
 
 

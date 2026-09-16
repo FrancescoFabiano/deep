@@ -42,6 +42,7 @@ concept StateRepresentation =
        * @name Entailment Methods for logical entailment evaluation
        */
       ///@{
+      { std::as_const(rep).is_executable(act) }-> std::same_as<bool>;
       { std::as_const(rep).entails(f) } -> std::same_as<bool>;
       { std::as_const(rep).entails(fs) } -> std::same_as<bool>;
       { std::as_const(rep).entails(ff) } -> std::same_as<bool>;

@@ -87,6 +87,8 @@ private:
                           ///< conditions, obs etc.) of the domain.
   AgentsSet
       m_agents; ///< Set containing all the (grounded) Agent of the domain.
+
+  std::vector<Agent> m_ordered_agents;
   FormulaeList m_goal_description; ///< The formula that describes the goal.
 
   /**
@@ -95,6 +97,8 @@ private:
    * which will later be assigned to the helper print.
    */
   void build_agents(Grounder &grounder);
+
+  const std::vector<Agent> &get_ordered_agents() const noexcept;
 
   /** \brief Function that stores the fluent information from the file.
    * \param grounder The Grounder object being filled with agent information,

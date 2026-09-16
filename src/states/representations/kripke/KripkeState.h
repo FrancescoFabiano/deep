@@ -207,6 +207,11 @@ get_designated_worlds_vec() const noexcept {
    */
   void print_dataset_format(std::ofstream &ofs) const;
 
+
+
+    [[nodiscard]]
+bool is_executable(const Action &action) const;
+
 private:
   // --- Data members ---
   /** \brief Set of pointers to each world in the structure. */
@@ -260,29 +265,72 @@ private:
         const KripkeWorld &to_add,
         unsigned short repetition);
 
-  // --- Structure Building ---
-
-  /** \brief Remove an edge for an agent between two worlds.
-   *  \param[in] from The KripkeWorld pointer to remove the edge from.
-   *  \param[in] to The KripkeWorld to remove.
-   *  \param[in] ag The agent.
-   */
-  void remove_edge(const KripkeWorldPointer &from, const KripkeWorldPointer &to,
-                   const Agent &ag);
-
-  /** \brief Remove initial edges based on known fluent formula for an agent.
-   *  \param[in] known_ff The fluent formula known by the agent.
-   *  \param[in] ag The agent.
-   */
-  void remove_initial_edge(const FluentFormula &known_ff, const Agent &ag);
-
-  /** \brief Remove initial edges based on a BeliefFormula.
-   *  \param[in] to_check The BeliefFormula to check.
-   */
-  void remove_initial_edge_bf(const BeliefFormula &to_check);
 
 
     void recompute_hash();
+
+
+    // === DEL Product Update Helpers ===
+    using ProductWorld =
+        std::pair<KripkeWorldPointer, EventId>;
+
+    using ProductWorldMap =
+        std::map<ProductWorld, KripkeWorldPointer>;
+
+    using ProductWorldQueue =
+        std::queue<ProductWorld>;
+
+    using ResolvedObservability =
+        std::map<Agent, ObservabilityType>;
+
+    using ApplicabilityCache =
+    std::map<ProductWorld, bool>;
+
+    [[nodiscard]]
+    bool is_event_applicable(
+        const Event &event,
+        const KripkeWorldPointer &world) const;
+
+    [[nodiscard]]
+bool is_event_applicable_cached(
+    const Event &event,
+    const KripkeWorldPointer &world,
+    ApplicabilityCache &cache) const;
+
+    [[nodiscard]]
+    FluentsSet apply_event_postconditions(
+        const Event &event,
+        const KripkeWorldPointer &world) const;
+
+    [[nodiscard]]
+    ResolvedObservability resolve_observability_types(
+        const Action &action) const;
+
+    KripkeWorldPointer get_or_create_product_world(
+        const KripkeWorldPointer &source_world,
+        const Event &event,
+        KripkeState &successor,
+        ProductWorldMap &product_worlds,
+        ProductWorldQueue &pending,
+        unsigned short &next_repetition) const;
+
+    void create_designated_product_worlds(
+        const Action &action,
+        KripkeState &successor,
+        ProductWorldMap &product_worlds,
+        ProductWorldQueue &pending,
+        ApplicabilityCache &applicability_cache,
+        unsigned short &next_repetition) const;
+
+    void expand_product_relations(
+        const Action &action,
+        const ResolvedObservability &observability,
+        KripkeState &successor,
+        ProductWorldMap &product_worlds,
+        ProductWorldQueue &pending,
+        ApplicabilityCache &applicability_cache,
+        unsigned short &next_repetition) const;
+
 
 
   /* This is to allow bisimulation to reduce the size of the object*/

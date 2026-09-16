@@ -1,11 +1,12 @@
 #include "Action.h"
 
 #include <stdexcept>
+#include <utility>
 
 Action::Action(
-    const std::string &name,
+    std::string name,
     ActionId id)
-    : m_name(name),
+    : m_name(std::move(name)),
       m_id(std::move(id)) {}
 
 // === Identity ===
@@ -94,63 +95,9 @@ void Action::add_designated_event(
       event_id);
 }
 
-// === Accessibility Relations ===
 
-const EventRelations &
-Action::get_event_relations() const noexcept {
 
-  return m_event_relations;
-}
 
-const EventRelation &
-Action::get_event_relation(
-    const Agent &agent) const {
-
-  static const EventRelation empty_relation;
-
-  const auto iterator =
-      m_event_relations.find(agent);
-
-  if (iterator == m_event_relations.end()) {
-    return empty_relation;
-  }
-
-  return iterator->second;
-}
-
-bool Action::has_event_edge(
-    const Agent &agent,
-    EventId from,
-    EventId to) const {
-
-  const auto relation =
-      m_event_relations.find(agent);
-
-  if (relation == m_event_relations.end()) {
-    return false;
-  }
-
-  return relation->second.contains(
-      EventEdge{from, to});
-}
-
-void Action::add_event_edge(
-    const Agent &agent,
-    EventId from,
-    EventId to) {
-
-  if (!has_event(from) ||
-      !has_event(to)) {
-
-    throw std::invalid_argument(
-        "Event edge references unknown event "
-        "in action '" +
-        m_name + "'.");
-  }
-
-  m_event_relations[agent].insert(
-      EventEdge{from, to});
-}
 
 // === Operators ===
 
@@ -164,4 +111,63 @@ bool Action::operator==(
     const Action &other) const {
 
   return m_id == other.m_id;
+}
+
+const ObservabilityRelations &
+Action::get_observability_relations() const noexcept {
+    return m_observability_relations;
+}
+
+const EventRelation &
+Action::get_observability_relation(
+    const ObservabilityType type) const {
+
+    const auto it =
+        m_observability_relations.find(type);
+
+    if (it == m_observability_relations.end()) {
+        throw std::out_of_range(
+            "Observability type does not exist in action '" +
+            m_name + "'.");
+    }
+
+    return it->second;
+}
+
+void Action::add_observability_edge(
+    const ObservabilityType type,
+    const EventId from,
+    const EventId to) {
+
+    m_observability_relations[type][from].insert(to);
+}
+
+const ObservabilityConditions &
+Action::get_observability_conditions() const noexcept {
+    return m_observability_conditions;
+}
+
+const AgentObservabilityConditions &
+Action::get_observability_conditions(
+    const Agent &agent) const {
+
+    const auto it =
+        m_observability_conditions.find(agent);
+
+    if (it == m_observability_conditions.end()) {
+        throw std::out_of_range(
+            "Agent has no observability conditions in action '" +
+            m_name + "'.");
+    }
+
+    return it->second;
+}
+
+void Action::add_observability_condition(
+    const Agent &agent,
+    const ObservabilityType type,
+    const BeliefFormula &condition) {
+
+    m_observability_conditions[agent][type] =
+        condition;
 }

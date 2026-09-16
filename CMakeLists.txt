@@ -90,7 +90,9 @@ endif()
 
 set(SOURCES ${TEMPLATIC_HEADERS}
         src/actions/Event.cpp
-        src/actions/Event.h)
+        src/actions/Event.h
+        src/parse/PlankFormulaConverter.cpp
+        src/parse/PlankFormulaConverter.h)
 
 
 # === Automatically collect all .cpp sources ===

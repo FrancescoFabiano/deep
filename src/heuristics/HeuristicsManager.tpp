@@ -9,7 +9,7 @@
 
 template <StateRepresentation StateRepr>
 HeuristicsManager<StateRepr>::HeuristicsManager(
-    const State<StateRepr> &initial_state) {
+  [[maybe_unused]] const State<StateRepr> &initial_state) {
   set_used_h(Configuration::get_instance().get_heuristic_opt());
   m_goals = Domain::get_instance().get_goal_description();
   switch (m_used_heuristics) {
