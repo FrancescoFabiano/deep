@@ -101,6 +101,11 @@ void ArgumentParser::parse(int argc, char **argv) {
           "Bisimulation type (--bisimulation_type) was set but --bisimulation "
           "is not enabled. Please use --bis to activate bisimulation.");
     }
+      if (m_visited_prune_percentage > 100) {
+          ExitHandler::exit_with_message(
+              ExitHandler::ExitCode::ArgParseError,
+              "Visited-state prune percentage must be between 0 and 100.");
+      }
 
     // --- Heuristic consistency check ---
     const bool dataset_hfs =

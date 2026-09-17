@@ -80,6 +80,7 @@ public:
     [[nodiscard]]
 std::size_t get_bisimulation_interval() const noexcept;
 
+
     void set_bisimulation_interval(
         std::size_t interval) noexcept;
 
@@ -213,6 +214,7 @@ private:
          ///< can deactivate it.
   bool m_bisimulation_type_bool = true;  ///< Bisimulation type as boolean.
     std::size_t m_bisimulation_interval = 3;
+    
     bool m_check_visited = false;          ///< Visited state checking flag.
   std::string m_search_strategy = "BFS"; ///< Search strategy string.
   SearchType m_search_strategy_enum =

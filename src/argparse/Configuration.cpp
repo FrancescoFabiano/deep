@@ -97,7 +97,6 @@ void Configuration::set_bisimulation_interval(
   m_bisimulation_interval = interval;
 }
 
-
 bool Configuration::get_check_visited() const noexcept {
   return m_check_visited;
 }

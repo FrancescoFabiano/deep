@@ -299,6 +299,8 @@ private:
   std::string m_bisimulation_type =
       "FB";                     ///< Bisimulation type (PT by default).
     std::size_t m_bisimulation_interval = 3;
+    std::size_t m_visited_limit = 10000;
+    std::size_t m_visited_prune_percentage = 20;
     bool m_check_visited = false; ///< Flag to check for visited states.
   bool m_dataset_mode = false; ///< Flag to indicate dataset mode.
   int m_dataset_depth = 10;    ///< Maximum depth for dataset generation.
@@ -414,6 +416,7 @@ private:
 
     [[nodiscard]]
 std::size_t get_bisimulation_interval() const noexcept;
+
 
   /**
    * \brief Retrieves the heuristic to be used.
