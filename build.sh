@@ -140,7 +140,7 @@ fi
 # Package installation
 # --------------------------
 if [[ "$OS" == "Linux" ]]; then
-    REQUIRED_PACKAGES=(build-essential cmake bison flex libboost-dev unzip curl)
+    REQUIRED_PACKAGES=(build-essential cmake libboost-dev unzip curl)
 
     MISSING=()
     for pkg in "${REQUIRED_PACKAGES[@]}"; do
@@ -174,7 +174,7 @@ elif [[ "$OS" == "Darwin" ]]; then
         exit 1
     fi
 
-    REQUIRED_PACKAGES=(cmake bison flex boost unzip curl)
+    REQUIRED_PACKAGES=(cmake boost unzip curl)
     MISSING=()
     for pkg in "${REQUIRED_PACKAGES[@]}"; do
         if ! brew list "$pkg" &>/dev/null; then
@@ -194,10 +194,8 @@ elif [[ "$OS" == "Darwin" ]]; then
         echo "All required Homebrew packages installed."
     fi
 
-    # Homebrew's bison/flex are keg-only on common macOS/Homebrew setups.
-    # Put their binaries first and expose their prefixes to CMake/pkg-config.
-    export PATH="$(brew --prefix bison)/bin:$(brew --prefix flex)/bin:$PATH"
-    export CMAKE_PREFIX_PATH="$(brew --prefix boost);$(brew --prefix bison);$(brew --prefix flex)${CMAKE_PREFIX_PATH:+;$CMAKE_PREFIX_PATH}"
+    # Expose Homebrew Boost to CMake.
+    export CMAKE_PREFIX_PATH="$(brew --prefix boost)${CMAKE_PREFIX_PATH:+;$CMAKE_PREFIX_PATH}"
 fi
 
 # --------------------------
