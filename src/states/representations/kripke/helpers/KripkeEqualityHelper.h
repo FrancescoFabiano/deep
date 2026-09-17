@@ -46,6 +46,9 @@ public:
    */
   KripkeEqualityHelper &operator=(KripkeEqualityHelper &&) = default;
 
+    static void set_fast_comparison(bool value) noexcept;
+
+
 private:
   static bool world_ptr_equal(const KripkeWorldPointer &a,
                               const KripkeWorldPointer &b);
@@ -74,23 +77,14 @@ private:
   static bool internal_smaller(const KripkeWorldPointersMapVec &lhs,
                                const KripkeWorldPointersMapVec &rhs);
 
-  static bool internal_equal(const KripkeWorldPointersMap &lhs,
-                             const KripkeWorldPointersMap &rhs);
-
-  static bool internal_smaller(const KripkeWorldPointersMap &lhs,
-                               const KripkeWorldPointersMap &rhs);
-
   static bool internal_equal(const KripkeWorldPointersTransitiveMapVec &lhs,
                              const KripkeWorldPointersTransitiveMapVec &rhs);
 
   static bool internal_smaller(const KripkeWorldPointersTransitiveMapVec &lhs,
                                const KripkeWorldPointersTransitiveMapVec &rhs);
 
-  static bool internal_equal(const KripkeWorldPointersTransitiveMap &lhs,
-                             const KripkeWorldPointersTransitiveMap &rhs);
 
-  static bool internal_smaller(const KripkeWorldPointersTransitiveMap &lhs,
-                               const KripkeWorldPointersTransitiveMap &rhs);
+    inline static bool s_fast_comparison = false;
 
   /// \name Equality for KripkeState
   ///@{

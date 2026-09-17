@@ -262,6 +262,15 @@ public:
    */
   [[nodiscard]] const std::string &get_config_file() const noexcept;
 
+    [[nodiscard]]
+    bool get_fast_world_comparison() const noexcept {
+        return m_fast_world_comparison;
+    }
+
+    [[nodiscard]]
+bool get_fast_state_comparison() const noexcept {
+        return m_fast_state_comparison;
+    }
 
   /**
    * \brief Destructor. Closes the log file stream if open.
@@ -299,8 +308,7 @@ private:
   std::string m_bisimulation_type =
       "FB";                     ///< Bisimulation type (PT by default).
     std::size_t m_bisimulation_interval = 3;
-    std::size_t m_visited_limit = 10000;
-    std::size_t m_visited_prune_percentage = 20;
+
     bool m_check_visited = false; ///< Flag to check for visited states.
   bool m_dataset_mode = false; ///< Flag to indicate dataset mode.
   int m_dataset_depth = 10;    ///< Maximum depth for dataset generation.
@@ -397,6 +405,9 @@ private:
       1; ///< Number of threads per search strategy (default: 1).
   int m_portfolio_threads = 1;    ///< Number of portfolio threads (default: 1).
   std::string m_config_file = ""; ///< Config file path.
+
+    bool m_fast_world_comparison = false;
+    bool m_fast_state_comparison = false;
 
   // Accessors private because they can be accessed only by friend class \ref
   // Configuration

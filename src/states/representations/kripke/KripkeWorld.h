@@ -29,6 +29,8 @@ public:
    */
   explicit KripkeWorld(const FluentsSet &description);
 
+  explicit KripkeWorld(FluentsSet &&description);
+
   /** \brief Copy constructor.
    *  \param[in] world The KripkeWorld to copy.
    */
@@ -61,6 +63,11 @@ public:
    */
   [[nodiscard]] int64_t get_id_casted() const noexcept;
 
+  static void set_fast_comparison(bool value) noexcept;
+
+  [[nodiscard]]
+static bool get_fast_comparison() noexcept;
+
   ///@}
 
   /// \name Comparison Operators
@@ -70,12 +77,6 @@ public:
    *  \return True if this < to_compare.
    */
   [[nodiscard]] bool operator<(const KripkeWorld &to_compare) const noexcept;
-
-  /** \brief Greater-than operator based on unique id.
-   *  \param[in] to_compare The KripkeWorld to compare.
-   *  \return True if this > to_compare.
-   */
-  [[nodiscard]] bool operator>(const KripkeWorld &to_compare) const noexcept;
 
   /** \brief Equality operator based on unique id.
    *  \param[in] to_compare The KripkeWorld to compare.
@@ -98,7 +99,7 @@ private:
   FluentsSet m_fluent_set;
   /** \brief The unique id of this world. */
   KripkeWorldId m_id = 0;
-  ///@}
+inline static thread_local bool m_fast_comparison = false;  ///@}
 
   /// \name Internal Methods
   ///@{
@@ -268,13 +269,6 @@ public:
   [[nodiscard]] bool
   operator<(const KripkeWorldPointer &to_compare) const noexcept;
 
-  /** \brief Greater-than operator for set operations.
-   *  \param[in] to_compare The pointer to compare.
-   *  \return True if this > to_compare.
-   */
-  [[nodiscard]] bool
-  operator>(const KripkeWorldPointer &to_compare) const noexcept;
-
   /** \brief Equality operator.
    *  \param[in] to_compare The pointer to compare.
    *  \return True if equal.
@@ -287,12 +281,6 @@ public:
    *  \return True if equal.*/
   [[nodiscard]] bool
   internal_smaller(const KripkeWorldPointer &to_compare) const noexcept;
-
-  /** \brief Greater-than operator based on internal id.
-   *  \param[in] to_compare The pointer to compare.
-   *  \return True if equal.*/
-  [[nodiscard]] bool
-  internal_greater(const KripkeWorldPointer &to_compare) const noexcept;
 
   /** \brief Equality operator based on internal id.
    *  \param[in] to_compare The pointer to compare.

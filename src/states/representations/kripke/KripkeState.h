@@ -280,11 +280,11 @@ private:
     using ProductWorldQueue =
         std::queue<ProductWorld>;
 
+    using ApplicabilityCache =
+        std::map<ProductWorld, bool>;
+
     using ResolvedObservability =
         std::map<Agent, ObservabilityType>;
-
-    using ApplicabilityCache =
-    std::map<ProductWorld, bool>;
 
     [[nodiscard]]
     bool is_event_applicable(

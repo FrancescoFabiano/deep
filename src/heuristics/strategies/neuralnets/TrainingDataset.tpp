@@ -702,11 +702,11 @@ bool TrainingDataset<StateRepr>::priority_exploration(
 
   struct QueueEntry {
     StateType state;
-    size_t node_id;
-    size_t depth;
+    size_t node_id{};
+    size_t depth{};
     std::string filename;
-    int priority;
-    size_t sequence;
+    int priority{};
+    size_t sequence{};
   };
 
   struct Compare {

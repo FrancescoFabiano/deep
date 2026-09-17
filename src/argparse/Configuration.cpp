@@ -12,6 +12,8 @@
 
 #include "ArgumentParser.h"
 #include "ExitHandler.h"
+#include "KripkeEqualityHelper.h"
+#include "KripkeWorld.h"
 
 // Helper to trim trailing and leading spaces
 static std::string trim(const std::string &s) {
@@ -50,6 +52,8 @@ Configuration &Configuration::get_instance() {
     instance.set_bisimulation_interval(
     parser.get_bisimulation_interval());
     instance.set_check_visited(parser.get_check_visited());
+    instance.set_check_visited(parser.get_check_visited());
+    instance.set_search_strategy(parser.get_search_strategy());
     instance.set_search_strategy(parser.get_search_strategy());
     instance.set_heuristic_opt(parser.get_heuristic(), true);
     instance.set_GNN_model_path(parser.get_GNN_model_path());
@@ -104,6 +108,28 @@ void Configuration::set_check_visited(const std::string &val) {
   m_check_visited = str_to_bool(val);
 }
 void Configuration::set_check_visited(const bool val) { m_check_visited = val; }
+
+bool Configuration::get_fast_world_comparison() const noexcept {
+  return m_fast_world_comparison;
+}
+
+void Configuration::set_fast_world_comparison(
+    const bool val) noexcept {
+  m_fast_world_comparison = val;
+  KripkeWorld::set_fast_comparison(val);
+}
+
+bool Configuration::get_fast_state_comparison() const noexcept {
+  return m_fast_state_comparison;
+
+}
+
+void Configuration::set_fast_state_comparison(
+    const bool val) noexcept {
+  m_fast_state_comparison = val;
+  KripkeEqualityHelper::set_fast_comparison(val);
+
+}
 
 const SearchType &Configuration::get_search_strategy() const noexcept {
   return m_search_strategy_enum;
@@ -179,6 +205,12 @@ void Configuration::set_field_by_name(const std::string &field,
             std::stoull(trim(value))));
   else if (field == "check_visited" || field == "c")
     set_check_visited(value);
+  else if (field == "fast_world_comparison")
+    set_fast_world_comparison(
+        str_to_bool(value));
+  else if (field == "fast_state_comparison")
+    set_fast_state_comparison(
+        str_to_bool(value));
   else if (field == "search" || field == "s")
     set_search_strategy(value);
   else if (field == "heuristics" || field == "u")
@@ -298,6 +330,15 @@ void Configuration::print(std::ostream &os) const {
   }
   os << "    Already visited state check: "
      << (m_check_visited ? "active" : "inactive") << '\n';
+  if (m_check_visited) {
+    os << "    Fast world comparison: "
+     << (m_fast_world_comparison ? "active" : "inactive")
+     << '\n';
+
+    os << "    Fast state comparison: "
+       << (m_fast_state_comparison ? "active" : "inactive")
+       << '\n';
+  }
   if ((m_search_strategy_enum == SearchType::HFS ||
        m_search_strategy_enum == SearchType::Astar ||
        m_search_strategy_enum == SearchType::RL) &&

@@ -96,6 +96,16 @@ std::size_t get_bisimulation_interval() const noexcept;
   void set_check_visited(const std::string &val);
   void set_check_visited(bool val);
 
+    [[nodiscard]]
+bool get_fast_world_comparison() const noexcept;
+
+    void set_fast_world_comparison(bool val) noexcept;
+
+    [[nodiscard]]
+    bool get_fast_state_comparison() const noexcept;
+
+    void set_fast_state_comparison(bool val) noexcept;
+
   /**
    * \brief Gets the search strategy.
    * \return The search strategy enum.
@@ -216,7 +226,11 @@ private:
     std::size_t m_bisimulation_interval = 3;
     
     bool m_check_visited = false;          ///< Visited state checking flag.
-  std::string m_search_strategy = "BFS"; ///< Search strategy string.
+
+    bool m_fast_world_comparison = false;
+    bool m_fast_state_comparison = false;
+
+    std::string m_search_strategy = "BFS"; ///< Search strategy string.
   SearchType m_search_strategy_enum =
       SearchType::BFS;                      ///< Search strategy enum.
   std::string m_heuristic_opt = "SUBGOALS"; ///< Heuristic option string.

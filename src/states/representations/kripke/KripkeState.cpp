@@ -554,14 +554,15 @@ KripkeState::get_or_create_product_world(
         return existing->second;
     }
 
-    const FluentsSet description =
+    FluentsSet description =
         apply_event_postconditions(
             event,
             source_world);
 
     const KripkeWorldPointer product_world =
         successor.add_rep_world(
-            KripkeWorld(description),
+            KripkeWorld(
+                std::move(description)),
             next_repetition++);
 
     product_worlds.emplace(

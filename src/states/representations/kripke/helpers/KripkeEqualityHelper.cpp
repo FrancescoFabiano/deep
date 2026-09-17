@@ -186,21 +186,30 @@ bool KripkeEqualityHelper::less_operator(
     const KripkeState &reference,
     const KripkeState &to_compare) {
 
-  const auto reference_hash = reference.get_hash();
-  const auto to_compare_hash = to_compare.get_hash();
+  const auto reference_hash =
+      reference.get_hash();
+
+  const auto to_compare_hash =
+      to_compare.get_hash();
 
   if (reference_hash != to_compare_hash)
     return reference_hash < to_compare_hash;
 
+  /*
+   * Fast mode assumes that equal state hashes identify
+   * equivalent Kripke states.
+   */
+  if (s_fast_comparison)
+    return false;
+
   // Hash collision / same hash:
   // perform the actual strong structural ordering.
 
-  const auto& reference_designated =
-    reference.get_designated_worlds_vec();
+  const auto &reference_designated =
+      reference.get_designated_worlds_vec();
 
-  const auto& to_compare_designated =
-          to_compare.get_designated_worlds_vec();
-
+  const auto &to_compare_designated =
+      to_compare.get_designated_worlds_vec();
 
   if (!internal_equal(
           reference_designated,
@@ -228,3 +237,10 @@ bool KripkeEqualityHelper::less_operator(
       reference.get_beliefs_vec(),
       to_compare.get_beliefs_vec());
 }
+
+void KripkeEqualityHelper::set_fast_comparison(
+    const bool value) noexcept {
+  s_fast_comparison = value;
+}
+
+

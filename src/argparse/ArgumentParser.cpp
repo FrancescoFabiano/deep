@@ -12,6 +12,8 @@
 #include <iostream>
 #include <stdexcept>
 
+#include "KripkeEqualityHelper.h"
+
 ArgumentParser *ArgumentParser::instance = nullptr;
 
 void ArgumentParser::create_instance(int argc, char **argv) {
@@ -101,11 +103,6 @@ void ArgumentParser::parse(int argc, char **argv) {
           "Bisimulation type (--bisimulation_type) was set but --bisimulation "
           "is not enabled. Please use --bis to activate bisimulation.");
     }
-      if (m_visited_prune_percentage > 100) {
-          ExitHandler::exit_with_message(
-              ExitHandler::ExitCode::ArgParseError,
-              "Visited-state prune percentage must be between 0 and 100.");
-      }
 
     // --- Heuristic consistency check ---
     const bool dataset_hfs =
@@ -158,7 +155,7 @@ void ArgumentParser::parse(int argc, char **argv) {
         }
       }
     }
-
+      
     // --- Threads per search and portfolio threads informative message ---
     if (m_threads_per_search > 1 && m_portfolio_threads > 1) {
       get_output_stream() << "[INFO] Both multithreaded search and portfolio "
@@ -185,6 +182,8 @@ void ArgumentParser::parse(int argc, char **argv) {
                     "Details:\n  ") +
             e.what() + ExitHandler::arg_parse_suggestion.data());
   }
+
+
 }
 
 ArgumentParser::ArgumentParser() : app("deep") {
@@ -390,6 +389,26 @@ ArgumentParser::ArgumentParser() : app("deep") {
                    "generated instead, "
                    "as negative seeds are not accepted.")
       ->default_val("94");
+
+    search_group->add_flag(
+    "--fast-world-comparison",
+    m_fast_world_comparison,
+    "Use KripkeWorldPointer IDs only for world comparison, skipping the "
+    "structural collision fallback (might not be complete).");
+
+    search_group->add_flag(
+        "--fast-state-comparison",
+        m_fast_state_comparison,
+        "Use state hashes only for state comparison, skipping the "
+        "structural collision fallback (might not be complete).");
+
+    search_group->add_flag_function(
+        "--fast-comparison",
+        [this](std::int64_t) {
+          m_fast_world_comparison = true;
+          m_fast_state_comparison = true;
+        },
+        "Enable both --fast-world-comparison and --fast-state-comparison.");
 
   /*search_group->add_option("--search_threads", m_threads_per_search,
                             "Set the number of threads to use for each search
