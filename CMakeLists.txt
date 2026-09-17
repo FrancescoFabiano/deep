@@ -309,8 +309,8 @@ target_link_libraries(
         CLI11::CLI11
         xxHash::xxhash
         Boost::boost
-        del_lib
         epddl_lib
+        del_lib
 )
 
 
