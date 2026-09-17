@@ -61,6 +61,7 @@ include_directories(
 
 #src/heuristics/strategies/epg
 
+
 # === Templatic headers ===
 
 set(TEMPLATIC_HEADERS
@@ -88,11 +89,14 @@ if(ENABLE_NEURALNETS)
     )
 endif()
 
-set(SOURCES ${TEMPLATIC_HEADERS}
+
+set(SOURCES
+        ${TEMPLATIC_HEADERS}
         src/actions/Event.cpp
         src/actions/Event.h
         src/parse/PlankFormulaConverter.cpp
-        src/parse/PlankFormulaConverter.h)
+        src/parse/PlankFormulaConverter.h
+)
 
 
 # === Automatically collect all .cpp sources ===
@@ -107,7 +111,6 @@ foreach(dir ${INCLUDE_DIRS})
     file(GLOB TMP_SOURCES CONFIGURE_DEPENDS "${dir}/*.cpp")
     list(APPEND SOURCES ${TMP_SOURCES})
 endforeach()
-
 
 
 # === Doxygen ===
@@ -309,17 +312,31 @@ target_link_libraries(
         CLI11::CLI11
         xxHash::xxhash
         Boost::boost
-        epddl_lib
-        del_lib
 )
 
-
-# librt exists only on Linux.
+# epddl_lib and del_lib are static libraries with dependencies between them.
+#
+# GNU ld on Linux resolves static archives from left to right. Grouping the
+# Plank archives makes the linker rescan them until their mutual references
+# have been resolved.
+#
+# Apple platforms do not use GNU ld's --start-group/--end-group.
 if(UNIX AND NOT APPLE)
     target_link_libraries(
             deep
             PRIVATE
+            "-Wl,--start-group"
+            epddl_lib
+            del_lib
+            "-Wl,--end-group"
             rt
+    )
+else()
+    target_link_libraries(
+            deep
+            PRIVATE
+            epddl_lib
+            del_lib
     )
 endif()
 
