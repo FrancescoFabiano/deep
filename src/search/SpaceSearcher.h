@@ -159,18 +159,7 @@ private:
                                          const std::string &action_name,
                                          const State<StateRepr> &current,
                                          const std::string &dot_files_folder);
-
-  /**
-   * \brief Checks bisimulation equivalence for a given state.
-   *
-   * \details
-   * This method is intended for debugging purposes only and should be removed
-   * or disabled in production or when running the final code.
-   *
-   * \param state The state to check for bisimulation equivalence.
-   */
-  void check_bisimulation_equivalence(const State<StateRepr> &state) const;
-
+  
   ///@}
 };
 

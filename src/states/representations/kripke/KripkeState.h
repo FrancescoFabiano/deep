@@ -59,24 +59,11 @@ public:
   void clear_beliefs();
 
 
-  // --- Getters ---
-
-
-    [[nodiscard]] const KripkeWorldPointersVec &
-get_designated_worlds_vec() const noexcept {
-        return m_designated_worlds_vec;
-    }
-
-
     /** \brief Get the set of worlds in this KripkeState.
    *  \return The set of KripkeWorld pointers.
    */
   [[nodiscard]] const KripkeWorldPointersSet &get_worlds() const noexcept;
 
-  /** \brief Get the vector of worlds in this KripkeState.
-   *  \return The vector of KripkeWorld pointers.
-   */
-  [[nodiscard]] const KripkeWorldPointersVec &get_worlds_vec() const noexcept;
 
   /** \brief Get the designated worlds in this KripkeState.
    *  \return The set of designated KripkeWorld pointers.
@@ -85,8 +72,6 @@ get_designated_worlds_vec() const noexcept {
   get_designated_worlds() const noexcept;
 
     [[nodiscard]] uint64_t get_hash() const noexcept;
-
-  void set_designated_worlds_vec();
 
 
   /** \brief Check whether a world is designated. */
@@ -99,12 +84,6 @@ get_designated_worlds_vec() const noexcept {
    */
   [[nodiscard]] const KripkeWorldPointersTransitiveMap &
   get_beliefs() const noexcept;
-
-  /** \brief Get the beliefs map in this KripkeState in vectorized form.
-   *  \return The beliefs map.
-   */
-  [[nodiscard]] const KripkeWorldPointersTransitiveMapVec &
-  get_beliefs_vec() const noexcept;
 
 
   /** \brief Compute the successor state after applying an action.
@@ -222,21 +201,7 @@ private:
   KripkeWorldPointersTransitiveMap m_beliefs;
 
 
-    KripkeWorldPointersVec m_designated_worlds_vec;
-
-  /** \brief Set of pointers to each world in the structure -- empty otherwise.
-   */
-  KripkeWorldPointersVec m_worlds_vec;
-  /** \brief Beliefs of each agent in every world in vector form for strong
-   * equivalence check -- empty otherwise. */
-  KripkeWorldPointersTransitiveMapVec m_beliefs_vec;
-
-
     uint64_t m_hash = 0;
-
-  void set_worlds_vec();
-
-  void set_beliefs_vec();
 
   /** \brief Tensor version of this for the various NN-based heuristics */
   GraphTensor m_tensor_representation;

@@ -48,6 +48,24 @@ public:
 
     static void set_fast_comparison(bool value) noexcept;
 
+    static KripkeWorldPointersVec
+canonicalize_worlds(const KripkeWorldPointersSet &worlds);
+
+    static KripkeWorldPointersMapVec
+    canonicalize_agent_map(const KripkeWorldPointersMap &beliefs);
+
+    static KripkeWorldPointersTransitiveMapVec
+    canonicalize_transitive_map(const KripkeWorldPointersTransitiveMap &beliefs);
+
+
+    [[nodiscard]]
+static bool verify_equivalence(
+    const KripkeState &lhs,
+    const KripkeState &rhs,
+    bool require_structural_equality,
+    std::size_t formula_count,
+    unsigned int max_depth = 5);
+
 
 private:
   static bool world_ptr_equal(const KripkeWorldPointer &a,
@@ -55,15 +73,6 @@ private:
 
   static bool world_ptr_smaller(const KripkeWorldPointer &a,
                                 const KripkeWorldPointer &b);
-
-  static KripkeWorldPointersVec
-  canonicalize_worlds(const KripkeWorldPointersSet &worlds);
-
-  static KripkeWorldPointersMapVec
-  canonicalize_agent_map(const KripkeWorldPointersMap &beliefs);
-
-  static KripkeWorldPointersTransitiveMapVec
-  canonicalize_transitive_map(const KripkeWorldPointersTransitiveMap &beliefs);
 
   static bool internal_equal(const KripkeWorldPointersVec &lhs,
                              const KripkeWorldPointersVec &rhs);
@@ -98,6 +107,10 @@ private:
                                    const KripkeState &to_compare);
 
 
+    [[nodiscard]]
+static bool verify_exact_equality(
+const KripkeState &lhs,
+const KripkeState &rhs);
 
   ///@}
   ///

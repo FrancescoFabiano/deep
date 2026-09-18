@@ -37,40 +37,25 @@
 
 void KripkeState::set_worlds(const KripkeWorldPointersSet &to_set) {
   m_worlds = to_set;
-  set_worlds_vec();
-}
-
-void KripkeState::set_worlds_vec() {
-  m_worlds_vec = KripkeEqualityHelper::canonicalize_worlds(m_worlds);
 }
 
 void KripkeState::set_designated_worlds(
     const KripkeWorldPointersSet &to_set) {
   m_designated_worlds = to_set;
-  set_designated_worlds_vec();
 }
 
 void KripkeState::add_designated_world(
     const KripkeWorldPointer &to_add) {
   m_designated_worlds.insert(to_add);
-  set_designated_worlds_vec();
 }
 
 void KripkeState::set_beliefs(
     const KripkeWorldPointersTransitiveMap &to_set) {
-
   m_beliefs = to_set;
-  set_beliefs_vec();
-
-}
-
-void KripkeState::set_beliefs_vec() {
-  m_beliefs_vec = KripkeEqualityHelper::canonicalize_transitive_map(m_beliefs);
 }
 
 void KripkeState::clear_beliefs() {
   m_beliefs.clear();
-    m_beliefs_vec.clear();
 }
 
 // --- Getters ---
@@ -78,10 +63,6 @@ void KripkeState::clear_beliefs() {
 [[nodiscard]] const KripkeWorldPointersSet &
 KripkeState::get_worlds() const noexcept {
   return m_worlds;
-}
-
-const KripkeWorldPointersVec &KripkeState::get_worlds_vec() const noexcept {
-  return m_worlds_vec;
 }
 
 [[nodiscard]] const KripkeWorldPointersSet &
@@ -98,12 +79,6 @@ KripkeState::get_designated_worlds() const noexcept {
 KripkeState::get_beliefs() const noexcept {
   return m_beliefs;
 }
-
-const KripkeWorldPointersTransitiveMapVec &
-KripkeState::get_beliefs_vec() const noexcept {
-  return m_beliefs_vec;
-}
-
 // --- Operators ---
 
 KripkeState &KripkeState::operator=(const KripkeState &to_copy) {
@@ -111,13 +86,6 @@ KripkeState &KripkeState::operator=(const KripkeState &to_copy) {
     m_worlds = to_copy.m_worlds;
     m_designated_worlds = to_copy.m_designated_worlds;
     m_beliefs = to_copy.m_beliefs;
-
-    m_designated_worlds_vec =
-        to_copy.m_designated_worlds_vec;
-    m_worlds_vec =
-        to_copy.m_worlds_vec;
-    m_beliefs_vec =
-        to_copy.m_beliefs_vec;
 
     m_hash = to_copy.m_hash;
   }
@@ -318,14 +286,6 @@ void KripkeState::build_initial() {
         "plank produced no designated worlds.");
   }
 
-  // IMPORTANT:
-  // This canonicalizes:
-  //
-  //   m_worlds             -> m_worlds_vec
-  //   m_designated_worlds  -> m_designated_worlds_vec
-  //   m_beliefs            -> m_beliefs_vec
-  //
-  // before computing the hash.
   recompute_hash();
 
 
@@ -394,21 +354,11 @@ bool KripkeState::is_executable(
 
 
 void KripkeState::recompute_hash() {
-
-  set_designated_worlds_vec();
-  set_worlds_vec();
-  set_beliefs_vec();
   m_hash = FormulaHelper::hash_kripke_state(*this);
 }
 
 uint64_t KripkeState::get_hash() const noexcept {
   return m_hash;
-}
-
-void KripkeState::set_designated_worlds_vec() {
-  m_designated_worlds_vec =
-      KripkeEqualityHelper::canonicalize_worlds(
-          m_designated_worlds);
 }
 
 
@@ -902,10 +852,42 @@ bool KripkeState::entails(const FormulaeList &to_check) const {
 }
 
 void KripkeState::contract_with_bisimulation() {
-  KripkeReachabilityHelper::clean_unreachable_worlds(*this);
-  Bisimulation b;
-  b.calc_min_bisimilar(*this);
-  recompute_hash();
+
+#ifdef DEBUG
+    const KripkeState before_bisimulation =
+        *this;
+#endif
+
+    KripkeReachabilityHelper::clean_unreachable_worlds(
+        *this);
+
+    Bisimulation b;
+    b.calc_min_bisimilar(
+        *this);
+
+    // Keep this here: the Kripke structure may have changed.
+    recompute_hash();
+
+#ifdef DEBUG
+
+    /*
+     * Bisimulation is allowed to change the structure, so do NOT
+     * require structural equality. Check semantic equivalence with
+     * 500 deterministic random epistemic formulae.
+     */
+    if (!KripkeEqualityHelper::verify_equivalence(
+            before_bisimulation,
+            *this,
+            false,
+            500,
+            5)) {
+
+        ExitHandler::exit_with_message(
+            ExitHandler::ExitCode::SearchMethodError,
+            "DEBUG: bisimulation equivalence verification failed.");
+            }
+
+#endif
 }
 
 const GraphTensor &KripkeState::get_tensor_representation() {
@@ -935,7 +917,4 @@ KripkeState::KripkeState(
     : m_worlds(other.m_worlds),
       m_designated_worlds(other.m_designated_worlds),
       m_beliefs(other.m_beliefs),
-      m_designated_worlds_vec(other.m_designated_worlds_vec),
-      m_worlds_vec(other.m_worlds_vec),
-      m_beliefs_vec(other.m_beliefs_vec),
       m_hash(other.m_hash) {}

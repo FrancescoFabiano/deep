@@ -122,12 +122,6 @@ KripkeWorldPointer::KripkeWorldPointer(std::shared_ptr<const KripkeWorld> &&ptr,
   set_repetition(repetition);
 }
 
-KripkeWorldPointer::KripkeWorldPointer(const KripkeWorld &world,
-                                       const unsigned short repetition) {
-  m_ptr = std::make_shared<KripkeWorld>(world);
-  set_repetition(repetition);
-}
-
 KripkeWorldPointer::KripkeWorldPointer(const KripkeWorldPointer &other) {
   set_ptr(other.get_ptr());
   m_repetition = other.get_repetition();

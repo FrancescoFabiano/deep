@@ -24,7 +24,7 @@
 #include "Configuration.h"
 #include "FormulaHelper.h"
 #include "HelperPrint.h"
-
+#include "KripkeEqualityHelper.h"
 
 
 template <StateRepresentation StateRepr, SearchStrategy<StateRepr> Strategy>
@@ -243,12 +243,6 @@ bool SpaceSearcher<StateRepr, Strategy>::search_sequential(
             depth % bisimulation_interval == 0;
 
         if (should_contract) {
-
-#ifdef DEBUG
-          check_bisimulation_equivalence(
-              successor);
-#endif
-
           successor
               .contract_with_bisimulation();
         }
@@ -268,15 +262,73 @@ bool SpaceSearcher<StateRepr, Strategy>::search_sequential(
       }
 
 
-        if (!check_visited ||
-      visited_states.insert(successor).second) {
+#ifdef DEBUG
+
+        /*
+         * In Debug we keep the insertion result so that verification is
+         * performed only when the successor was actually rejected as visited.
+         */
+        if (check_visited) {
+
+            const auto [visited_it, inserted] =
+                visited_states.insert(successor);
+
+            if (inserted) {
+
+                if (!is_RL_search) {
+                    m_strategy.push(successor);
+                }
+
+                fringe_RL.push_back(successor);
+
+            } else {
+
+                /*
+                 * This is a genuine visited-state hit.
+                 *
+                 * The set considers *visited_it and successor equivalent.
+                 * Verify both strong structural equality and semantic
+                 * equivalence with 50 epistemic formulae.
+                 */
+                if (!KripkeEqualityHelper::verify_equivalence(
+                        visited_it->get_representation(),
+                        successor.get_representation(),
+                        true,
+                        500,
+                        5)) {
+
+                    ExitHandler::exit_with_message(
+                        ExitHandler::ExitCode::SearchMethodError,
+                        "DEBUG: visited-state equivalence verification failed.");
+                        }
+            }
+
+        } else {
 
             if (!is_RL_search) {
                 m_strategy.push(successor);
             }
 
             fringe_RL.push_back(successor);
-      }
+        }
+
+#else
+
+        /*
+         * Release path stays minimal.
+         */
+        if (!check_visited ||
+            visited_states.insert(successor).second) {
+
+            if (!is_RL_search) {
+                m_strategy.push(successor);
+            }
+
+            fringe_RL.push_back(successor);
+            }
+
+#endif
+
     }
 
 
@@ -594,25 +646,4 @@ void SpaceSearcher<StateRepr, Strategy>::print_dot_for_execute_plan(
          << std::endl;
     }
   }
-}
-
-
-template <StateRepresentation StateRepr, SearchStrategy<StateRepr> Strategy>
-void SpaceSearcher<StateRepr, Strategy>::
-    check_bisimulation_equivalence(
-        const State<StateRepr> &state) const {
-
-  if (!ArgumentParser::get_instance()
-           .get_verbose()) {
-    return;
-  }
-
-  State<StateRepr> temp =
-      state;
-
-  temp.contract_with_bisimulation();
-
-  FormulaHelper::checkSameKState(
-      state.get_representation(),
-      temp.get_representation());
 }

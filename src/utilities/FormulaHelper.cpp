@@ -330,8 +330,9 @@ uint64_t FormulaHelper::hash_kripke_state(
   constexpr uint64_t worlds_tag = 1;
   update(worlds_tag);
 
-  const auto &worlds =
-      state.get_worlds_vec();
+    const auto worlds =
+        KripkeEqualityHelper::canonicalize_worlds(
+            state.get_worlds());
 
   const uint64_t worlds_size =
       static_cast<uint64_t>(worlds.size());
@@ -353,7 +354,9 @@ uint64_t FormulaHelper::hash_kripke_state(
   constexpr uint64_t designated_tag = 2;
   update(designated_tag);
 
-  const auto& designated_worlds = state.get_designated_worlds_vec();
+    const auto designated_worlds =
+        KripkeEqualityHelper::canonicalize_worlds(
+            state.get_designated_worlds());
 
   const uint64_t designated_size =
       static_cast<uint64_t>(
@@ -373,8 +376,9 @@ uint64_t FormulaHelper::hash_kripke_state(
   constexpr uint64_t beliefs_tag = 3;
   update(beliefs_tag);
 
-  const auto &beliefs =
-      state.get_beliefs_vec();
+    const auto beliefs =
+        KripkeEqualityHelper::canonicalize_transitive_map(
+            state.get_beliefs());
 
   const uint64_t beliefs_size =
       static_cast<uint64_t>(beliefs.size());
@@ -561,7 +565,7 @@ BeliefFormula FormulaHelper::make_random_formula(
 }
 
 
-void FormulaHelper::checkSameKState(
+void FormulaHelper::verify_semantic_equivalence(
     const KripkeState &first,
     const KripkeState &second,
     const unsigned int modal_depth,

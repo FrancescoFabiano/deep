@@ -170,12 +170,6 @@ public:
   explicit KripkeWorldPointer(std::shared_ptr<const KripkeWorld> &&ptr,
                               unsigned short repetition = 0);
 
-  /** \brief Construct from KripkeWorld by value.
-   *  \param[in] world The world to point to.
-   *  \param[in] repetition The repetition count (default 0).
-   */
-  explicit KripkeWorldPointer(const KripkeWorld &world,
-                              unsigned short repetition = 0);
 
   /**
    * \brief Copy constructor.

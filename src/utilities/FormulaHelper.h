@@ -225,12 +225,12 @@ public:
    * formulae). Fails if they are not. \param[in] first The first state to
    * check. \param[in] second The second state to check. \param modal_depth \param formula_count \param seed
    */
- static void checkSameKState(
+ static void verify_semantic_equivalence(
      const KripkeState &first,
      const KripkeState &second,
      unsigned int modal_depth = 3,
      unsigned int formula_count = 100,
-     std::uint32_t seed = 3567);
+     std::uint32_t seed = 3760);
 
 
  static BeliefFormula make_random_atom(
