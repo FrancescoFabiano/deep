@@ -248,6 +248,8 @@ private:
    *  \param[in] to_add The KripkeWorld to add.
    */
   void add_world(const KripkeWorld &to_add);
+    void add_world(
+    KripkeWorld &&to_add);
 
   /** \brief Add a belief edge for an agent between two worlds.
    *  \param[in] from The source world.
@@ -265,6 +267,9 @@ private:
         const KripkeWorld &to_add,
         unsigned short repetition);
 
+    KripkeWorldPointer add_rep_world(
+    KripkeWorld &&to_add,
+    unsigned short repetition);
 
 
     void recompute_hash();

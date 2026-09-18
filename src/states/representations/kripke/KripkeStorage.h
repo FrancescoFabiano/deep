@@ -16,10 +16,71 @@
 #pragma once
 
 #include "KripkeWorld.h"
-#include <set>
+#include <memory>
+#include <unordered_set>
 
 /// \brief Alias for a set of KripkeWorlds, used to store all created worlds.
-using KripkeWorldsSet = std::set<KripkeWorld>;
+using StoredKripkeWorld =
+    std::shared_ptr<const KripkeWorld>;
+
+struct StoredKripkeWorldHash {
+    using is_transparent = void;
+
+    [[nodiscard]]
+    std::size_t operator()(
+        const StoredKripkeWorld &world) const noexcept {
+
+        return static_cast<std::size_t>(
+            world->get_id());
+    }
+
+    [[nodiscard]]
+    std::size_t operator()(
+        const KripkeWorld &world) const noexcept {
+
+        return static_cast<std::size_t>(
+            world.get_id());
+    }
+};
+
+
+struct StoredKripkeWorldEqual {
+    using is_transparent = void;
+
+    [[nodiscard]]
+    bool operator()(
+        const StoredKripkeWorld &lhs,
+        const StoredKripkeWorld &rhs) const noexcept {
+
+        return lhs->get_fluent_set() ==
+               rhs->get_fluent_set();
+    }
+
+    [[nodiscard]]
+    bool operator()(
+        const StoredKripkeWorld &lhs,
+        const KripkeWorld &rhs) const noexcept {
+
+        return lhs->get_fluent_set() ==
+               rhs.get_fluent_set();
+    }
+
+    [[nodiscard]]
+    bool operator()(
+        const KripkeWorld &lhs,
+        const StoredKripkeWorld &rhs) const noexcept {
+
+        return lhs.get_fluent_set() ==
+               rhs->get_fluent_set();
+    }
+};
+
+
+using KripkeWorldsSet =
+    std::unordered_set<
+        StoredKripkeWorld,
+        StoredKripkeWorldHash,
+        StoredKripkeWorldEqual>;
 
 class KripkeStorage {
 public:
@@ -43,7 +104,11 @@ public:
    * \param[in] to_add The KripkeWorld to add.
    * \return A KripkeWorldPointer to the stored world.
    */
-  KripkeWorldPointer add_world(const KripkeWorld &to_add);
+    KripkeWorldPointer
+    add_world(const KripkeWorld &to_add);
+
+    KripkeWorldPointer
+    add_world(KripkeWorld &&to_add);
   ///@}
 
   /// \name Deleted Special Members

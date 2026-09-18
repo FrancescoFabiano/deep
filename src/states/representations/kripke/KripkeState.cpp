@@ -22,6 +22,7 @@
 
 #include <ranges>
 #include <unordered_set>
+#include <utility>
 
 #include "KripkeEqualityHelper.h"
 #include "KripkeStorage.h"
@@ -158,6 +159,15 @@ void KripkeState::add_world(
           KripkeStorage::get_instance().add_world(to_add));
 }
 
+void KripkeState::add_world(
+    KripkeWorld &&to_add) {
+
+    m_worlds.insert(
+        KripkeStorage::get_instance()
+            .add_world(
+                std::move(to_add)));
+}
+
 KripkeWorldPointer KripkeState::add_rep_world(
     const KripkeWorld &to_add,
     const unsigned short repetition) {
@@ -169,6 +179,25 @@ KripkeWorldPointer KripkeState::add_rep_world(
   m_worlds.insert(tmp);
 
   return tmp;
+}
+
+KripkeWorldPointer
+KripkeState::add_rep_world(
+    KripkeWorld &&to_add,
+    const unsigned short repetition) {
+
+    KripkeWorldPointer tmp =
+        KripkeStorage::get_instance()
+            .add_world(
+                std::move(to_add));
+
+    tmp.set_repetition(
+        repetition);
+
+    m_worlds.insert(
+        tmp);
+
+    return tmp;
 }
 
 void KripkeState::add_edge(
@@ -237,11 +266,13 @@ void KripkeState::build_initial() {
       description.insert(std::move(fluent));
     }
 
-    const KripkeWorld world(description);
+      KripkeWorld world(
+          std::move(description));
 
-    const auto world_ptr =
-        KripkeStorage::get_instance()
-            .add_world(world);
+      const auto world_ptr =
+          KripkeStorage::get_instance()
+              .add_world(
+                  std::move(world));
 
     m_worlds.insert(world_ptr);
 
