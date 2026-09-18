@@ -262,7 +262,7 @@ bool SpaceSearcher<StateRepr, Strategy>::search_sequential(
       }
 
 
-#ifdef DEBUG
+#if defined(DEBUG) || defined(VERIFY)
 
         /*
          * In Debug we keep the insertion result so that verification is

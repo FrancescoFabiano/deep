@@ -13,7 +13,7 @@ endif()
 
 option(ENABLE_NEURALNETS "Enable use of ONNX Runtime" OFF)
 option(ENABLE_CUDA "Enable CUDA support for ONNX Runtime" OFF)
-
+option(VERIFY "Enable expensive DEEP correctness verification" OFF)
 
 # === Use ccache if available ===
 
@@ -261,6 +261,10 @@ if(ENABLE_NEURALNETS)
     endif()
 endif()
 
+
+if(VERIFY)
+    target_compile_definitions(deep PRIVATE VERIFY)
+endif()
 
 # === Compiler flags ===
 

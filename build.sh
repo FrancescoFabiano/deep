@@ -11,6 +11,7 @@ show_usage() {
     echo "Options:"
     echo "  nn              Enable neural networks (downloads ONNX Runtime if not present)"
     echo "  debug           Build with Debug flags (default is Release)"
+    echo "  verify          Enable expensive correctness verification in any build type"
     echo "  use_gpu         Use GPU ONNX Runtime (Linux + NVIDIA only)"
     echo "  force_gpu       Force GPU ONNX install (Linux only)"
     echo "  install_all     Install required system packages (apt on Linux, Homebrew on macOS)"
@@ -33,6 +34,7 @@ echo "Detected OS: $OS"
 # Default options
 # --------------------------
 BUILD_TYPE="Release"
+ENABLE_VERIFY="OFF"
 ENABLE_NN="OFF"
 USE_GPU="OFF"
 FORCE_GPU="OFF"
@@ -45,6 +47,7 @@ for arg in "$@"; do
     case "$arg_lc" in
         nn) ENABLE_NN="ON" ;;
         debug) BUILD_TYPE="Debug" ;;
+        verify) ENABLE_VERIFY="ON" ;;
         use_gpu) USE_GPU="ON" ;;
         force_gpu) FORCE_GPU="ON" ;;
         no_onnx_test) ONNX_TEST="OFF" ;;
@@ -302,6 +305,7 @@ cd "$BUILD_DIR"
 echo "Running CMake..."
 cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
       -DENABLE_NEURALNETS=$ENABLE_NN \
+      -DVERIFY=$ENABLE_VERIFY \
       -DENABLE_CUDA=$USE_GPU ..
 
 # --------------------------

@@ -853,7 +853,7 @@ bool KripkeState::entails(const FormulaeList &to_check) const {
 
 void KripkeState::contract_with_bisimulation() {
 
-#ifdef DEBUG
+#if defined(DEBUG) || defined(DEEP_VERIFY)
     const KripkeState before_bisimulation =
         *this;
 #endif
@@ -868,7 +868,7 @@ void KripkeState::contract_with_bisimulation() {
     // Keep this here: the Kripke structure may have changed.
     recompute_hash();
 
-#ifdef DEBUG
+#if defined(DEBUG) || defined(DEEP_VERIFY)
 
     /*
      * Bisimulation is allowed to change the structure, so do NOT
