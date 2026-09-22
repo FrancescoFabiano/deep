@@ -1233,8 +1233,10 @@ bool TrainingDataset<StateRepr>::priority_exploration(
    * ============================================================
    */
 
+#ifdef DEBUG
   size_t reachable_count = 0;
   size_t failed_count = 0;
+#endif
 
   for (const auto &node : nodes) {
 
@@ -1246,11 +1248,13 @@ bool TrainingDataset<StateRepr>::priority_exploration(
              << node.score
              << std::setfill(' ');
 
+#ifdef DEBUG
     if (node.score == m_failed_state) {
       ++failed_count;
     } else {
       ++reachable_count;
     }
+#endif
   }
 
   csv_file.flush();

@@ -20,7 +20,13 @@
  * exported to ONNX format.
  */
 struct GraphTensor {
-  std::vector<int64_t> edge_src;
+
+
+    std::vector<int64_t> pointed_ids;
+    /// Encoded node IDs of the designated/pointed worlds.
+    /// These IDs use the same state-node ID representation as real_node_ids.
+
+    std::vector<int64_t> edge_src;
   ///< [1, num_edges] -- First dimension.
   ///< Symbolic source node ID for each edge.
   std::vector<int64_t>

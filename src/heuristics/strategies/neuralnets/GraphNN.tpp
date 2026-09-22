@@ -297,10 +297,13 @@ float GraphNN<StateRepr>::run_inference(const GraphTensor &tensor) const {
  */
 
 template <StateRepresentation StateRepr>
-float GraphNN<StateRepr>::run_inference(const GraphTensor &tensor) const {
+float GraphNN<StateRepr>::run_inference(
+    const GraphTensor &tensor) const {
+
   if (!m_model_loaded) {
-    ExitHandler::exit_with_message(ExitHandler::ExitCode::GNNInstanceError,
-                                   "[ONNX] Model not loaded before inference.");
+    ExitHandler::exit_with_message(
+        ExitHandler::ExitCode::GNNInstanceError,
+        "[ONNX] Model not loaded before inference.");
   }
 
   if (ArgumentParser::get_instance().get_dataset_separated()) {
@@ -309,104 +312,247 @@ float GraphNN<StateRepr>::run_inference(const GraphTensor &tensor) const {
         "Separated dataset type not supported for GNN inference.");
   }
 
-  auto &session = *m_session;
-  const auto &memory_info = *m_memory_info;
+  auto &session =
+      *m_session;
 
-  const auto dataset_type = ArgumentParser::get_instance().get_dataset_type();
-  const bool is_bitmask = (dataset_type == DatasetType::BITMASK);
+  const auto &memory_info =
+      *m_memory_info;
 
-  const size_t num_edges = tensor.edge_src.size();
+  const auto dataset_type =
+      ArgumentParser::get_instance().get_dataset_type();
+
+  const bool is_bitmask =
+      dataset_type == DatasetType::BITMASK;
+
+  const size_t num_edges =
+      tensor.edge_src.size();
+
   size_t num_nodes;
 
   if (is_bitmask) {
-    num_nodes = tensor.real_node_ids_bitmask.size() / m_bitmask_size;
+    num_nodes =
+        tensor.real_node_ids_bitmask.size() /
+        m_bitmask_size;
   } else {
-    num_nodes = tensor.real_node_ids.size();
+    num_nodes =
+        tensor.real_node_ids.size();
   }
 
-  // Shape [num_nodes, bitmask_size]
+
+  // ------------------------------------------------------------------------
+  // Node IDs / bitmasks
+  // ------------------------------------------------------------------------
+
   const std::array<int64_t, 2> bitmask_shape{
-      static_cast<int64_t>(num_nodes), static_cast<int64_t>(m_bitmask_size)};
+      static_cast<int64_t>(num_nodes),
+      static_cast<int64_t>(m_bitmask_size)};
 
-  // ONNX wants a non-const pointer even though it doesn't mutate it.
   uint8_t *bitmask_ptr =
-      const_cast<uint8_t *>(tensor.real_node_ids_bitmask.data());
+      const_cast<uint8_t *>(
+          tensor.real_node_ids_bitmask.data());
 
-  Ort::Value real_node_ids_bitmask_tensor = Ort::Value::CreateTensor<uint8_t>(
-      memory_info, bitmask_ptr, tensor.real_node_ids_bitmask.size(),
-      bitmask_shape.data(), bitmask_shape.size());
+  Ort::Value real_node_ids_bitmask_tensor =
+      Ort::Value::CreateTensor<uint8_t>(
+          memory_info,
+          bitmask_ptr,
+          tensor.real_node_ids_bitmask.size(),
+          bitmask_shape.data(),
+          bitmask_shape.size());
 
-  // Construct real_node_ids tensor: shape [num_nodes, 1]
-  std::vector<int64_t> real_node_ids(tensor.real_node_ids.begin(),
-                                     tensor.real_node_ids.end());
+  std::vector<int64_t> real_node_ids(
+      tensor.real_node_ids.begin(),
+      tensor.real_node_ids.end());
+
   const std::array<int64_t, 1> node_ids_shape{
-      static_cast<int64_t>(real_node_ids.size())};
-  Ort::Value real_node_ids_tensor = Ort::Value::CreateTensor<int64_t>(
-      memory_info, real_node_ids.data(), real_node_ids.size(),
-      node_ids_shape.data(), node_ids_shape.size());
+      static_cast<int64_t>(
+          real_node_ids.size())};
 
-  // Construct edge_index tensor: shape [2, num_edges]
-  std::vector<int64_t> edge_index_data(2 * num_edges);
-  for (size_t i = 0; i < num_edges; ++i) {
-    edge_index_data[i] = (tensor.edge_src[i]); // First row: edge_src
+  Ort::Value real_node_ids_tensor =
+      Ort::Value::CreateTensor<int64_t>(
+          memory_info,
+          real_node_ids.data(),
+          real_node_ids.size(),
+          node_ids_shape.data(),
+          node_ids_shape.size());
+
+
+  // ------------------------------------------------------------------------
+  // Edge index
+  // ------------------------------------------------------------------------
+
+  std::vector<int64_t> edge_index_data(
+      2 * num_edges);
+
+  for (size_t i = 0;
+       i < num_edges;
+       ++i) {
+
+    edge_index_data[i] =
+        tensor.edge_src[i];
+
     edge_index_data[num_edges + i] =
-        (tensor.edge_dst[i]); // Second row: edge_dst
+        tensor.edge_dst[i];
   }
 
   const std::array<int64_t, 2> edge_index_shape{
-      2, static_cast<int64_t>(num_edges)};
-  Ort::Value edge_index_tensor = Ort::Value::CreateTensor<int64_t>(
-      memory_info, edge_index_data.data(), edge_index_data.size(),
-      edge_index_shape.data(), edge_index_shape.size());
+      2,
+      static_cast<int64_t>(num_edges)};
 
-  // Construct edge_attr tensor: shape [num_edges, 1]
-  std::vector<int64_t> edge_attrs(tensor.edge_attrs.begin(),
-                                  tensor.edge_attrs.end());
-  const std::array<int64_t, 2> edge_attr_shape{static_cast<int64_t>(num_edges),
-                                               1};
-  Ort::Value edge_attrs_tensor = Ort::Value::CreateTensor<int64_t>(
-      memory_info, edge_attrs.data(), edge_attrs.size(), edge_attr_shape.data(),
-      edge_attr_shape.size());
+  Ort::Value edge_index_tensor =
+      Ort::Value::CreateTensor<int64_t>(
+          memory_info,
+          edge_index_data.data(),
+          edge_index_data.size(),
+          edge_index_shape.data(),
+          edge_index_shape.size());
 
-  // Construct state_batch tensor: shape [-1]
-  std::vector<int64_t> state_batch_data(num_nodes, 0);
+
+  // ------------------------------------------------------------------------
+  // Edge attributes
+  // ------------------------------------------------------------------------
+
+  std::vector<int64_t> edge_attrs(
+      tensor.edge_attrs.begin(),
+      tensor.edge_attrs.end());
+
+  const std::array<int64_t, 2> edge_attr_shape{
+      static_cast<int64_t>(num_edges),
+      1};
+
+  Ort::Value edge_attrs_tensor =
+      Ort::Value::CreateTensor<int64_t>(
+          memory_info,
+          edge_attrs.data(),
+          edge_attrs.size(),
+          edge_attr_shape.data(),
+          edge_attr_shape.size());
+
+
+  // ------------------------------------------------------------------------
+  // State batch
+  // ------------------------------------------------------------------------
+
+  std::vector<int64_t> state_batch_data(
+      num_nodes,
+      0);
+
   const std::array<int64_t, 1> state_batch_shape{
-      static_cast<int64_t>(state_batch_data.size())};
-  Ort::Value state_batch_tensor = Ort::Value::CreateTensor<int64_t>(
-      memory_info, state_batch_data.data(), state_batch_data.size(),
-      state_batch_shape.data(), state_batch_shape.size());
+      static_cast<int64_t>(
+          state_batch_data.size())};
 
-  // Prepare input tensors
+  Ort::Value state_batch_tensor =
+      Ort::Value::CreateTensor<int64_t>(
+          memory_info,
+          state_batch_data.data(),
+          state_batch_data.size(),
+          state_batch_shape.data(),
+          state_batch_shape.size());
+
+
+  // ------------------------------------------------------------------------
+  // Pointed/designated world IDs
+  // ------------------------------------------------------------------------
+
+  std::vector<int64_t> pointed_ids(
+      tensor.pointed_ids.begin(),
+      tensor.pointed_ids.end());
+
+  const std::array<int64_t, 1> pointed_ids_shape{
+      static_cast<int64_t>(
+          pointed_ids.size())};
+
+  Ort::Value pointed_ids_tensor =
+      Ort::Value::CreateTensor<int64_t>(
+          memory_info,
+          pointed_ids.data(),
+          pointed_ids.size(),
+          pointed_ids_shape.data(),
+          pointed_ids_shape.size());
+
+
+  // ------------------------------------------------------------------------
+  // Prepare model inputs
+  // ------------------------------------------------------------------------
+
   std::vector<Ort::Value> input_tensors;
+
   if (is_bitmask) {
-    input_tensors.emplace_back(std::move(real_node_ids_bitmask_tensor));
+    input_tensors.emplace_back(
+        std::move(
+            real_node_ids_bitmask_tensor));
   } else {
-    input_tensors.emplace_back(std::move(real_node_ids_tensor));
-  }
-  input_tensors.emplace_back(std::move(edge_index_tensor));
-  input_tensors.emplace_back(std::move(edge_attrs_tensor));
-  input_tensors.emplace_back(std::move(state_batch_tensor));
-
-  // Convert input/output names to const char* arrays
-  std::vector<const char *> input_names_cstr;
-  input_names_cstr.reserve(m_input_names.size());
-  for (const auto &name : m_input_names) {
-    input_names_cstr.push_back(name.c_str());
-  }
-  std::vector<const char *> output_names_cstr;
-  output_names_cstr.reserve(m_output_names.size());
-  for (const auto &name : m_output_names) {
-    output_names_cstr.push_back(name.c_str());
+    input_tensors.emplace_back(
+        std::move(
+            real_node_ids_tensor));
   }
 
-  // Run the model
-  auto output_tensors = session.Run(
-      Ort::RunOptions{nullptr}, input_names_cstr.data(), input_tensors.data(),
-      input_tensors.size(), output_names_cstr.data(), output_names_cstr.size());
+  input_tensors.emplace_back(
+      std::move(
+          edge_index_tensor));
 
-  // Get the result (assuming scalar output)
-  const auto *output_data = output_tensors[0].template GetTensorData<float>();
-  const float score = output_data[0];
+  input_tensors.emplace_back(
+      std::move(
+          edge_attrs_tensor));
+
+  input_tensors.emplace_back(
+      std::move(
+          state_batch_tensor));
+
+  input_tensors.emplace_back(
+      std::move(
+          pointed_ids_tensor));
+
+
+  // ------------------------------------------------------------------------
+  // Input/output names
+  // ------------------------------------------------------------------------
+
+  std::vector<const char *>
+      input_names_cstr;
+
+  input_names_cstr.reserve(
+      m_input_names.size());
+
+  for (const auto &name :
+       m_input_names) {
+
+    input_names_cstr.push_back(
+        name.c_str());
+  }
+
+  std::vector<const char *>
+      output_names_cstr;
+
+  output_names_cstr.reserve(
+      m_output_names.size());
+
+  for (const auto &name :
+       m_output_names) {
+
+    output_names_cstr.push_back(
+        name.c_str());
+  }
+
+
+  // ------------------------------------------------------------------------
+  // Inference
+  // ------------------------------------------------------------------------
+
+  auto output_tensors =
+      session.Run(
+          Ort::RunOptions{nullptr},
+          input_names_cstr.data(),
+          input_tensors.data(),
+          input_tensors.size(),
+          output_names_cstr.data(),
+          output_names_cstr.size());
+
+  const auto *output_data =
+      output_tensors[0]
+          .template GetTensorData<float>();
+
+  const float score =
+      output_data[0];
 
   return score;
 }
@@ -764,7 +910,15 @@ void GraphNN<StateRepr>::populate_with_goal() {
     add_edge(src, dst, label);
   }
 
+
   if (ArgumentParser::get_instance().get_dataset_separated()) {
+
+      /*
+* A goal-only tensor has no pointed Kripke worlds.
+*/
+      m_pointed_ids.clear();
+
+
     fill_graph_tensor(m_goal_graph_tensor);
 
     m_edge_dst.clear();
@@ -784,84 +938,162 @@ void GraphNN<StateRepr>::populate_with_goal() {
 
 template <StateRepresentation StateRepr>
 GraphTensor
-GraphNN<StateRepr>::state_to_tensor_minimal(const KripkeState &kstate) {
+GraphNN<StateRepr>::state_to_tensor_minimal(
+    const KripkeState &kstate) {
 
-  const auto m_node_to_symbolic_original = m_node_to_symbolic;
+  const auto m_node_to_symbolic_original =
+      m_node_to_symbolic;
 
-  const auto &training_dataset = TrainingDataset<KripkeState>::get_instance();
+  const auto &training_dataset =
+      TrainingDataset<KripkeState>::get_instance();
 
   std::map<KripkeWorldId, KripkeWorldId> world_map;
   world_map.clear();
-  const auto dataset_type = ArgumentParser::get_instance().get_dataset_type();
-  int world_counter = training_dataset.get_shift_state_ids();
 
-  if (!ArgumentParser::get_instance().get_dataset_separated()) {
-    const auto &designated_worlds =
-        kstate.get_designated_worlds();
+  const auto dataset_type =
+      ArgumentParser::get_instance().get_dataset_type();
 
-    for (const auto &state_parent : designated_worlds) {
-      const auto state_parent_id =
-          state_parent.get_id_casted();
+  int world_counter =
+      training_dataset.get_shift_state_ids();
 
-      add_edge(
-          TrainingDataset<KripkeState>::get_epsilon_node_id_int(),
-          state_parent_id,
-          state_parent,
-          TrainingDataset<KripkeState>::get_to_state_edge_id_int());
-    }
-  }
 
-  // Assign IDs ///\todo remove this for efficiency. The hash can be used
-  // directly
+  // Assign IDs
+  /// \todo remove this for efficiency. The hash can be used directly
   for (const auto &pw : kstate.get_worlds()) {
-    if (const auto hash = pw.get_id_casted(); !world_map.contains(hash)) {
+
+    if (const auto hash = pw.get_id_casted();
+        !world_map.contains(hash)) {
+
       switch (dataset_type) {
+
       case DatasetType::HASHED:
       case DatasetType::BITMASK:
         world_map[hash] = hash;
         break;
+
       case DatasetType::MAPPED: {
         world_map[hash] = world_counter++;
         break;
       }
+
       default: {
-        ExitHandler::exit_with_message(ExitHandler::ExitCode::ArgParseError,
-                                       "Invalid Dataset Type specified");
+        ExitHandler::exit_with_message(
+            ExitHandler::ExitCode::ArgParseError,
+            "Invalid Dataset Type specified");
       }
       }
     }
   }
 
-  for (const auto &[from_pw, from_map] : kstate.get_beliefs()) {
-    const int64_t src = world_map[from_pw.get_id_casted()];
 
-    for (const auto &[agent, to_set] : from_map) {
-      const auto label = static_cast<int64_t>(
-          training_dataset.get_unique_a_id_from_map(agent));
+  /*
+   * Store the IDs of the pointed/designated worlds.
+   *
+   * Use the same ID representation used for the state graph:
+   * hashed IDs for HASHED/BITMASK and mapped IDs for MAPPED.
+   */
+  m_pointed_ids.clear();
+
+  for (const auto &state_parent :
+       kstate.get_designated_worlds()) {
+
+    const auto state_parent_id =
+        static_cast<int64_t>(
+            world_map.at(
+                state_parent.get_id_casted()));
+
+      m_pointed_ids.push_back(
+          get_symbolic_id(
+              state_parent_id,
+              state_parent));
+
+    /*
+     * Preserve the existing epsilon -> pointed-world edges
+     * for non-separated datasets.
+     */
+    if (!ArgumentParser::get_instance()
+             .get_dataset_separated()) {
+
+      add_edge(
+          TrainingDataset<KripkeState>::
+              get_epsilon_node_id_int(),
+          state_parent_id,
+          state_parent,
+          TrainingDataset<KripkeState>::
+              get_to_state_edge_id_int());
+    }
+  }
+
+
+  for (const auto &[from_pw, from_map] :
+       kstate.get_beliefs()) {
+
+    const int64_t src =
+        static_cast<int64_t>(
+            world_map.at(
+                from_pw.get_id_casted()));
+
+    for (const auto &[agent, to_set] :
+         from_map) {
+
+      const auto label =
+          static_cast<int64_t>(
+              training_dataset
+                  .get_unique_a_id_from_map(
+                      agent));
 
       for (const auto &to_pw : to_set) {
-        const int64_t dst = world_map[to_pw.get_id_casted()];
 
-        add_edge(src, from_pw, dst, to_pw, label);
+        const int64_t dst =
+            static_cast<int64_t>(
+                world_map.at(
+                    to_pw.get_id_casted()));
+
+        add_edge(
+            src,
+            from_pw,
+            dst,
+            to_pw,
+            label);
       }
     }
   }
+
 
   GraphTensor ret;
   fill_graph_tensor(ret);
 
+
   // Erase only the newly inserted elements
-  m_edge_src.erase(m_edge_src.begin() + m_edges_initial_size, m_edge_src.end());
-  m_edge_dst.erase(m_edge_dst.begin() + m_edges_initial_size, m_edge_dst.end());
-  m_edge_labels.erase(m_edge_labels.begin() + m_edges_initial_size,
-                      m_edge_labels.end());
-  m_real_node_ids.erase(m_real_node_ids.begin() + m_node_ids_initial_size,
-                        m_real_node_ids.end());
-  m_real_node_ids_bitmask.erase(m_real_node_ids_bitmask.begin() +
-                                    m_real_node_ids_bitmask_initial_size,
-                                m_real_node_ids_bitmask.end());
-  m_node_to_symbolic = m_node_to_symbolic_original;
-  m_symbolic_id = m_starting_symbolic_id;
+  m_edge_src.erase(
+      m_edge_src.begin() + m_edges_initial_size,
+      m_edge_src.end());
+
+  m_edge_dst.erase(
+      m_edge_dst.begin() + m_edges_initial_size,
+      m_edge_dst.end());
+
+  m_edge_labels.erase(
+      m_edge_labels.begin() + m_edges_initial_size,
+      m_edge_labels.end());
+
+  m_real_node_ids.erase(
+      m_real_node_ids.begin() + m_node_ids_initial_size,
+      m_real_node_ids.end());
+
+  m_real_node_ids_bitmask.erase(
+      m_real_node_ids_bitmask.begin() +
+          m_real_node_ids_bitmask_initial_size,
+      m_real_node_ids_bitmask.end());
+
+  m_pointed_ids.clear();
+
+  m_node_to_symbolic =
+      m_node_to_symbolic_original;
+
+  m_symbolic_id =
+      m_starting_symbolic_id;
+
 
   return ret;
 }
@@ -873,32 +1105,98 @@ void GraphNN<StateRepr>::fill_graph_tensor(GraphTensor &tensor) const {
   tensor.edge_attrs = m_edge_labels;
   tensor.real_node_ids = m_real_node_ids;
   tensor.real_node_ids_bitmask = m_real_node_ids_bitmask;
+  tensor.pointed_ids = m_pointed_ids;
 }
 
 template <StateRepresentation StateRepr>
 bool GraphNN<StateRepr>::check_tensor_against_dot(
-    const GraphTensor &state_tensor, const State<StateRepr> &state) const {
-  // Write the state's dataset format to m_checking_file_path
-  std::ofstream ofs_orig(m_checking_file_path);
+    const GraphTensor &state_tensor,
+    const State<StateRepr> &state) const {
+
+  /*
+   * Verify that pointed_ids uses the same symbolic node IDs as
+   * the destinations of the existing epsilon -> designated-world
+   * edges.
+   *
+   * This check applies to merged/non-separated tensors. In the
+   * separated representation there are no to-state edges, so the
+   * pointed IDs cannot be cross-checked this way.
+   */
+  if (!ArgumentParser::get_instance()
+           .get_dataset_separated()) {
+
+    std::vector<int64_t> expected_pointed_ids;
+
+    const auto to_state_label =
+        TrainingDataset<KripkeState>::
+            get_to_state_edge_id_int();
+
+    for (size_t e = 0;
+         e < state_tensor.edge_attrs.size();
+         ++e) {
+
+      if (state_tensor.edge_attrs[e] ==
+          to_state_label) {
+
+        expected_pointed_ids.push_back(
+            state_tensor.edge_dst[e]);
+      }
+    }
+
+    if (state_tensor.pointed_ids !=
+        expected_pointed_ids) {
+
+      ArgumentParser::get_instance()
+          .get_output_stream()
+          << "[ERROR] GraphTensor pointed_ids do not match "
+             "the symbolic destinations of the designated-world edges."
+          << std::endl;
+
+      return false;
+    }
+  }
+
+
+  /*
+   * Existing DOT-based graph verification.
+   */
+  std::ofstream ofs_orig(
+      m_checking_file_path);
+
   if (!ofs_orig) {
+
     ExitHandler::exit_with_message(
         ExitHandler::ExitCode::GNNFileError,
-        "Failed to open file for NN state checking: " + m_checking_file_path);
+        "Failed to open file for NN state checking: " +
+            m_checking_file_path);
   }
-  state.print_dataset_format(ofs_orig);
+
+  state.print_dataset_format(
+      ofs_orig);
+
   ofs_orig.close();
 
-  // Prepare modified path string
-  bool ret = write_and_compare_tensor_to_dot(m_checking_file_path, state_tensor,
-                                             false);
-  if (ArgumentParser::get_instance().get_dataset_separated() && ret) {
-    ret = write_and_compare_tensor_to_dot(m_goal_file_path, m_goal_graph_tensor,
-                                          true) &&
-          ret;
+  bool ret =
+      write_and_compare_tensor_to_dot(
+          m_checking_file_path,
+          state_tensor,
+          false);
+
+  if (ArgumentParser::get_instance()
+          .get_dataset_separated() &&
+      ret) {
+
+    ret =
+        write_and_compare_tensor_to_dot(
+            m_goal_file_path,
+            m_goal_graph_tensor,
+            true) &&
+        ret;
   }
 
   return ret;
 }
+
 
 template <StateRepresentation StateRepr>
 bool GraphNN<StateRepr>::write_and_compare_tensor_to_dot(
