@@ -438,8 +438,11 @@ class TreeInstance:
         Expansions along it are non-decisions: |A(s)| == 1, so they dilute any
         aggregate that averages over states.
         """
-        v, n = self.root_id, 0
-        while len(self.children[v]) == 1:
+        v, n, seen = self.root_id, 0, set()
+        # `seen` guards the unified graph (unify.py), where a merged state can sit
+        # below itself; a strict tree never revisits, so this is a no-op there.
+        while len(self.children[v]) == 1 and v not in seen:
+            seen.add(v)
             n += 1
             v = self.children[v][0]
         return n

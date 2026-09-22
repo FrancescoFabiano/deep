@@ -84,6 +84,14 @@ def backfill(fringe_dir: Path) -> str:
     sidecars = list(fringe_dir.glob("*.selection.json"))
     if not ck_dir.is_dir() or not any(ck_dir.glob("ckpt_*.pt")):
         return "SKIP (no checkpoints to backfill from)"
+    # A UNIFIED run scores its heldout_* fields on the FROZEN random-fringe set, not
+    # on a held-out trajectory split: the reconstruction below (split_trajectories on
+    # the per-strategy trees) would recompute the wrong numbers and the self-validation
+    # would then rightly abort. Refuse up front instead.
+    _rows = [json.loads(l) for l in tel_path.open() if l.strip()]
+    if any(r.get("eval_fringes") == "frozen_random" or r.get("unified") for r in _rows) \
+            or (fringe_dir / "frozen_eval.json").exists():
+        return "SKIP (unified/frozen-fringe run: backfill from trajectories not applicable)"
     kind = "separated"
     if sidecars:
         kind = json.loads(sidecars[0].read_text()).get("kind_of_data", "separated")
