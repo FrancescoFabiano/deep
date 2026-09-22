@@ -29,6 +29,45 @@ def normalize_generation(value):
     return v
 
 
+def instance_domain_token(instance_name):
+    """`CC_2_3_4__pl_7` -> `CC`, `SC_4_4__pl_5` -> `SC`, `SC_R_10_10__pl_2` -> `SC_R`.
+
+    The domain token of an instance FILE: strip the `__pl_N` suffix, then every
+    trailing `_<digits>` configuration group. It keys --depth-map for a MIXED folder
+    (one whose name is not itself a depth-map key, e.g. `Mix/` holding CC and SC
+    instances side by side): depth is a per-DOMAIN setting (CC ~25, SC ~40), so it
+    has to be resolved per instance when a folder mixes domains.
+    """
+    base = os.path.splitext(os.path.basename(str(instance_name)))[0]
+    base = base.rsplit("__pl_", 1)[0]
+    return re.sub(r"(_\d+)+$", "", base)
+
+
+def parse_depth_map(spec):
+    """`CC:25,SC:40` -> {'CC': 25, 'SC': 40}; '' -> {}."""
+    out = {}
+    for part in (spec or "").split(","):
+        if ":" in part:
+            k, v = part.split(":", 1)
+            out[k.strip()] = int(v)
+    return out
+
+
+def depth_for_instance(instance_name, depth_map, fallback_depth):
+    """Per-instance depth. With a map, the instance's domain token MUST be in it:
+    a missing token FAILS LOUDLY (never inherits --depth, whose historical 40 is
+    the UNFAITHFUL setting for CC). Without a map, --depth applies to every file."""
+    if not depth_map:
+        return fallback_depth
+    token = instance_domain_token(instance_name)
+    if token not in depth_map:
+        raise SystemExit(
+            f"[FATAL] instance '{instance_name}' (domain token '{token}') has no depth "
+            f"in --depth-map {depth_map!r}. Add '{token}:<depth>' (CC-like ~25, "
+            f"SC-like ~40) -- refusing to guess.")
+    return depth_map[token]
+
+
 def strategy_target_folder(dataset_folder, dataset_generation):
     """Where one strategy's instance folders go.
 
@@ -385,6 +424,7 @@ def run_cpp_on_training_files_multithreaded(
         logs_dir,
         dataset_generation=None,
         heuristics=None,
+        depth_map=None,
 ):
     if not os.path.isdir(training_folder):
         raise FileNotFoundError(f"Input training folder not found: {training_folder}")
@@ -400,6 +440,15 @@ def run_cpp_on_training_files_multithreaded(
         if os.path.isfile(os.path.join(training_folder, f))
     )
 
+    # Resolve every instance's depth BEFORE launching anything: a mixed folder
+    # with one unmapped domain token must fail here, not after N minutes of work.
+    depth_of = {f: depth_for_instance(f, depth_map, depth) for f in files}
+    if depth_map:
+        print("[INFO] per-instance depth (mixed folder, keyed by domain token): "
+              + ", ".join(f"{instance_domain_token(f)}={d}"
+                          for f, d in sorted({instance_domain_token(f): d
+                                              for f, d in depth_of.items()}.items())))
+
     # Determine number of threads to use
     max_threads = 4 #min(8, max(1, (os.cpu_count() or 4) - 2))
 
@@ -411,7 +460,7 @@ def run_cpp_on_training_files_multithreaded(
             target_folder,
             no_goal,
             strong_equality,
-            depth,
+            depth_of[file_path],
             discard_factor,
             dataset_max_creation,
             dataset_max_generation,
@@ -465,6 +514,16 @@ def main():
         type=int,
         default=25,
         help="Depth for dataset generation (default: 25). --dataset-depth is an alias.",
+    )
+    parser.add_argument(
+        "--depth-map",
+        dest="depth_map",
+        default="",
+        help="Per-DOMAIN depth for a MIXED instance folder, e.g. 'CC:25,SC:40,SC_R:40'. "
+             "Each instance is keyed by its domain token (file name up to the first "
+             "'_<digits>' group: CC_2_2_3__pl_3 -> CC, SC_R_10_10__pl_2 -> SC_R). "
+             "AUTHORITATIVE when given: a token absent from the map FAILS LOUDLY and "
+             "--depth is ignored. Omit for a single-domain folder (--depth applies).",
     )
     parser.add_argument(
         "--dataset-generation",
@@ -573,6 +632,7 @@ def main():
         logs_dir,
         args.dataset_generation,
         args.heuristics,
+        depth_map=parse_depth_map(args.depth_map),
     )
 
 

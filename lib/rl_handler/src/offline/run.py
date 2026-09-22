@@ -28,10 +28,23 @@ from .dataset import generate_dataset
 from .determinism import determinism_report, set_determinism
 from .encoder import InstanceCache
 from .env import DEFAULT_GAMMA, default_expansion_cap, reference_budget
+from .frozen_eval import (
+    FROZEN_SEED_OFFSET,
+    build_frozen_fringes,
+    save_frozen,
+    training_overlap,
+)
 from .usability import build_usable_pool, fidelity_names, pool_names, usable_names
 from .planner_config import exploitation_for, planner_flags
-from .policies import BEHAVIOUR_POLICIES, TRACE_POLICY, make_policy
-from .strategies import dir_name
+from .policies import (
+    BEHAVIOUR_POLICIES,
+    TRACE_POLICY,
+    TRACE_PREFIX,
+    make_policy,
+    trace_policies_of,
+)
+from .strategies import STRATEGIES, dir_name
+from .unify import UnifiedInstance, report_unified, unify_instances
 from .qlearning import QTrainer, TrainConfig, default_reward_scale
 from .selection import (
     Candidate,
@@ -63,7 +76,15 @@ HELDOUT_TRAJ_FRAC = 0.10   # fraction of each instance's rollouts held out for e
 # 2: +heldout_top1/train_top1. 3: +return_mean +full ranking family (ndcg/js/...).
 # 4: +macro/per-instance NDCG + effective_instance_count (Fix 3) + per-policy agreement
 #    top1/tau-b vs bfs/dfs/hfs/random (Fix 2).
-METRICS_SCHEMA = 4
+# 5: +eval_fringes ("held_out_trajectories" | "frozen_random") + unified stamp. In
+#    unified mode the heldout_* fields are measured on the FROZEN random-fringe set
+#    (frozen_eval.py), not on held-out trajectories -- same metric family, same keys,
+#    different fringes; the stamp says which.
+METRICS_SCHEMA = 5
+
+EVAL_HELDOUT = "held_out_trajectories"
+EVAL_FROZEN = "frozen_random_fringes"
+EVAL_TEST = "test_instances"
 # Fix 2: fixed tie-break seed for the policy-agreement metrics. Every behaviour policy
 # uses the mandatory random tie-break sigma~=(sigma,u); pinning the seed keeps the
 # agreement CURVE from carrying tie-break noise. Recorded in telemetry per checkpoint.
@@ -128,6 +149,23 @@ class RunConfig:
     # For controlled comparisons: two arms must be scored at the same step, and
     # the smoothed selector runs on heldout_ndcg, which is a retired signal.
     select_final: bool = False
+    # UNIFIED mode (unify.py): merge every strategy's tree of one problem into ONE
+    # graph of content-unique states (delta recomputed on the union), train on
+    # EVERY trajectory of EVERY behaviour policy (`trace:<s>` per strategy), and
+    # evaluate the ranking metrics on a FROZEN set of random-policy fringes drawn
+    # once (frozen_eval.py). Off = the per-strategy trees + held-out trajectories.
+    unified: bool = False
+    frozen_eval_m: int = 128                # frozen fringes per instance (fewer if fewer exist)
+    frozen_eval_rollouts: int = 128         # random rollouts pooled per instance
+    frozen_eval_seed: Optional[int] = None  # default: seed + FROZEN_SEED_OFFSET
+    # FILL the non-full beams (dataset.py module docstring): from every non-full
+    # decision state of a behaviour rollout, fill_k extra rollouts are grown (random
+    # expansions, no rows) to a full beam and then rolled under the same behaviour
+    # policy (rows, flagged filled=True). Off = the parent rollouts only, byte-
+    # identical to before. Meant for unified graphs, where every strategy's
+    # expansions are available to the growth.
+    fill_fringes: bool = False
+    fill_k: int = 4
 
 
 def _net(cfg: RunConfig, max_delta: float):
@@ -158,8 +196,14 @@ def load_pool(cfg: RunConfig, repo_root: Path) -> tuple[List, Dict[str, Instance
     # the table's location, so two strategies of one problem never collide.
     loaded = [load_tree_instance(p, kind_of_data=cfg.kind_of_data) for p in csvs]
     _report_trees(loaded)
+    if cfg.unified:
+        loaded = _unify(cfg, loaded, repo_root)
     solvable, unsolvable = partition_solvable(loaded)
-    pool_path = _fringe_dir(cfg).parent / "usable_pool.json"
+    # The unified pool is keyed by `<inst>@unified` names and judged on the union
+    # graph, so it gets its own file: the per-strategy pool the launcher's gate 1c
+    # writes stays valid for non-unified runs of the same batch.
+    pool_path = _fringe_dir(cfg).parent / (
+        "usable_pool_unified.json" if cfg.unified else "usable_pool.json")
     pool = json.loads(pool_path.read_text()) if pool_path.exists() else None
     if pool is not None and not {i.name for i in loaded} <= set(pool_names(pool)):
         # A pool written for a different tree set (a pre-strategy run keyed by bare
@@ -234,6 +278,8 @@ def _load_test_instances(cfg: RunConfig, repo_root: Path,
     csvs = [Path(p) for p in cfg.test_csvs]
     loaded = [load_tree_instance(p, kind_of_data=cfg.kind_of_data)
               for p in csvs if p.exists()]
+    if cfg.unified and loaded:
+        loaded = _unify(cfg, loaded, repo_root)
     solvable, _ = partition_solvable(loaded)
     for i in solvable:
         caches.setdefault(i.name, InstanceCache.from_paths(
@@ -241,6 +287,17 @@ def _load_test_instances(cfg: RunConfig, repo_root: Path,
             cache_file=_fringe_dir(cfg).parent / "cache" / f"{i.name}.pt",
             verbose=False))
     return solvable
+
+
+def _unify(cfg: RunConfig, trees: List, repo_root: Path) -> List[UnifiedInstance]:
+    """Per-strategy trees -> one unified graph per problem (unify.py). Fingerprints
+    are cached per tree under the domain's cache dir; the merge report is printed
+    here and travels to the sidecar via each instance's `manifest`."""
+    out = unify_instances(trees, repo_root,
+                          cache_dir=_fringe_dir(cfg).parent / "cache" / "fp")
+    print(f"[unify] {len(trees)} tree(s) -> {len(out)} unified graph(s)")
+    print(report_unified(out))
+    return out
 
 
 def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
@@ -274,7 +331,15 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
         goals.update(_load_goals(cfg, list(cfg.test_csvs or []), test_i))
     for t in test_i:
         by_name.setdefault(t.name, t)
-    eval_mode = "test_instances" if test_i else "held_out_trajectories"
+    #        UNIFIED (cfg.unified): every trajectory trains; the ranking metrics and
+    #          selection run on the FROZEN random-fringe set (frozen_eval.py).
+    #          coverage/regret is rolled on the test instances when given (transfer)
+    #          and on the train instances otherwise (train-set estimate).
+    if cfg.unified:
+        eval_mode = EVAL_FROZEN
+    else:
+        eval_mode = EVAL_TEST if test_i else EVAL_HELDOUT
+    ranking_eval = eval_mode in (EVAL_HELDOUT, EVAL_FROZEN)
 
     # The guardrail still applies: training ONE model across configurations is the
     # cross-config decision (node ids are fluent-set hashes, 0.0% overlap on HASHED).
@@ -297,15 +362,25 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
     # loaded table carries a trace (DOT names are creation-indexed); a tree without
     # one is a data defect and make_policy raises with the tree's name.
     behaviour = list(cfg.behaviour_policies or (TRACE_POLICY,))
+    if cfg.fill_fringes and not cfg.unified:
+        print("[run] WARNING --fill-fringes on PER-STRATEGY trees: a growth expansion "
+              "of a censored leaf is a fabricated dead end (only the rows expanding "
+              "such leaves are dropped, the grown beam itself stays). The fill is "
+              "designed for --unified graphs.")
     print(f"[run] behaviour policies={behaviour}  strategies="
-          f"{sorted({dir_name(i.strategy) for i in train_i if i.strategy})}")
+          f"{sorted({_strat_label(i) for i in train_i if i.strategy})}"
+          + ("  (unified: `trace` expands to "
+             f"{sorted({p for i in train_i for p in trace_policies_of(i)})})"
+             if cfg.unified else ""))
     rows, dsum = generate_dataset(train_i, cfg.fringe_size,
                                   policies=behaviour,
                                   seeds_per_policy=cfg.seeds_per_policy,
                                   expansion_cap=cap,
                                   counterfactual=cfg.counterfactual,
                                   n_refill_samples=cfg.n_refill_samples,
-                                  gamma=cfg.gamma)
+                                  gamma=cfg.gamma,
+                                  fill_fringes=cfg.fill_fringes,
+                                  fill_k=cfg.fill_k)
 
     # H2: per-instance ROW SHARE at assembly. One instance owning 48-60% of the gradient
     # (batch1 pl_7) must be VISIBLE in the log, not require forensics.
@@ -320,7 +395,7 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
     # FALLBACK: split the transitions by trajectory so held-out frontiers are never
     # one-step neighbours of trained ones. PRIMARY: all rows train; eval is the
     # test instances.
-    if eval_mode == "held_out_trajectories":
+    if eval_mode == EVAL_HELDOUT:
         train_rows, heldout_rows, split_manifest = split_trajectories(
             rows, frac=HELDOUT_TRAJ_FRAC, seed=cfg.seed)
         cov_instances = train_i          # coverage rollout is a TRAIN-SET estimate
@@ -330,6 +405,51 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
         if split_manifest["instances_with_no_eval"]:
             print(f"[run] WARNING instances too thin to eval: "
                   f"{split_manifest['instances_with_no_eval']}")
+    elif eval_mode == EVAL_FROZEN:
+        # EVERY trajectory trains. The ranking metrics run on M random-policy
+        # fringes per instance, drawn ONCE here from a pinned seed and written to
+        # disk, so every checkpoint (and every run sharing the seed) is scored on
+        # the same beams.
+        # WHICH graphs the random rollouts run on (2026-09-10): the unified TEST
+        # graphs when test tables were generated (cross-instance: the frozen fringes
+        # then come from problems the model never trains on), else the unified
+        # TRAIN graphs (same problems; the overlap below says how much is shared).
+        fseed = (cfg.frozen_eval_seed if cfg.frozen_eval_seed is not None
+                 else cfg.seed + FROZEN_SEED_OFFSET)
+        frozen_src = test_i if test_i else train_i
+        heldout_rows, fmanifest = build_frozen_fringes(
+            frozen_src, cfg.fringe_size, seed=fseed, expansion_cap=cap,
+            m_per_instance=cfg.frozen_eval_m,
+            rollouts_per_instance=cfg.frozen_eval_rollouts, gamma=cfg.gamma)
+        fmanifest["source"] = "test_instances" if test_i else "train_instances"
+        fmanifest["source_instances"] = sorted(i.name for i in frozen_src)
+        fmanifest["training_overlap"] = training_overlap(heldout_rows, rows)
+        save_frozen(run_dir / "frozen_eval.json", heldout_rows, fmanifest)
+        train_rows = rows
+        split_manifest = {"split": EVAL_FROZEN, "n_train_rows": len(rows),
+                          "n_heldout_rows": len(heldout_rows),
+                          "frozen_eval": {k: v for k, v in fmanifest.items()
+                                          if k != "per_instance"},
+                          "per_instance": fmanifest["per_instance"],
+                          "instances_with_no_eval": fmanifest["instances_with_none"]}
+        cov_instances = test_i or train_i
+        ov = fmanifest["training_overlap"]
+        print(f"[run] frozen eval set: {len(heldout_rows)} fringes over "
+              f"{fmanifest['n_instances']} {fmanifest['source'].replace('_', ' ')} "
+              f"(seed {fseed}, M={cfg.frozen_eval_m}, "
+              f"{cfg.frozen_eval_rollouts} random rollouts each) -> "
+              f"{run_dir / 'frozen_eval.json'}")
+        print(f"[run] frozen-vs-training overlap: exact beam "
+              f"{100 * ov['exact_beam_match_frac']:.1f}%, beam-as-set "
+              f"{100 * ov['beam_as_set_match_frac']:.1f}%, states seen "
+              f"{100 * (ov['state_seen_in_training_frac'] or 0):.1f}%")
+        if fmanifest["instances_with_none"]:
+            print(f"[run] WARNING instances with NO frozen fringe: "
+                  f"{fmanifest['instances_with_none']}")
+    else:
+        train_rows, heldout_rows, split_manifest = rows, [], {"split": EVAL_TEST}
+        cov_instances = test_i           # coverage rollout is genuine held-out transfer
+    if ranking_eval:
         # H3: instances_with_no_eval counts TRAJECTORIES, but a metric-blind instance can
         # get eval trajectories yet contribute ZERO frontiers that survive the ranking
         # filter (len>=2, not-all-INF, deduped). Count SCORABLE frontiers and warn loudly
@@ -357,9 +477,6 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
             print(f"[run] WARNING {len(_blind)} instance(s) contribute ZERO scorable "
                   f"held-out frontiers (invisible to the ranking metric, no matter the "
                   f"aggregation): {_blind}")
-    else:
-        train_rows, heldout_rows, split_manifest = rows, [], {"split": "test_instances"}
-        cov_instances = test_i           # coverage rollout is genuine held-out transfer
 
     tel = TelemetryWriter(run_dir / "telemetry.jsonl")
 
@@ -374,15 +491,33 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
     # The synthetic rankings are the reference points; `trace` (the generating
     # search replayed) joins them when every evaluated tree carries a trace -- it is
     # the "what pi_b itself does under this F" number the RL must beat to matter.
-    baseline_policies = list(BEHAVIOUR_POLICIES)
-    if cov_instances and all(i.has_trace for i in cov_instances):
-        baseline_policies.append(TRACE_POLICY)
+    if cfg.unified:
+        # UNIFIED: the comparison is model vs the clairvoyant oracle on the SAME
+        # frozen fringes, nothing else -- no synthetic bfs/dfs/random rankers and no
+        # trace rollouts (2026-09-10). The oracle is the ceiling, not a competitor.
+        baseline_policies = ["hfs_oracle"]
+    else:
+        baseline_policies = list(BEHAVIOUR_POLICIES)
+    if not cfg.unified and cov_instances and all(i.has_trace for i in cov_instances):
+        # per-strategy trees: `trace`; unified graphs: every `trace:<s>` that ALL
+        # evaluated graphs carry (a strategy generated for one problem only would
+        # otherwise raise inside make_policy on the others).
+        common = set(trace_policies_of(cov_instances[0]))
+        for i in cov_instances[1:]:
+            common &= set(trace_policies_of(i))
+        baseline_policies += [p for p in trace_policies_of(cov_instances[0]) if p in common]
+    # The trace of a behaviour policy ranks a beam by "which of these did THAT
+    # search expand first". On a FROZEN random fringe most nodes were never on that
+    # search's path, so the ranking is mostly ties: it is not a comparator there and
+    # is left out of the ranking table (it keeps its rollout baseline).
+    ranking_baselines = [b for b in baseline_policies
+                         if not (eval_mode == EVAL_FROZEN and b.startswith(TRACE_PREFIX))]
     for b in baseline_policies:
         out = evaluate_split(cov_instances, lambda n, _b=b: make_policy(by_name[n], _b, seed=0),
                              cfg.fringe_size, seeds=cfg.eval_seeds, expansion_cap=cap,
                              gamma=cfg.gamma)
         baselines[b] = out["regret_mean_lower_bound"]
-        if eval_mode == "held_out_trajectories":
+        if ranking_eval and b in ranking_baselines:
             # the FULL ranking-metric family, matched-n on the held-out frontiers
             # (baselines expose a ranking, so no softmax divergence for them).
             rm = heldout_ranking_metrics(
@@ -497,13 +632,16 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
                 out["lr"] = log["lr"]
                 out.update(trainer.q_vs_qstar(train_rows[:200]))
             out["dataset"] = dsum
-            out["coverage_is_transfer"] = (eval_mode == "test_instances")
+            out["coverage_is_transfer"] = bool(test_i)
             out["metrics_schema"] = METRICS_SCHEMA
+            out["eval_fringes"] = ("frozen_random" if eval_mode == EVAL_FROZEN
+                                   else eval_mode)
+            out["unified"] = bool(cfg.unified)
 
             # THE SELECTION SIGNAL. FALLBACK: held-out-frontier top1 (low variance,
             # leak-free, matched-n with baselines). PRIMARY: coverage on held-out
             # instances. Smoothed over a window at select time -- never argmax.
-            if eval_mode == "held_out_trajectories":
+            if ranking_eval:
                 # FULL ranking-metric family for the model (logits enable the softmax
                 # divergence). top1 asks only "best first?"; ndcg/js read the WHOLE
                 # ordering, which is what DISCARD needs (it removes the worst kappa).
@@ -512,7 +650,7 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
                 _agree_rankers = {
                     p: (lambda name, beam, _p=p: make_policy(
                         by_name[name], _p, seed=AGREEMENT_TIEBREAK_SEED)(list(beam)))
-                    for p in baseline_policies
+                    for p in ranking_baselines
                 }
                 rmm = heldout_ranking_micro_macro(
                     heldout_rows, by_name, logits_for=score_for,
@@ -560,7 +698,7 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
                        if (run_dir / "checkpoints").exists()
                        else _mk(run_dir / "checkpoints") / f"ckpt_{step}.pt")
             sig = (f"heldout_top1={out['heldout_top1']:.3f}"
-                   if eval_mode == "held_out_trajectories"
+                   if ranking_eval
                    else f"coverage={out['coverage_at_reference_budget']:.2f}")
             bar.set_postfix_str(
                 f"{sig} td={out.get('td_loss', float('nan')):.4f}", refresh=False)
@@ -647,7 +785,23 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
         # compares held-out top1 (higher better) vs each baseline's top1; PRIMARY
         # compares held-out-transfer regret. Gating on the fallback's train-set regret
         # would PASS on the optimistic number selection was moved away from.
-        if eval_mode == "held_out_trajectories":
+        if eval_mode == EVAL_FROZEN:
+            # No competitor baseline in unified mode: report the gap to the oracle
+            # ceiling on the frozen set for the record (armed=False: not a verdict).
+            _sel = next((c for c in cands if c.step == best.step), best)
+            _rec = tel.read()
+            _row = next((r for r in _rec if r.get("step") == best.step
+                         and r.get("split") == "val"), {})
+            gates.append(GateResult(
+                "oracle_gap", True,
+                f"frozen set n={_row.get('heldout_n')}: model ndcg "
+                f"{best.select_score:.3f} top1 {_row.get('heldout_top1')} "
+                f"regret_at_decision {_row.get('heldout_regret_at_decision')} "
+                f"picked_dead {_row.get('heldout_picked_dead')} vs hfs_oracle "
+                f"ndcg {baseline_ndcg.get('hfs_oracle')} (ceiling; no competitor "
+                f"baseline is evaluated in unified mode)",
+                armed=False, blocking=False))
+        elif ranking_eval:
             gates.append(gate_beats_baselines(
                 best.select_score, baseline_ndcg,
                 higher_is_better=True, metric="heldout_ndcg"))
@@ -669,9 +823,25 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
                    "context_mode": cfg.context_mode,
                    "dataset_type": cfg.dataset_type,
                    "eval_mode": eval_mode,
+                   "eval_fringes": ("frozen_random" if eval_mode == EVAL_FROZEN
+                                    else eval_mode),
+                   "unified": bool(cfg.unified),
+                   "unified_manifest": ({i.name: i.manifest for i in train_i
+                                         if isinstance(i, UnifiedInstance)}
+                                        if cfg.unified else None),
+                   "behaviour_policies_rolled": sorted(dsum.get("policies", [])),
+                   "fill_fringes": bool(cfg.fill_fringes),
+                   "fill_k": int(cfg.fill_k) if cfg.fill_fringes else 0,
+                   "fill": dsum.get("fill"),
+                   "beam_full_frac": {
+                       "all_decision_states": dsum.get("full_beam_state_frac"),
+                       "parent": dsum.get("parent_full_beam_state_frac"),
+                       "fill": dsum.get("fill_full_beam_state_frac"),
+                       "n_fill_rows": dsum.get("n_fill_rows"),
+                   },
                    "selection_window": SELECTION_WINDOW,
                    "selection_metric": ("heldout_ndcg"
-                                        if eval_mode == "held_out_trajectories"
+                                        if ranking_eval
                                         else "coverage_at_reference_budget"),
                    "split_manifest": split_manifest,
                    "baseline_heldout_top1": baseline_top1 or None,
@@ -680,7 +850,15 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
                        "coverage/regret is a TRAIN-SET rollout estimate (rolled from "
                        "root on trained instances), NOT held out. Selection used "
                        "held-out-trajectory top1. Transfer is NOT claimed here."
-                       if eval_mode == "held_out_trajectories"
+                       if eval_mode == EVAL_HELDOUT
+                       else ("UNIFIED: every trajectory trained. Ranking metrics "
+                             "(heldout_*) are on the FROZEN random-fringe set "
+                             "(frozen_eval.json); coverage/regret is "
+                             + ("held-out TRANSFER on the test CSVs."
+                                if test_i else
+                                "a TRAIN-SET rollout estimate. Transfer is NOT "
+                                "claimed here."))
+                       if eval_mode == EVAL_FROZEN
                        else "coverage/regret is held-out cross-instance TRANSFER "
                             "(test CSVs)."),
                    "cross_config": cfg.allow_cross_config,
@@ -724,11 +902,18 @@ def _report_trees(trees: Sequence) -> None:
     for t in trees:
         s = t.stats()
         dr = "inf" if t.delta_root == float("inf") else f"{t.delta_root:.0f}"
-        strat = dir_name(t.strategy) if t.strategy else "?"
+        strat = _strat_label(t)
         print(f"[run]   {t.instance:24} @ {strat:6} states={s['n_reachable']:>6} "
               f"goals={s['n_goal_states']:>6} ({100 * s['goal_density']:5.1f}%) "
               f"expanded={t.n_expanded:>6}{'' if t.has_trace else ' (NO TRACE)'} "
               f"delta_root={dr:>4} censored={100 * s['censored_frac']:5.1f}%")
+
+
+def _strat_label(t) -> str:
+    """`BFS` for a generator strategy, the raw tag otherwise (`unified`)."""
+    if not t.strategy:
+        return "?"
+    return dir_name(t.strategy) if t.strategy in STRATEGIES else str(t.strategy)
 
 
 def _fringe_dir(cfg: RunConfig) -> Path:

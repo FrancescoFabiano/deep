@@ -55,6 +55,9 @@ too, which is why the gate treats poisoned_frac as a diagnostic, not an exclusio
 """
 
 import os
+import sys as _sys
+_sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from create_training_data import instance_domain_token
 import argparse
 import subprocess
 
@@ -100,6 +103,38 @@ def _depth_for(domain_name: str, args) -> int:
             f"UNFAITHFUL setting for CC."
         )
     return dm[domain_name]
+
+
+def _depth_flags(domain_name: str, batch_path: str, args) -> list:
+    """The depth flag(s) forwarded to the per-domain script.
+
+    Folder-level domain (`CC/`, `SC/`): `--depth <map[CC]>`, exactly as before.
+    MIXED folder (name not a map key, e.g. `Mix/` holding CC_* and SC_* instances):
+    depth is per domain, so the whole map is forwarded as `--depth-map` and the
+    per-domain script resolves it PER INSTANCE by domain token
+    (create_training_data.instance_domain_token: CC_2_2_3__pl_3 -> CC,
+    SC_R_10_10__pl_2 -> SC_R). Every token in the folder must be mapped, checked
+    HERE so the run fails before any tree is generated; an empty map keeps the
+    legacy single --depth.
+    """
+    dm = _parse_depth_map(args.depth_map)
+    if not dm or domain_name in dm:
+        return ["--depth", str(_depth_for(domain_name, args))]
+    folder = os.path.join(batch_path, domain_name, args.training_folder)
+    tokens = sorted({instance_domain_token(f) for f in os.listdir(folder)
+                     if os.path.isfile(os.path.join(folder, f))})
+    missing = [t for t in tokens if t not in dm]
+    if missing:
+        raise SystemExit(
+            f"[FATAL] domain folder '{domain_name}' is not in --depth-map "
+            f"({args.depth_map!r}) and, read as a MIXED folder, its instances carry "
+            f"domain token(s) {missing} that are not mapped either (tokens found: "
+            f"{tokens}). Add '{domain_name}:<depth>' for one depth for the whole "
+            f"folder, or one entry per token (CC-like ~25, SC-like ~40) -- refusing "
+            f"to guess.")
+    print(f"[INFO] '{domain_name}' is a MIXED folder: depth per instance by domain "
+          f"token {{{', '.join(f'{t}: {dm[t]}' for t in tokens)}}}")
+    return ["--depth-map", args.depth_map]
 
 
 GENERATION_CHOICES = ("BFS", "DFS", "S_DFS", "HFS")
@@ -190,6 +225,11 @@ def main():
              "0 -> delta_root 4, sterile 2.9 pct. Bound the tree with --depth/"
              "--depth-map instead, which keeps the solution path.")
     parser.add_argument(
+        "--domains", nargs="+", default=None,
+        help="Restrict generation to these domain folders (names relative to the batch, "
+             "e.g. CC SC). Default: every folder under the batch that has the training "
+             "folder. An unknown name is an ERROR, not an empty run.")
+    parser.add_argument(
         "--depth-map", dest="depth_map", default="",
         help="per-domain depth, e.g. 'CC:25,SC:40,SCRich:40'. AUTHORITATIVE when "
              "given: a domain absent from the map FAILS LOUDLY, it does NOT fall "
@@ -263,6 +303,13 @@ def main():
     print(
         f"Found {len(domains)} domain(s) with '{args.training_folder}' folders."
     )
+    if args.domains:
+        unknown = [d for d in args.domains if d not in domains]
+        if unknown:
+            raise SystemExit(f"[FATAL] --domains {unknown} not found under {batch_path} "
+                             f"(discovered: {domains})")
+        domains = [d for d in domains if d in args.domains]
+        print(f"[INFO] Restricted by --domains to: {domains}")
 
 
     print(f"[INFO] Dataset generation strategies: "
@@ -297,7 +344,7 @@ def main():
             batch_path,             # base_folder
             domain_name,            # domain_name
             args.deep_exe,          # deep_exe
-            "--depth", str(_depth_for(domain_name, args)),
+            *_depth_flags(domain_name, batch_path, args),
             "--discard_factor", str(_discard_for(generation, args)),
             "--seed", str(args.seed),
             "--max_retries", str(args.max_retries),
