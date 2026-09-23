@@ -259,6 +259,7 @@ Output directories follow the selected mode:
 | Plan with one library | `./cmake-build-release/bin/deep DOMAIN.epddl PROBLEM.epddl --act_lib LIBRARY.epddl` |
 | Plan with multiple libraries | `./cmake-build-release/bin/deep DOMAIN.epddl PROBLEM.epddl --act_lib LIB_A.epddl --act_lib LIB_B.epddl` |
 | Enable visited-state checking | add `-c` |
+| Enable fast visited-state checking (loss of completeness) | add `--fast-comparison` |
 | Enable bisimulation | add `-b` |
 | Use a specific search | add `-s BFS`, `-s DFS`, `-s HFS`, or `-s Astar` |
 | Use SUBGOALS with heuristic search | add `-u SUBGOALS` |
