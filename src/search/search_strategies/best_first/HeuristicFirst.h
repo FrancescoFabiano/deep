@@ -1,6 +1,7 @@
 /**
  * \class HeuristicFirst
- * \brief Implements the Best First Search strategy to explore the search space.
+ * \brief Implements the Heuristic First Search strategy to explore the search
+ * space.
  *
  * This class extends BestFirstBase by filtering out states with negative
  * heuristic values, thereby ensuring that only promising states are added to

@@ -304,10 +304,10 @@ private:
     std::string m_problem_file;
     std::vector<std::string> m_library_files;
   bool m_verbose = false;      ///< Verbose mode flag.
-  bool m_bisimulation = false; ///< Bisimulation type (NONE by default).
+  bool m_bisimulation = false; ///< Bisimulation enabled flag.
   std::string m_bisimulation_type =
-      "FB";                     ///< Bisimulation type (PT by default).
-    std::size_t m_bisimulation_interval = 3;
+      "FB";                     ///< Bisimulation type (FB by default).
+    std::size_t m_bisimulation_interval = 2;
 
     bool m_check_visited = false; ///< Flag to check for visited states.
   bool m_dataset_mode = false; ///< Flag to indicate dataset mode.

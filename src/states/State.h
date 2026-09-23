@@ -1,11 +1,12 @@
 /**
  * \class State
- * \brief Templatic Class that encodes a state of Planner.h.
+ * \brief Generic planner state wrapper around one epistemic-state
+ * representation.
  *
- * \details  This is the *TEMPLATE* and will be used as black box from
- * planner.h: its implementation will depend on the initial choices.
- *
- * This class should be used to check entailment and to produce successors.
+ * \details This template is the search-layer wrapper used by the planner. It
+ * delegates semantic operations such as entailment, executability, successor
+ * generation, and optional bisimulation contraction to the underlying
+ * representation type \p StateRepr.
  *
  * Template and not virtual to keep the pointer and, since the type of search is
  * decided at compile-time virtual overhead is not necessary.
@@ -39,7 +40,7 @@ concept StateRepresentation =
              const FormulaeList &fl, const Action &act, std::ofstream &ofs,
              const StateRepr &other) {
       /**
-       * @name Entailment Methods for logical entailment evaluation
+       * @name Semantic Operations
        */
       ///@{
       { std::as_const(rep).is_executable(act) }-> std::same_as<bool>;
@@ -51,26 +52,24 @@ concept StateRepresentation =
       ///@}
 
       /**
-       * @brief Constructs the initial state.
+       * @brief Constructs the initial epistemic state for the loaded task.
        */
       { rep.build_initial() };
 
       /**
-       * @brief Reduces the state using bisimulation contraction.
+       * @brief Reduces the state using bisimulation contraction when enabled.
        */
       { rep.contract_with_bisimulation() };
 
       /**
-       * @brief Compute the tensor for the m_representation.
+       * @brief Compute the tensor view used by learned heuristics.
        */
       { rep.get_tensor_representation() } -> std::same_as<const GraphTensor &>;
 
       /**
-       * @brief Successor computation method.
-       * \warning compute_successor is not working if set to const, no idea why
+       * @brief Compute the epistemic successor reached by executing an action.
        */
       { std::as_const(rep).compute_successor(act) } -> std::same_as<StateRepr>;
-      //{ rep.compute_successor(act) } -> std::same_as<StateRepr>;
       /**
        * @name Output Methods
        * Required methods for formatted output.
@@ -115,13 +114,16 @@ public:
 
   /** \brief Constructor with that set *this* as successor of the given one.
    *
-   * @param prev_state: the \ref State that is the predecessor of *this*.
-   *  @param executed_action: the Action applied to \p prev_state.*/
+   * @param prev_state The predecessor state.
+   * @param executed_action The action applied to \p prev_state.
+   */
   State(const State &prev_state, const Action &executed_action);
 
-  /** \brief Function that compute the next state applying an action to this.
+  /** \brief Compute the next planner state produced by applying an action.
    *
-   *  @param executed_action: the Action applied to \p prev_state.*/
+   *  @param executed_action The action to execute from the current state.
+   *  @return The successor planner state.
+   */
   [[nodiscard]] State compute_successor(const Action &executed_action);
 
   /** \brief Getter of \ref m_executed_actions_id.
@@ -179,22 +181,22 @@ public:
    * @return the m_tensor_representation of *this*.*/
   [[nodiscard]] const GraphTensor &get_tensor_representation();
 
-  /** \brief Function that add and \ref ActionId to \ref m_executed_actions_id.
+  /** \brief Append the id of one executed action to the stored plan prefix.
    *
-   * @param[in] to_add: the ActionId to add to \ref
-   * m_executed_actions_id.*/
+   * @param[in] to_add The action whose id is appended.
+   */
   void add_executed_action(const Action &to_add);
 
-  /** \brief Setter of \ref m_representation.
+  /** \brief Replace the underlying state representation.
    *
-   * @param[in] to_set: the m_representation to assign to \ref
-   * m_representation.*/
+   * @param[in] to_set The new representation to store.
+   */
   void set_representation(const StateRepr &to_set);
 
-  /** \brief Function that checks if *this* entails a Fluent.
+  /** \brief Check whether all designated worlds in this state entail a fluent.
    *
-   * The actual entailment is left to the specific State-representation (\ref
-   * m_representation).
+   * The actual entailment test is delegated to the specific state
+   * representation (\ref m_representation).
    *
    * @param to_check: the Fluent to check if is entailed by *this*.
    *
@@ -203,10 +205,10 @@ public:
    */
   [[nodiscard]] bool entails(const Fluent &to_check) const;
 
-  /** \brief Function that checks if *this* entails a conjunctive set of Fluent.
+  /** \brief Check whether all designated worlds entail a conjunctive fluent set.
    *
-   * The actual entailment is left to the specific State-representation (\ref
-   * m_representation).
+   * The actual entailment test is delegated to the specific state
+   * representation (\ref m_representation).
    *
    * @param to_check: the conjunctive set of Fluent to check if is entailed
    * by *this*.
@@ -214,10 +216,10 @@ public:
    * @return true if \p to_check is entailed by *this*.
    * @return false if \p -to_check is entailed by *this*.*/
   [[nodiscard]] bool entails(const FluentsSet &to_check) const;
-  /** \brief Function that checks if *this* entails a DNF \ref FluentFormula.
+  /** \brief Check whether all designated worlds entail a fluent formula.
    *
-   * The actual entailment is left to the specific State-representation (\ref
-   * m_representation).
+   * The actual entailment test is delegated to the specific state
+   * representation (\ref m_representation).
    *
    * @param to_check: the DNF \ref FluentFormula to check if is entailed by
    * *this*.
@@ -226,10 +228,10 @@ public:
    * @return false if \p -to_check is entailed by *this*.*/
   [[nodiscard]] bool entails(const FluentFormula &to_check) const;
 
-  /** \brief Function that checks if *this* entails a \ref BeliefFormula.
+  /** \brief Check whether the epistemic state entails a belief formula.
    *
-   * The actual entailment is left to the specific State-representation (\ref
-   * m_representation).
+   * The actual entailment test is delegated to the specific state
+   * representation (\ref m_representation).
    *
    * @param to_check: the \ref BeliefFormula to check if is entailed by *this*.
    *
@@ -237,10 +239,10 @@ public:
    * @return false if \p -to_check is entailed by *this*.*/
   [[nodiscard]] bool entails(const BeliefFormula &to_check) const;
 
-  /** \brief Function that checks if *this* entails a CNF \ref FormulaeList.
+  /** \brief Check whether the epistemic state entails a conjunction of belief formulas.
    *
-   * The actual entailment is left to the specific State-representation (\ref
-   * m_representation).
+   * The actual entailment test is delegated to the specific state
+   * representation (\ref m_representation).
    *
    *
    * @param to_check: the CNF \ref FormulaeList to check if is entailed by
@@ -251,17 +253,14 @@ public:
    * @return false if \p -to_check is entailed by *this*.*/
   [[nodiscard]] bool entails(const FormulaeList &to_check) const;
 
-  /** \brief Function that builds the initial State and set *this* with it.
+  /** \brief Build the initial planner state for the currently loaded task.
    *
    * The actual construction of the State is left to the specific
    * State-representation (\ref m_representation).
-   *
-   * @see initially*/
+   */
   void build_initial();
 
-  /** \brief Function that checks if a given action is executable in *this*.
-   *
-   * @see action.
+  /** \brief Check whether an action is executable in this state.
    *
    * @param[in] act: The action to be checked on *this*.
    * @return true: \p act is executable in *this*.
@@ -274,12 +273,10 @@ public:
    * @return false: otherwise.*/
   [[nodiscard]] bool is_goal() const;
 
-  /** \brief Function that determines the minimum e-state that is bisimilar
-   * to the current one.
+  /** \brief Contract the underlying epistemic state using bisimulation.
    *
-   * The function depends on the type of e-State.
-   *
-   * @return the minimum bisimilar e-state to *this*.*/
+   * The exact contraction depends on the state representation type.
+   */
   void contract_with_bisimulation();
 
   /** \brief The copy operator.
@@ -326,10 +323,8 @@ public:
    */
   void print_dot_format(std::ofstream &ofs) const;
 
-  /** \brief Function that prints the information of *this* for the generation
-   * of the dataset used to train the GNN. \param ofs The output stream to print
-   * to.
-   * if each dataset entry is merged <goal,state> or not.
+  /** \brief Print this state in the dataset format used by learned heuristics.
+   * \param ofs The output stream to print to.
    */
   void print_dataset_format(std::ofstream &ofs) const;
 

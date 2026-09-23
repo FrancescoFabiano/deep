@@ -87,9 +87,9 @@ private:
   /**
    * @brief Removes all unreachable possible worlds from the given Kripke state.
    *
-   * This function computes all worlds that are reachable from the pointed world
-   * in the given KripkeState. It then updates the state to retain only the
-   * reachable worlds and the belief edges among them.
+   * This function computes all worlds reachable from the designated worlds in
+   * the given KripkeState. It then updates the state to retain only the
+   * reachable worlds and the accessibility edges among them.
    *
    * @param kstate The KripkeState object to be pruned of unreachable possible
    * worlds.

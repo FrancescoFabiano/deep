@@ -1,0 +1,8 @@
+# Default first five portfolio configurations.
+# Format: key=value pairs separated by commas, one configuration per line.
+
+search=BFS,bisimulation=true,bisimulation_interval=2,check_visited=true,fast_world_comparison=true,fast_state_comparison=true
+search=Astar,heuristics=SUBGOALS,bisimulation=true,bisimulation_interval=2,check_visited=true,fast_world_comparison=true,fast_state_comparison=true
+search=DFS,bisimulation=true,bisimulation_interval=2,check_visited=true,fast_world_comparison=true,fast_state_comparison=true
+search=BFS,bisimulation=true,bisimulation_interval=1,check_visited=true,fast_world_comparison=true,fast_state_comparison=true
+search=Astar,heuristics=SUBGOALS,bisimulation=true,bisimulation_interval=1,check_visited=true,fast_world_comparison=true,fast_state_comparison=true

@@ -1,11 +1,8 @@
 /**
- * \brief Class used to check properties of formulae and modify them.
+ * \brief Utility class for manipulating grounded fluent and belief formulas.
  *
  *  The class implements static methods to facilitate
  *  the modification of the formulae and other.
- *
- * \see fluent_formula, belief_formula.
- *
  *
  * \copyright GNU Public License.
  *
@@ -58,11 +55,10 @@ public:
    * single world to modify.*/
   static void apply_effect(const Fluent &effect, FluentsSet &world_description);
 
-  /** \brief Function to merge the results of an \ref ONTIC Action with a
-   * world description.
+  /** \brief Merge a conjunctive postcondition into a world valuation.
    *
-   * @param[in] effect: part of the effect of an \ref ONTIC Action in CNF
-   * form.
+   * @param[in] effect: part of an event postcondition written as a conjunctive
+   * fluent set.
    * @param[out] world_description: the FluentsSet contained inside a
    * single world.
    *
@@ -94,8 +90,8 @@ public:
   /** \brief Function that checks if two BeliefFormula are of the form
    * B(i, *phi*) -- B(i, -*phi*) where *phi* is a FluentFormula.
    *
-   * This function is useful to identify when an agent \p knows the true value
-   * of *phi*. Is one of the accepted formulae in S5.
+   * This function is useful to identify when an agent knows the truth value of
+   * *phi* by checking both the positive and negative knowledge forms.
    *
    * @param[in] to_check_1: the first BeliefFormula to check.
    * @param[in] to_check_2: the second BeliefFormula to check.
@@ -108,12 +104,14 @@ public:
                                const BeliefFormula &to_check_2,
                                FluentFormula &ret);
 
-  /** \brief Function that check that the \ref ONTIC effect doesn't have
-   * uncertainty (OR).
+  /** \brief Apply a fluent formula as an event postcondition to a world.
    *
-   * Then it calls apply_effect(const fluent_set&, const fluent_set&);
+   * The formula must denote a deterministic conjunctive assignment. If it
+   * contains disjunction, the helper reports an error.
    *
-   * @param[in] effect: the effect of an \ref ONTIC Action.
+   * Then it calls apply_effect(const FluentsSet &, FluentsSet &).
+   *
+   * @param[in] effect: the grounded postcondition formula to apply.
    * @param[out] world_description: the description of the world after \p effect
    * has been applied to \p world_description.
    *
@@ -145,22 +143,21 @@ public:
    */
   static bool fluentset_negated_empty_intersection(const FluentsSet &set1,
                                                    const FluentsSet &set2);
-  /** \brief Function that return the set of Agent that entails the obs
-   * condition.
+  /** \brief Return the agents whose observability condition is entailed.
    *
    * @param[in] map: the map that contains the tuples to check for entailment.
    * @param[in] state: the state in which to check the entailment.
-   * @return the effects that are feasible in *this* with \p start as pointed
-   * world*.*/
+   * @return The set of grounded agents whose condition holds in \p state.
+   */
   static AgentsSet get_agents_if_entailed(const ObservabilitiesMap &map,
                                           const KripkeState &state);
 
-  /** \brief Function that return the FluentFormula (effect) that entails
-   * the exe condition.
+  /** \brief Return the first grounded effect whose enabling condition is entailed.
    *
    * @param[in] map: the map that contains the tuples to check for entailment.
    * @param[in] state: the state in which to check the entailment.
-   * @return the effects that are feasible in \p state.*/
+   * @return The grounded fluent formula selected in \p state.
+   */
   static FluentFormula get_effects_if_entailed(const EffectsMap &map,
                                                const KripkeState &state);
 

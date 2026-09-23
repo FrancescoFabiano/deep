@@ -1,16 +1,28 @@
 /**
  * \class BeliefFormula
- * \brief Class that implements a Belief Formula.
+ * \brief Internal representation of grounded EPDDL goal, precondition, and
+ * observability formulae.
  *
- * \details A \ref BeliefFormula can have several forms:
- *    - \ref FLUENT_FORMULA -- FluentFormula;
- *    - \ref BELIEF_FORMULA -- B(Agent, *phi*);
- *    - \ref PROPOSITIONAL_FORMULA -- \ref BF_NOT(*phi*) or (*phi_1* \ref BF_AND
- * *phi_2*) or (*phi_1* \ref BF_OR *phi_2*);
- *    - \ref E_FORMULA -- E([set of Agent], *phi*);
- *    - \ref C_FORMULA -- C([set of Agent], *phi*);
+ * \details A \ref BeliefFormula stores the normalized formula tree used by
+ * DEEP after Plank parses and grounds the source EPDDL. The representation can
+ * encode:
+ *    - \ref TRUE_FORMULA and \ref FALSE_FORMULA;
+ *    - \ref FLUENT_FORMULA -- grounded propositional formulae over fluents;
+ *    - \ref BELIEF_FORMULA -- B(a, *phi*);
+ *    - \ref E_FORMULA -- E(G, *phi*);
+ *    - \ref C_FORMULA -- C(G, *phi*);
+ *    - \ref PROPOSITIONAL_FORMULA -- formulas built with \ref BF_NOT,
+ *      \ref BF_AND, and \ref BF_OR.
  *
- * \see reader, domain
+ * EPDDL surface syntax that is supported by the parser but not stored as a
+ * dedicated node kind is lowered during conversion:
+ *    - implication is rewritten as !phi OR psi;
+ *    - diamond modalities are rewritten via duality with box modalities;
+ *    - knowing-whether modalities are rewritten into disjunctions of
+ *      knowledge formulas.
+ *
+ * This class therefore describes DEEP's semantic formula core rather than a
+ * one-to-one AST of the original EPDDL text.
  *
  * \todo With new parser maybe implement the "move" so the reader actually moves
  * the object instead of copying them.
@@ -167,11 +179,26 @@ public:
 
 private:
   // --- Data members ---
+  /// \brief Discriminator for the normalized formula node stored in this object.
   BeliefFormulaType m_formula_type = BeliefFormulaType::BF_EMPTY;
+
+  /// \brief Grounded propositional content used when \ref m_formula_type is
+  /// \ref FLUENT_FORMULA.
   FluentFormula m_fluent_formula;
+
+  /// \brief Single grounded agent used by \ref BELIEF_FORMULA nodes.
   Agent m_agent;
+
+  /// \brief Propositional operator used when \ref m_formula_type is
+  /// \ref PROPOSITIONAL_FORMULA.
   BeliefFormulaOperator m_operator{};
+
+  /// \brief Grounded agent group used by \ref E_FORMULA and \ref C_FORMULA nodes.
   AgentsSet m_group_agents;
+
+  /// \brief First child formula for unary and binary normalized nodes.
   std::unique_ptr<BeliefFormula> m_bf1; // Check if shared pointer is better
+
+  /// \brief Second child formula for binary normalized nodes when present.
   std::unique_ptr<BeliefFormula> m_bf2; // Check if shared pointer is better
 };

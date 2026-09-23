@@ -44,7 +44,7 @@ struct FringeTensor {
   ///< aligned with edge_ids.
   ///
     std::vector<int64_t> pointed_ids;
-    /// Symbolic node IDs of the designated/pointed worlds.
+    /// Symbolic node IDs of the designated worlds.
     /// Uses the same batched node-index space as edge_src and edge_dst.
 
   std::vector<int64_t> membership;

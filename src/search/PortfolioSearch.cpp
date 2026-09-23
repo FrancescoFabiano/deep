@@ -258,18 +258,30 @@ void PortfolioSearch::parse_configurations_from_file(
   if (!infile) {
     ExitHandler::exit_with_message(
         ExitHandler::ExitCode::PortfolioConfigFileError,
-        "[PlioSearch] Could not open configuration file: " + file_path);
+        "[PortfolioSearch] Could not open configuration file: " + file_path);
     // No return needed, exit_with_message will terminate.
   }
+  const auto trim = [](const std::string &value) {
+    const auto start = value.find_first_not_of(" \t\r\n");
+    if (start == std::string::npos) {
+      return std::string{};
+    }
+    const auto end = value.find_last_not_of(" \t\r\n");
+    return value.substr(start, end - start + 1);
+  };
   std::string line;
   while (std::getline(infile, line)) {
+    line = trim(line);
+    if (line.empty() || line.starts_with('#')) {
+      continue;
+    }
     std::map<std::string, std::string> config;
     std::istringstream iss(line);
     std::string token;
     while (std::getline(iss, token, ',')) {
       if (auto pos = token.find('='); pos != std::string::npos) {
-        std::string key = token.substr(0, pos);
-        std::string value = token.substr(pos + 1);
+        std::string key = trim(token.substr(0, pos));
+        std::string value = trim(token.substr(pos + 1));
         config[key] = value;
       }
     }
@@ -282,36 +294,27 @@ void PortfolioSearch::parse_configurations_from_file(
 void PortfolioSearch::set_default_configurations() {
   m_search_configurations.clear();
 
-  // Whatever is not set here will is kept from the user input.
-  m_search_configurations.push_back({{"search", "BFS"}});
-  m_search_configurations.push_back(
-      {{"search", "HFS"}, {"heuristics", "SUBGOALS"}});
-  m_search_configurations.push_back(
-      {{"search", "HFS"}, {"heuristics", "L_PG"}});
-  m_search_configurations.push_back(
-      {{"search", "HFS"}, {"heuristics", "S_PG"}});
-  m_search_configurations.push_back(
-      {{"search", "HFS"}, {"heuristics", "C_PG"}});
-  // m_search_configurations.push_back(
-  //   {{"search", "Astar"}, {"heuristics", "GNN"}});
-  // m_search_configurations.push_back({{"search", "IDFS"}});
-  //  This is to test RL with the various other Heuristics
-  m_search_configurations.push_back(
-      {{"search", "RL"}, {"heuristics", "SUBGOALS"}});
-  m_search_configurations.push_back({{"search", "RL"}, {"heuristics", "L_PG"}});
-  m_search_configurations.push_back({{"search", "RL"}, {"heuristics", "C_PG"}});
-  m_search_configurations.push_back({{"search", "RL"}, {"heuristics", "S_PG"}});
+  const auto add_config = [this](const std::string &search,
+                                 const std::size_t bis_interval,
+                                 const bool uses_subgoals = false) {
+    std::map<std::string, std::string> config{
+        {"search", search},
+        {"bisimulation", "true"},
+        {"bisimulation_interval", std::to_string(bis_interval)},
+        {"check_visited", "true"},
+        {"fast_world_comparison", "true"},
+        {"fast_state_comparison", "true"}};
+    if (uses_subgoals) {
+      config["heuristics"] = "SUBGOALS";
+    }
+    m_search_configurations.push_back(std::move(config));
+  };
 
-  // m_search_configurations.push_back({{"search", "RL"}, {"heuristics",
-  // "GNN"}});
-
-  // This is to test RL with the RL Heuristics
-  m_search_configurations.push_back(
-      {{"search", "RL"}, {"heuristics", "RL_H"}, {"RL_heuristics", "MIN"}});
-  m_search_configurations.push_back(
-      {{"search", "RL"}, {"heuristics", "RL_H"}, {"RL_heuristics", "MAX"}});
-  m_search_configurations.push_back(
-      {{"search", "RL"}, {"heuristics", "RL_H"}, {"RL_heuristics", "AVG"}});
-  m_search_configurations.push_back(
-      {{"search", "RL"}, {"heuristics", "RL_H"}, {"RL_heuristics", "RNG"}});
+  // Order matters because -p N runs the first N configurations.
+  for (const std::size_t bis_interval : {std::size_t{2}, std::size_t{1},
+                                         std::size_t{5}}) {
+    add_config("BFS", bis_interval);
+    add_config("Astar", bis_interval, true);
+    add_config("DFS", bis_interval);
+  }
 }

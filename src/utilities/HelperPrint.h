@@ -125,21 +125,23 @@ public:
   void print_dot_format(const KripkeState &kstate, std::ofstream &ofs) const;
 
   /**
-   * \brief Transform a KripkeWorldPointer (a world) into the bitmask format for
-   * GNN. \param to_convert The KripkeWorldPointer to convert. \param is_merged
-   * True if the world is from a merged state (with goal encoding).
-   *  \param ordered_positive_fluents Fluents in ordered fashion (only the
-   * positive version) \return The binary string (bitmask) representation. file.
+   * \brief Transform one Kripke world into the bitmask encoding used by
+   * BITMASK datasets.
+   * \param to_convert The Kripke world to convert.
+   * \param is_merged True if the dataset entry includes goal/state merged
+   * encoding.
+   * \param ordered_positive_fluents Positive grounded fluents in the canonical
+   * domain order.
+   * \return The binary string representation of the world valuation.
    */
   static std::string
   kworld_to_bitmask(const KripkeWorldPointer &to_convert, bool is_merged,
                     const std::vector<Fluent> &ordered_positive_fluents);
 
   /**
-   * \brief Print a KripkeState in format for training the GNN.
+   * \brief Print a KripkeState in the dataset format used by learned models.
    * \param kstate The KripkeState to print.
-   * \param ofs The output stream to write the DOT format to. This must be a
-   * file.
+   * \param ofs The output stream receiving the serialized dataset row.
    */
   static void print_dataset_format(const KripkeState &kstate,
                                    std::ofstream &ofs);

@@ -5,12 +5,17 @@
 
 /**
  * \class Grounder
- * \brief Class that grounds all the strings of the domain to their numerical
- * ids.
+ * \brief Symbol table that maps grounded DEEP objects to and from readable
+ * names.
  *
- *  - Actions are associated to an \ref ActionId.
- *  - Agents (string) are associated to an \ref Agent.
- *  - Fluents (string) are associated to a \ref Fluent.
+ * \details This class no longer performs EPDDL parsing or grounding itself.
+ * Instead, after Plank has already grounded the task, \ref Grounder stores the
+ * name-to-id and id-to-name associations that DEEP uses for printing,
+ * debugging, plan execution, and dataset export.
+ *
+ *  - action names are associated to an \ref ActionId;
+ *  - agent names are associated to an \ref Agent;
+ *  - fluent names are associated to a \ref Fluent.
  *
  * \see Define, Action.
  * \copyright GNU Public License.
@@ -156,9 +161,12 @@ private:
   ReverseAgentsMap r_agent_map;            ///< Maps grounded agents to names.
   ReverseActionNamesMap r_action_name_map; ///< Maps grounded actions to names.
 
-  // Reverse map creation helpers (used for printing/debugging)
+  /// \brief Rebuild all reverse maps after a forward map update.
   void reverse();
+  /// \brief Rebuild the fluent reverse map.
   void create_reverse_fl();
+  /// \brief Rebuild the agent reverse map.
   void create_reverse_ag();
+  /// \brief Rebuild the action reverse map.
   void create_reverse_ac();
 };

@@ -11,11 +11,15 @@
  * \brief Singleton class that stores and manages all domain-specific
  * information for the planner.
  *
- * The Domain class is responsible for reading, storing, and processing all
- * relevant information about the planning domain from the input file. This
- * includes fluents, actions, agents, initial State descriptions, and goal
- * conditions. The class ensures that all domain data is available in structured
- * form for the rest of the planner.
+ * \details The Domain class is DEEP's repository for the grounded planning
+ * task loaded through Plank. During \ref build it asks Plank to parse, type
+ * check, and ground the EPDDL specification, then translates the resulting
+ * planning task into DEEP's internal structures:
+ *   - grounded fluents and their positive ordering;
+ *   - grounded agents;
+ *   - grounded DEL action models;
+ *   - the initial epistemic state handle;
+ *   - the grounded epistemic goal.
  *
  * This class follows the Singleton pattern: only one instance exists during the
  * application's lifetime. All access to domain data should be performed through
@@ -34,7 +38,7 @@ public:
    * instantiated fields.*/
   static Domain &get_instance();
 
-  /** \brief Function that builds all the domain information.     */
+  /** \brief Build DEEP's internal view of the grounded Plank planning task. */
   void build();
 
   /** \brief Getter of the field \ref m_fluents. */
@@ -57,7 +61,8 @@ public:
   /** \brief Getter of the field \ref m_name. */
   [[nodiscard]] const std::string &get_name() const noexcept;
 
-    [[nodiscard]] const plank::del::state_ptr &
+  /** \brief Get the grounded initial epistemic state produced by Plank. */
+  [[nodiscard]] const plank::del::state_ptr &
   get_initial_state() const noexcept;
 
 
@@ -74,10 +79,9 @@ private:
       m_name; ///< The name of the file that contains the description of *this*.
 
 
-    plank::del::planning_task m_plank_task;
+  /// \brief Grounded planning task imported from Plank.
+  plank::del::planning_task m_plank_task;
 
-    // Grounder m_grounder; ///< A \ref grounder object used to store the name of
-  // the information.
   FluentsSet m_fluents; ///< Set containing all the (grounded) Fluent of
                         ///< the domain.
   std::vector<Fluent>
@@ -88,6 +92,7 @@ private:
   AgentsSet
       m_agents; ///< Set containing all the (grounded) Agent of the domain.
 
+  /// \brief Agents stored in Plank's grounded order for id-based conversions.
   std::vector<Agent> m_ordered_agents;
   FormulaeList m_goal_description; ///< The formula that describes the goal.
 

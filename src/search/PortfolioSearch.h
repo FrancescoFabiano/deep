@@ -45,9 +45,10 @@ public:
    *
    * The file should contain configurations in the format:
    * key1=value1,key2=value2,...
-   * Each line represents a different configuration.
-   * \warning This does not check for parsing errors, so ensure the file is
-   * well-formed.
+   * Each non-empty, non-comment line represents a different configuration.
+   * Lines starting with '#' are ignored.
+   * \warning This performs only minimal validation, so configuration lines
+   * should still be kept well-formed.
    *
    * \param file_path Path to the configuration file.
    */

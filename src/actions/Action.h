@@ -11,19 +11,32 @@
 
 /**
  * \class Action
- * \brief A grounded multi-pointed DEL event model.
+ * \brief A grounded multi-pointed DEL action model.
  *
- * An Action is:
+ * \details An Action stores the grounded DEL structure imported from Plank for
+ * one EPDDL action declaration. The semantic core is the multi-pointed event
+ * model:
  *
  *   A = (E, R, D)
  *
  * where:
  *
  *   E = events;
- *   R = accessibility relations between events for each agent;
+ *   R = event accessibility relations selected for each agent at execution
+ *       time;
  *   D = designated events.
  *
- * Event preconditions and postconditions are stored inside Event.
+ * Event preconditions and postconditions are stored inside \ref Event.
+ *
+ * Unlike the legacy single-relation view, DEEP keeps the EPDDL observability
+ * information explicitly:
+ *   - each observability type owns its own event relation;
+ *   - each agent is associated with formula-valued conditions selecting which
+ *     observability type applies in the current epistemic state.
+ *
+ * During successor generation, one observability type is resolved per agent on
+ * the source state and the corresponding event relation is used in the product
+ * update.
  */
 class Action {
 public:
@@ -94,29 +107,61 @@ public:
 
     // === EPDDL Observability ===
 
+    /**
+     * \brief Get the event relation stored for each EPDDL observability type.
+     * \return Mapping from observability type to event accessibility relation.
+     */
     [[nodiscard]]
     const ObservabilityRelations &
     get_observability_relations() const noexcept;
 
+    /**
+     * \brief Get the event relation associated with one observability type.
+     * \param type The observability type to retrieve.
+     * \return The event relation used when that type is selected.
+     */
     [[nodiscard]]
     const EventRelation &
     get_observability_relation(
         ObservabilityType type) const;
 
+    /**
+     * \brief Add one event-accessibility edge to the relation of an
+     * observability type.
+     * \param type The observability type being extended.
+     * \param from Source event id.
+     * \param to Target event id.
+     */
     void add_observability_edge(
         ObservabilityType type,
         EventId from,
         EventId to);
 
+    /**
+     * \brief Get all formula-valued observability conditions for all agents.
+     * \return Mapping agent -> (observability type -> condition).
+     */
     [[nodiscard]]
     const ObservabilityConditions &
     get_observability_conditions() const noexcept;
 
+    /**
+     * \brief Get the observability conditions registered for one agent.
+     * \param agent The grounded agent to query.
+     * \return The conditions indexed by observability type for \p agent.
+     */
     [[nodiscard]]
     const AgentObservabilityConditions &
     get_observability_conditions(
         const Agent &agent) const;
 
+    /**
+     * \brief Register the condition under which an agent uses an
+     * observability type.
+     * \param agent The grounded agent.
+     * \param type The observability type enabled by the condition.
+     * \param condition The epistemic condition evaluated on the source state.
+     */
     void add_observability_condition(
         const Agent &agent,
         ObservabilityType type,
@@ -141,17 +186,20 @@ private:
 
 
     /**
- * Relations over events defined for each EPDDL observability type.
- *
- * These are part of the grounded action specification.
- */
+     * \brief Event accessibility relation stored for each EPDDL observability
+     * type.
+     *
+     * Each entry represents the relation that becomes active if that
+     * observability type is selected for an agent while executing this action.
+     */
     ObservabilityRelations m_observability_relations;
 
     /**
-     * Formula-valued observability conditions for each agent.
+     * \brief Formula-valued observability conditions for each agent.
      *
-     * These determine which observability relation applies when
-     * executing this action in a particular epistemic state.
+     * These determine which observability type, and therefore which event
+     * relation, applies to each agent when executing this action in a specific
+     * epistemic state.
      */
     ObservabilityConditions m_observability_conditions;
 };

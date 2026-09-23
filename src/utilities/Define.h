@@ -241,7 +241,7 @@ using Events =
     std::map<EventId, Event>;
 
 /**
- * Multi-pointed component of the event model.
+ * Designated event ids of a multi-pointed action model.
  */
 using DesignatedEvents =
     std::set<EventId>;
@@ -262,17 +262,29 @@ using EventRelation =
 
 /**
  * Agent-indexed event accessibility relations.
+ *
+ * This alias is kept for generic DEL utilities, but DEEP's grounded EPDDL
+ * actions currently resolve observability through \ref ObservabilityRelations
+ * instead of storing one fixed relation per agent in the action itself.
  */
 using EventRelations =
     std::map<Agent, EventRelation>;
 
-
+/**
+ * \brief Identifier of a grounded EPDDL observability case.
+ *
+ * The numeric value is imported from Plank and is only meaningful relative to
+ * the action that defines it.
+ */
 using ObservabilityType = unsigned int;
 
 /**
  * Relation over events associated with each EPDDL observability type.
  *
  * obs_type -> R_obs
+ *
+ * At execution time, each agent selects exactly one observability type and the
+ * corresponding event relation is used during product update.
  */
 using ObservabilityRelations =
     std::map<ObservabilityType, EventRelation>;
@@ -281,6 +293,9 @@ using ObservabilityRelations =
  * For one agent:
  *
  * obs_type -> condition under which that observability type applies.
+ *
+ * Conditions are evaluated on the complete source epistemic state before the
+ * successor product model is expanded.
  */
 using AgentObservabilityConditions =
     std::map<ObservabilityType, BeliefFormula>;
@@ -289,6 +304,9 @@ using AgentObservabilityConditions =
  * For all agents:
  *
  * agent -> (obs_type -> condition)
+ *
+ * This mirrors the grounded EPDDL observability specification attached to one
+ * action.
  */
 using ObservabilityConditions =
     std::map<Agent, AgentObservabilityConditions>;
@@ -296,7 +314,7 @@ using ObservabilityConditions =
 ///@}
 
 
-/// \name eState
+/// \name Epistemic State
 ///@{
 class KripkeState;
 class KripkeWorld;

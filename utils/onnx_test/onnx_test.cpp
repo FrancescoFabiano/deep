@@ -1,4 +1,5 @@
 #include <iostream>
+#include <cmath>
 #include <vector>
 #include <onnxruntime_cxx_api.h>
 
@@ -74,12 +75,21 @@ int main() {
     // for (auto dim : output_shape) //std::cout << dim << " ";
     //std::cout << std::endl;
 
-    // Optionally print first few output values
-    //std::cout << "First 10 output values:" << std::endl;
-    //for (int i = 0; i < 10 && i < output_info.GetElementCount(); i++) {
-      //std::cout << float_array[i] << " ";
-    //}
-    //std::cout << std::endl;
+    if (output_info.GetElementCount() != input_tensor_size) {
+      std::cerr << "[ERROR] Output tensor size mismatch. Expected "
+                << input_tensor_size << ", got "
+                << output_info.GetElementCount() << std::endl;
+      return 1;
+    }
+
+    for (size_t i = 0; i < input_tensor_size; i++) {
+      if (std::fabs(float_array[i] - input_tensor_values[i]) > 1e-6f) {
+        std::cerr << "[ERROR] Output mismatch at index " << i
+                  << ". Expected " << input_tensor_values[i]
+                  << ", got " << float_array[i] << std::endl;
+        return 1;
+      }
+    }
 
     return 0;
   } catch (const Ort::Exception& e) {

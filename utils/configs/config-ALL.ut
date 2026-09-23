@@ -1,0 +1,16 @@
+# Full default portfolio order used by built-in portfolio search.
+# Group 1: interval 2 (current default).
+# Group 2: interval 1.
+# Group 3: interval 5.
+
+search=BFS,bisimulation=true,bisimulation_interval=2,check_visited=true,fast_world_comparison=true,fast_state_comparison=true
+search=Astar,heuristics=SUBGOALS,bisimulation=true,bisimulation_interval=2,check_visited=true,fast_world_comparison=true,fast_state_comparison=true
+search=DFS,bisimulation=true,bisimulation_interval=2,check_visited=true,fast_world_comparison=true,fast_state_comparison=true
+
+search=BFS,bisimulation=true,bisimulation_interval=1,check_visited=true,fast_world_comparison=true,fast_state_comparison=true
+search=Astar,heuristics=SUBGOALS,bisimulation=true,bisimulation_interval=1,check_visited=true,fast_world_comparison=true,fast_state_comparison=true
+search=DFS,bisimulation=true,bisimulation_interval=1,check_visited=true,fast_world_comparison=true,fast_state_comparison=true
+
+search=BFS,bisimulation=true,bisimulation_interval=5,check_visited=true,fast_world_comparison=true,fast_state_comparison=true
+search=Astar,heuristics=SUBGOALS,bisimulation=true,bisimulation_interval=5,check_visited=true,fast_world_comparison=true,fast_state_comparison=true
+search=DFS,bisimulation=true,bisimulation_interval=5,check_visited=true,fast_world_comparison=true,fast_state_comparison=true

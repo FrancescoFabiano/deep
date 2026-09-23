@@ -1,0 +1,3 @@
+# label	domain	problem	library	actions
+coin-in-the-box	lib/plank/benchmarks/domains/Coin-in-the-Box/cb.epddl	lib/plank/benchmarks/domains/Coin-in-the-Box/instances/problem_1.epddl	lib/plank/benchmarks/libraries/intermediate.epddl	open_A peek_A
+active-muddy-child	exp/ipc2026-benchmarks/1-basic/active-muddy-child/domain.epddl	exp/ipc2026-benchmarks/1-basic/active-muddy-child/problems/amc-03-02-clean.epddl	lib/plank/benchmarks/libraries/basic.epddl	

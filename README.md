@@ -243,13 +243,15 @@ For example:
 
 ### Action libraries
 
-When the task uses an action library, provide it with `--act_lib`:
+When the task uses one or more action libraries, provide each path with
+`--act_lib`:
 
 ```bash
 ./cmake-build-release/bin/deep \
   path/to/domain.epddl \
   path/to/problem.epddl \
-  --act_lib path/to/library.epddl
+  --act_lib path/to/library_a.epddl \
+  --act_lib path/to/library_b.epddl
 ```
 
 ### Common configurations
@@ -287,6 +289,23 @@ For all search strategies, heuristics, and configuration options:
 
 ```bash
 ./cmake-build-release/bin/deep -h
+```
+
+### CI smoke tests
+
+The execution workflow validates the modern interface against
+`utils/smoke_cases.tsv`, where each row specifies:
+
+- an EPDDL domain file;
+- an EPDDL problem file;
+- an optional action library;
+- optional grounded actions for `--execute_actions`.
+
+Run the same smoke tests locally with:
+
+```bash
+./utils/smoke_test.sh \
+  cmake-build-release/bin/deep
 ```
 
 ---
@@ -337,7 +356,9 @@ Use the actual domain, problem, and library filenames contained in the checked-o
 
 deep uses **EPDDL** as its input language and **Dynamic Epistemic Logic** as its transition semantics.
 
-EPDDL domains, problems, and action libraries are processed using **Plank**, which provides the parsing, grounding, model-checking, and DEL infrastructure required by the planner.
+EPDDL domains, problems, and action libraries are processed using **Plank**,
+which provides the parsing, grounding, model-checking, and DEL infrastructure
+required by the planner.
 
 The grounded task provides:
 
@@ -345,7 +366,21 @@ The grounded task provides:
 - the epistemic goal;
 - the grounded DEL actions available during search.
 
-Search states are represented as **Kripke structures**, and successor states are obtained by applying the corresponding DEL event models.
+Search states are represented as **Kripke structures** with designated worlds,
+and successor states are obtained by DEL product update with the corresponding
+grounded action models.
+
+For each grounded action, deep stores:
+
+- the action's events and designated events;
+- postconditions and preconditions for each event;
+- one event relation for each grounded EPDDL observability type;
+- formula-valued observability conditions selecting which relation applies to
+  each agent in the current source state.
+
+During successor generation, deep first resolves one observability type per
+agent on the full source epistemic state, then expands the reachable product
+model from designated `(world, event)` pairs.
 
 ### Search
 

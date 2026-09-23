@@ -50,10 +50,10 @@ Configuration &Configuration::get_instance() {
     instance.set_bisimulation(parser.get_bisimulation());
     instance.set_bisimulation_type(parser.get_bisimulation_type());
     instance.set_bisimulation_interval(
-    parser.get_bisimulation_interval());
+        parser.get_bisimulation_interval());
     instance.set_check_visited(parser.get_check_visited());
-    instance.set_check_visited(parser.get_check_visited());
-    instance.set_search_strategy(parser.get_search_strategy());
+    instance.set_fast_world_comparison(parser.get_fast_world_comparison());
+    instance.set_fast_state_comparison(parser.get_fast_state_comparison());
     instance.set_search_strategy(parser.get_search_strategy());
     instance.set_heuristic_opt(parser.get_heuristic(), true);
     instance.set_GNN_model_path(parser.get_GNN_model_path());

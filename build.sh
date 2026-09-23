@@ -314,7 +314,7 @@ cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
 if [[ "$OS" == "Linux" ]]; then
     JOBS=$(nproc)
 else
-    JOBS=$(sysctl -n hw.ncpu)
+    JOBS=$(sysctl -n hw.ncpu 2>/dev/null || getconf _NPROCESSORS_ONLN 2>/dev/null || echo 1)
 fi
 
 echo "Compiling with $JOBS threads..."

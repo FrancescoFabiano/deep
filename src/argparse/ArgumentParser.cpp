@@ -101,7 +101,7 @@ void ArgumentParser::parse(int argc, char **argv) {
       ExitHandler::exit_with_message(
           ExitHandler::ExitCode::ArgParseError,
           "Bisimulation type (--bisimulation_type) was set but --bisimulation "
-          "is not enabled. Please use --bis to activate bisimulation.");
+          "is not enabled. Please use --bisimulation to activate it.");
     }
 
     // --- Heuristic consistency check ---
@@ -202,7 +202,7 @@ ArgumentParser::ArgumentParser() : app("deep") {
     app.add_option(
     "--act_lib",
     m_library_files,
-    "Specify a Plank EPDDL action library path. "
+    "Specify a grounded EPDDL action library path processed through Plank. "
     "Can be provided multiple times.");
 
   // Debug/logging group
@@ -223,12 +223,12 @@ ArgumentParser::ArgumentParser() : app("deep") {
   auto *bis_group = app.add_option_group("Bisimulation");
   bis_group->add_flag(
       "-b,--bisimulation", m_bisimulation,
-      "Activate e-states size reduction through bisimulation. Use this to "
+      "Activate epistemic-state reduction through bisimulation. Use this to "
       "reduce the state space by merging bisimilar states.");
   bis_group
       ->add_option("--bisimulation_type", m_bisimulation_type,
                    "Specify the algorithm for bisimulation contraction "
-                   "(requires --bis). Options: 'FB' (Fast Bisimulation, "
+                   "(requires --bisimulation). Options: 'FB' (Fast Bisimulation, "
                    "default) or 'PT' (Paige and Tarjan).")
       ->check(CLI::IsMember({"FB", "PT"}))
       ->default_val("FB");
@@ -236,7 +236,7 @@ ArgumentParser::ArgumentParser() : app("deep") {
     "--bisimulation-interval",
     m_bisimulation_interval,
     "Apply bisimulation contraction every N search-depth levels (0 means no contraction is ever applied)")
-    ->default_val(3);
+    ->default_val(2);
 
   // Dataset group
   auto *dataset_group = app.add_option_group("Dataset");
@@ -300,7 +300,7 @@ ArgumentParser::ArgumentParser() : app("deep") {
   auto *search_group = app.add_option_group("Search");
   search_group
       ->add_option("-s,--search", m_search_strategy,
-                   "Select the search strategy: 'BFS' (Best First Search, "
+                   "Select the search strategy: 'BFS' (Breadth First Search, "
                    "default), 'DFS' (Depth First Search), 'IDFS' (Iterative "
                    "Depth First Search), 'HFS' (Heuristic First Search), "
                    "'Astar' (A* Search, uses heuristics with A* method), or "
@@ -319,10 +319,9 @@ ArgumentParser::ArgumentParser() : app("deep") {
           "are selected as "
           "search method. "
           "'RL_H' only works in association with RL search method."
-          "If GNN or RL_H are enabled, ensure you are using a model compiled "
-          "with the "
-          "'ENABLE_NEURALNETS' option; otherwise, torch will not be installed "
-          "or linked for efficiency purposes.")
+          "If GNN or RL_H are enabled, ensure the planner was built with "
+          "neural-network support so the required ONNX Runtime integration is "
+          "available.")
       ->check(
           CLI::IsMember({"SUBGOALS", "L_PG", "S_PG", "C_PG", "GNN", "RL_H"}))
       ->default_val("SUBGOALS");
@@ -424,9 +423,9 @@ ArgumentParser::ArgumentParser() : app("deep") {
           "Set the number of portfolio threads. If set > 1, "
           "multiple planner configurations will run in parallel. "
           "The configurations will override the specified search and heuristic "
-          "options but will keep other options such as --bisimulation, "
-          "--check_visited, etc. "
-          "Currently, the portfolio supports up to 7 default configurations.")
+          "options. The built-in default portfolio enables bisimulation, "
+          "visited-state checking, and both fast comparison modes. "
+          "Currently, the portfolio supports up to 9 default configurations.")
       ->default_val("1");
 
   portfolio_group
@@ -434,7 +433,8 @@ ArgumentParser::ArgumentParser() : app("deep") {
           "--config_file", m_config_file,
           "Enable reading portfolio configuration from a file. If set, the "
           "planner will read the configuration from the specified file. "
-          "An example can be found in `utils/configs/config-ALL.ut`. "
+          "Examples can be found in `utils/configs/config-P5.ut` and "
+          "`utils/configs/config-ALL.ut`. "
           "Please check the command line arguments for the possible field "
           "names (search-related options without the - or -- prefix). "
           "Whatever is set in the file will be used; otherwise, the given "
@@ -461,7 +461,7 @@ ArgumentParser::ArgumentParser() : app("deep") {
       ->add_option("-a,--execute_actions", m_exec_actions,
                    "Specify a sequence of actions to execute directly, "
                    "bypassing planning. "
-                   "Example: --execute_actions open_a peek_a. "
+                   "Example: --execute_actions open_A peek_A. "
                    "If this option is set, the actions provided will be "
                    "executed in order. "
                    "If not set, actions will be loaded from the plan file (see "
@@ -471,7 +471,7 @@ ArgumentParser::ArgumentParser() : app("deep") {
       ->add_option("--plan_file", m_plan_file,
                    "Specify the file from which to load the plan for execution "
                    "(default: utils/plans/plan.ut)."
-                   "The syntax of the actions in the file should be "
+                   "The action names in the file should be "
                    "space-separated or comma-separated."
                    "Used only if --execute_plan is set and --execute_actions "
                    "is not provided.")
@@ -697,21 +697,23 @@ void ArgumentParser::print_usage() const {
   std::cout << app.help() << std::endl;
   std::string prog_name = "deep";
   std::cout << "\nEXAMPLES:\n";
-  std::cout << "  " << prog_name << " domain.txt\n";
-  std::cout << "    Find a plan for domain.txt\n\n";
+  std::cout << "  " << prog_name << " domain.epddl problem.epddl\n";
+  std::cout << "    Find a plan for the given domain/problem pair\n\n";
   std::cout << "  " << prog_name
-            << " domain.txt -s Astar --heuristic SUBGOALS\n";
+            << " domain.epddl problem.epddl -s Astar --heuristics SUBGOALS\n";
   std::cout << "    Plan using heuristic 'SUBGOALS' and 'Astar' search\n\n";
   std::cout << "  " << prog_name
-            << " domain.txt -e --execute-actions open_a peek_a\n";
-  std::cout << "    Execute actions [open_a, peek_a] step by step\n\n";
-  // std::cout << "  " << prog_name << " domain.txt --threads_per_search 4\n";
+            << " domain.epddl problem.epddl --act_lib library.epddl -e -a open_A peek_A\n";
+  std::cout << "    Execute actions [open_A, peek_A] step by step\n\n";
+  // std::cout << "  " << prog_name
+  //           << " domain.epddl problem.epddl --threads_per_search 4\n";
   // std::cout << "    Run search with 4 threads per search strategy\n\n";
-  std::cout << "  " << prog_name << " domain.txt --portfolio_threads 3\n";
+  std::cout << "  " << prog_name << " domain.epddl problem.epddl --portfolio_threads 3\n";
   std::cout
       << "    Run 3 planner configurations in parallel (portfolio search)\n\n";
   // std::cout << "  " << prog_name
-  //           << " domain.txt --threads_per_search 2 --portfolio_threads 2\n";
+  //           << " domain.epddl problem.epddl --threads_per_search 2"
+  //              " --portfolio_threads 2\n";
   // std::cout << "    Run 2 planner configurations in parallel, each using 2 "
   //              "threads (total 4 threads)\n\n";
 }

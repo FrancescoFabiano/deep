@@ -15,10 +15,15 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           submodules: recursive
+
+      - name: Install clang-format
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format
 
       - name: Convert code files' line endings to LF
         run: |
@@ -27,7 +32,7 @@ jobs:
 
       - name: Convert experiments files' line endings to LF
         run: |
-          find exp utils/push_check/experiments -type f \( -name '*.txt' -o -name '*.eppdl' -o -name '*.pddl' \) \
+          find exp utils -type f \( -name '*.txt' -o -name '*.epddl' -o -name '*.pddl' -o -name '*.tsv' \) \
             -exec sed -i 's/\r$//' {} +
 
       - name: Check and fix C++ formatting

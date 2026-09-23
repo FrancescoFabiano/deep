@@ -222,12 +222,12 @@ public:
 
   /// \name World Info Access
   ///@{
-  /** \brief Get the fluent set of the pointed world.
+  /** \brief Get the fluent set stored in this world.
    *  \return Reference to the fluent set.
    */
   [[nodiscard]] const FluentsSet &get_fluent_set() const;
 
-  /** \brief Get the id of the pointed world plus repetition.
+  /** \brief Get the external world id including the repetition tag.
    *  \return The id.
    */
   [[nodiscard]] KripkeWorldId get_id() const noexcept;
@@ -237,18 +237,18 @@ public:
    */
   [[nodiscard]] int64_t get_id_casted() const noexcept;
 
-  /** \brief Set the id of the pointed world based on its content.
+  /** \brief Set the world id based on its content.
    *  \details This method computes a unique id based on the fluent set and
    * repetition (using hashing).
    */
   void set_id() noexcept;
 
-  /** \brief Get the numerical id of the pointed world.
+  /** \brief Get the internal hashed id of this world.
    *  \return The id.
    */
   [[nodiscard]] KripkeWorldId get_internal_world_id() const noexcept;
 
-  /** \brief Get the fluent-based id of the pointed world.
+  /** \brief Get the fluent-based component of this world's id.
    *  \return The id.
    */
   [[nodiscard]] KripkeWorldId get_fluent_based_id() const noexcept;

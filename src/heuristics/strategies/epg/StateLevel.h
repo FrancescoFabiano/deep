@@ -3,8 +3,10 @@
  * \brief Class that implements a state layer of the epistemic planning graph
  * data structure.
  *
- * \details In this implementation, the state layer contains complete e-state in
- * order to have a complete planning graph.
+ * \details In this implementation, each layer stores heuristic scores derived
+ * from one complete epistemic state rather than a purely symbolic proposition
+ * layer. The term "state level" therefore refers to the planning-graph layer
+ * used by the heuristic, not to a separate runtime search-state structure.
  *
  * \copyright GNU Public License.
  * \author Francesco Fabiano.
@@ -65,8 +67,10 @@ public:
   ///@{
   /**
    * \brief Initializes the state level with the given goal formulae list and
-   * e-state. \tparam StateRepr The state representation type. \param goals The
-   * list of goal formulae. \param eState The epistemic state.
+   * epistemic state.
+   * \tparam StateRepr The state representation type.
+   * \param goals The list of goal formulae.
+   * \param eState The epistemic state used to initialize the layer.
    */
   template <StateRepresentation StateRepr>
   void initialize(const FormulaeList &goals, const State<StateRepr> &eState) {
@@ -104,14 +108,14 @@ public:
   void set_depth(unsigned short to_set);
 
   /**
-   * \brief Modifies a pair fluent, bool in the field m_pg_f_map.
+   * \brief Update the stored score of one fluent.
    * \param key The key of the pair.
    * \param value The value of the pair.
    */
   void modify_fluent_value(const Fluent &key, short value);
 
   /**
-   * \brief Modifies a pair BeliefFormula, bool in the field m_pg_bf_map.
+   * \brief Update the stored score of one belief formula.
    * \param key The key of the pair.
    * \param value The value of the pair.
    */
