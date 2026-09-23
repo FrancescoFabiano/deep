@@ -17,53 +17,64 @@ Given an epistemic planning domain and problem, deep grounds the task, construct
 ```mermaid
 flowchart LR
 
-    subgraph IN["Input"]
-        D["EPDDL Domain"]
-        P["EPDDL Problem"]
-        L["Action Libraries"]
+    subgraph IN["1. World Specification"]
+        D["Domain"]
+        P["Problem"]
+        L["Libraries"]
     end
 
-    subgraph PRE["Grounding"]
-        G["Plank — Parse & Ground"]
+    subgraph GROUND["2. Symbolic Grounding"]
+        G["Plank"]
+        T["Grounded Task"]
     end
 
-    subgraph PLAN["Epistemic Planning"]
-        S["Kripke State"]
-        U["DEL Update"]
+    subgraph CORE["3. Epistemic Planning Loop"]
+        S0["Initial Model"]
+        F["Frontier"]
+        A["DEL Action"]
+        U["Product Update"]
+        S1["Next Model"]
         Q{"Goal?"}
 
-        S --> U
-        U --> Q
-        Q -- "No" --> S
+        S0 --> F
+        F --> A
+        A --> U
+        U --> S1
+        S1 --> Q
+        Q -- "No" --> F
     end
 
+    H["Heuristics"]
+    X["Visited Check + Bisimulation"]
     R["Plan"]
-
-    H["Heuristics — GNN / Classical"]
-    V["State-space Reduction"]
 
     D --> G
     P --> G
     L --> G
+    G --> T
 
-    G --> S
+    T --> S0
     Q -- "Yes" --> R
 
-    H -. "optional" .-> S
-    V -. "optional" .-> S
+    H -. "guide" .-> F
+    X -. "reduce" .-> S1
 
-    classDef input stroke:#2563eb,stroke-width:2px;
-    classDef grounding stroke:#7c3aed,stroke-width:2px;
-    classDef planning stroke:#16a34a,stroke-width:2px;
-    classDef decision stroke:#d97706,stroke-width:2px;
-    classDef optional stroke:#ea580c,stroke-width:2px,stroke-dasharray:5 4;
-    classDef result stroke:#15803d,stroke-width:3px;
+    classDef file fill:#edf4ff,stroke:#3b82f6,stroke-width:2px,color:#1e3a8a;
+    classDef engine fill:#f5edff,stroke:#8b5cf6,stroke-width:2px,color:#5b21b6;
+    classDef task fill:#eef2ff,stroke:#6366f1,stroke-width:2px,color:#3730a3;
+    classDef state fill:#ecfdf5,stroke:#22c55e,stroke-width:2px,color:#166534;
+    classDef action fill:#ecfeff,stroke:#06b6d4,stroke-width:2px,color:#155e75;
+    classDef decision fill:#fff7ed,stroke:#f97316,stroke-width:2px,color:#9a3412;
+    classDef assist fill:#fff8e8,stroke:#eab308,stroke-width:2px,stroke-dasharray:7 4,color:#854d0e;
+    classDef result fill:#fff1f2,stroke:#e11d48,stroke-width:3px,color:#9f1239;
 
-    class D,P,L input;
-    class G grounding;
-    class S,U planning;
+    class D,P,L file;
+    class G engine;
+    class T task;
+    class S0,F,S1 state;
+    class A,U action;
     class Q decision;
-    class H,V optional;
+    class H,X assist;
     class R result;
 ```
 
