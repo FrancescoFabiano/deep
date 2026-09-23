@@ -2,12 +2,14 @@ name: Execution Check
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, deep-2.0 ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, deep-2.0 ]
+  workflow_dispatch:
 
 jobs:
-  test:
+  execution:
+    name: execution
     runs-on: ubuntu-latest
 
     steps:
