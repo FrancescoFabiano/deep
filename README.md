@@ -92,51 +92,100 @@ The core planner uses **Plank** to parse and ground EPDDL tasks. Search operates
 - Native ONNX Runtime inference
 - Optional Linux/NVIDIA GPU inference
 
-### References
-
-**deep / GNN-derived heuristics**
-
-```bibtex
-@article{briglia2025scaling,
-  title   = {Scaling Multi-Agent Epistemic Planning through GNN-Derived Heuristics},
-  author  = {Briglia, Giovanni and Fabiano, Francesco and Mariani, Stefano},
-  journal = {arXiv preprint arXiv:2508.12840},
-  year    = {2025}
-}
-```
-
-**EPDDL**
-
-```bibtex
-@article{burigana2026epddl,
-  title   = {The Epistemic Planning Domain Definition Language: Official Guideline},
-  author  = {Burigana, Alessandro and Fabiano, Francesco},
-  journal = {arXiv preprint arXiv:2601.20969},
-  year    = {2026}
-}
-```
-
 ---
 
-## Installation
+## Quick Start
 
-### Clone
-
-Clone deep and its submodules:
+### 1. Clone the repository
 
 ```bash
 git clone --recurse-submodules https://github.com/FrancescoFabiano/deep.git
 cd deep
 ```
 
-For an existing checkout:
+If you already cloned the repository without submodules:
 
 ```bash
 git submodule sync --recursive
 git submodule update --init --recursive
 ```
 
-### Dependencies
+### 2. Install dependencies and build
+
+#### Linux
+
+Install dependencies manually:
+
+```bash
+sudo apt-get update
+sudo apt-get install build-essential cmake libboost-dev unzip curl
+./build.sh
+```
+
+Or let the build script install them for you:
+
+```bash
+./build.sh install_all
+```
+
+The default Linux build produces:
+
+```text
+cmake-build-release/bin/deep
+```
+
+#### macOS
+
+Install the Xcode Command Line Tools:
+
+```bash
+xcode-select --install
+```
+
+Install the required packages through Homebrew:
+
+```bash
+brew install cmake boost unzip curl
+./build.sh
+```
+
+Or let the build script install the missing packages:
+
+```bash
+./build.sh install_all
+```
+
+The default macOS build also produces:
+
+```text
+cmake-build-release/bin/deep
+```
+
+### 3. Run a first problem
+
+The core interface is:
+
+```text
+deep <domain.epddl> <problem.epddl> [options]
+```
+
+Minimal example:
+
+```bash
+./cmake-build-release/bin/deep path/to/domain.epddl path/to/problem.epddl
+```
+
+With an action library:
+
+```bash
+./cmake-build-release/bin/deep DOMAIN.epddl PROBLEM.epddl --act_lib LIBRARY.epddl
+```
+
+---
+
+## Build Reference
+
+### External dependencies
 
 deep uses the following external components:
 
@@ -162,46 +211,21 @@ deep requires:
 - `curl`;
 - `unzip`.
 
-On Ubuntu/Debian:
-
-```bash
-sudo apt-get update
-sudo apt-get install build-essential cmake libboost-dev unzip curl
-```
-
-On macOS, first install the Xcode Command Line Tools:
-
-```bash
-xcode-select --install
-```
-
-then install the required packages through [Homebrew](https://brew.sh/):
-
-```bash
-brew install cmake boost unzip curl
-```
-
-Alternatively, on either supported platform:
-
-```bash
-./build.sh install_all
-```
-
 ### Build
 
-For a standard Release build:
+If you only need the default build, use:
 
 ```bash
 ./build.sh
 ```
 
-This produces:
+This creates:
 
 ```text
 cmake-build-release/bin/deep
 ```
 
-Useful variants:
+Common build variants:
 
 | Command | Use when you want... |
 | --- | --- |
@@ -226,18 +250,6 @@ Output directories follow the selected mode:
 ---
 
 ## Running deep
-
-The core interface is:
-
-```text
-deep <domain.epddl> <problem.epddl> [options]
-```
-
-Minimal example:
-
-```bash
-./cmake-build-release/bin/deep path/to/domain.epddl path/to/problem.epddl
-```
 
 ### Common patterns
 
@@ -280,7 +292,7 @@ Direct plan execution:
 
 ### CI smoke tests
 
-The execution workflow validates the modern interface against
+The execution workflow validates the planner against
 `utils/smoke_cases.tsv`, where each row specifies:
 
 - an EPDDL domain file;
@@ -481,41 +493,25 @@ deep/
 
 ## References
 
-### deep
-
-G. Briglia, F. Fabiano, and S. Mariani.  
-**Scaling Multi-Agent Epistemic Planning through GNN-Derived Heuristics.**  
-arXiv:2508.12840, 2025.  
-[arXiv:2508.12840](https://arxiv.org/abs/2508.12840)
+### deep / GNN-derived heuristics
 
 ```bibtex
-@misc{briglia2025scaling,
-  title         = {Scaling Multi-Agent Epistemic Planning through GNN-Derived Heuristics},
-  author        = {Briglia, Giovanni and Fabiano, Francesco and Mariani, Stefano},
-  year          = {2025},
-  eprint        = {2508.12840},
-  archivePrefix = {arXiv},
-  primaryClass  = {cs.AI},
-  url           = {https://arxiv.org/abs/2508.12840}
+@article{briglia2025scaling,
+  title   = {Scaling Multi-Agent Epistemic Planning through GNN-Derived Heuristics},
+  author  = {Briglia, Giovanni and Fabiano, Francesco and Mariani, Stefano},
+  journal = {arXiv preprint arXiv:2508.12840},
+  year    = {2025}
 }
 ```
 
 ### EPDDL
 
-A. Burigana and F. Fabiano.  
-**The Epistemic Planning Domain Definition Language: Official Guideline.**  
-arXiv:2601.20969, 2026.  
-[arXiv:2601.20969](https://arxiv.org/abs/2601.20969)
-
 ```bibtex
-@misc{burigana2026epddl,
-  title         = {The Epistemic Planning Domain Definition Language: Official Guideline},
-  author        = {Burigana, Alessandro and Fabiano, Francesco},
-  year          = {2026},
-  eprint        = {2601.20969},
-  archivePrefix = {arXiv},
-  primaryClass  = {cs.AI},
-  url           = {https://arxiv.org/abs/2601.20969}
+@article{burigana2026epddl,
+  title   = {The Epistemic Planning Domain Definition Language: Official Guideline},
+  author  = {Burigana, Alessandro and Fabiano, Francesco},
+  journal = {arXiv preprint arXiv:2601.20969},
+  year    = {2026}
 }
 ```
 
