@@ -96,15 +96,25 @@ The core planner uses **Plank** to parse and ground EPDDL tasks. Search operates
 
 **deep / GNN-derived heuristics**
 
-> Giovanni Briglia, Francesco Fabiano, and Stefano Mariani.  
-> *Scaling Multi-Agent Epistemic Planning through GNN-Derived Heuristics.*  
-> arXiv:2508.12840, 2025.
+```bibtex
+@article{briglia2025scaling,
+  title   = {Scaling Multi-Agent Epistemic Planning through GNN-Derived Heuristics},
+  author  = {Briglia, Giovanni and Fabiano, Francesco and Mariani, Stefano},
+  journal = {arXiv preprint arXiv:2508.12840},
+  year    = {2025}
+}
+```
 
 **EPDDL**
 
-> Alessandro Burigana and Francesco Fabiano.  
-> *The Epistemic Planning Domain Definition Language: Official Guideline.*  
-> arXiv:2601.20969, 2026.
+```bibtex
+@article{burigana2026epddl,
+  title   = {The Epistemic Planning Domain Definition Language: Official Guideline},
+  author  = {Burigana, Alessandro and Fabiano, Francesco},
+  journal = {arXiv preprint arXiv:2601.20969},
+  year    = {2026}
+}
+```
 
 ---
 
@@ -115,9 +125,7 @@ The core planner uses **Plank** to parse and ground EPDDL tasks. Search operates
 Clone deep and its submodules:
 
 ```bash
-git clone --recurse-submodules \
-  https://github.com/FrancescoFabiano/deep.git
-
+git clone --recurse-submodules https://github.com/FrancescoFabiano/deep.git
 cd deep
 ```
 
@@ -158,12 +166,7 @@ On Ubuntu/Debian:
 
 ```bash
 sudo apt-get update
-sudo apt-get install \
-  build-essential \
-  cmake \
-  libboost-dev \
-  unzip \
-  curl
+sudo apt-get install build-essential cmake libboost-dev unzip curl
 ```
 
 On macOS, first install the Xcode Command Line Tools:
@@ -186,120 +189,93 @@ Alternatively, on either supported platform:
 
 ### Build
 
-Release build:
+For a standard Release build:
 
 ```bash
 ./build.sh
 ```
 
-Debug build:
-
-```bash
-./build.sh debug
-```
-
-Build with neural-network support:
-
-```bash
-./build.sh nn
-```
-
-Debug build with neural-network support:
-
-```bash
-./build.sh debug nn
-```
-
-Optional correctness verification can be enabled with:
-
-```bash
-./build.sh verify
-```
-
-For Linux/NVIDIA GPU inference:
-
-```bash
-./build.sh nn use_gpu
-```
-
-See all build options with:
-
-```bash
-./build.sh -h
-```
-
-The executable is generated under the corresponding build directory, for example:
+This produces:
 
 ```text
 cmake-build-release/bin/deep
 ```
 
+Useful variants:
+
+| Command | Use when you want... |
+| --- | --- |
+| `./build.sh` | build the default Release binary |
+| `./build.sh debug` | build with Debug flags |
+| `./build.sh nn` | enable ONNX Runtime / neural-network support |
+| `./build.sh debug nn` | combine Debug and neural-network support |
+| `./build.sh verify` | enable extra correctness checks |
+| `./build.sh install_all` | install required system packages first |
+| `./build.sh nn use_gpu` | use CUDA-backed ONNX Runtime on Linux/NVIDIA |
+| `./build.sh -h` | print the full build-script help |
+
+Build flags are unordered, so combinations such as `./build.sh install_all debug nn` are valid.
+
+Output directories follow the selected mode:
+
+- Release: `cmake-build-release/`
+- Debug: `cmake-build-debug/`
+- Release + `nn`: `cmake-build-release-nn/`
+- Debug + `nn`: `cmake-build-debug-nn/`
+
 ---
 
 ## Running deep
 
-The basic interface is:
+The core interface is:
 
 ```text
 deep <domain.epddl> <problem.epddl> [options]
 ```
 
-For example:
+Minimal example:
 
 ```bash
-./cmake-build-release/bin/deep \
-  path/to/domain.epddl \
-  path/to/problem.epddl
+./cmake-build-release/bin/deep path/to/domain.epddl path/to/problem.epddl
 ```
 
-### Action libraries
+### Common patterns
 
-When the task uses one or more action libraries, provide each path with
-`--act_lib`:
+| Goal | Command pattern |
+| --- | --- |
+| Plan with no libraries | `./cmake-build-release/bin/deep DOMAIN.epddl PROBLEM.epddl` |
+| Plan with one library | `./cmake-build-release/bin/deep DOMAIN.epddl PROBLEM.epddl --act_lib LIBRARY.epddl` |
+| Plan with multiple libraries | `./cmake-build-release/bin/deep DOMAIN.epddl PROBLEM.epddl --act_lib LIB_A.epddl --act_lib LIB_B.epddl` |
+| Enable visited-state checking | add `-c` |
+| Enable bisimulation | add `-b` |
+| Use a specific search | add `-s BFS`, `-s DFS`, `-s HFS`, or `-s Astar` |
+| Use SUBGOALS with heuristic search | add `-u SUBGOALS` |
+| Execute a known action sequence | add `-e -a action1 action2 ...` |
+
+### Example commands
+
+Planning with a library:
 
 ```bash
-./cmake-build-release/bin/deep \
-  path/to/domain.epddl \
-  path/to/problem.epddl \
-  --act_lib path/to/library_a.epddl \
-  --act_lib path/to/library_b.epddl
+./cmake-build-release/bin/deep DOMAIN.epddl PROBLEM.epddl --act_lib LIBRARY.epddl
 ```
 
-### Common configurations
-
-Default search:
+Planning with visited-state checking and bisimulation:
 
 ```bash
-./cmake-build-release/bin/deep \
-  DOMAIN.epddl \
-  PROBLEM.epddl \
-  --act_lib LIBRARY.epddl
+./cmake-build-release/bin/deep DOMAIN.epddl PROBLEM.epddl --act_lib LIBRARY.epddl -c -b
 ```
 
-With visited-state checking:
+Heuristic search with SUBGOALS:
 
 ```bash
-./cmake-build-release/bin/deep \
-  DOMAIN.epddl \
-  PROBLEM.epddl \
-  --act_lib LIBRARY.epddl \
-  -c
+./cmake-build-release/bin/deep DOMAIN.epddl PROBLEM.epddl --act_lib LIBRARY.epddl -s Astar -u SUBGOALS
 ```
 
-With visited-state checking and bisimulation:
+Direct plan execution:
 
 ```bash
-./cmake-build-release/bin/deep \
-  DOMAIN.epddl \
-  PROBLEM.epddl \
-  --act_lib LIBRARY.epddl \
-  -c -b
-```
-
-For all search strategies, heuristics, and configuration options:
-
-```bash
-./cmake-build-release/bin/deep -h
+./cmake-build-release/bin/deep DOMAIN.epddl PROBLEM.epddl --act_lib LIBRARY.epddl -e -a open_A peek_A
 ```
 
 ### CI smoke tests
@@ -315,8 +291,13 @@ The execution workflow validates the modern interface against
 Run the same smoke tests locally with:
 
 ```bash
-./utils/smoke_test.sh \
-  cmake-build-release/bin/deep
+./utils/smoke_test.sh cmake-build-release/bin/deep
+```
+
+For the complete CLI reference:
+
+```bash
+./cmake-build-release/bin/deep -h
 ```
 
 ---
@@ -342,19 +323,13 @@ git submodule update --init --recursive
 Inspect the available instances with:
 
 ```bash
-find exp/ipc2026-benchmarks \
-  -type f \
-  \( -name '*.epddl' -o -name '*.pddl' \) \
-  | head -50
+find exp/ipc2026-benchmarks -type f \( -name '*.epddl' -o -name '*.pddl' \) | head -50
 ```
 
 A benchmark can then be run as:
 
 ```bash
-./cmake-build-release/bin/deep \
-  exp/ipc2026-benchmarks/<benchmark>/domain.epddl \
-  exp/ipc2026-benchmarks/<benchmark>/problems/<problem>.epddl \
-  --act_lib exp/ipc2026-benchmarks/<benchmark>/<library>.epddl
+./cmake-build-release/bin/deep exp/ipc2026-benchmarks/<benchmark>/domain.epddl exp/ipc2026-benchmarks/<benchmark>/problems/<problem>.epddl --act_lib exp/ipc2026-benchmarks/<benchmark>/<library>.epddl
 ```
 
 Use the actual domain, problem, and library filenames contained in the checked-out benchmark revision.
