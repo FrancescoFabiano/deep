@@ -1,0 +1,1 @@
+mode=separated;strict=yes;discard=0.6;depth_map=CC:25,SC:40,SC_R:40,SCRich:40,Grapevine:25,Assemble:25,CoinBox:25,Coin_in_the_Box:25;max_creation=50000;max_generation=50000;seed=42;generation=BFS,DFS,HFS,S_DFS;heuristics=SUBGOALS

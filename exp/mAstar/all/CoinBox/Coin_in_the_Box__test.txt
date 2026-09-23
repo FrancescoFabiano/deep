@@ -1,0 +1,79 @@
+%%% Executed actions: open_a peek_a %%%
+
+fluent tail, opened;
+
+action open_a, open_ac, open_b ,open_c;
+action close_a, close_aa, close_b, close_c;
+action peek_a, peek_b, peek_c;
+
+agent a,b,c; % ,d;
+
+
+
+executable open_a if B(a,-opened);
+open_a causes opened;
+a observes open_a;
+b observes open_a;
+
+executable open_ac if B(a,-opened);
+open_ac causes opened;
+a observes open_ac;
+c observes open_ac;
+
+executable close_a if B(a,opened);
+close_a causes -opened;
+a observes close_a;
+
+executable close_aa if B(a,opened);
+close_aa causes -opened;
+a observes close_aa;
+
+executable open_b if B(b,-opened);
+open_b causes opened;
+a observes open_b;
+b observes open_b;
+
+executable close_b if B(b,opened);
+close_b causes -opened;
+b observes close_b;
+c observes close_b;
+
+executable open_c if B(c,-opened);
+open_c causes opened;
+% a observes open_c if looking_a;
+% b observes open_c if looking_b;
+c observes open_c;
+b observes open_c;
+
+executable close_c if B(c,opened);
+close_c causes -opened;
+% a observes close_c;
+c observes close_c;
+
+
+executable peek_a if B(a,opened), opened;
+peek_a determines tail;
+b aware_of peek_a;
+c aware_of peek_a;
+% d aware_of peek_a;
+a observes peek_a;
+
+executable peek_b if B(b,opened), opened;
+peek_b determines tail;
+a aware_of peek_b;
+c aware_of peek_b;
+% d aware_of peek_b;
+b observes peek_b;
+
+executable peek_c if B(c,opened), opened;
+peek_c determines tail;
+% a aware_of peek_c;
+b aware_of peek_c;
+% d aware_of peek_c;
+c observes peek_c;
+
+initially C([a,b,c],-opened);
+initially tail, -opened;
+
+% 2 actions
+goal B(a,tail);

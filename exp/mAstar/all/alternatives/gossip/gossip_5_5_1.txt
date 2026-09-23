@@ -1,0 +1,114 @@
+fluent s_0, s_1, s_2, s_3, s_4;
+action tell_0_1, tell_0_2, tell_0_3, tell_0_4, tell_1_0, tell_1_2, tell_1_3, tell_1_4, tell_2_0, tell_2_1, tell_2_3, tell_2_4, tell_3_0, tell_3_1, tell_3_2, tell_3_4, tell_4_0, tell_4_1, tell_4_2, tell_4_3;
+agent ag_0, ag_1, ag_2, ag_3, ag_4;
+
+
+executable tell_0_1 if  ( - B( ag_1 , s_0 )  )  ;
+tell_0_1 announces s_0 ;
+ag_0 observes tell_0_1;
+ag_1 observes tell_0_1;
+
+executable tell_0_2 if  ( - B( ag_2 , s_0 )  )  ;
+tell_0_2 announces s_0 ;
+ag_0 observes tell_0_2;
+ag_2 observes tell_0_2;
+
+executable tell_0_3 if  ( - B( ag_3 , s_0 )  )  ;
+tell_0_3 announces s_0 ;
+ag_0 observes tell_0_3;
+ag_3 observes tell_0_3;
+
+executable tell_0_4 if  ( - B( ag_4 , s_0 )  )  ;
+tell_0_4 announces s_0 ;
+ag_0 observes tell_0_4;
+ag_4 observes tell_0_4;
+
+executable tell_1_0 if  ( - B( ag_0 , s_1 )  )  ;
+tell_1_0 announces s_1 ;
+ag_1 observes tell_1_0;
+ag_0 observes tell_1_0;
+
+executable tell_1_2 if  ( - B( ag_2 , s_1 )  )  ;
+tell_1_2 announces s_1 ;
+ag_1 observes tell_1_2;
+ag_2 observes tell_1_2;
+
+executable tell_1_3 if  ( - B( ag_3 , s_1 )  )  ;
+tell_1_3 announces s_1 ;
+ag_1 observes tell_1_3;
+ag_3 observes tell_1_3;
+
+executable tell_1_4 if  ( - B( ag_4 , s_1 )  )  ;
+tell_1_4 announces s_1 ;
+ag_1 observes tell_1_4;
+ag_4 observes tell_1_4;
+
+executable tell_2_0 if  ( - B( ag_0 , s_2 )  )  ;
+tell_2_0 announces s_2 ;
+ag_2 observes tell_2_0;
+ag_0 observes tell_2_0;
+
+executable tell_2_1 if  ( - B( ag_1 , s_2 )  )  ;
+tell_2_1 announces s_2 ;
+ag_2 observes tell_2_1;
+ag_1 observes tell_2_1;
+
+executable tell_2_3 if  ( - B( ag_3 , s_2 )  )  ;
+tell_2_3 announces s_2 ;
+ag_2 observes tell_2_3;
+ag_3 observes tell_2_3;
+
+executable tell_2_4 if  ( - B( ag_4 , s_2 )  )  ;
+tell_2_4 announces s_2 ;
+ag_2 observes tell_2_4;
+ag_4 observes tell_2_4;
+
+executable tell_3_0 if  ( - B( ag_0 , s_3 )  )  ;
+tell_3_0 announces s_3 ;
+ag_3 observes tell_3_0;
+ag_0 observes tell_3_0;
+
+executable tell_3_1 if  ( - B( ag_1 , s_3 )  )  ;
+tell_3_1 announces s_3 ;
+ag_3 observes tell_3_1;
+ag_1 observes tell_3_1;
+
+executable tell_3_2 if  ( - B( ag_2 , s_3 )  )  ;
+tell_3_2 announces s_3 ;
+ag_3 observes tell_3_2;
+ag_2 observes tell_3_2;
+
+executable tell_3_4 if  ( - B( ag_4 , s_3 )  )  ;
+tell_3_4 announces s_3 ;
+ag_3 observes tell_3_4;
+ag_4 observes tell_3_4;
+
+executable tell_4_0 if  ( - B( ag_0 , s_4 )  )  ;
+tell_4_0 announces s_4 ;
+ag_4 observes tell_4_0;
+ag_0 observes tell_4_0;
+
+executable tell_4_1 if  ( - B( ag_1 , s_4 )  )  ;
+tell_4_1 announces s_4 ;
+ag_4 observes tell_4_1;
+ag_1 observes tell_4_1;
+
+executable tell_4_2 if  ( - B( ag_2 , s_4 )  )  ;
+tell_4_2 announces s_4 ;
+ag_4 observes tell_4_2;
+ag_2 observes tell_4_2;
+
+executable tell_4_3 if  ( - B( ag_3 , s_4 )  )  ;
+tell_4_3 announces s_4 ;
+ag_4 observes tell_4_3;
+ag_3 observes tell_4_3;
+
+
+initially s_0, s_1, s_2, s_3, s_4;
+initially C([ag_0, ag_1, ag_2, ag_3, ag_4], ( ( B( ag_0 , s_0 ) ) | ( B( ag_0 , (-s_0 ) ) ) ) );
+initially C([ag_0, ag_1, ag_2, ag_3, ag_4], ( ( B( ag_1 , s_1 ) ) | ( B( ag_1 , (-s_1 ) ) ) ) );
+initially C([ag_0, ag_1, ag_2, ag_3, ag_4], ( ( B( ag_2 , s_2 ) ) | ( B( ag_2 , (-s_2 ) ) ) ) );
+initially C([ag_0, ag_1, ag_2, ag_3, ag_4], ( ( B( ag_3 , s_3 ) ) | ( B( ag_3 , (-s_3 ) ) ) ) );
+initially C([ag_0, ag_1, ag_2, ag_3, ag_4], ( ( B( ag_4 , s_4 ) ) | ( B( ag_4 , (-s_4 ) ) ) ) );
+
+goal  (  B( ag_0 ,  ( s_0 , s_1 )  )  ,  B( ag_1 ,  ( s_0 , s_1 )  )  ) ;
