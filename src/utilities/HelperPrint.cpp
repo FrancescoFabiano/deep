@@ -191,13 +191,13 @@ void HelperPrint::print_belief_formula(const BeliefFormula &to_print) const {
       print_belief_formula(to_print.get_bf2());
     }
     break;
-    case BeliefFormulaType::TRUE_FORMULA:
-      os << "true";
-      break;
+  case BeliefFormulaType::TRUE_FORMULA:
+    os << "true";
+    break;
 
-    case BeliefFormulaType::FALSE_FORMULA:
-      os << "false";
-      break;
+  case BeliefFormulaType::FALSE_FORMULA:
+    os << "false";
+    break;
   case BeliefFormulaType::BF_EMPTY:
     os << "Empty\n";
     break;
@@ -296,7 +296,8 @@ void HelperPrint::print_state(const KripkeState &kstate) const {
 void HelperPrint::print_dot_format(const KripkeState &kstate,
                                    std::ofstream &ofs) const {
   auto &worlds = kstate.get_worlds();
-const auto &designated_worlds = kstate.get_designated_worlds();  ofs << "digraph K {" << std::endl;
+  const auto &designated_worlds = kstate.get_designated_worlds();
+  ofs << "digraph K {" << std::endl;
   ofs << "\n\trankdir=BT;" << std::endl;
 
   ofs << "\n\t//WORLDS List:" << std::endl;
@@ -309,9 +310,7 @@ const auto &designated_worlds = kstate.get_designated_worlds();  ofs << "digraph
 
   for (const auto &world_ptr : worlds) {
     ofs << "\tnode [shape = "
-        << (designated_worlds.contains(world_ptr)
-                ? "doublecircle"
-                : "circle")
+        << (designated_worlds.contains(world_ptr) ? "doublecircle" : "circle")
         << "] ";
     const auto &tmp_fs = world_ptr.get_fluent_based_id();
     if (!map_world_to_index.contains(tmp_fs)) {
@@ -605,16 +604,11 @@ void HelperPrint::print_dataset_format(const KripkeState &kstate,
     ofs << training_dataset->get_goal_string();
 
     for (const auto &designated_world : kstate.get_designated_worlds()) {
-      const auto designated_hash =
-          designated_world.get_id_casted();
+      const auto designated_hash = designated_world.get_id_casted();
 
-      ofs << "  "
-          << training_dataset->get_epsilon_node_id_string()
-          << " -> "
-          << world_map.at(designated_hash)
-          << " [label=\""
-          << training_dataset->get_to_state_edge_id_string()
-          << "\"];"
+      ofs << "  " << training_dataset->get_epsilon_node_id_string() << " -> "
+          << world_map.at(designated_hash) << " [label=\""
+          << training_dataset->get_to_state_edge_id_string() << "\"];"
           << std::endl;
     }
   }

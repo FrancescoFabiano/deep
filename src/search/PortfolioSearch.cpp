@@ -311,8 +311,8 @@ void PortfolioSearch::set_default_configurations() {
   };
 
   // Order matters because -p N runs the first N configurations.
-  for (const std::size_t bis_interval : {std::size_t{2}, std::size_t{1},
-                                         std::size_t{5}}) {
+  for (const std::size_t bis_interval :
+       {std::size_t{2}, std::size_t{1}, std::size_t{5}}) {
     add_config("BFS", bis_interval);
     add_config("Astar", bis_interval, true);
     add_config("DFS", bis_interval);

@@ -50,32 +50,29 @@ void ArgumentParser::parse(int argc, char **argv) {
     // HelperPrint
 #include <filesystem>
 
-      if (m_log_enabled) {
-          const std::string domain_name =
-              std::filesystem::path(m_domain_file).stem().string();
+    if (m_log_enabled) {
+      const std::string domain_name =
+          std::filesystem::path(m_domain_file).stem().string();
 
-          const std::string problem_name =
-              std::filesystem::path(m_problem_file).stem().string();
+      const std::string problem_name =
+          std::filesystem::path(m_problem_file).stem().string();
 
-          const std::string log_input =
-              domain_name + "_" + problem_name;
+      const std::string log_input = domain_name + "_" + problem_name;
 
-          m_log_file_path =
-              HelperPrint::generate_log_file_path(log_input);
+      m_log_file_path = HelperPrint::generate_log_file_path(log_input);
 
-          m_log_ofstream.open(m_log_file_path);
+      m_log_ofstream.open(m_log_file_path);
 
-          if (!m_log_ofstream.is_open()) {
-              ExitHandler::exit_with_message(
-                  ExitHandler::ExitCode::ArgParseError,
-                  "Failed to open log file: " +
-                      m_log_file_path);
-          }
-
-          m_output_stream = &m_log_ofstream;
-      } else {
-          m_output_stream = &std::cout;
+      if (!m_log_ofstream.is_open()) {
+        ExitHandler::exit_with_message(ExitHandler::ExitCode::ArgParseError,
+                                       "Failed to open log file: " +
+                                           m_log_file_path);
       }
+
+      m_output_stream = &m_log_ofstream;
+    } else {
+      m_output_stream = &std::cout;
+    }
 
     // --- Dataset mode consistency check ---
     if (!m_dataset_mode &&
@@ -105,9 +102,8 @@ void ArgumentParser::parse(int argc, char **argv) {
     }
 
     // --- Heuristic consistency check ---
-    const bool dataset_hfs =
-        m_dataset_mode &&
-        m_dataset_generation_type == DatasetGenerationType::HFS;
+    const bool dataset_hfs = m_dataset_mode && m_dataset_generation_type ==
+                                                   DatasetGenerationType::HFS;
 
     if (m_search_strategy != "HFS" && m_search_strategy != "Astar" &&
         m_search_strategy != "RL" && !dataset_hfs &&
@@ -155,7 +151,7 @@ void ArgumentParser::parse(int argc, char **argv) {
         }
       }
     }
-      
+
     // --- Threads per search and portfolio threads informative message ---
     if (m_threads_per_search > 1 && m_portfolio_threads > 1) {
       get_output_stream() << "[INFO] Both multithreaded search and portfolio "
@@ -182,28 +178,20 @@ void ArgumentParser::parse(int argc, char **argv) {
                     "Details:\n  ") +
             e.what() + ExitHandler::arg_parse_suggestion.data());
   }
-
-
 }
 
 ArgumentParser::ArgumentParser() : app("deep") {
-    app.add_option(
-      "domain_file",
-      m_domain_file,
-      "Specify the EPDDL domain file.")
+  app.add_option("domain_file", m_domain_file, "Specify the EPDDL domain file.")
       ->required();
 
-    app.add_option(
-        "problem_file",
-        m_problem_file,
-        "Specify the EPDDL problem file.")
-        ->required();
+  app.add_option("problem_file", m_problem_file,
+                 "Specify the EPDDL problem file.")
+      ->required();
 
-    app.add_option(
-    "--act_lib",
-    m_library_files,
-    "Specify a grounded EPDDL action library path processed through Plank. "
-    "Can be provided multiple times.");
+  app.add_option(
+      "--act_lib", m_library_files,
+      "Specify a grounded EPDDL action library path processed through Plank. "
+      "Can be provided multiple times.");
 
   // Debug/logging group
   auto *debug_group = app.add_option_group("Debug/Logging");
@@ -226,17 +214,18 @@ ArgumentParser::ArgumentParser() : app("deep") {
       "Activate epistemic-state reduction through bisimulation. Use this to "
       "reduce the state space by merging bisimilar states.");
   bis_group
-      ->add_option("--bisimulation_type", m_bisimulation_type,
-                   "Specify the algorithm for bisimulation contraction "
-                   "(requires --bisimulation). Options: 'FB' (Fast Bisimulation, "
-                   "default) or 'PT' (Paige and Tarjan).")
+      ->add_option(
+          "--bisimulation_type", m_bisimulation_type,
+          "Specify the algorithm for bisimulation contraction "
+          "(requires --bisimulation). Options: 'FB' (Fast Bisimulation, "
+          "default) or 'PT' (Paige and Tarjan).")
       ->check(CLI::IsMember({"FB", "PT"}))
       ->default_val("FB");
-    bis_group->add_option(
-    "--bisimulation-interval",
-    m_bisimulation_interval,
-    "Apply bisimulation contraction every N search-depth levels (0 means no contraction is ever applied)")
-    ->default_val(2);
+  bis_group
+      ->add_option("--bisimulation-interval", m_bisimulation_interval,
+                   "Apply bisimulation contraction every N search-depth levels "
+                   "(0 means no contraction is ever applied)")
+      ->default_val(2);
 
   // Dataset group
   auto *dataset_group = app.add_option_group("Dataset");
@@ -277,7 +266,8 @@ ArgumentParser::ArgumentParser() : app("deep") {
           "Specify the search strategy used for dataset generation. "
           "Options: BFS (Breadth First Search), DFS (Depth First Search), "
           "S_DFS (Stochastic Depth First Search), or HFS (Heuristic First "
-          "Search). When HFS is selected, --heuristics specifies the heuristic.")
+          "Search). When HFS is selected, --heuristics specifies the "
+          "heuristic.")
       ->check(CLI::IsMember({"BFS", "DFS", "S_DFS", "HFS"}))
       ->default_val("S_DFS");
   dataset_group->add_flag("--dataset_separated", m_dataset_separated,
@@ -389,25 +379,23 @@ ArgumentParser::ArgumentParser() : app("deep") {
                    "as negative seeds are not accepted.")
       ->default_val("94");
 
-    search_group->add_flag(
-    "--fast-world-comparison",
-    m_fast_world_comparison,
-    "Use KripkeWorldPointer IDs only for world comparison, skipping the "
-    "structural collision fallback (might not be complete).");
+  search_group->add_flag(
+      "--fast-world-comparison", m_fast_world_comparison,
+      "Use KripkeWorldPointer IDs only for world comparison, skipping the "
+      "structural collision fallback (might not be complete).");
 
-    search_group->add_flag(
-        "--fast-state-comparison",
-        m_fast_state_comparison,
-        "Use state hashes only for state comparison, skipping the "
-        "structural collision fallback (might not be complete).");
+  search_group->add_flag(
+      "--fast-state-comparison", m_fast_state_comparison,
+      "Use state hashes only for state comparison, skipping the "
+      "structural collision fallback (might not be complete).");
 
-    search_group->add_flag_function(
-        "--fast-comparison",
-        [this](std::int64_t) {
-          m_fast_world_comparison = true;
-          m_fast_state_comparison = true;
-        },
-        "Enable both --fast-world-comparison and --fast-state-comparison.");
+  search_group->add_flag_function(
+      "--fast-comparison",
+      [this](std::int64_t) {
+        m_fast_world_comparison = true;
+        m_fast_state_comparison = true;
+      },
+      "Enable both --fast-world-comparison and --fast-state-comparison.");
 
   /*search_group->add_option("--search_threads", m_threads_per_search,
                             "Set the number of threads to use for each search
@@ -484,19 +472,17 @@ ArgumentParser::~ArgumentParser() {
   }
 }
 
-const std::string &
-ArgumentParser::get_domain_file() const noexcept {
-    return m_domain_file;
+const std::string &ArgumentParser::get_domain_file() const noexcept {
+  return m_domain_file;
 }
 
-const std::string &
-ArgumentParser::get_problem_file() const noexcept {
-    return m_problem_file;
+const std::string &ArgumentParser::get_problem_file() const noexcept {
+  return m_problem_file;
 }
 
 const std::vector<std::string> &
 ArgumentParser::get_library_files() const noexcept {
-    return m_library_files;
+  return m_library_files;
 }
 
 bool ArgumentParser::get_verbose() const noexcept { return m_verbose; }
@@ -504,7 +490,6 @@ bool ArgumentParser::get_verbose() const noexcept { return m_verbose; }
 bool ArgumentParser::get_check_visited() const noexcept {
   return m_check_visited;
 }
-
 
 bool ArgumentParser::get_bisimulation() const noexcept {
   return m_bisimulation;
@@ -514,9 +499,8 @@ const std::string &ArgumentParser::get_bisimulation_type() const noexcept {
   return m_bisimulation_type;
 }
 
-std::size_t
-ArgumentParser::get_bisimulation_interval() const noexcept {
-    return m_bisimulation_interval;
+std::size_t ArgumentParser::get_bisimulation_interval() const noexcept {
+  return m_bisimulation_interval;
 }
 
 bool ArgumentParser::get_dataset_mode() const noexcept {
@@ -565,7 +549,6 @@ void ArgumentParser::set_dataset_type() noexcept {
   }
 }
 
-
 void ArgumentParser::set_dataset_generation_type() noexcept {
   std::string value = m_dataset_generation_type_string;
 
@@ -583,8 +566,7 @@ void ArgumentParser::set_dataset_generation_type() noexcept {
   } else {
     ExitHandler::exit_with_message(
         ExitHandler::ExitCode::ArgParseError,
-        "Invalid dataset generation type: " +
-            m_dataset_generation_type_string +
+        "Invalid dataset generation type: " + m_dataset_generation_type_string +
             ". Expected one of: BFS, DFS, S_DFS, HFS." +
             std::string(ExitHandler::arg_parse_suggestion));
   }
@@ -634,7 +616,6 @@ int ArgumentParser::get_RL_exploitation_percentage() const noexcept {
   return m_RL_exploitation_percentage;
 }
 
-
 std::string ArgumentParser::get_RL_heur_selection() const noexcept {
   return m_RL_heur_selection;
 }
@@ -661,7 +642,6 @@ bool ArgumentParser::get_log_enabled() const noexcept { return m_log_enabled; }
 DatasetType ArgumentParser::get_dataset_type() const noexcept {
   return m_dataset_type;
 }
-
 
 DatasetGenerationType
 ArgumentParser::get_dataset_generation_type() const noexcept {
@@ -703,12 +683,14 @@ void ArgumentParser::print_usage() const {
             << " domain.epddl problem.epddl -s Astar --heuristics SUBGOALS\n";
   std::cout << "    Plan using heuristic 'SUBGOALS' and 'Astar' search\n\n";
   std::cout << "  " << prog_name
-            << " domain.epddl problem.epddl --act_lib library.epddl -e -a open_A peek_A\n";
+            << " domain.epddl problem.epddl --act_lib library.epddl -e -a "
+               "open_A peek_A\n";
   std::cout << "    Execute actions [open_A, peek_A] step by step\n\n";
   // std::cout << "  " << prog_name
   //           << " domain.epddl problem.epddl --threads_per_search 4\n";
   // std::cout << "    Run search with 4 threads per search strategy\n\n";
-  std::cout << "  " << prog_name << " domain.epddl problem.epddl --portfolio_threads 3\n";
+  std::cout << "  " << prog_name
+            << " domain.epddl problem.epddl --portfolio_threads 3\n";
   std::cout
       << "    Run 3 planner configurations in parallel (portfolio search)\n\n";
   // std::cout << "  " << prog_name

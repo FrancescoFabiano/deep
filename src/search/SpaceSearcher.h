@@ -159,7 +159,7 @@ private:
                                          const std::string &action_name,
                                          const State<StateRepr> &current,
                                          const std::string &dot_files_folder);
-  
+
   ///@}
 };
 

@@ -149,8 +149,7 @@ private:
   RefillMode m_refill_mode{RefillMode::HEURISTIC};
 
   std::vector<State<StateRepr>> m_reservoir;
-  std::size_t m_exploration_size =
-      Configuration::get_exploration_nodes();
+  std::size_t m_exploration_size = Configuration::get_exploration_nodes();
 
   std::mt19937_64 m_rng;
   int64_t m_seed{-1};

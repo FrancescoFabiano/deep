@@ -238,16 +238,12 @@ FringeTensor FringeEvalRL<StateRepr>::fringe_to_tensor_minimal(
                                         static_cast<int64_t>(number_of_nodes),
                                         static_cast<int64_t>(state_number));
 
+    const auto &state_pointed_ids = state_tensor.pointed_ids;
 
-      const auto &state_pointed_ids =
-    state_tensor.pointed_ids;
+    for (const auto pointed_id : state_pointed_ids) {
 
-      for (const auto pointed_id :
-           state_pointed_ids) {
-
-          fringe_tensor_ret.pointed_ids.push_back(
-              pointed_id + node_offset);
-           }
+      fringe_tensor_ret.pointed_ids.push_back(pointed_id + node_offset);
+    }
 
     const auto state_edges_src = state_tensor.edge_src;
     const auto state_edges_dst = state_tensor.edge_dst;
@@ -271,12 +267,11 @@ FringeTensor FringeEvalRL<StateRepr>::fringe_to_tensor_minimal(
 }
 
 template <StateRepresentation StateRepr>
-std::vector<float> FringeEvalRL<StateRepr>::get_score(
-    const std::vector<State<StateRepr>> &states,
-    std::vector<float> *raw_scores) {
+std::vector<float>
+FringeEvalRL<StateRepr>::get_score(const std::vector<State<StateRepr>> &states,
+                                   std::vector<float> *raw_scores) {
 
-  const auto fringe_tensor =
-      fringe_to_tensor_minimal(states);
+  const auto fringe_tensor = fringe_to_tensor_minimal(states);
 
   if (!m_model_loaded) {
     ExitHandler::exit_with_message(
@@ -287,100 +282,68 @@ std::vector<float> FringeEvalRL<StateRepr>::get_score(
   auto &session = *m_session;
   const auto &memory_info = *m_memory_info;
 
-  const size_t num_edges =
-      fringe_tensor.edge_src.size();
-
+  const size_t num_edges = fringe_tensor.edge_src.size();
 
   // --------------------------------------------------------------------------
   // Node IDs
   // --------------------------------------------------------------------------
 
-  std::vector<int64_t> node_ids(
-      fringe_tensor.real_node_ids.begin(),
-      fringe_tensor.real_node_ids.end());
+  std::vector<int64_t> node_ids(fringe_tensor.real_node_ids.begin(),
+                                fringe_tensor.real_node_ids.end());
 
   const std::array<int64_t, 1> node_ids_shape{
       static_cast<int64_t>(node_ids.size())};
 
-  Ort::Value node_ids_tensor =
-      Ort::Value::CreateTensor<int64_t>(
-          memory_info,
-          node_ids.data(),
-          node_ids.size(),
-          node_ids_shape.data(),
-          node_ids_shape.size());
-
+  Ort::Value node_ids_tensor = Ort::Value::CreateTensor<int64_t>(
+      memory_info, node_ids.data(), node_ids.size(), node_ids_shape.data(),
+      node_ids_shape.size());
 
   // --------------------------------------------------------------------------
   // Pointed/designated node IDs
   // --------------------------------------------------------------------------
 
-  std::vector<int64_t> pointed_ids(
-      fringe_tensor.pointed_ids.begin(),
-      fringe_tensor.pointed_ids.end());
+  std::vector<int64_t> pointed_ids(fringe_tensor.pointed_ids.begin(),
+                                   fringe_tensor.pointed_ids.end());
 
   const std::array<int64_t, 1> pointed_ids_shape{
       static_cast<int64_t>(pointed_ids.size())};
 
-  Ort::Value pointed_ids_tensor =
-      Ort::Value::CreateTensor<int64_t>(
-          memory_info,
-          pointed_ids.data(),
-          pointed_ids.size(),
-          pointed_ids_shape.data(),
-          pointed_ids_shape.size());
-
+  Ort::Value pointed_ids_tensor = Ort::Value::CreateTensor<int64_t>(
+      memory_info, pointed_ids.data(), pointed_ids.size(),
+      pointed_ids_shape.data(), pointed_ids_shape.size());
 
   // --------------------------------------------------------------------------
   // Edge index
   // --------------------------------------------------------------------------
 
-  std::vector<int64_t> edge_index_data(
-      2 * num_edges);
+  std::vector<int64_t> edge_index_data(2 * num_edges);
 
-  for (size_t i = 0;
-       i < num_edges;
-       ++i) {
+  for (size_t i = 0; i < num_edges; ++i) {
 
-    edge_index_data[i] =
-        fringe_tensor.edge_src[i];
+    edge_index_data[i] = fringe_tensor.edge_src[i];
 
-    edge_index_data[num_edges + i] =
-        fringe_tensor.edge_dst[i];
+    edge_index_data[num_edges + i] = fringe_tensor.edge_dst[i];
   }
 
   const std::array<int64_t, 2> edge_index_shape{
-      2,
-      static_cast<int64_t>(num_edges)};
+      2, static_cast<int64_t>(num_edges)};
 
-  Ort::Value edge_index_tensor =
-      Ort::Value::CreateTensor<int64_t>(
-          memory_info,
-          edge_index_data.data(),
-          edge_index_data.size(),
-          edge_index_shape.data(),
-          edge_index_shape.size());
-
+  Ort::Value edge_index_tensor = Ort::Value::CreateTensor<int64_t>(
+      memory_info, edge_index_data.data(), edge_index_data.size(),
+      edge_index_shape.data(), edge_index_shape.size());
 
   // --------------------------------------------------------------------------
   // Edge attributes
   // --------------------------------------------------------------------------
 
-  std::vector<int64_t> edge_attrs(
-      fringe_tensor.edge_attrs.begin(),
-      fringe_tensor.edge_attrs.end());
+  std::vector<int64_t> edge_attrs(fringe_tensor.edge_attrs.begin(),
+                                  fringe_tensor.edge_attrs.end());
 
-  const std::array<int64_t, 1> edge_attr_shape{
-      static_cast<int64_t>(num_edges)};
+  const std::array<int64_t, 1> edge_attr_shape{static_cast<int64_t>(num_edges)};
 
-  Ort::Value edge_attr_tensor =
-      Ort::Value::CreateTensor<int64_t>(
-          memory_info,
-          edge_attrs.data(),
-          edge_attrs.size(),
-          edge_attr_shape.data(),
-          edge_attr_shape.size());
-
+  Ort::Value edge_attr_tensor = Ort::Value::CreateTensor<int64_t>(
+      memory_info, edge_attrs.data(), edge_attrs.size(), edge_attr_shape.data(),
+      edge_attr_shape.size());
 
   // --------------------------------------------------------------------------
   // Membership
@@ -389,41 +352,29 @@ std::vector<float> FringeEvalRL<StateRepr>::get_score(
   // node belongs.
   // --------------------------------------------------------------------------
 
-  std::vector<int64_t> membership(
-      fringe_tensor.membership.begin(),
-      fringe_tensor.membership.end());
+  std::vector<int64_t> membership(fringe_tensor.membership.begin(),
+                                  fringe_tensor.membership.end());
 
   const std::array<int64_t, 1> membership_shape{
       static_cast<int64_t>(membership.size())};
 
-  Ort::Value membership_tensor =
-      Ort::Value::CreateTensor<int64_t>(
-          memory_info,
-          membership.data(),
-          membership.size(),
-          membership_shape.data(),
-          membership_shape.size());
-
+  Ort::Value membership_tensor = Ort::Value::CreateTensor<int64_t>(
+      memory_info, membership.data(), membership.size(),
+      membership_shape.data(), membership_shape.size());
 
   // --------------------------------------------------------------------------
   // Active states
   // --------------------------------------------------------------------------
 
-  std::vector<uint8_t> active_states(
-      fringe_tensor.active_states.begin(),
-      fringe_tensor.active_states.end());
+  std::vector<uint8_t> active_states(fringe_tensor.active_states.begin(),
+                                     fringe_tensor.active_states.end());
 
   const std::array<int64_t, 1> active_states_shape{
       static_cast<int64_t>(active_states.size())};
 
-  Ort::Value active_states_tensor =
-      Ort::Value::CreateTensor<uint8_t>(
-          memory_info,
-          active_states.data(),
-          active_states.size(),
-          active_states_shape.data(),
-          active_states_shape.size());
-
+  Ort::Value active_states_tensor = Ort::Value::CreateTensor<uint8_t>(
+      memory_info, active_states.data(), active_states.size(),
+      active_states_shape.data(), active_states_shape.size());
 
   /*
    * // Construct state_batch tensor
@@ -444,7 +395,6 @@ std::vector<float> FringeEvalRL<StateRepr>::get_score(
    *         state_batch_shape.size());
    */
 
-
   // --------------------------------------------------------------------------
   // Base model inputs
   //
@@ -458,145 +408,96 @@ std::vector<float> FringeEvalRL<StateRepr>::get_score(
 
   std::vector<Ort::Value> input_tensors;
 
-  input_tensors.emplace_back(
-      std::move(node_ids_tensor));
+  input_tensors.emplace_back(std::move(node_ids_tensor));
 
-  input_tensors.emplace_back(
-      std::move(edge_index_tensor));
+  input_tensors.emplace_back(std::move(edge_index_tensor));
 
-  input_tensors.emplace_back(
-      std::move(edge_attr_tensor));
+  input_tensors.emplace_back(std::move(edge_attr_tensor));
 
-  input_tensors.emplace_back(
-      std::move(membership_tensor));
+  input_tensors.emplace_back(std::move(membership_tensor));
 
-  input_tensors.emplace_back(
-      std::move(pointed_ids_tensor));
+  input_tensors.emplace_back(std::move(pointed_ids_tensor));
 
   // input_tensors.emplace_back(std::move(state_batch_tensor));
-
 
   // --------------------------------------------------------------------------
   // Optional separate goal tensor
   // --------------------------------------------------------------------------
 
-  if (ArgumentParser::get_instance()
-          .get_dataset_separated()) {
+  if (ArgumentParser::get_instance().get_dataset_separated()) {
 
     if (!m_goal_tensors_computed) {
 
       const auto goal_tensor =
-          GraphNN<StateRepr>::get_instance()
-              .get_goal_tensor();
+          GraphNN<StateRepr>::get_instance().get_goal_tensor();
 
-      m_real_node_ids_goal_data =
-          goal_tensor.real_node_ids;
+      m_real_node_ids_goal_data = goal_tensor.real_node_ids;
 
-      const size_t num_goal_edges =
-          goal_tensor.edge_src.size();
+      const size_t num_goal_edges = goal_tensor.edge_src.size();
 
-      m_edge_index_goal_data.resize(
-          2 * num_goal_edges);
+      m_edge_index_goal_data.resize(2 * num_goal_edges);
 
-      for (size_t i = 0;
-           i < num_goal_edges;
-           ++i) {
+      for (size_t i = 0; i < num_goal_edges; ++i) {
 
         m_edge_index_goal_data[i] =
-            static_cast<int64_t>(
-                goal_tensor.edge_src[i]);
+            static_cast<int64_t>(goal_tensor.edge_src[i]);
 
-        m_edge_index_goal_data[
-            num_goal_edges + i] =
-            static_cast<int64_t>(
-                goal_tensor.edge_dst[i]);
+        m_edge_index_goal_data[num_goal_edges + i] =
+            static_cast<int64_t>(goal_tensor.edge_dst[i]);
       }
 
-      m_edge_attrs_goal_data =
-          goal_tensor.edge_attrs;
+      m_edge_attrs_goal_data = goal_tensor.edge_attrs;
 
-      m_state_batch_goal_data.assign(
-          goal_tensor.real_node_ids.size(),
-          0);
+      m_state_batch_goal_data.assign(goal_tensor.real_node_ids.size(), 0);
 
-      m_goal_tensors_computed =
-          true;
+      m_goal_tensors_computed = true;
     }
-
 
     /*
      * Persistent member vectors provide the backing storage for
      * these Ort::Value tensors.
      */
 
-    std::vector<int64_t>
-        goal_real_node_ids_shape{
-            static_cast<int64_t>(
-                m_real_node_ids_goal_data.size())};
+    std::vector<int64_t> goal_real_node_ids_shape{
+        static_cast<int64_t>(m_real_node_ids_goal_data.size())};
 
-    std::vector<int64_t>
-        goal_edge_index_shape{
-            2,
-            static_cast<int64_t>(
-                m_edge_index_goal_data.size() / 2)};
+    std::vector<int64_t> goal_edge_index_shape{
+        2, static_cast<int64_t>(m_edge_index_goal_data.size() / 2)};
 
-    std::vector<int64_t>
-        goal_edge_attr_shape{
-            static_cast<int64_t>(
-                m_edge_attrs_goal_data.size())};
+    std::vector<int64_t> goal_edge_attr_shape{
+        static_cast<int64_t>(m_edge_attrs_goal_data.size())};
 
-    std::vector<int64_t>
-        goal_state_batch_shape{
-            static_cast<int64_t>(
-                m_state_batch_goal_data.size())};
+    std::vector<int64_t> goal_state_batch_shape{
+        static_cast<int64_t>(m_state_batch_goal_data.size())};
 
+    Ort::Value goal_real_node_ids_tensor = Ort::Value::CreateTensor<int64_t>(
+        *m_memory_info, m_real_node_ids_goal_data.data(),
+        m_real_node_ids_goal_data.size(), goal_real_node_ids_shape.data(),
+        goal_real_node_ids_shape.size());
 
-    Ort::Value goal_real_node_ids_tensor =
-        Ort::Value::CreateTensor<int64_t>(
-            *m_memory_info,
-            m_real_node_ids_goal_data.data(),
-            m_real_node_ids_goal_data.size(),
-            goal_real_node_ids_shape.data(),
-            goal_real_node_ids_shape.size());
+    Ort::Value goal_edge_index_tensor = Ort::Value::CreateTensor<int64_t>(
+        *m_memory_info, m_edge_index_goal_data.data(),
+        m_edge_index_goal_data.size(), goal_edge_index_shape.data(),
+        goal_edge_index_shape.size());
 
-    Ort::Value goal_edge_index_tensor =
-        Ort::Value::CreateTensor<int64_t>(
-            *m_memory_info,
-            m_edge_index_goal_data.data(),
-            m_edge_index_goal_data.size(),
-            goal_edge_index_shape.data(),
-            goal_edge_index_shape.size());
+    Ort::Value goal_edge_attr_tensor = Ort::Value::CreateTensor<int64_t>(
+        *m_memory_info, m_edge_attrs_goal_data.data(),
+        m_edge_attrs_goal_data.size(), goal_edge_attr_shape.data(),
+        goal_edge_attr_shape.size());
 
-    Ort::Value goal_edge_attr_tensor =
-        Ort::Value::CreateTensor<int64_t>(
-            *m_memory_info,
-            m_edge_attrs_goal_data.data(),
-            m_edge_attrs_goal_data.size(),
-            goal_edge_attr_shape.data(),
-            goal_edge_attr_shape.size());
+    Ort::Value goal_state_batch_tensor = Ort::Value::CreateTensor<int64_t>(
+        *m_memory_info, m_state_batch_goal_data.data(),
+        m_state_batch_goal_data.size(), goal_state_batch_shape.data(),
+        goal_state_batch_shape.size());
 
-    Ort::Value goal_state_batch_tensor =
-        Ort::Value::CreateTensor<int64_t>(
-            *m_memory_info,
-            m_state_batch_goal_data.data(),
-            m_state_batch_goal_data.size(),
-            goal_state_batch_shape.data(),
-            goal_state_batch_shape.size());
+    input_tensors.emplace_back(std::move(goal_real_node_ids_tensor));
 
+    input_tensors.emplace_back(std::move(goal_edge_index_tensor));
 
-    input_tensors.emplace_back(
-        std::move(goal_real_node_ids_tensor));
+    input_tensors.emplace_back(std::move(goal_edge_attr_tensor));
 
-    input_tensors.emplace_back(
-        std::move(goal_edge_index_tensor));
-
-    input_tensors.emplace_back(
-        std::move(goal_edge_attr_tensor));
-
-    input_tensors.emplace_back(
-        std::move(goal_state_batch_tensor));
+    input_tensors.emplace_back(std::move(goal_state_batch_tensor));
   }
-
 
   // --------------------------------------------------------------------------
   // Active-state mask
@@ -605,93 +506,61 @@ std::vector<float> FringeEvalRL<StateRepr>::get_score(
   // node/edge/membership/pointed_ids, optional goal_*, then mask.
   // --------------------------------------------------------------------------
 
-  input_tensors.emplace_back(
-      std::move(active_states_tensor));
+  input_tensors.emplace_back(std::move(active_states_tensor));
 
-
-  if (input_tensors.size() !=
-      m_input_names.size()) {
+  if (input_tensors.size() != m_input_names.size()) {
 
     ExitHandler::exit_with_message(
         ExitHandler::ExitCode::FringeEvalModelLoadError,
         "ONNX input count mismatch: model expects " +
             std::to_string(m_input_names.size()) +
             " input tensors but C++ prepared " +
-            std::to_string(input_tensors.size()) +
-            ".");
+            std::to_string(input_tensors.size()) + ".");
   }
-
 
   // --------------------------------------------------------------------------
   // Input/output names
   // --------------------------------------------------------------------------
 
-  std::vector<const char *>
-      input_names_cstr;
+  std::vector<const char *> input_names_cstr;
 
-  input_names_cstr.reserve(
-      m_input_names.size());
+  input_names_cstr.reserve(m_input_names.size());
 
-  for (const auto &name :
-       m_input_names) {
+  for (const auto &name : m_input_names) {
 
-    input_names_cstr.push_back(
-        name.c_str());
+    input_names_cstr.push_back(name.c_str());
   }
 
+  std::vector<const char *> output_names_cstr;
 
-  std::vector<const char *>
-      output_names_cstr;
+  output_names_cstr.reserve(m_output_names.size());
 
-  output_names_cstr.reserve(
-      m_output_names.size());
+  for (const auto &name : m_output_names) {
 
-  for (const auto &name :
-       m_output_names) {
-
-    output_names_cstr.push_back(
-        name.c_str());
+    output_names_cstr.push_back(name.c_str());
   }
-
 
   // --------------------------------------------------------------------------
   // Run inference
   // --------------------------------------------------------------------------
 
-  auto output_tensors =
-      session.Run(
-          Ort::RunOptions{nullptr},
-          input_names_cstr.data(),
-          input_tensors.data(),
-          input_tensors.size(),
-          output_names_cstr.data(),
-          output_names_cstr.size());
+  auto output_tensors = session.Run(
+      Ort::RunOptions{nullptr}, input_names_cstr.data(), input_tensors.data(),
+      input_tensors.size(), output_names_cstr.data(), output_names_cstr.size());
 
+  const float *output_data = output_tensors[0].template GetTensorData<float>();
 
-  const float *output_data =
-      output_tensors[0]
-          .template GetTensorData<float>();
-
-  const auto output_info =
-      output_tensors[0]
-          .GetTensorTypeAndShapeInfo();
+  const auto output_info = output_tensors[0].GetTensorTypeAndShapeInfo();
 
   (void)output_info;
 
-
   if (raw_scores != nullptr) {
 
-    raw_scores->assign(
-        output_data,
-        output_data + states.size());
+    raw_scores->assign(output_data, output_data + states.size());
   }
 
-
-  return rankScores(
-      output_data,
-      states.size());
+  return rankScores(output_data, states.size());
 }
-
 
 template <StateRepresentation StateRepr>
 std::vector<float> FringeEvalRL<StateRepr>::rankScores(const float *scores,

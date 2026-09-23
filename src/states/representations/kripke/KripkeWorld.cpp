@@ -20,14 +20,12 @@ KripkeWorld::KripkeWorld(const FluentsSet &description) {
   set_id();
 }
 
-KripkeWorld::KripkeWorld(
-    FluentsSet &&description) {
+KripkeWorld::KripkeWorld(FluentsSet &&description) {
 
   m_fast_comparison =
       ArgumentParser::get_instance().get_fast_world_comparison();
 
-  m_fluent_set =
-      std::move(description);
+  m_fluent_set = std::move(description);
 
   set_id();
 }
@@ -70,9 +68,7 @@ void KripkeWorld::set_fast_comparison(bool value) noexcept {
   m_fast_comparison = value;
 }
 
-bool KripkeWorld::get_fast_comparison() noexcept {
-  return m_fast_comparison;
-}
+bool KripkeWorld::get_fast_comparison() noexcept { return m_fast_comparison; }
 
 bool KripkeWorld::operator<(const KripkeWorld &to_compare) const noexcept {
   if (m_id != to_compare.m_id)
@@ -84,11 +80,9 @@ bool KripkeWorld::operator<(const KripkeWorld &to_compare) const noexcept {
   return m_fluent_set < to_compare.m_fluent_set;
 }
 
-bool KripkeWorld::operator==(
-    const KripkeWorld &to_compare) const noexcept {
+bool KripkeWorld::operator==(const KripkeWorld &to_compare) const noexcept {
 
-  return !(*this < to_compare) &&
-         !(to_compare < *this);
+  return !(*this < to_compare) && !(to_compare < *this);
 }
 
 KripkeWorld &KripkeWorld::operator=(const KripkeWorld &to_assign) {
@@ -281,8 +275,7 @@ bool KripkeWorldPointer::operator<(
 bool KripkeWorldPointer::operator==(
     const KripkeWorldPointer &to_compare) const noexcept {
 
-  return !(*this < to_compare) &&
-         !(to_compare < *this);
+  return !(*this < to_compare) && !(to_compare < *this);
 }
 
 bool KripkeWorldPointer::internal_smaller(
@@ -290,7 +283,6 @@ bool KripkeWorldPointer::internal_smaller(
 
   return *m_ptr < *to_compare.m_ptr;
 }
-
 
 bool KripkeWorldPointer::internal_equal(
     const KripkeWorldPointer &to_compare) const noexcept {

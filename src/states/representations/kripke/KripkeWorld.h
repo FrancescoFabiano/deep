@@ -66,7 +66,7 @@ public:
   static void set_fast_comparison(bool value) noexcept;
 
   [[nodiscard]]
-static bool get_fast_comparison() noexcept;
+  static bool get_fast_comparison() noexcept;
 
   ///@}
 
@@ -99,7 +99,7 @@ private:
   FluentsSet m_fluent_set;
   /** \brief The unique id of this world. */
   KripkeWorldId m_id = 0;
-inline static thread_local bool m_fast_comparison = false;  ///@}
+  inline static thread_local bool m_fast_comparison = false; ///@}
 
   /// \name Internal Methods
   ///@{
@@ -169,7 +169,6 @@ public:
    */
   explicit KripkeWorldPointer(std::shared_ptr<const KripkeWorld> &&ptr,
                               unsigned short repetition = 0);
-
 
   /**
    * \brief Copy constructor.

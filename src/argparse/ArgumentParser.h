@@ -124,17 +124,14 @@ public:
    */
   [[nodiscard]] const std::string &get_plan_file() const noexcept;
 
-    [[nodiscard]] const std::string &
-    get_domain_file() const noexcept;
+  [[nodiscard]] const std::string &get_domain_file() const noexcept;
 
-    [[nodiscard]] const std::string &
-    get_problem_file() const noexcept;
+  [[nodiscard]] const std::string &get_problem_file() const noexcept;
 
-    [[nodiscard]]
-    const std::vector<std::string> &
-    get_library_files() const noexcept;
+  [[nodiscard]]
+  const std::vector<std::string> &get_library_files() const noexcept;
 
-    /**
+  /**
    * \brief Retrieves the sequence of actions to execute.
    * \return A vector containing the actions to be executed.
    */
@@ -184,13 +181,11 @@ public:
    */
   [[nodiscard]] std::string get_RL_heur_selection() const noexcept;
 
-
   /**
    * \brief Return the type of encoding used for the information in states.
    * \return the DatasetType used to encode the labels in the GNN states.
    */
   [[nodiscard]] DatasetType get_dataset_type() const noexcept;
-
 
   /**
    * \brief Returns the search strategy used for dataset generation.
@@ -205,8 +200,7 @@ public:
    * heuristic selected through --heuristics.
    * \return The dataset generation strategy as a string.
    */
-  [[nodiscard]] std::string
-  get_dataset_generation_type_string() const noexcept;
+  [[nodiscard]] std::string get_dataset_generation_type_string() const noexcept;
 
   /**
    * \brief Gets the flag indicating if dataset entry point is the couple
@@ -262,15 +256,15 @@ public:
    */
   [[nodiscard]] const std::string &get_config_file() const noexcept;
 
-    [[nodiscard]]
-    bool get_fast_world_comparison() const noexcept {
-        return m_fast_world_comparison;
-    }
+  [[nodiscard]]
+  bool get_fast_world_comparison() const noexcept {
+    return m_fast_world_comparison;
+  }
 
-    [[nodiscard]]
-bool get_fast_state_comparison() const noexcept {
-        return m_fast_state_comparison;
-    }
+  [[nodiscard]]
+  bool get_fast_state_comparison() const noexcept {
+    return m_fast_state_comparison;
+  }
 
   /**
    * \brief Destructor. Closes the log file stream if open.
@@ -300,18 +294,18 @@ private:
   static ArgumentParser *instance; ///< Singleton instance of the class.
 
   // Option storage
-    std::string m_domain_file;
-    std::string m_problem_file;
-    std::vector<std::string> m_library_files;
+  std::string m_domain_file;
+  std::string m_problem_file;
+  std::vector<std::string> m_library_files;
   bool m_verbose = false;      ///< Verbose mode flag.
   bool m_bisimulation = false; ///< Bisimulation enabled flag.
   std::string m_bisimulation_type =
-      "FB";                     ///< Bisimulation type (FB by default).
-    std::size_t m_bisimulation_interval = 2;
+      "FB"; ///< Bisimulation type (FB by default).
+  std::size_t m_bisimulation_interval = 2;
 
-    bool m_check_visited = false; ///< Flag to check for visited states.
-  bool m_dataset_mode = false; ///< Flag to indicate dataset mode.
-  int m_dataset_depth = 10;    ///< Maximum depth for dataset generation.
+  bool m_check_visited = false; ///< Flag to check for visited states.
+  bool m_dataset_mode = false;  ///< Flag to indicate dataset mode.
+  int m_dataset_depth = 10;     ///< Maximum depth for dataset generation.
 
   int m_dataset_generation_threshold = 100000; ///< Node generation threshold
   int m_dataset_max_creation_threshold =
@@ -327,7 +321,6 @@ private:
                 ///< format.
   DatasetType m_dataset_type =
       DatasetType::HASHED; ///< Dataset node label type (HASHED by default).
-
 
   std::string m_dataset_generation_type_string =
       "S_DFS"; ///< Dataset generation strategy in string format.
@@ -406,8 +399,8 @@ private:
   int m_portfolio_threads = 1;    ///< Number of portfolio threads (default: 1).
   std::string m_config_file = ""; ///< Config file path.
 
-    bool m_fast_world_comparison = false;
-    bool m_fast_state_comparison = false;
+  bool m_fast_world_comparison = false;
+  bool m_fast_state_comparison = false;
 
   // Accessors private because they can be accessed only by friend class \ref
   // Configuration
@@ -424,10 +417,8 @@ private:
    */
   [[nodiscard]] const std::string &get_bisimulation_type() const noexcept;
 
-
-    [[nodiscard]]
-std::size_t get_bisimulation_interval() const noexcept;
-
+  [[nodiscard]]
+  std::size_t get_bisimulation_interval() const noexcept;
 
   /**
    * \brief Retrieves the heuristic to be used.
@@ -464,7 +455,6 @@ std::size_t get_bisimulation_interval() const noexcept;
    * \brief Sets the DatasetType from the input string.
    */
   void set_dataset_type() noexcept;
-
 
   /**
    * \brief Sets the DatasetGenerationType from the input string.

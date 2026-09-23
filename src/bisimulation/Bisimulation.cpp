@@ -1789,8 +1789,7 @@ BisAutomata Bisimulation::kstate_to_automaton(
     pworld_vec.push_back(world);
     vertex[idx].ne = 0;
 
-    const int internal_id =
-        static_cast<int>(world.get_internal_world_id());
+    const int internal_id = static_cast<int>(world.get_internal_world_id());
 
     const auto [compact_it, inserted] =
         compact_indices.emplace(internal_id, compact_id);
@@ -1800,8 +1799,7 @@ BisAutomata Bisimulation::kstate_to_automaton(
 
     // Preserve the world label/valuation using the same self-loop encoding
     // as before, shifted by one to leave room for designatedness.
-    label_map[world][world].insert(
-        world_label_offset + compact_it->second);
+    label_map[world][world].insert(world_label_offset + compact_it->second);
 
     if (designated_worlds.contains(world)) {
       label_map[world][world].insert(designated_label);
@@ -1863,17 +1861,14 @@ BisAutomata Bisimulation::kstate_to_automaton(
 }
 
 void Bisimulation::automaton_to_kstate(
-    const BisAutomata &a,
-    const VectorBisWrapper<KripkeWorldPointer> &world_vec,
-    const std::map<BisLabel, Agent> &label_to_agent,
-    KripkeState &kstate) {
+    const BisAutomata &a, const VectorBisWrapper<KripkeWorldPointer> &world_vec,
+    const std::map<BisLabel, Agent> &label_to_agent, KripkeState &kstate) {
   KripkeWorldPointersSet worlds;
   KripkeWorldPointersSet designated_worlds;
   kstate.clear_beliefs();
 
   const auto agents_size = Domain::get_instance().get_agents().size();
-  const BisLabel designated_label =
-      static_cast<BisLabel>(agents_size);
+  const BisLabel designated_label = static_cast<BisLabel>(agents_size);
 
   for (int i = 0; i < a.Nvertex; ++i) {
     if (a.Vertex[i].ne <= 0) {

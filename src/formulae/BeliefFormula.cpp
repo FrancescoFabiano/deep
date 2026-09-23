@@ -16,12 +16,9 @@ void BeliefFormula::set_from_ff(const FluentFormula &to_build) {
   set_fluent_formula(to_build);
 }
 
-BeliefFormula::BeliefFormula(const BeliefFormula &to_copy) {
-  *this = to_copy;
-}
+BeliefFormula::BeliefFormula(const BeliefFormula &to_copy) { *this = to_copy; }
 
-void BeliefFormula::set_formula_type(
-    const BeliefFormulaType to_set) {
+void BeliefFormula::set_formula_type(const BeliefFormulaType to_set) {
   m_formula_type = to_set;
 }
 
@@ -37,8 +34,7 @@ BeliefFormulaType BeliefFormula::get_formula_type() const noexcept {
   return m_formula_type;
 }
 
-void BeliefFormula::set_fluent_formula(
-    const FluentFormula &to_set) {
+void BeliefFormula::set_fluent_formula(const FluentFormula &to_set) {
 
   if (to_set.empty()) {
     ExitHandler::exit_with_message(
@@ -50,8 +46,7 @@ void BeliefFormula::set_fluent_formula(
   m_fluent_formula = to_set;
 }
 
-void BeliefFormula::set_fluent_formula_from_fluent(
-    const Fluent &to_set) {
+void BeliefFormula::set_fluent_formula_from_fluent(const Fluent &to_set) {
 
   FluentsSet tmp;
   tmp.insert(to_set);
@@ -60,8 +55,7 @@ void BeliefFormula::set_fluent_formula_from_fluent(
 }
 
 [[nodiscard]]
-const FluentFormula &
-BeliefFormula::get_fluent_formula() const noexcept {
+const FluentFormula &BeliefFormula::get_fluent_formula() const noexcept {
 
   if (m_fluent_formula.empty()) {
     ExitHandler::exit_with_message(
@@ -73,9 +67,7 @@ BeliefFormula::get_fluent_formula() const noexcept {
   return m_fluent_formula;
 }
 
-void BeliefFormula::set_agent(const Agent &to_set) {
-  m_agent = to_set;
-}
+void BeliefFormula::set_agent(const Agent &to_set) { m_agent = to_set; }
 
 [[nodiscard]]
 const Agent &BeliefFormula::get_agent() const noexcept {
@@ -106,18 +98,14 @@ const BeliefFormula &BeliefFormula::get_bf2() const {
   return *m_bf2;
 }
 
-void BeliefFormula::set_operator(
-    const BeliefFormulaOperator to_set) {
+void BeliefFormula::set_operator(const BeliefFormulaOperator to_set) {
   m_operator = to_set;
 }
 
-bool BeliefFormula::is_bf2_null() const {
-  return m_bf2 == nullptr;
-}
+bool BeliefFormula::is_bf2_null() const { return m_bf2 == nullptr; }
 
 [[nodiscard]]
-BeliefFormulaOperator
-BeliefFormula::get_operator() const noexcept {
+BeliefFormulaOperator BeliefFormula::get_operator() const noexcept {
 
   if (m_formula_type == BeliefFormulaType::BF_TYPE_FAIL) {
     ExitHandler::exit_with_message(
@@ -129,8 +117,7 @@ BeliefFormula::get_operator() const noexcept {
   return m_operator;
 }
 
-void BeliefFormula::set_group_agents(
-    const AgentsSet &to_set) {
+void BeliefFormula::set_group_agents(const AgentsSet &to_set) {
 
   if (to_set.empty()) {
     ExitHandler::exit_with_message(
@@ -143,29 +130,23 @@ void BeliefFormula::set_group_agents(
 }
 
 [[nodiscard]]
-const AgentsSet &
-BeliefFormula::get_group_agents() const noexcept {
+const AgentsSet &BeliefFormula::get_group_agents() const noexcept {
   return m_group_agents;
 }
 
-void BeliefFormula::set_bf1(
-    const BeliefFormula &to_set) {
-  m_bf1 =
-      std::make_unique<BeliefFormula>(to_set);
+void BeliefFormula::set_bf1(const BeliefFormula &to_set) {
+  m_bf1 = std::make_unique<BeliefFormula>(to_set);
 }
 
-void BeliefFormula::set_bf2(
-    const BeliefFormula &to_set) {
-  m_bf2 =
-      std::make_unique<BeliefFormula>(to_set);
+void BeliefFormula::set_bf2(const BeliefFormula &to_set) {
+  m_bf2 = std::make_unique<BeliefFormula>(to_set);
 }
 
 void BeliefFormula::print() const {
   HelperPrint::get_instance().print_belief_formula(*this);
 }
 
-bool BeliefFormula::operator==(
-    const BeliefFormula &to_compare) const {
+bool BeliefFormula::operator==(const BeliefFormula &to_compare) const {
 
   if (m_formula_type != to_compare.m_formula_type) {
     return false;
@@ -174,8 +155,7 @@ bool BeliefFormula::operator==(
   switch (m_formula_type) {
 
   case BeliefFormulaType::FLUENT_FORMULA:
-    return m_fluent_formula ==
-           to_compare.get_fluent_formula();
+    return m_fluent_formula == to_compare.get_fluent_formula();
 
   case BeliefFormulaType::BELIEF_FORMULA:
     return m_agent == to_compare.get_agent() &&
@@ -189,17 +169,15 @@ bool BeliefFormula::operator==(
     switch (m_operator) {
 
     case BeliefFormulaOperator::BF_NOT:
-      return get_bf1() ==
-             to_compare.get_bf1();
+      return get_bf1() == to_compare.get_bf1();
 
     case BeliefFormulaOperator::BF_AND:
     case BeliefFormulaOperator::BF_OR:
       // AND and OR are commutative.
-      return
-          (get_bf1() == to_compare.get_bf1() &&
-           get_bf2() == to_compare.get_bf2()) ||
-          (get_bf1() == to_compare.get_bf2() &&
-           get_bf2() == to_compare.get_bf1());
+      return (get_bf1() == to_compare.get_bf1() &&
+              get_bf2() == to_compare.get_bf2()) ||
+             (get_bf1() == to_compare.get_bf2() &&
+              get_bf2() == to_compare.get_bf1());
 
     case BeliefFormulaOperator::BF_INPAREN:
     case BeliefFormulaOperator::BF_FAIL:
@@ -209,10 +187,8 @@ bool BeliefFormula::operator==(
 
   case BeliefFormulaType::E_FORMULA:
   case BeliefFormulaType::C_FORMULA:
-    return m_group_agents ==
-               to_compare.get_group_agents() &&
-           get_bf1() ==
-               to_compare.get_bf1();
+    return m_group_agents == to_compare.get_group_agents() &&
+           get_bf1() == to_compare.get_bf1();
 
   case BeliefFormulaType::TRUE_FORMULA:
   case BeliefFormulaType::FALSE_FORMULA:
@@ -230,9 +206,7 @@ bool BeliefFormula::operator==(
   }
 }
 
-BeliefFormula &
-BeliefFormula::operator=(
-    const BeliefFormula &to_copy) {
+BeliefFormula &BeliefFormula::operator=(const BeliefFormula &to_copy) {
 
   /*
    * This check is necessary because nested formula setters replace
@@ -256,48 +230,40 @@ BeliefFormula::operator=(
   m_bf1.reset();
   m_bf2.reset();
 
-  set_formula_type(
-      to_copy.get_formula_type());
+  set_formula_type(to_copy.get_formula_type());
 
   switch (m_formula_type) {
 
   case BeliefFormulaType::FLUENT_FORMULA:
-    set_fluent_formula(
-        to_copy.get_fluent_formula());
+    set_fluent_formula(to_copy.get_fluent_formula());
     break;
 
   case BeliefFormulaType::BELIEF_FORMULA:
-    set_agent(
-        to_copy.get_agent());
+    set_agent(to_copy.get_agent());
 
-    set_bf1(
-        to_copy.get_bf1());
+    set_bf1(to_copy.get_bf1());
     break;
 
   case BeliefFormulaType::PROPOSITIONAL_FORMULA:
-    set_operator(
-        to_copy.get_operator());
+    set_operator(to_copy.get_operator());
 
     /*
      * BF_INPAREN is only a syntactic wrapper.
      * Do not preserve it in the grounded representation.
      */
-    if (m_operator ==
-        BeliefFormulaOperator::BF_INPAREN) {
+    if (m_operator == BeliefFormulaOperator::BF_INPAREN) {
 
       *this = to_copy.get_bf1();
       break;
     }
 
-    set_bf1(
-        to_copy.get_bf1());
+    set_bf1(to_copy.get_bf1());
 
     switch (m_operator) {
 
     case BeliefFormulaOperator::BF_AND:
     case BeliefFormulaOperator::BF_OR:
-      set_bf2(
-          to_copy.get_bf2());
+      set_bf2(to_copy.get_bf2());
       break;
 
     case BeliefFormulaOperator::BF_NOT:
@@ -315,11 +281,9 @@ BeliefFormula::operator=(
 
   case BeliefFormulaType::E_FORMULA:
   case BeliefFormulaType::C_FORMULA:
-    set_group_agents(
-        to_copy.get_group_agents());
+    set_group_agents(to_copy.get_group_agents());
 
-    set_bf1(
-        to_copy.get_bf1());
+    set_bf1(to_copy.get_bf1());
     break;
 
   case BeliefFormulaType::TRUE_FORMULA:
@@ -339,50 +303,41 @@ BeliefFormula::operator=(
   return *this;
 }
 
-bool BeliefFormula::operator<(
-    const BeliefFormula &to_compare) const {
+bool BeliefFormula::operator<(const BeliefFormula &to_compare) const {
 
   /*
    * Formula type gives the primary ordering.
    */
-  if (get_formula_type() <
-      to_compare.get_formula_type()) {
+  if (get_formula_type() < to_compare.get_formula_type()) {
     return true;
   }
 
-  if (get_formula_type() !=
-      to_compare.get_formula_type()) {
+  if (get_formula_type() != to_compare.get_formula_type()) {
     return false;
   }
 
   switch (m_formula_type) {
 
   case BeliefFormulaType::FLUENT_FORMULA:
-    return get_fluent_formula() <
-           to_compare.get_fluent_formula();
+    return get_fluent_formula() < to_compare.get_fluent_formula();
 
   case BeliefFormulaType::BELIEF_FORMULA:
-    if (get_agent() <
-        to_compare.get_agent()) {
+    if (get_agent() < to_compare.get_agent()) {
       return true;
     }
 
-    if (get_agent() ==
-        to_compare.get_agent()) {
-      return get_bf1() <
-             to_compare.get_bf1();
+    if (get_agent() == to_compare.get_agent()) {
+      return get_bf1() < to_compare.get_bf1();
     }
 
     return false;
 
   case BeliefFormulaType::PROPOSITIONAL_FORMULA:
-    if (get_operator() <
-        to_compare.get_operator()) {
+    if (get_operator() < to_compare.get_operator()) {
       return true;
     }
 
-    if (get_operator() !=
-        to_compare.get_operator()) {
+    if (get_operator() != to_compare.get_operator()) {
       return false;
     }
 
@@ -390,22 +345,18 @@ bool BeliefFormula::operator<(
 
     case BeliefFormulaOperator::BF_AND:
     case BeliefFormulaOperator::BF_OR:
-      if (get_bf1() <
-          to_compare.get_bf1()) {
+      if (get_bf1() < to_compare.get_bf1()) {
         return true;
       }
 
-      if (get_bf1() ==
-          to_compare.get_bf1()) {
-        return get_bf2() <
-               to_compare.get_bf2();
+      if (get_bf1() == to_compare.get_bf1()) {
+        return get_bf2() < to_compare.get_bf2();
       }
 
       return false;
 
     case BeliefFormulaOperator::BF_NOT:
-      return get_bf1() <
-             to_compare.get_bf1();
+      return get_bf1() < to_compare.get_bf1();
 
     case BeliefFormulaOperator::BF_INPAREN:
     case BeliefFormulaOperator::BF_FAIL:
@@ -419,15 +370,12 @@ bool BeliefFormula::operator<(
 
   case BeliefFormulaType::E_FORMULA:
   case BeliefFormulaType::C_FORMULA:
-    if (get_group_agents() <
-        to_compare.get_group_agents()) {
+    if (get_group_agents() < to_compare.get_group_agents()) {
       return true;
     }
 
-    if (get_group_agents() ==
-        to_compare.get_group_agents()) {
-      return get_bf1() <
-             to_compare.get_bf1();
+    if (get_group_agents() == to_compare.get_group_agents()) {
+      return get_bf1() < to_compare.get_bf1();
     }
 
     return false;

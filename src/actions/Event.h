@@ -24,60 +24,47 @@
  */
 class Event {
 public:
+  Event() = default;
 
-    Event() = default;
+  Event(EventId id, std::string name);
 
-    Event(
-        EventId id,
-        std::string name);
+  Event(const Event &) = default;
+  Event(Event &&) noexcept = default;
 
-    Event(const Event &) = default;
-    Event(Event &&) noexcept = default;
+  ~Event() = default;
 
-    ~Event() = default;
+  [[nodiscard]] EventId get_id() const noexcept;
 
-    [[nodiscard]] EventId
-    get_id() const noexcept;
+  void set_id(EventId id) noexcept;
 
-    void set_id(EventId id) noexcept;
+  [[nodiscard]] const std::string &get_name() const noexcept;
 
-    [[nodiscard]] const std::string &
-    get_name() const noexcept;
+  void set_name(const std::string &name);
 
-    void set_name(const std::string &name);
+  [[nodiscard]] const BeliefFormula &get_precondition() const noexcept;
 
-    [[nodiscard]] const BeliefFormula &
-    get_precondition() const noexcept;
+  void set_precondition(const BeliefFormula &precondition);
 
-    void set_precondition(
-        const BeliefFormula &precondition);
+  [[nodiscard]] const Postconditions &get_postconditions() const noexcept;
 
-    [[nodiscard]] const Postconditions &
-    get_postconditions() const noexcept;
+  void add_postcondition(const Fluent &fluent,
+                         const BeliefFormula &postcondition);
 
-    void add_postcondition(
-        const Fluent &fluent,
-        const BeliefFormula &postcondition);
+  [[nodiscard]] bool has_postcondition(const Fluent &fluent) const;
 
-    [[nodiscard]] bool
-    has_postcondition(
-        const Fluent &fluent) const;
+  Event &operator=(const Event &) = default;
+  Event &operator=(Event &&) noexcept = default;
 
-    Event &operator=(const Event &) = default;
-    Event &operator=(Event &&) noexcept = default;
+  [[nodiscard]] bool operator<(const Event &other) const noexcept;
 
-    [[nodiscard]] bool
-    operator<(const Event &other) const noexcept;
-
-    [[nodiscard]] bool
-    operator==(const Event &other) const noexcept;
+  [[nodiscard]] bool operator==(const Event &other) const noexcept;
 
 private:
-    EventId m_id = 0;
+  EventId m_id = 0;
 
-    std::string m_name;
+  std::string m_name;
 
-    BeliefFormula m_precondition;
+  BeliefFormula m_precondition;
 
-    Postconditions m_postconditions;
+  Postconditions m_postconditions;
 };

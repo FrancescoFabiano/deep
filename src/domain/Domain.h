@@ -62,9 +62,7 @@ public:
   [[nodiscard]] const std::string &get_name() const noexcept;
 
   /** \brief Get the grounded initial epistemic state produced by Plank. */
-  [[nodiscard]] const plank::del::state_ptr &
-  get_initial_state() const noexcept;
-
+  [[nodiscard]] const plank::del::state_ptr &get_initial_state() const noexcept;
 
   /** \brief Getter of the field \ref m_goal_description. */
   [[nodiscard]] const FormulaeList &get_goal_description() const noexcept;
@@ -77,7 +75,6 @@ public:
 private:
   std::string
       m_name; ///< The name of the file that contains the description of *this*.
-
 
   /// \brief Grounded planning task imported from Plank.
   plank::del::planning_task m_plank_task;
@@ -117,7 +114,6 @@ private:
    * print.
    */
   void build_actions(Grounder &grounder);
-
 
   /** \brief Function that builds the goal description.     */
   void build_goal();

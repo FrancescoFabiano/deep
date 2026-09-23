@@ -21,12 +21,11 @@
  */
 struct GraphTensor {
 
+  /// Encoded node ids of the designated worlds in the represented state.
+  /// These ids use the same symbolic node-id space as \ref real_node_ids.
+  std::vector<int64_t> pointed_ids;
 
-    /// Encoded node ids of the designated worlds in the represented state.
-    /// These ids use the same symbolic node-id space as \ref real_node_ids.
-    std::vector<int64_t> pointed_ids;
-
-    std::vector<int64_t> edge_src;
+  std::vector<int64_t> edge_src;
   ///< [num_edges] Symbolic source node id for each edge.
   std::vector<int64_t>
       edge_dst; ///< [num_edges] Symbolic destination node id for each edge.

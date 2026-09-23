@@ -5,13 +5,13 @@
 #include "HelperPrint.h"
 #include "HeuristicsManager.h"
 #include "TrainingDataset.h"
-#include <chrono>
 #include <cctype>
+#include <chrono>
 #include <filesystem>
 #include <fstream>
 #include <iomanip> // Make sure this is included at the top of your file
-#include <memory>
 #include <map>
+#include <memory>
 #include <queue>
 #include <sstream>
 #include <string>
@@ -260,9 +260,8 @@ TrainingDataset<StateRepr>::TrainingDataset() {
         std::to_string(ArgumentParser::get_instance().get_dataset_depth()) +
         ".csv";
 
-    m_folder = make_unique_folder(
-        OutputPaths::DATASET_TRAINING_FOLDER,
-        domain_name + "_" + generation_name);
+    m_folder = make_unique_folder(OutputPaths::DATASET_TRAINING_FOLDER,
+                                  domain_name + "_" + generation_name);
 
     m_training_raw_files_folder = m_folder + "RawFiles/";
     m_filepath_csv = m_folder + filename;
@@ -630,46 +629,53 @@ bool TrainingDataset<StateRepr>::search_space_exploration() {
   os << "Threshold number of nodes = " << m_threshold_node_generation
      << std::endl;
 
-  const auto dataset_generation_type = ArgumentParser::get_instance().get_dataset_generation_type();
-  const auto dataset_generation_type_string = ArgumentParser::get_instance().get_dataset_generation_type_string();
+  const auto dataset_generation_type =
+      ArgumentParser::get_instance().get_dataset_generation_type();
+  const auto dataset_generation_type_string =
+      ArgumentParser::get_instance().get_dataset_generation_type_string();
 
-  os << "Using " << dataset_generation_type_string << " as dataset generation strategy." << std::endl;
+  os << "Using " << dataset_generation_type_string
+     << " as dataset generation strategy." << std::endl;
   if (m_total_possible_nodes_log < m_threshold_node_generation_log) {
-    os << "Switching to non-stochastic DFS (i.e., complete) because the number of nodes the search space is too low." << std::endl;
+    os << "Switching to non-stochastic DFS (i.e., complete) because the number "
+          "of nodes the search space is too low."
+       << std::endl;
   }
   os << "Seed = " << m_seed << std::endl;
 
   switch (dataset_generation_type) {
-    case DatasetGenerationType::BFS:
-      result = bfs_exploration(initial_state, &actions);
-      break;
-    case DatasetGenerationType::DFS:
-      result = dfs_exploration(initial_state, &actions, false);
-      break;
-    case DatasetGenerationType::S_DFS:
-      result = dfs_exploration(initial_state, &actions, true);
-      break;
-    case DatasetGenerationType::HFS:
-      result = hfs_exploration(initial_state, &actions);
-      break;
-    default:
-      ExitHandler::exit_with_message(
+  case DatasetGenerationType::BFS:
+    result = bfs_exploration(initial_state, &actions);
+    break;
+  case DatasetGenerationType::DFS:
+    result = dfs_exploration(initial_state, &actions, false);
+    break;
+  case DatasetGenerationType::S_DFS:
+    result = dfs_exploration(initial_state, &actions, true);
+    break;
+  case DatasetGenerationType::HFS:
+    result = hfs_exploration(initial_state, &actions);
+    break;
+  default:
+    ExitHandler::exit_with_message(
         ExitHandler::ExitCode::DatasetGenerationTypeWrong,
         "Error in the Dataset Generation type.");
-      break;
+    break;
   }
 
   if (m_goal_founds > 0) {
     os << "Number of goals found: " << m_goal_founds << std::endl;
   } else {
-    os << "[WARNING] No goals found with " << dataset_generation_type_string << " as exploration strategy, this is not a good training set (recreate it with more nodes for exploration, a different seed (if stochastic in particular), mode depth, or a different strategy altogether)."
+    os << "[WARNING] No goals found with " << dataset_generation_type_string
+       << " as exploration strategy, this is not a good training set (recreate "
+          "it with more nodes for exploration, a different seed (if stochastic "
+          "in particular), mode depth, or a different strategy altogether)."
        << std::endl;
   }
 
-
   const auto end_time = std::chrono::system_clock::now();
   const std::chrono::duration<double> elapsed = end_time - start_time;
-  //auto &os = ArgumentParser::get_instance().get_output_stream();
+  // auto &os = ArgumentParser::get_instance().get_output_stream();
   os << "\nDataset Generated in " << elapsed.count() << " seconds."
      << std::endl;
   os << "Dataset stored in " << m_folder << " folder." << std::endl;
@@ -691,8 +697,7 @@ bool TrainingDataset<StateRepr>::hfs_exploration(
 
 template <StateRepresentation StateRepr>
 bool TrainingDataset<StateRepr>::priority_exploration(
-    State<StateRepr> &initial_state,
-    const ActionsSet *actions,
+    State<StateRepr> &initial_state, const ActionsSet *actions,
     const bool use_heuristic) {
 
   using StateType = State<StateRepr>;
@@ -710,8 +715,7 @@ bool TrainingDataset<StateRepr>::priority_exploration(
   };
 
   struct Compare {
-    bool operator()(const QueueEntry &lhs,
-                    const QueueEntry &rhs) const {
+    bool operator()(const QueueEntry &lhs, const QueueEntry &rhs) const {
       if (lhs.priority != rhs.priority) {
         return lhs.priority > rhs.priority;
       }
@@ -729,11 +733,7 @@ bool TrainingDataset<StateRepr>::priority_exploration(
 
   using VisitedMap = std::map<StateType, size_t>;
 
-  std::priority_queue<
-      QueueEntry,
-      std::vector<QueueEntry>,
-      Compare>
-      queue;
+  std::priority_queue<QueueEntry, std::vector<QueueEntry>, Compare> queue;
 
   /*
    * Only expanded states are kept here.
@@ -755,8 +755,7 @@ bool TrainingDataset<StateRepr>::priority_exploration(
   size_t sequence = 0;
 
   const size_t max_depth =
-      static_cast<size_t>(
-          ArgumentParser::get_instance().get_dataset_depth());
+      static_cast<size_t>(ArgumentParser::get_instance().get_dataset_depth());
 
   std::unique_ptr<HeuristicsManager<StateRepr>> heuristics_manager;
 
@@ -764,62 +763,41 @@ bool TrainingDataset<StateRepr>::priority_exploration(
     heuristics_manager =
         std::make_unique<HeuristicsManager<StateRepr>>(initial_state);
 
-    auto &os =
-        ArgumentParser::get_instance().get_output_stream();
+    auto &os = ArgumentParser::get_instance().get_output_stream();
 
-    os << "Dataset HFS heuristic: "
-       << heuristics_manager->get_used_h_name()
+    os << "Dataset HFS heuristic: " << heuristics_manager->get_used_h_name()
        << std::endl;
   }
 
   /*
    * Keep the CSV open during the whole exploration.
    */
-  std::fstream csv_file(
-      m_filepath_csv,
-      std::ios::in | std::ios::out | std::ios::ate);
+  std::fstream csv_file(m_filepath_csv,
+                        std::ios::in | std::ios::out | std::ios::ate);
 
   if (!csv_file.is_open()) {
-    ExitHandler::exit_with_message(
-        ExitHandler::ExitCode::NNTrainingFileError,
-        "Error opening file: " + m_filepath_csv);
+    ExitHandler::exit_with_message(ExitHandler::ExitCode::NNTrainingFileError,
+                                   "Error opening file: " + m_filepath_csv);
   }
 
-  auto write_row =
-      [&](const std::string &base_filename,
-          const size_t depth,
-          const int score,
-          const std::string &predecessor,
-          const std::string &action) {
+  auto write_row = [&](const std::string &base_filename, const size_t depth,
+                       const int score, const std::string &predecessor,
+                       const std::string &action) {
+    const std::string filename = format_name(base_filename);
 
-        const std::string filename =
-            format_name(base_filename);
+    const std::string predecessor_filename = format_name(predecessor);
 
-        const std::string predecessor_filename =
-            format_name(predecessor);
+    csv_file << filename << "," << depth << ",";
 
-        csv_file << filename
-                 << ","
-                 << depth
-                 << ",";
+    const std::streamoff score_position =
+        static_cast<std::streamoff>(csv_file.tellp());
 
-        const std::streamoff score_position =
-            static_cast<std::streamoff>(csv_file.tellp());
+    csv_file << std::setw(score_width) << std::setfill('0') << score
+             << std::setfill(' ') << "," << m_goal_file_path << ","
+             << predecessor_filename << "," << m_action_to_id[action] << "\n";
 
-        csv_file << std::setw(score_width)
-                 << std::setfill('0')
-                 << score
-                 << std::setfill(' ')
-                 << ","
-                 << m_goal_file_path
-                 << ","
-                 << predecessor_filename
-                 << ","
-                 << m_action_to_id[action]
-                 << "\n";
-
-        return score_position;
-      };
+    return score_position;
+  };
 
   /*
    * ============================================================
@@ -830,45 +808,28 @@ bool TrainingDataset<StateRepr>::priority_exploration(
   int initial_priority = 0;
 
   if (use_heuristic) {
-    initial_priority =
-        heuristics_manager->get_heuristic_value(initial_state);
+    initial_priority = heuristics_manager->get_heuristic_value(initial_state);
 
     initial_state.set_heuristic_value(initial_priority);
   } else {
     initial_state.set_heuristic_value(0);
   }
 
-  const std::string initial_filename =
-      print_state_for_dataset(initial_state);
+  const std::string initial_filename = print_state_for_dataset(initial_state);
 
   NodeInfo initial_info;
 
-  initial_info.is_goal =
-      initial_state.is_goal();
+  initial_info.is_goal = initial_state.is_goal();
 
-  initial_info.score =
-      initial_info.is_goal
-          ? 0
-          : m_failed_state;
+  initial_info.score = initial_info.is_goal ? 0 : m_failed_state;
 
   initial_info.score_position =
-      write_row(
-          initial_filename,
-          0,
-          initial_info.score,
-          "init",
-          "no-op");
+      write_row(initial_filename, 0, initial_info.score, "init", "no-op");
 
   nodes.push_back(initial_info);
 
-  queue.push({
-      initial_state,
-      0,
-      0,
-      initial_filename,
-      initial_priority,
-      sequence++
-  });
+  queue.push(
+      {initial_state, 0, 0, initial_filename, initial_priority, sequence++});
 
   ++m_added_to_dataset;
 
@@ -878,8 +839,7 @@ bool TrainingDataset<StateRepr>::priority_exploration(
    * ============================================================
    */
 
-  while (!queue.empty() &&
-         m_current_nodes < m_threshold_node_generation) {
+  while (!queue.empty() && m_current_nodes < m_threshold_node_generation) {
 
     QueueEntry current = queue.top();
     queue.pop();
@@ -896,76 +856,35 @@ bool TrainingDataset<StateRepr>::priority_exploration(
 
     if (m_threshold_node_generation > 0) {
 
-      const int percent =
-          static_cast<int>(
-              (m_current_nodes * 100) /
-              m_threshold_node_generation);
+      const int percent = static_cast<int>((m_current_nodes * 100) /
+                                           m_threshold_node_generation);
 
       static int last_percent = -1;
 
       if (percent != last_percent) {
         last_percent = percent;
 
-        auto &os =
-            ArgumentParser::get_instance().get_output_stream();
+        auto &os = ArgumentParser::get_instance().get_output_stream();
 
-        os << std::left
-           << std::setw(35)
-           << (use_heuristic
-                   ? "[DEBUG] Dataset Generation Progress with HFS:"
-                   : "[DEBUG] Dataset Generation Progress with BFS:")
-           << " "
-           << std::setw(5)
-           << (std::to_string(percent) + "%")
-           << " "
-           << std::setw(20)
-           << "Explored nodes:"
-           << " "
-           << std::setw(10)
-           << m_current_nodes
-           << " "
-           << std::setw(15)
-           << "Current Depth:"
-           << " "
-           << std::setw(5)
-           << current.depth;
+        os << std::left << std::setw(35)
+           << (use_heuristic ? "[DEBUG] Dataset Generation Progress with HFS:"
+                             : "[DEBUG] Dataset Generation Progress with BFS:")
+           << " " << std::setw(5) << (std::to_string(percent) + "%") << " "
+           << std::setw(20) << "Explored nodes:" << " " << std::setw(10)
+           << m_current_nodes << " " << std::setw(15) << "Current Depth:" << " "
+           << std::setw(5) << current.depth;
 
         if (use_heuristic) {
-          os << " "
-             << std::setw(15)
-             << "Heuristic:"
-             << " "
-             << std::setw(10)
+          os << " " << std::setw(15) << "Heuristic:" << " " << std::setw(10)
              << current.priority;
         }
 
-        os << " "
-           << std::setw(15)
-           << "Goals found:"
-           << " "
-           << std::setw(10)
-           << m_goal_founds
-           << " "
-           << std::setw(15)
-           << "Dataset nodes:"
-           << " "
-           << std::setw(10)
-           << m_added_to_dataset
-           << " "
-           << std::setw(15)
-           << "Visited:"
-           << " "
-           << visited_states.size()
-           << " "
-           << std::setw(15)
-           << "Frontier:"
-           << " "
-           << queue.size()
-           << " "
-           << std::setw(15)
-           << "Generated:"
-           << " "
-           << (m_current_nodes + queue.size())
+        os << " " << std::setw(15) << "Goals found:" << " " << std::setw(10)
+           << m_goal_founds << " " << std::setw(15) << "Dataset nodes:" << " "
+           << std::setw(10) << m_added_to_dataset << " " << std::setw(15)
+           << "Visited:" << " " << visited_states.size() << " " << std::setw(15)
+           << "Frontier:" << " " << queue.size() << " " << std::setw(15)
+           << "Generated:" << " " << (m_current_nodes + queue.size())
            << std::endl;
       }
     }
@@ -982,24 +901,19 @@ bool TrainingDataset<StateRepr>::priority_exploration(
      * If another copy of this state was already expanded recently,
      * we do not expand this copy again.
      */
-    auto already_visited =
-        visited_states.find(current.state);
+    auto already_visited = visited_states.find(current.state);
 
     if (already_visited != visited_states.end()) {
 
-      const size_t existing_node_id =
-          already_visited->second;
+      const size_t existing_node_id = already_visited->second;
 
       /*
        * Redirect the predecessors of this duplicate node to the
        * already expanded copy.
        */
-      for (const size_t predecessor :
-           nodes[current.node_id].predecessors) {
+      for (const size_t predecessor : nodes[current.node_id].predecessors) {
 
-        nodes[existing_node_id]
-            .predecessors
-            .push_back(predecessor);
+        nodes[existing_node_id].predecessors.push_back(predecessor);
       }
 
       continue;
@@ -1011,21 +925,16 @@ bool TrainingDataset<StateRepr>::priority_exploration(
      * ==========================================================
      */
 
-    auto visited_entry =
-        visited_states.emplace(
-            current.state,
-            current.node_id);
+    auto visited_entry = visited_states.emplace(current.state, current.node_id);
 
-    visited_order.push(
-        visited_entry.first);
+    visited_order.push(visited_entry.first);
 
     /*
      * Keep only the latest 10,000 expanded states.
      */
     if (visited_states.size() > max_visited_states) {
 
-      visited_states.erase(
-          visited_order.front());
+      visited_states.erase(visited_order.front());
 
       visited_order.pop();
     }
@@ -1065,8 +974,7 @@ bool TrainingDataset<StateRepr>::priority_exploration(
         continue;
       }
 
-      StateType next_state =
-          current.state.compute_successor(action);
+      StateType next_state = current.state.compute_successor(action);
 
       if (Configuration::get_instance().get_bisimulation()) {
         next_state.contract_with_bisimulation();
@@ -1075,17 +983,14 @@ bool TrainingDataset<StateRepr>::priority_exploration(
       /*
        * Check only recently expanded states.
        */
-      auto existing =
-          visited_states.find(next_state);
+      auto existing = visited_states.find(next_state);
 
       if (existing != visited_states.end()) {
 
         /*
          * current -> existing
          */
-        nodes[existing->second]
-            .predecessors
-            .push_back(current.node_id);
+        nodes[existing->second].predecessors.push_back(current.node_id);
 
         continue;
       }
@@ -1103,8 +1008,7 @@ bool TrainingDataset<StateRepr>::priority_exploration(
        * Never allow another node once this reaches the requested
        * generation threshold.
        */
-      if (m_current_nodes + queue.size() >=
-          m_threshold_node_generation) {
+      if (m_current_nodes + queue.size() >= m_threshold_node_generation) {
         break;
       }
 
@@ -1117,49 +1021,36 @@ bool TrainingDataset<StateRepr>::priority_exploration(
       int priority = 0;
 
       if (use_heuristic) {
-        priority =
-            heuristics_manager->get_heuristic_value(next_state);
+        priority = heuristics_manager->get_heuristic_value(next_state);
 
         next_state.set_heuristic_value(priority);
       } else {
         next_state.set_heuristic_value(0);
       }
 
-      const size_t next_node_id =
-          nodes.size();
+      const size_t next_node_id = nodes.size();
 
-      const size_t next_depth =
-          current.depth + 1;
+      const size_t next_depth = current.depth + 1;
 
-      const std::string next_filename =
-          print_state_for_dataset(next_state);
+      const std::string next_filename = print_state_for_dataset(next_state);
 
       NodeInfo next_info;
 
-      next_info.is_goal =
-          next_state.is_goal();
+      next_info.is_goal = next_state.is_goal();
 
-      next_info.score =
-          next_info.is_goal
-              ? 0
-              : m_failed_state;
+      next_info.score = next_info.is_goal ? 0 : m_failed_state;
 
       /*
        * current -> next
        */
-      next_info.predecessors.push_back(
-          current.node_id);
+      next_info.predecessors.push_back(current.node_id);
 
       /*
        * Write the row immediately.
        */
       next_info.score_position =
-          write_row(
-              next_filename,
-              next_depth,
-              next_info.score,
-              current.filename,
-              action.get_name());
+          write_row(next_filename, next_depth, next_info.score,
+                    current.filename, action.get_name());
 
       nodes.push_back(next_info);
 
@@ -1170,14 +1061,8 @@ bool TrainingDataset<StateRepr>::priority_exploration(
        *
        * It is NOT added to visited_states yet.
        */
-      queue.push({
-          std::move(next_state),
-          next_node_id,
-          next_depth,
-          next_filename,
-          priority,
-          sequence++
-      });
+      queue.push({std::move(next_state), next_node_id, next_depth,
+                  next_filename, priority, sequence++});
     }
   }
 
@@ -1189,9 +1074,7 @@ bool TrainingDataset<StateRepr>::priority_exploration(
    * ============================================================
    */
 
-  for (size_t node_id = 0;
-       node_id < nodes.size();
-       ++node_id) {
+  for (size_t node_id = 0; node_id < nodes.size(); ++node_id) {
 
     if (nodes[node_id].is_goal) {
       nodes[node_id].score = 0;
@@ -1203,27 +1086,21 @@ bool TrainingDataset<StateRepr>::priority_exploration(
 
   while (!reverse_queue.empty()) {
 
-    const size_t current_node_id =
-        reverse_queue.front();
+    const size_t current_node_id = reverse_queue.front();
 
     reverse_queue.pop();
 
-    const int predecessor_score =
-        nodes[current_node_id].score + 1;
+    const int predecessor_score = nodes[current_node_id].score + 1;
 
-    for (const size_t predecessor_id :
-         nodes[current_node_id].predecessors) {
+    for (const size_t predecessor_id : nodes[current_node_id].predecessors) {
 
-      if (nodes[predecessor_id].score !=
-          m_failed_state) {
+      if (nodes[predecessor_id].score != m_failed_state) {
         continue;
       }
 
-      nodes[predecessor_id].score =
-          predecessor_score;
+      nodes[predecessor_id].score = predecessor_score;
 
-      reverse_queue.push(
-          predecessor_id);
+      reverse_queue.push(predecessor_id);
     }
   }
 
@@ -1240,12 +1117,9 @@ bool TrainingDataset<StateRepr>::priority_exploration(
 
   for (const auto &node : nodes) {
 
-    csv_file.seekp(
-        node.score_position);
+    csv_file.seekp(node.score_position);
 
-    csv_file << std::setw(score_width)
-             << std::setfill('0')
-             << node.score
+    csv_file << std::setw(score_width) << std::setfill('0') << node.score
              << std::setfill(' ');
 
 #ifdef DEBUG
@@ -1262,47 +1136,38 @@ bool TrainingDataset<StateRepr>::priority_exploration(
 
 #ifdef DEBUG
 
-  auto &os =
-      ArgumentParser::get_instance().get_output_stream();
+  auto &os = ArgumentParser::get_instance().get_output_stream();
 
-  os << "[DEBUG] Total generated states: "
-     << nodes.size()
+  os << "[DEBUG] Total generated states: " << nodes.size() << std::endl;
+
+  os << "[DEBUG] Explored states: " << m_current_nodes << std::endl;
+
+  os << "[DEBUG] Remaining frontier: " << queue.size() << std::endl;
+
+  os << "[DEBUG] States with finite distance-to-goal: " << reachable_count
      << std::endl;
 
-  os << "[DEBUG] Explored states: "
-     << m_current_nodes
-     << std::endl;
-
-  os << "[DEBUG] Remaining frontier: "
-     << queue.size()
-     << std::endl;
-
-  os << "[DEBUG] States with finite distance-to-goal: "
-     << reachable_count
-     << std::endl;
-
-  os << "[DEBUG] States with no discovered goal reachable: "
-     << failed_count
+  os << "[DEBUG] States with no discovered goal reachable: " << failed_count
      << std::endl;
 
 #endif
 
-  return (
-      (m_goal_founds > 0) &&
-      (m_added_to_dataset >
-       m_min_threshold_node_creation));
+  return ((m_goal_founds > 0) &&
+          (m_added_to_dataset > m_min_threshold_node_creation));
 }
-
 
 template <StateRepresentation StateRepr>
 bool TrainingDataset<StateRepr>::dfs_exploration(
-    State<StateRepr> &initial_state, ActionsSet *actions, const bool is_stochastic) {
+    State<StateRepr> &initial_state, ActionsSet *actions,
+    const bool is_stochastic) {
 
-  dfs_worker(initial_state, 0, actions, "init", "no-op",is_stochastic);
+  dfs_worker(initial_state, 0, actions, "init", "no-op", is_stochastic);
   return (
-    (m_goal_founds > 0) &&
-    (m_added_to_dataset >
-    m_min_threshold_node_creation)); // Return true if dataset is not empty and goals were found and if we added at least a minimum number of nodes
+      (m_goal_founds > 0) &&
+      (m_added_to_dataset >
+       m_min_threshold_node_creation)); // Return true if dataset is not empty
+                                        // and goals were found and if we added
+                                        // at least a minimum number of nodes
 }
 
 template <StateRepresentation StateRepr>
@@ -1321,13 +1186,14 @@ int TrainingDataset<StateRepr>::dfs_worker(State<StateRepr> &state,
       auto &os = ArgumentParser::get_instance().get_output_stream();
 
       os << std::left << std::setw(35)
-         << "[DEBUG] Dataset Generation Progress with DFS:" << " " << std::setw(5)
-         << (std::to_string(percent) + "%") << " " << std::setw(20)
-         << "Explored nodes:" << " " << std::setw(10) << m_current_nodes << " "
-         << std::setw(15) << "Current Depth:" << " " << std::setw(5) << depth
-         << " " << std::setw(15) << "Goals found:" << " " << std::setw(10)
-         << m_goal_founds << " " << std::setw(15) << "Valid nodes found:" << " "
-         << std::setw(5) << m_added_to_dataset << std::endl;
+         << "[DEBUG] Dataset Generation Progress with DFS:" << " "
+         << std::setw(5) << (std::to_string(percent) + "%") << " "
+         << std::setw(20) << "Explored nodes:" << " " << std::setw(10)
+         << m_current_nodes << " " << std::setw(15) << "Current Depth:" << " "
+         << std::setw(5) << depth << " " << std::setw(15)
+         << "Goals found:" << " " << std::setw(10) << m_goal_founds << " "
+         << std::setw(15) << "Valid nodes found:" << " " << std::setw(5)
+         << m_added_to_dataset << std::endl;
     }
   }
 #endif
@@ -1371,7 +1237,8 @@ int TrainingDataset<StateRepr>::dfs_worker(State<StateRepr> &state,
     {
       // Compute discard probability
       double discard_probability = 0.0;
-      if (m_total_possible_nodes_log > m_threshold_node_generation_log && is_stochastic) {
+      if (m_total_possible_nodes_log > m_threshold_node_generation_log &&
+          is_stochastic) {
         const double depth_ratio = static_cast<double>(depth) / max_depth;
         const double fullness_ratio =
             static_cast<double>(m_current_nodes) /

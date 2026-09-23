@@ -43,7 +43,7 @@ concept StateRepresentation =
        * @name Semantic Operations
        */
       ///@{
-      { std::as_const(rep).is_executable(act) }-> std::same_as<bool>;
+      { std::as_const(rep).is_executable(act) } -> std::same_as<bool>;
       { std::as_const(rep).entails(f) } -> std::same_as<bool>;
       { std::as_const(rep).entails(fs) } -> std::same_as<bool>;
       { std::as_const(rep).entails(ff) } -> std::same_as<bool>;
@@ -205,7 +205,8 @@ public:
    */
   [[nodiscard]] bool entails(const Fluent &to_check) const;
 
-  /** \brief Check whether all designated worlds entail a conjunctive fluent set.
+  /** \brief Check whether all designated worlds entail a conjunctive fluent
+   * set.
    *
    * The actual entailment test is delegated to the specific state
    * representation (\ref m_representation).
@@ -239,7 +240,8 @@ public:
    * @return false if \p -to_check is entailed by *this*.*/
   [[nodiscard]] bool entails(const BeliefFormula &to_check) const;
 
-  /** \brief Check whether the epistemic state entails a conjunction of belief formulas.
+  /** \brief Check whether the epistemic state entails a conjunction of belief
+   * formulas.
    *
    * The actual entailment test is delegated to the specific state
    * representation (\ref m_representation).

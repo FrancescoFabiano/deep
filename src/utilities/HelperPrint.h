@@ -96,7 +96,6 @@ public:
    */
   void print_list_ag(const AgentsSet &to_print) const;
 
-
   /**
    * \brief Print a belief formula using grounder.
    * \param to_print The BeliefFormula to print.

@@ -292,36 +292,24 @@ KripkeWorldId FormulaHelper::hash_string_into_id(const std::string &string) {
   // return boost::hash_range(string.begin(), string.end());
 }
 
-
-uint64_t FormulaHelper::hash_kripke_state(
-    const KripkeState &state) {
+uint64_t FormulaHelper::hash_kripke_state(const KripkeState &state) {
 
   XXH3_state_t *hash_state = XXH3_createState();
 
   if (hash_state == nullptr) {
-    ExitHandler::exit_with_message(
-        ExitHandler::ExitCode::SearchMethodError,
-        "Failed to create XXH3 hash state.");
+    ExitHandler::exit_with_message(ExitHandler::ExitCode::SearchMethodError,
+                                   "Failed to create XXH3 hash state.");
   }
 
   XXH3_64bits_reset(hash_state);
 
-  const auto update =
-      [&](const auto &value) {
-        XXH3_64bits_update(
-            hash_state,
-            &value,
-            sizeof(value));
-      };
+  const auto update = [&](const auto &value) {
+    XXH3_64bits_update(hash_state, &value, sizeof(value));
+  };
 
-  const auto update_bytes =
-      [&](const void *data, const std::size_t size) {
-        XXH3_64bits_update(
-            hash_state,
-            data,
-            size);
-      };
-
+  const auto update_bytes = [&](const void *data, const std::size_t size) {
+    XXH3_64bits_update(hash_state, data, size);
+  };
 
   // --------------------------------------------------------------------------
   // Worlds
@@ -330,19 +318,16 @@ uint64_t FormulaHelper::hash_kripke_state(
   constexpr uint64_t worlds_tag = 1;
   update(worlds_tag);
 
-    const auto worlds =
-        KripkeEqualityHelper::canonicalize_worlds(
-            state.get_worlds());
+  const auto worlds =
+      KripkeEqualityHelper::canonicalize_worlds(state.get_worlds());
 
-  const uint64_t worlds_size =
-      static_cast<uint64_t>(worlds.size());
+  const uint64_t worlds_size = static_cast<uint64_t>(worlds.size());
 
   update(worlds_size);
 
   for (const auto &world : worlds) {
     update(world.get_internal_world_id());
   }
-
 
   // --------------------------------------------------------------------------
   // Designated worlds
@@ -354,20 +339,17 @@ uint64_t FormulaHelper::hash_kripke_state(
   constexpr uint64_t designated_tag = 2;
   update(designated_tag);
 
-    const auto designated_worlds =
-        KripkeEqualityHelper::canonicalize_worlds(
-            state.get_designated_worlds());
+  const auto designated_worlds =
+      KripkeEqualityHelper::canonicalize_worlds(state.get_designated_worlds());
 
   const uint64_t designated_size =
-      static_cast<uint64_t>(
-          designated_worlds.size());
+      static_cast<uint64_t>(designated_worlds.size());
 
   update(designated_size);
 
   for (const auto &world : designated_worlds) {
     update(world.get_internal_world_id());
   }
-
 
   // --------------------------------------------------------------------------
   // Belief relation
@@ -376,44 +358,35 @@ uint64_t FormulaHelper::hash_kripke_state(
   constexpr uint64_t beliefs_tag = 3;
   update(beliefs_tag);
 
-    const auto beliefs =
-        KripkeEqualityHelper::canonicalize_transitive_map(
-            state.get_beliefs());
+  const auto beliefs =
+      KripkeEqualityHelper::canonicalize_transitive_map(state.get_beliefs());
 
-  const uint64_t beliefs_size =
-      static_cast<uint64_t>(beliefs.size());
+  const uint64_t beliefs_size = static_cast<uint64_t>(beliefs.size());
 
   update(beliefs_size);
 
-  for (const auto &[source_world, agent_map] :
-       beliefs) {
+  for (const auto &[source_world, agent_map] : beliefs) {
 
     update(source_world.get_internal_world_id());
 
-    const uint64_t agent_map_size =
-        static_cast<uint64_t>(agent_map.size());
+    const uint64_t agent_map_size = static_cast<uint64_t>(agent_map.size());
 
     update(agent_map_size);
 
-    for (const auto &[agent, targets] :
-         agent_map) {
+    for (const auto &[agent, targets] : agent_map) {
 
       // Agent is a boost::dynamic_bitset, so hash its semantic bit
       // representation rather than its object memory representation.
       std::string agent_bits;
       boost::to_string(agent, agent_bits);
 
-      const uint64_t agent_size =
-          static_cast<uint64_t>(agent_bits.size());
+      const uint64_t agent_size = static_cast<uint64_t>(agent_bits.size());
 
       update(agent_size);
 
-      update_bytes(
-          agent_bits.data(),
-          agent_bits.size());
+      update_bytes(agent_bits.data(), agent_bits.size());
 
-      const uint64_t targets_size =
-          static_cast<uint64_t>(targets.size());
+      const uint64_t targets_size = static_cast<uint64_t>(targets.size());
 
       update(targets_size);
 
@@ -423,15 +396,12 @@ uint64_t FormulaHelper::hash_kripke_state(
     }
   }
 
-
-  const uint64_t result =
-      XXH3_64bits_digest(hash_state);
+  const uint64_t result = XXH3_64bits_digest(hash_state);
 
   XXH3_freeState(hash_state);
 
   return result;
 }
-
 
 bool FormulaHelper::consistent(const FluentsSet &to_check) {
   for (auto it = to_check.begin(); it != to_check.end(); ++it) {
@@ -456,68 +426,53 @@ bool FormulaHelper::consistent(const FluentsSet &to_check) {
   return true;
 }
 
-BeliefFormula FormulaHelper::make_random_atom(
-    const std::vector<Fluent> &fluents,
-    std::mt19937 &rng) {
+BeliefFormula
+FormulaHelper::make_random_atom(const std::vector<Fluent> &fluents,
+                                std::mt19937 &rng) {
 
-  std::uniform_int_distribution<std::size_t> fluent_dist(
-      0, fluents.size() - 1);
+  std::uniform_int_distribution<std::size_t> fluent_dist(0, fluents.size() - 1);
 
   BeliefFormula formula;
-  formula.set_formula_type(
-      BeliefFormulaType::FLUENT_FORMULA);
-  formula.set_fluent_formula_from_fluent(
-      fluents[fluent_dist(rng)]);
+  formula.set_formula_type(BeliefFormulaType::FLUENT_FORMULA);
+  formula.set_fluent_formula_from_fluent(fluents[fluent_dist(rng)]);
 
   return formula;
 }
 
 BeliefFormula FormulaHelper::make_random_propositional_formula(
-    const std::vector<Fluent> &fluents,
-    std::mt19937 &rng) {
+    const std::vector<Fluent> &fluents, std::mt19937 &rng) {
 
   std::uniform_int_distribution<int> op_dist(0, 1);
 
   BeliefFormula formula;
-  formula.set_formula_type(
-      BeliefFormulaType::PROPOSITIONAL_FORMULA);
+  formula.set_formula_type(BeliefFormulaType::PROPOSITIONAL_FORMULA);
 
-  formula.set_operator(
-      op_dist(rng) == 0
-          ? BeliefFormulaOperator::BF_AND
-          : BeliefFormulaOperator::BF_OR);
+  formula.set_operator(op_dist(rng) == 0 ? BeliefFormulaOperator::BF_AND
+                                         : BeliefFormulaOperator::BF_OR);
 
-  formula.set_bf1(
-      make_random_atom(fluents, rng));
-  formula.set_bf2(
-      make_random_atom(fluents, rng));
+  formula.set_bf1(make_random_atom(fluents, rng));
+  formula.set_bf2(make_random_atom(fluents, rng));
 
   return formula;
 }
 
 BeliefFormula FormulaHelper::make_random_modal_formula(
-    BeliefFormula inner,
-    const std::vector<Agent> &agents,
-    const unsigned int depth,
-    std::mt19937 &rng) {
+    BeliefFormula inner, const std::vector<Agent> &agents,
+    const unsigned int depth, std::mt19937 &rng) {
 
   std::uniform_int_distribution<int> modality_dist(0, 1);
-  std::uniform_int_distribution<std::size_t> agent_dist(
-      0, agents.size() - 1);
+  std::uniform_int_distribution<std::size_t> agent_dist(0, agents.size() - 1);
   std::bernoulli_distribution include_agent(0.5);
 
   for (unsigned int i = 0; i < depth; ++i) {
     BeliefFormula outer;
 
     if (modality_dist(rng) == 0) {
-      outer.set_formula_type(
-          BeliefFormulaType::BELIEF_FORMULA);
+      outer.set_formula_type(BeliefFormulaType::BELIEF_FORMULA);
 
-      outer.set_agent(
-          agents[agent_dist(rng)]);
+      outer.set_agent(agents[agent_dist(rng)]);
     } else {
-      outer.set_formula_type(
-          BeliefFormulaType::C_FORMULA);
+      outer.set_formula_type(BeliefFormulaType::C_FORMULA);
 
       AgentsSet group;
 
@@ -528,8 +483,7 @@ BeliefFormula FormulaHelper::make_random_modal_formula(
       }
 
       if (group.empty()) {
-        group.insert(
-            agents[agent_dist(rng)]);
+        group.insert(agents[agent_dist(rng)]);
       }
 
       outer.set_group_agents(group);
@@ -543,39 +497,27 @@ BeliefFormula FormulaHelper::make_random_modal_formula(
 }
 
 BeliefFormula FormulaHelper::make_random_formula(
-    const std::vector<Fluent> &fluents,
-    const std::vector<Agent> &agents,
-    const unsigned int modal_depth,
-    std::mt19937 &rng) {
+    const std::vector<Fluent> &fluents, const std::vector<Agent> &agents,
+    const unsigned int modal_depth, std::mt19937 &rng) {
 
-  auto formula =
-      make_random_propositional_formula(
-          fluents, rng);
+  auto formula = make_random_propositional_formula(fluents, rng);
 
   if (modal_depth > 0) {
     formula =
-        make_random_modal_formula(
-            std::move(formula),
-            agents,
-            modal_depth,
-            rng);
+        make_random_modal_formula(std::move(formula), agents, modal_depth, rng);
   }
 
   return formula;
 }
 
-
 void FormulaHelper::verify_semantic_equivalence(
-    const KripkeState &first,
-    const KripkeState &second,
-    const unsigned int modal_depth,
-    const unsigned int formula_count,
+    const KripkeState &first, const KripkeState &second,
+    const unsigned int modal_depth, const unsigned int formula_count,
     const std::uint32_t seed) {
 
   if (second == first) {
     if (ArgumentParser::get_instance().get_verbose()) {
-      auto &os =
-          ArgumentParser::get_instance().get_output_stream();
+      auto &os = ArgumentParser::get_instance().get_output_stream();
 
       os << "[DEBUG] Bisimulation contraction produced "
             "an identical state; random formula check skipped."
@@ -585,16 +527,13 @@ void FormulaHelper::verify_semantic_equivalence(
     return;
   }
 
-  auto &os =
-      ArgumentParser::get_instance().get_output_stream();
+  auto &os = ArgumentParser::get_instance().get_output_stream();
 
   const auto &domain = Domain::get_instance();
 
-  const auto &fluents =
-      domain.get_positive_fluents();
+  const auto &fluents = domain.get_positive_fluents();
 
-  const auto &agents_set =
-      domain.get_agents();
+  const auto &agents_set = domain.get_agents();
 
   if (fluents.empty()) {
     ExitHandler::exit_with_message(
@@ -610,51 +549,34 @@ void FormulaHelper::verify_semantic_equivalence(
         "the domain contains no agents.");
   }
 
-  const std::vector<Agent> agents(
-      agents_set.begin(),
-      agents_set.end());
+  const std::vector<Agent> agents(agents_set.begin(), agents_set.end());
 
   std::mt19937 rng(seed);
 
-  os << "[DEBUG] Checking state equivalence with "
-     << formula_count
-     << " random formulas"
-     << " (modal depth=" << modal_depth
+  os << "[DEBUG] Checking state equivalence with " << formula_count
+     << " random formulas" << " (modal depth=" << modal_depth
      << ", seed=" << seed << ").";
 
-  for (unsigned int i = 0;
-       i < formula_count;
-       ++i) {
+  for (unsigned int i = 0; i < formula_count; ++i) {
 
     const BeliefFormula formula =
-        make_random_formula(
-            fluents,
-            agents,
-            modal_depth,
-            rng);
+        make_random_formula(fluents, agents, modal_depth, rng);
 
-    const bool first_result =
-        first.entails(formula);
+    const bool first_result = first.entails(formula);
 
-    const bool second_result =
-        second.entails(formula);
+    const bool second_result = second.entails(formula);
 
     if (first_result != second_result) {
       std::ostringstream message;
 
-      message
-          << "Bisimulation reduction failed on random "
-             "formula #"
-          << i
-          << " (seed=" << seed
-          << ", modal depth=" << modal_depth
-          << ", first=" << first_result
-          << ", second=" << second_result
-          << ").";
+      message << "Bisimulation reduction failed on random "
+                 "formula #"
+              << i << " (seed=" << seed << ", modal depth=" << modal_depth
+              << ", first=" << first_result << ", second=" << second_result
+              << ").";
 
       ExitHandler::exit_with_message(
-          ExitHandler::ExitCode::SearchBisimulationError,
-          message.str());
+          ExitHandler::ExitCode::SearchBisimulationError, message.str());
     }
   }
 

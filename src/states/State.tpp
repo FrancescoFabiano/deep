@@ -171,12 +171,10 @@ void State<StateRepr>::contract_with_bisimulation() {
 }
 
 template <StateRepresentation StateRepr>
-bool State<StateRepr>::is_executable(
-    const Action &act) const {
+bool State<StateRepr>::is_executable(const Action &act) const {
 
   return m_representation.is_executable(act);
 }
-
 
 template <StateRepresentation StateRepr>
 bool State<StateRepr>::is_goal() const {

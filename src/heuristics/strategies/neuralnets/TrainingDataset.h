@@ -187,9 +187,8 @@ private:
   ///< Set of visited states \warning cannot use unordered set because I am
   ///< missing a clear way of hashing the state
 
-
-    /// \brief Maps each explored state to its distance from the closest goal.
-    std::map<State<StateRepr>, int> m_states_scores;
+  /// \brief Maps each explored state to its distance from the closest goal.
+  std::map<State<StateRepr>, int> m_states_scores;
 
   /// \brief Integer edge ID for goal connection in merged graph.
   static constexpr int m_to_goal_edge_id_int = 2;
@@ -292,12 +291,11 @@ private:
   bool search_space_exploration();
 
   /**
-   * \brief Perform deterministic breadth-first exploration for dataset generation.
-   * \details Uses the shared priority exploration with priority zero for every
-   * state, making the priority queue FIFO through its sequence tie-breaker.
-   * \param initial_state The initial state.
-   * \param actions Set of actions.
-   * \return True if successful.
+   * \brief Perform deterministic breadth-first exploration for dataset
+   * generation. \details Uses the shared priority exploration with priority
+   * zero for every state, making the priority queue FIFO through its sequence
+   * tie-breaker. \param initial_state The initial state. \param actions Set of
+   * actions. \return True if successful.
    */
   bool bfs_exploration(State<StateRepr> &initial_state,
                        const ActionsSet *actions);
@@ -322,8 +320,7 @@ private:
    * \return True if successful.
    */
   bool priority_exploration(State<StateRepr> &initial_state,
-                            const ActionsSet *actions,
-                            bool use_heuristic);
+                            const ActionsSet *actions, bool use_heuristic);
 
   /**
    * \brief Perform DFS exploration for dataset generation.
@@ -332,7 +329,8 @@ private:
    * \param is_stochastic Flag to indicate whether the DFS is stochastic or not
    * \return True if successful.
    */
-  bool dfs_exploration(State<StateRepr> &initial_state, ActionsSet *actions, bool is_stochastic);
+  bool dfs_exploration(State<StateRepr> &initial_state, ActionsSet *actions,
+                       bool is_stochastic);
 
   /**
    * \brief DFS worker for dataset generation.
@@ -345,7 +343,8 @@ private:
    * \return Score.
    */
   int dfs_worker(State<StateRepr> &state, size_t depth, ActionsSet *actions,
-                 const std::string &predecessor, const std::string &action, bool is_stochastic);
+                 const std::string &predecessor, const std::string &action,
+                 bool is_stochastic);
 
   /**
    * \brief Format a row for the dataset and insert it to the dataset itself.

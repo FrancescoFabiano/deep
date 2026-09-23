@@ -32,21 +32,21 @@ KripkeWorldPointersVec KripkeEqualityHelper::canonicalize_worlds(
     result.push_back(w);
   }
 
-  std::ranges::sort(result,
-                    [](const KripkeWorldPointer &a, const KripkeWorldPointer &b) {
-                      const auto ida = a.get_internal_world_id();
-                      const auto idb = b.get_internal_world_id();
+  std::ranges::sort(
+      result, [](const KripkeWorldPointer &a, const KripkeWorldPointer &b) {
+        const auto ida = a.get_internal_world_id();
+        const auto idb = b.get_internal_world_id();
 
-                      if (ida != idb) {
-                        return ida < idb;
-                      }
+        if (ida != idb) {
+          return ida < idb;
+        }
 
-                      if (a.internal_equal(b)) {
-                        return false;
-                      }
+        if (a.internal_equal(b)) {
+          return false;
+        }
 
-                      return a.internal_smaller(b);
-                    });
+        return a.internal_smaller(b);
+      });
 
   return result;
 }
@@ -188,9 +188,8 @@ bool KripkeEqualityHelper::internal_smaller(
       });
 }
 
-bool KripkeEqualityHelper::verify_exact_equality(
-    const KripkeState &lhs,
-    const KripkeState &rhs) {
+bool KripkeEqualityHelper::verify_exact_equality(const KripkeState &lhs,
+                                                 const KripkeState &rhs) {
 
   /*
    * IMPORTANT:
@@ -204,32 +203,23 @@ bool KripkeEqualityHelper::verify_exact_equality(
    * repetition-independent canonical representation.
    */
 
-
   // ------------------------------------------------------------------------
   // Worlds
   // ------------------------------------------------------------------------
 
-  if (lhs.get_worlds().size() !=
-      rhs.get_worlds().size()) {
+  if (lhs.get_worlds().size() != rhs.get_worlds().size()) {
 
     return false;
   }
 
-  const auto lhs_worlds =
-      canonicalize_worlds(
-          lhs.get_worlds());
+  const auto lhs_worlds = canonicalize_worlds(lhs.get_worlds());
 
-  const auto rhs_worlds =
-      canonicalize_worlds(
-          rhs.get_worlds());
+  const auto rhs_worlds = canonicalize_worlds(rhs.get_worlds());
 
-  if (!internal_equal(
-          lhs_worlds,
-          rhs_worlds)) {
+  if (!internal_equal(lhs_worlds, rhs_worlds)) {
 
     return false;
   }
-
 
   // ------------------------------------------------------------------------
   // Designated worlds
@@ -241,43 +231,29 @@ bool KripkeEqualityHelper::verify_exact_equality(
     return false;
   }
 
-  const auto lhs_designated =
-      canonicalize_worlds(
-          lhs.get_designated_worlds());
+  const auto lhs_designated = canonicalize_worlds(lhs.get_designated_worlds());
 
-  const auto rhs_designated =
-      canonicalize_worlds(
-          rhs.get_designated_worlds());
+  const auto rhs_designated = canonicalize_worlds(rhs.get_designated_worlds());
 
-  if (!internal_equal(
-          lhs_designated,
-          rhs_designated)) {
+  if (!internal_equal(lhs_designated, rhs_designated)) {
 
     return false;
   }
-
 
   // ------------------------------------------------------------------------
   // Belief relation
   // ------------------------------------------------------------------------
 
-  if (lhs.get_beliefs().size() !=
-      rhs.get_beliefs().size()) {
+  if (lhs.get_beliefs().size() != rhs.get_beliefs().size()) {
 
     return false;
   }
 
-  const auto lhs_beliefs =
-      canonicalize_transitive_map(
-          lhs.get_beliefs());
+  const auto lhs_beliefs = canonicalize_transitive_map(lhs.get_beliefs());
 
-  const auto rhs_beliefs =
-      canonicalize_transitive_map(
-          rhs.get_beliefs());
+  const auto rhs_beliefs = canonicalize_transitive_map(rhs.get_beliefs());
 
-  if (!internal_equal(
-          lhs_beliefs,
-          rhs_beliefs)) {
+  if (!internal_equal(lhs_beliefs, rhs_beliefs)) {
 
     return false;
   }
@@ -285,16 +261,12 @@ bool KripkeEqualityHelper::verify_exact_equality(
   return true;
 }
 
+bool KripkeEqualityHelper::less_operator(const KripkeState &reference,
+                                         const KripkeState &to_compare) {
 
-bool KripkeEqualityHelper::less_operator(
-    const KripkeState &reference,
-    const KripkeState &to_compare) {
+  const auto reference_hash = reference.get_hash();
 
-  const auto reference_hash =
-      reference.get_hash();
-
-  const auto to_compare_hash =
-      to_compare.get_hash();
+  const auto to_compare_hash = to_compare.get_hash();
 
   /*
    * Different hashes immediately establish ordering.
@@ -323,136 +295,100 @@ bool KripkeEqualityHelper::less_operator(
    * for the duration of this comparison.
    */
 
-
   // ------------------------------------------------------------------------
   // Designated worlds
   // ------------------------------------------------------------------------
 
   const auto reference_designated =
-      canonicalize_worlds(
-          reference.get_designated_worlds());
+      canonicalize_worlds(reference.get_designated_worlds());
 
   const auto to_compare_designated =
-      canonicalize_worlds(
-          to_compare.get_designated_worlds());
+      canonicalize_worlds(to_compare.get_designated_worlds());
 
-  if (!internal_equal(
-          reference_designated,
-          to_compare_designated)) {
+  if (!internal_equal(reference_designated, to_compare_designated)) {
 
-    return internal_smaller(
-        reference_designated,
-        to_compare_designated);
+    return internal_smaller(reference_designated, to_compare_designated);
   }
-
 
   // ------------------------------------------------------------------------
   // Worlds
   // ------------------------------------------------------------------------
 
-  const auto reference_worlds =
-      canonicalize_worlds(
-          reference.get_worlds());
+  const auto reference_worlds = canonicalize_worlds(reference.get_worlds());
 
-  const auto to_compare_worlds =
-      canonicalize_worlds(
-          to_compare.get_worlds());
+  const auto to_compare_worlds = canonicalize_worlds(to_compare.get_worlds());
 
-  if (!internal_equal(
-          reference_worlds,
-          to_compare_worlds)) {
+  if (!internal_equal(reference_worlds, to_compare_worlds)) {
 
-    return internal_smaller(
-        reference_worlds,
-        to_compare_worlds);
+    return internal_smaller(reference_worlds, to_compare_worlds);
   }
-
 
   // ------------------------------------------------------------------------
   // Belief relation
   // ------------------------------------------------------------------------
 
   const auto reference_beliefs =
-      canonicalize_transitive_map(
-          reference.get_beliefs());
+      canonicalize_transitive_map(reference.get_beliefs());
 
   const auto to_compare_beliefs =
-      canonicalize_transitive_map(
-          to_compare.get_beliefs());
+      canonicalize_transitive_map(to_compare.get_beliefs());
 
-  return internal_smaller(
-      reference_beliefs,
-      to_compare_beliefs);
+  return internal_smaller(reference_beliefs, to_compare_beliefs);
 }
 
-
-void KripkeEqualityHelper::set_fast_comparison(
-    const bool value) noexcept {
+void KripkeEqualityHelper::set_fast_comparison(const bool value) noexcept {
   s_fast_comparison = value;
 }
 
 bool KripkeEqualityHelper::verify_equivalence(
-    const KripkeState &lhs,
-    const KripkeState &rhs,
-    const bool require_structural_equality,
-    const std::size_t formula_count,
+    const KripkeState &lhs, const KripkeState &rhs,
+    const bool require_structural_equality, const std::size_t formula_count,
     const unsigned int max_depth) {
 
-    /*
-     * Strong structural equality is required for visited-state
-     * pruning, but deliberately NOT for bisimulation.
-     */
-    if (require_structural_equality &&
-        !verify_exact_equality(lhs, rhs)) {
-
-#ifdef DEBUG
-        if (ArgumentParser::get_instance().get_verbose()) {
-            ArgumentParser::get_instance()
-                .get_output_stream()
-                << "[DEBUG] Structural equivalence FAILED."
-                << std::endl;
-        }
-#endif
-
-        return false;
-        }
-
-    /*
-     * Semantic equivalence is checked independently by evaluating
-     * deterministic random epistemic formulae in both states.
-     */
-    if (formula_count > 0) {
-
-        FormulaHelper::verify_semantic_equivalence(
-            lhs,
-            rhs,
-            max_depth,
-            static_cast<unsigned int>(formula_count));
-    }
+  /*
+   * Strong structural equality is required for visited-state
+   * pruning, but deliberately NOT for bisimulation.
+   */
+  if (require_structural_equality && !verify_exact_equality(lhs, rhs)) {
 
 #ifdef DEBUG
     if (ArgumentParser::get_instance().get_verbose()) {
-
-        auto &os =
-            ArgumentParser::get_instance()
-                .get_output_stream();
-
-        os << "[DEBUG] State equivalence verified";
-
-        if (require_structural_equality) {
-            os << " structurally";
-        }
-
-        if (formula_count > 0) {
-            os << " and with "
-               << formula_count
-               << " epistemic formulae";
-        }
-
-        os << "."
-           << std::endl;
+      ArgumentParser::get_instance().get_output_stream()
+          << "[DEBUG] Structural equivalence FAILED." << std::endl;
     }
 #endif
 
-    return true;
+    return false;
+  }
+
+  /*
+   * Semantic equivalence is checked independently by evaluating
+   * deterministic random epistemic formulae in both states.
+   */
+  if (formula_count > 0) {
+
+    FormulaHelper::verify_semantic_equivalence(
+        lhs, rhs, max_depth, static_cast<unsigned int>(formula_count));
+  }
+
+#ifdef DEBUG
+  if (ArgumentParser::get_instance().get_verbose()) {
+
+    auto &os = ArgumentParser::get_instance().get_output_stream();
+
+    os << "[DEBUG] State equivalence verified";
+
+    if (require_structural_equality) {
+      os << " structurally";
+    }
+
+    if (formula_count > 0) {
+      os << " and with " << formula_count << " epistemic formulae";
+    }
+
+    os << "." << std::endl;
+  }
+#endif
+
+  return true;
 }

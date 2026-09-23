@@ -129,16 +129,12 @@ void KripkeReachabilityHelper::clean_unreachable_worlds(KripkeState &kstate) {
   for (const auto &designated_world : designated_worlds) {
     reached_worlds.insert(designated_world);
 
-    if (const auto it = beliefs.find(designated_world);
-        it != beliefs.end()) {
+    if (const auto it = beliefs.find(designated_world); it != beliefs.end()) {
       reached_edges.emplace(designated_world, it->second);
-        }
+    }
 
-    get_all_reachable_worlds(
-        designated_world,
-        reached_worlds,
-        reached_edges,
-        kstate);
+    get_all_reachable_worlds(designated_world, reached_worlds, reached_edges,
+                             kstate);
   }
 
   kstate.set_worlds(reached_worlds);

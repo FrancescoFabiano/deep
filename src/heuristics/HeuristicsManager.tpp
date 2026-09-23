@@ -9,17 +9,17 @@
 
 template <StateRepresentation StateRepr>
 HeuristicsManager<StateRepr>::HeuristicsManager(
-  [[maybe_unused]] const State<StateRepr> &initial_state) {
+    [[maybe_unused]] const State<StateRepr> &initial_state) {
   set_used_h(Configuration::get_instance().get_heuristic_opt());
   m_goals = Domain::get_instance().get_goal_description();
   switch (m_used_heuristics) {
-    case Heuristics::L_PG:
-    case Heuristics::S_PG:
-      case Heuristics::C_PG:
-      ExitHandler::exit_with_message(
-          ExitHandler::ExitCode::NotImplementedError,
-          "EPG is temporarily unavailable during the EPDDL integration.");
-      break;
+  case Heuristics::L_PG:
+  case Heuristics::S_PG:
+  case Heuristics::C_PG:
+    ExitHandler::exit_with_message(
+        ExitHandler::ExitCode::NotImplementedError,
+        "EPG is temporarily unavailable during the EPDDL integration.");
+    break;
   /*
   case Heuristics::L_PG:
   case Heuristics::S_PG:
@@ -96,13 +96,13 @@ template <StateRepresentation StateRepr>
 int HeuristicsManager<StateRepr>::get_heuristic_value(
     State<StateRepr> &eState) {
   switch (m_used_heuristics) {
-      case Heuristics::L_PG:
-      case Heuristics::S_PG:
-      case Heuristics::C_PG:
-        ExitHandler::exit_with_message(
-            ExitHandler::ExitCode::NotImplementedError,
-            "EPG is temporarily unavailable during the EPDDL integration.");
-        break;
+  case Heuristics::L_PG:
+  case Heuristics::S_PG:
+  case Heuristics::C_PG:
+    ExitHandler::exit_with_message(
+        ExitHandler::ExitCode::NotImplementedError,
+        "EPG is temporarily unavailable during the EPDDL integration.");
+    break;
   /*case Heuristics::L_PG: {
     const PlanningGraph pg(m_goals, eState);
     return (pg.is_satisfiable() ? pg.get_length() : -1);

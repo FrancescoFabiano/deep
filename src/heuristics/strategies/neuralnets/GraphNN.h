@@ -116,8 +116,7 @@ private:
   size_t m_bitmask_size = 0; ///< Size of the bitmask (in bits) if using
                              ///< bitmask representation for nodes
 
-
-    std::vector<int64_t> m_pointed_ids;
+  std::vector<int64_t> m_pointed_ids;
   std::vector<int64_t> m_edge_src;
   ///< Source node IDs for each edge. (Assume
   ///< that the position is meaningful)

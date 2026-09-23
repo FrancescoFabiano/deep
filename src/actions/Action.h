@@ -40,12 +40,9 @@
  */
 class Action {
 public:
-
   Action() = default;
 
-  Action(
-      std::string name,
-      ActionId id);
+  Action(std::string name, ActionId id);
 
   Action(const Action &) = default;
   Action(Action &&) noexcept = default;
@@ -54,118 +51,92 @@ public:
 
   // === Identity ===
 
-  [[nodiscard]] const std::string &
-  get_name() const noexcept;
+  [[nodiscard]] const std::string &get_name() const noexcept;
 
-  void set_name(
-      const std::string &name);
+  void set_name(const std::string &name);
 
-  [[nodiscard]] const ActionId &
-  get_id() const noexcept;
+  [[nodiscard]] const ActionId &get_id() const noexcept;
 
-  void set_id(
-      const ActionId &id);
+  void set_id(const ActionId &id);
 
   // === Events ===
 
-  [[nodiscard]] const Events &
-  get_events() const noexcept;
+  [[nodiscard]] const Events &get_events() const noexcept;
 
-  [[nodiscard]] const Event &
-  get_event(EventId event_id) const;
+  [[nodiscard]] const Event &get_event(EventId event_id) const;
 
-  [[nodiscard]] bool
-  has_event(EventId event_id) const noexcept;
+  [[nodiscard]] bool has_event(EventId event_id) const noexcept;
 
-  void add_event(
-      const Event &event);
+  void add_event(const Event &event);
 
   // === Designated Events ===
 
-  [[nodiscard]] const DesignatedEvents &
-  get_designated_events() const noexcept;
+  [[nodiscard]] const DesignatedEvents &get_designated_events() const noexcept;
 
-  [[nodiscard]] bool
-  is_designated(EventId event_id) const noexcept;
+  [[nodiscard]] bool is_designated(EventId event_id) const noexcept;
 
-  void add_designated_event(
-      EventId event_id);
-
-
+  void add_designated_event(EventId event_id);
 
   // === Operators ===
 
   Action &operator=(const Action &) = default;
   Action &operator=(Action &&) noexcept = default;
 
-  [[nodiscard]] bool
-  operator<(const Action &other) const;
+  [[nodiscard]] bool operator<(const Action &other) const;
 
-  [[nodiscard]] bool
-  operator==(const Action &other) const;
+  [[nodiscard]] bool operator==(const Action &other) const;
 
+  // === EPDDL Observability ===
 
-    // === EPDDL Observability ===
+  /**
+   * \brief Get the event relation stored for each EPDDL observability type.
+   * \return Mapping from observability type to event accessibility relation.
+   */
+  [[nodiscard]]
+  const ObservabilityRelations &get_observability_relations() const noexcept;
 
-    /**
-     * \brief Get the event relation stored for each EPDDL observability type.
-     * \return Mapping from observability type to event accessibility relation.
-     */
-    [[nodiscard]]
-    const ObservabilityRelations &
-    get_observability_relations() const noexcept;
+  /**
+   * \brief Get the event relation associated with one observability type.
+   * \param type The observability type to retrieve.
+   * \return The event relation used when that type is selected.
+   */
+  [[nodiscard]]
+  const EventRelation &get_observability_relation(ObservabilityType type) const;
 
-    /**
-     * \brief Get the event relation associated with one observability type.
-     * \param type The observability type to retrieve.
-     * \return The event relation used when that type is selected.
-     */
-    [[nodiscard]]
-    const EventRelation &
-    get_observability_relation(
-        ObservabilityType type) const;
+  /**
+   * \brief Add one event-accessibility edge to the relation of an
+   * observability type.
+   * \param type The observability type being extended.
+   * \param from Source event id.
+   * \param to Target event id.
+   */
+  void add_observability_edge(ObservabilityType type, EventId from, EventId to);
 
-    /**
-     * \brief Add one event-accessibility edge to the relation of an
-     * observability type.
-     * \param type The observability type being extended.
-     * \param from Source event id.
-     * \param to Target event id.
-     */
-    void add_observability_edge(
-        ObservabilityType type,
-        EventId from,
-        EventId to);
+  /**
+   * \brief Get all formula-valued observability conditions for all agents.
+   * \return Mapping agent -> (observability type -> condition).
+   */
+  [[nodiscard]]
+  const ObservabilityConditions &get_observability_conditions() const noexcept;
 
-    /**
-     * \brief Get all formula-valued observability conditions for all agents.
-     * \return Mapping agent -> (observability type -> condition).
-     */
-    [[nodiscard]]
-    const ObservabilityConditions &
-    get_observability_conditions() const noexcept;
+  /**
+   * \brief Get the observability conditions registered for one agent.
+   * \param agent The grounded agent to query.
+   * \return The conditions indexed by observability type for \p agent.
+   */
+  [[nodiscard]]
+  const AgentObservabilityConditions &
+  get_observability_conditions(const Agent &agent) const;
 
-    /**
-     * \brief Get the observability conditions registered for one agent.
-     * \param agent The grounded agent to query.
-     * \return The conditions indexed by observability type for \p agent.
-     */
-    [[nodiscard]]
-    const AgentObservabilityConditions &
-    get_observability_conditions(
-        const Agent &agent) const;
-
-    /**
-     * \brief Register the condition under which an agent uses an
-     * observability type.
-     * \param agent The grounded agent.
-     * \param type The observability type enabled by the condition.
-     * \param condition The epistemic condition evaluated on the source state.
-     */
-    void add_observability_condition(
-        const Agent &agent,
-        ObservabilityType type,
-        const BeliefFormula &condition);
+  /**
+   * \brief Register the condition under which an agent uses an
+   * observability type.
+   * \param agent The grounded agent.
+   * \param type The observability type enabled by the condition.
+   * \param condition The epistemic condition evaluated on the source state.
+   */
+  void add_observability_condition(const Agent &agent, ObservabilityType type,
+                                   const BeliefFormula &condition);
 
 private:
   std::string m_name;
@@ -184,24 +155,23 @@ private:
    */
   DesignatedEvents m_designated_events;
 
+  /**
+   * \brief Event accessibility relation stored for each EPDDL observability
+   * type.
+   *
+   * Each entry represents the relation that becomes active if that
+   * observability type is selected for an agent while executing this action.
+   */
+  ObservabilityRelations m_observability_relations;
 
-    /**
-     * \brief Event accessibility relation stored for each EPDDL observability
-     * type.
-     *
-     * Each entry represents the relation that becomes active if that
-     * observability type is selected for an agent while executing this action.
-     */
-    ObservabilityRelations m_observability_relations;
-
-    /**
-     * \brief Formula-valued observability conditions for each agent.
-     *
-     * These determine which observability type, and therefore which event
-     * relation, applies to each agent when executing this action in a specific
-     * epistemic state.
-     */
-    ObservabilityConditions m_observability_conditions;
+  /**
+   * \brief Formula-valued observability conditions for each agent.
+   *
+   * These determine which observability type, and therefore which event
+   * relation, applies to each agent when executing this action in a specific
+   * epistemic state.
+   */
+  ObservabilityConditions m_observability_conditions;
 };
 
 using ActionsSet = std::set<Action>;

@@ -195,24 +195,18 @@ enum class RLHeuristicType {
 ///
 
 enum class BeliefFormulaType {
-    FLUENT_FORMULA,
-    BELIEF_FORMULA,
-    PROPOSITIONAL_FORMULA,
-    E_FORMULA,
-    C_FORMULA,
-    TRUE_FORMULA,
-    FALSE_FORMULA,
-    BF_EMPTY,
-    BF_TYPE_FAIL
-  };
+  FLUENT_FORMULA,
+  BELIEF_FORMULA,
+  PROPOSITIONAL_FORMULA,
+  E_FORMULA,
+  C_FORMULA,
+  TRUE_FORMULA,
+  FALSE_FORMULA,
+  BF_EMPTY,
+  BF_TYPE_FAIL
+};
 
-enum class BeliefFormulaOperator {
-    BF_NOT,
-    BF_AND,
-    BF_OR,
-    BF_INPAREN,
-    BF_FAIL
-  };
+enum class BeliefFormulaOperator { BF_NOT, BF_AND, BF_OR, BF_INPAREN, BF_FAIL };
 
 class BeliefFormula;
 using FormulaeList =
@@ -224,7 +218,6 @@ using EffectsMap = std::map<FluentFormula, BeliefFormula>; ///< Action effect to
                                                            ///< its conditions.
 ///@}
 
-
 /// \name DEL Related
 ///@{
 class BeliefFormula;
@@ -232,33 +225,28 @@ using EventId = std::uint64_t;
 
 using Postconditions = std::map<Fluent, BeliefFormula>;
 
-
 class Event;
 /**
  * Events indexed by their identifier.
  */
-using Events =
-    std::map<EventId, Event>;
+using Events = std::map<EventId, Event>;
 
 /**
  * Designated event ids of a multi-pointed action model.
  */
-using DesignatedEvents =
-    std::set<EventId>;
+using DesignatedEvents = std::set<EventId>;
 
 /**
  * Events reachable from one source event.
  */
-using EventTargets =
-    std::set<EventId>;
+using EventTargets = std::set<EventId>;
 
 /**
  * Event accessibility relation represented as:
  *
  *   source event -> target events
  */
-using EventRelation =
-    std::map<EventId, EventTargets>;
+using EventRelation = std::map<EventId, EventTargets>;
 
 /**
  * Agent-indexed event accessibility relations.
@@ -267,8 +255,7 @@ using EventRelation =
  * actions currently resolve observability through \ref ObservabilityRelations
  * instead of storing one fixed relation per agent in the action itself.
  */
-using EventRelations =
-    std::map<Agent, EventRelation>;
+using EventRelations = std::map<Agent, EventRelation>;
 
 /**
  * \brief Identifier of a grounded EPDDL observability case.
@@ -286,8 +273,7 @@ using ObservabilityType = unsigned int;
  * At execution time, each agent selects exactly one observability type and the
  * corresponding event relation is used during product update.
  */
-using ObservabilityRelations =
-    std::map<ObservabilityType, EventRelation>;
+using ObservabilityRelations = std::map<ObservabilityType, EventRelation>;
 
 /**
  * For one agent:
@@ -297,8 +283,7 @@ using ObservabilityRelations =
  * Conditions are evaluated on the complete source epistemic state before the
  * successor product model is expanded.
  */
-using AgentObservabilityConditions =
-    std::map<ObservabilityType, BeliefFormula>;
+using AgentObservabilityConditions = std::map<ObservabilityType, BeliefFormula>;
 
 /**
  * For all agents:
@@ -308,11 +293,9 @@ using AgentObservabilityConditions =
  * This mirrors the grounded EPDDL observability specification attached to one
  * action.
  */
-using ObservabilityConditions =
-    std::map<Agent, AgentObservabilityConditions>;
+using ObservabilityConditions = std::map<Agent, AgentObservabilityConditions>;
 
 ///@}
-
 
 /// \name Epistemic State
 ///@{

@@ -43,9 +43,9 @@ struct FringeTensor {
   ///< node IDs to real/hashed node IDs.
   ///< aligned with edge_ids.
   ///
-    std::vector<int64_t> pointed_ids;
-    /// Symbolic node IDs of the designated worlds.
-    /// Uses the same batched node-index space as edge_src and edge_dst.
+  std::vector<int64_t> pointed_ids;
+  /// Symbolic node IDs of the designated worlds.
+  /// Uses the same batched node-index space as edge_src and edge_dst.
 
   std::vector<int64_t> membership;
   ///< [num_states, 1] mapping each state to the corresponding start of the

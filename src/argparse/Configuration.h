@@ -76,13 +76,10 @@ public:
    */
   [[nodiscard]] bool get_bisimulation_type_bool() const noexcept;
 
+  [[nodiscard]]
+  std::size_t get_bisimulation_interval() const noexcept;
 
-    [[nodiscard]]
-std::size_t get_bisimulation_interval() const noexcept;
-
-
-    void set_bisimulation_interval(
-        std::size_t interval) noexcept;
+  void set_bisimulation_interval(std::size_t interval) noexcept;
 
   /**
    * \brief Checks if visited state checking is enabled.
@@ -96,15 +93,15 @@ std::size_t get_bisimulation_interval() const noexcept;
   void set_check_visited(const std::string &val);
   void set_check_visited(bool val);
 
-    [[nodiscard]]
-bool get_fast_world_comparison() const noexcept;
+  [[nodiscard]]
+  bool get_fast_world_comparison() const noexcept;
 
-    void set_fast_world_comparison(bool val) noexcept;
+  void set_fast_world_comparison(bool val) noexcept;
 
-    [[nodiscard]]
-    bool get_fast_state_comparison() const noexcept;
+  [[nodiscard]]
+  bool get_fast_state_comparison() const noexcept;
 
-    void set_fast_state_comparison(bool val) noexcept;
+  void set_fast_state_comparison(bool val) noexcept;
 
   /**
    * \brief Gets the search strategy.
@@ -222,15 +219,15 @@ private:
   int bisimulation_failures =
       0; ///< Counter to keep track of hwo many times Bisimulation failed so we
          ///< can deactivate it.
-  bool m_bisimulation_type_bool = true;  ///< Bisimulation type as boolean.
-    std::size_t m_bisimulation_interval = 2;
-    
-    bool m_check_visited = false;          ///< Visited state checking flag.
+  bool m_bisimulation_type_bool = true; ///< Bisimulation type as boolean.
+  std::size_t m_bisimulation_interval = 2;
 
-    bool m_fast_world_comparison = false;
-    bool m_fast_state_comparison = false;
+  bool m_check_visited = false; ///< Visited state checking flag.
 
-    std::string m_search_strategy = "BFS"; ///< Search strategy string.
+  bool m_fast_world_comparison = false;
+  bool m_fast_state_comparison = false;
+
+  std::string m_search_strategy = "BFS"; ///< Search strategy string.
   SearchType m_search_strategy_enum =
       SearchType::BFS;                      ///< Search strategy enum.
   std::string m_heuristic_opt = "SUBGOALS"; ///< Heuristic option string.

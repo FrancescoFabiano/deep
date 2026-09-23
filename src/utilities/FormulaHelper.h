@@ -152,7 +152,8 @@ public:
   static AgentsSet get_agents_if_entailed(const ObservabilitiesMap &map,
                                           const KripkeState &state);
 
-  /** \brief Return the first grounded effect whose enabling condition is entailed.
+  /** \brief Return the first grounded effect whose enabling condition is
+   * entailed.
    *
    * @param[in] map: the map that contains the tuples to check for entailment.
    * @param[in] state: the state in which to check the entailment.
@@ -205,7 +206,7 @@ public:
    */
   static KripkeWorldId hash_string_into_id(const std::string &string);
 
- static uint64_t hash_kripke_state(const KripkeState &state);
+  static uint64_t hash_kripke_state(const KripkeState &state);
 
   /**
    * \brief Check if a set of fluents is consistent.
@@ -220,34 +221,29 @@ public:
   /**
    * \brief Check if two Kripke states are bisimilar (entail the same set of
    * formulae). Fails if they are not. \param[in] first The first state to
-   * check. \param[in] second The second state to check. \param modal_depth \param formula_count \param seed
+   * check. \param[in] second The second state to check. \param modal_depth
+   * \param formula_count \param seed
    */
- static void verify_semantic_equivalence(
-     const KripkeState &first,
-     const KripkeState &second,
-     unsigned int modal_depth = 3,
-     unsigned int formula_count = 100,
-     std::uint32_t seed = 3760);
+  static void verify_semantic_equivalence(const KripkeState &first,
+                                          const KripkeState &second,
+                                          unsigned int modal_depth = 3,
+                                          unsigned int formula_count = 100,
+                                          std::uint32_t seed = 3760);
 
+  static BeliefFormula make_random_atom(const std::vector<Fluent> &fluents,
+                                        std::mt19937 &rng);
 
- static BeliefFormula make_random_atom(
-    const std::vector<Fluent> &fluents,
-    std::mt19937 &rng);
+  static BeliefFormula
+  make_random_propositional_formula(const std::vector<Fluent> &fluents,
+                                    std::mt19937 &rng);
 
- static BeliefFormula make_random_propositional_formula(
-     const std::vector<Fluent> &fluents,
-     std::mt19937 &rng);
+  static BeliefFormula
+  make_random_modal_formula(BeliefFormula inner,
+                            const std::vector<Agent> &agents,
+                            unsigned int depth, std::mt19937 &rng);
 
- static BeliefFormula make_random_modal_formula(
-     BeliefFormula inner,
-     const std::vector<Agent> &agents,
-     unsigned int depth,
-     std::mt19937 &rng);
-
- static BeliefFormula make_random_formula(
-     const std::vector<Fluent> &fluents,
-     const std::vector<Agent> &agents,
-     unsigned int modal_depth,
-     std::mt19937 &rng);
-
+  static BeliefFormula make_random_formula(const std::vector<Fluent> &fluents,
+                                           const std::vector<Agent> &agents,
+                                           unsigned int modal_depth,
+                                           std::mt19937 &rng);
 };

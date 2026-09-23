@@ -10,7 +10,6 @@
 
 #pragma once
 
-
 #include "strategies/SatisfiedGoals.h"
 #include "utilities/Define.h"
 

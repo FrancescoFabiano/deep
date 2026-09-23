@@ -49,8 +49,7 @@ Configuration &Configuration::get_instance() {
     const ArgumentParser &parser = ArgumentParser::get_instance();
     instance.set_bisimulation(parser.get_bisimulation());
     instance.set_bisimulation_type(parser.get_bisimulation_type());
-    instance.set_bisimulation_interval(
-        parser.get_bisimulation_interval());
+    instance.set_bisimulation_interval(parser.get_bisimulation_interval());
     instance.set_check_visited(parser.get_check_visited());
     instance.set_fast_world_comparison(parser.get_fast_world_comparison());
     instance.set_fast_state_comparison(parser.get_fast_state_comparison());
@@ -90,8 +89,7 @@ void Configuration::set_bisimulation_type_bool() {
   m_bisimulation_type_bool = get_bisimulation_type() != "PT";
 }
 
-std::size_t
-Configuration::get_bisimulation_interval() const noexcept {
+std::size_t Configuration::get_bisimulation_interval() const noexcept {
   return m_bisimulation_interval;
 }
 
@@ -113,22 +111,18 @@ bool Configuration::get_fast_world_comparison() const noexcept {
   return m_fast_world_comparison;
 }
 
-void Configuration::set_fast_world_comparison(
-    const bool val) noexcept {
+void Configuration::set_fast_world_comparison(const bool val) noexcept {
   m_fast_world_comparison = val;
   KripkeWorld::set_fast_comparison(val);
 }
 
 bool Configuration::get_fast_state_comparison() const noexcept {
   return m_fast_state_comparison;
-
 }
 
-void Configuration::set_fast_state_comparison(
-    const bool val) noexcept {
+void Configuration::set_fast_state_comparison(const bool val) noexcept {
   m_fast_state_comparison = val;
   KripkeEqualityHelper::set_fast_comparison(val);
-
 }
 
 const SearchType &Configuration::get_search_strategy() const noexcept {
@@ -201,16 +195,13 @@ void Configuration::set_field_by_name(const std::string &field,
     set_bisimulation_type(value);
   else if (field == "bisimulation_interval")
     set_bisimulation_interval(
-        static_cast<std::size_t>(
-            std::stoull(trim(value))));
+        static_cast<std::size_t>(std::stoull(trim(value))));
   else if (field == "check_visited" || field == "c")
     set_check_visited(value);
   else if (field == "fast_world_comparison")
-    set_fast_world_comparison(
-        str_to_bool(value));
+    set_fast_world_comparison(str_to_bool(value));
   else if (field == "fast_state_comparison")
-    set_fast_state_comparison(
-        str_to_bool(value));
+    set_fast_state_comparison(str_to_bool(value));
   else if (field == "search" || field == "s")
     set_search_strategy(value);
   else if (field == "heuristics" || field == "u")
@@ -324,20 +315,17 @@ void Configuration::print(std::ostream &os) const {
     else
       os << "Paige and Tarjan";
     os << '\n';
-    os << "    Bisimulation depth interval: "
-   << m_bisimulation_interval
-   << '\n';
+    os << "    Bisimulation depth interval: " << m_bisimulation_interval
+       << '\n';
   }
   os << "    Already visited state check: "
      << (m_check_visited ? "active" : "inactive") << '\n';
   if (m_check_visited) {
     os << "    Fast world comparison: "
-     << (m_fast_world_comparison ? "active" : "inactive")
-     << '\n';
+       << (m_fast_world_comparison ? "active" : "inactive") << '\n';
 
     os << "    Fast state comparison: "
-       << (m_fast_state_comparison ? "active" : "inactive")
-       << '\n';
+       << (m_fast_state_comparison ? "active" : "inactive") << '\n';
   }
   if ((m_search_strategy_enum == SearchType::HFS ||
        m_search_strategy_enum == SearchType::Astar ||

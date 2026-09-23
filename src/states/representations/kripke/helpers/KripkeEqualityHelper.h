@@ -46,26 +46,22 @@ public:
    */
   KripkeEqualityHelper &operator=(KripkeEqualityHelper &&) = default;
 
-    static void set_fast_comparison(bool value) noexcept;
+  static void set_fast_comparison(bool value) noexcept;
 
-    static KripkeWorldPointersVec
-canonicalize_worlds(const KripkeWorldPointersSet &worlds);
+  static KripkeWorldPointersVec
+  canonicalize_worlds(const KripkeWorldPointersSet &worlds);
 
-    static KripkeWorldPointersMapVec
-    canonicalize_agent_map(const KripkeWorldPointersMap &beliefs);
+  static KripkeWorldPointersMapVec
+  canonicalize_agent_map(const KripkeWorldPointersMap &beliefs);
 
-    static KripkeWorldPointersTransitiveMapVec
-    canonicalize_transitive_map(const KripkeWorldPointersTransitiveMap &beliefs);
+  static KripkeWorldPointersTransitiveMapVec
+  canonicalize_transitive_map(const KripkeWorldPointersTransitiveMap &beliefs);
 
-
-    [[nodiscard]]
-static bool verify_equivalence(
-    const KripkeState &lhs,
-    const KripkeState &rhs,
-    bool require_structural_equality,
-    std::size_t formula_count,
-    unsigned int max_depth = 5);
-
+  [[nodiscard]]
+  static bool verify_equivalence(const KripkeState &lhs, const KripkeState &rhs,
+                                 bool require_structural_equality,
+                                 std::size_t formula_count,
+                                 unsigned int max_depth = 5);
 
 private:
   static bool world_ptr_equal(const KripkeWorldPointer &a,
@@ -92,8 +88,7 @@ private:
   static bool internal_smaller(const KripkeWorldPointersTransitiveMapVec &lhs,
                                const KripkeWorldPointersTransitiveMapVec &rhs);
 
-
-    inline static bool s_fast_comparison = false;
+  inline static bool s_fast_comparison = false;
 
   /// \name Equality for KripkeState
   ///@{
@@ -104,13 +99,11 @@ private:
    * false otherwise.
    */
   static bool less_operator(const KripkeState &reference,
-                                   const KripkeState &to_compare);
+                            const KripkeState &to_compare);
 
-
-    [[nodiscard]]
-static bool verify_exact_equality(
-const KripkeState &lhs,
-const KripkeState &rhs);
+  [[nodiscard]]
+  static bool verify_exact_equality(const KripkeState &lhs,
+                                    const KripkeState &rhs);
 
   ///@}
   ///

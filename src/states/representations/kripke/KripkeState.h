@@ -50,14 +50,12 @@ public:
   /** \brief Set the designated worlds for this KripkeState.
    *  \param[in] to_set The set of designated KripkeWorld pointers.
    */
-  void set_designated_worlds(
-      const KripkeWorldPointersSet &to_set);
+  void set_designated_worlds(const KripkeWorldPointersSet &to_set);
 
   /** \brief Add a designated world to this KripkeState.
    *  \param[in] to_add The KripkeWorld pointer to designate.
    */
-  void add_designated_world(
-      const KripkeWorldPointer &to_add);
+  void add_designated_world(const KripkeWorldPointer &to_add);
 
   /** \brief Set the beliefs map for this KripkeState.
    *  \param[in] to_set The beliefs map to assign.
@@ -69,12 +67,10 @@ public:
    */
   void clear_beliefs();
 
-
-    /** \brief Get the set of worlds in this KripkeState.
+  /** \brief Get the set of worlds in this KripkeState.
    *  \return The set of KripkeWorld pointers.
    */
   [[nodiscard]] const KripkeWorldPointersSet &get_worlds() const noexcept;
-
 
   /** \brief Get the designated worlds in this KripkeState.
    *  \return The set of designated KripkeWorld pointers.
@@ -88,18 +84,15 @@ public:
    */
   [[nodiscard]] uint64_t get_hash() const noexcept;
 
-
   /** \brief Check whether a world is designated. */
   [[nodiscard]] bool
-  is_designated(
-      const KripkeWorldPointer &world) const noexcept;
+  is_designated(const KripkeWorldPointer &world) const noexcept;
 
   /** \brief Get the agent accessibility relation in this KripkeState.
    *  \return The map world -> agent -> reachable worlds.
    */
   [[nodiscard]] const KripkeWorldPointersTransitiveMap &
   get_beliefs() const noexcept;
-
 
   /** \brief Compute the DEL product-update successor of this state.
    *
@@ -143,7 +136,8 @@ public:
    */
   [[nodiscard]] bool entails(const Fluent &to_check) const;
 
-  /** \brief Check whether all designated worlds entail a conjunctive fluent set.
+  /** \brief Check whether all designated worlds entail a conjunctive fluent
+   * set.
    *
    * @param to_check: the conjunctive set of \ref Fluent to check if is entailed
    * by *this*.
@@ -169,7 +163,8 @@ public:
    * @return false if \p -to_check is entailed by *this*.*/
   [[nodiscard]] bool entails(const BeliefFormula &to_check) const;
 
-  /** \brief Check whether this epistemic state entails a conjunction of belief formulas.
+  /** \brief Check whether this epistemic state entails a conjunction of belief
+   * formulas.
    *
    * @param to_check: the CNF \ref FormulaeList to check if is entailed by
    * *this*.
@@ -182,8 +177,8 @@ public:
   /** \brief Apply bisimulation contraction after pruning unreachable worlds. */
   void contract_with_bisimulation();
 
-  /** \brief Compute or retrieve the graph-tensor view used by learned heuristics.
-   * \return The cached tensor representation of this state.
+  /** \brief Compute or retrieve the graph-tensor view used by learned
+   * heuristics. \return The cached tensor representation of this state.
    */
   [[nodiscard]] const GraphTensor &get_tensor_representation();
 
@@ -219,9 +214,9 @@ private:
   KripkeWorldPointersSet m_worlds;
   /** \brief Set of designated worlds. */
   KripkeWorldPointersSet m_designated_worlds;
-  /** \brief Accessibility relation: source world -> agent -> reachable worlds. */
+  /** \brief Accessibility relation: source world -> agent -> reachable worlds.
+   */
   KripkeWorldPointersTransitiveMap m_beliefs;
-
 
   /** \brief Cached structural hash used by fast state-comparison modes. */
   uint64_t m_hash = 0;
@@ -253,134 +248,115 @@ private:
    * different product-world origins.
    *  \return Pointer to the newly inserted KripkeWorld.
    */
-    KripkeWorldPointer add_rep_world(
-        const KripkeWorld &to_add,
-        unsigned short repetition);
+  KripkeWorldPointer add_rep_world(const KripkeWorld &to_add,
+                                   unsigned short repetition);
 
-  /** \brief Move-based overload of \ref add_rep_world(const KripkeWorld &, unsigned short). */
-  KripkeWorldPointer add_rep_world(
-    KripkeWorld &&to_add,
-    unsigned short repetition);
+  /** \brief Move-based overload of \ref add_rep_world(const KripkeWorld &,
+   * unsigned short). */
+  KripkeWorldPointer add_rep_world(KripkeWorld &&to_add,
+                                   unsigned short repetition);
 
+  /** \brief Recompute the cached structural hash after the state changes. */
+  void recompute_hash();
 
-    /** \brief Recompute the cached structural hash after the state changes. */
-    void recompute_hash();
+  // === DEL Product Update Helpers ===
+  /// \brief Product-world identifier `(source world, event id)`.
+  using ProductWorld = std::pair<KripkeWorldPointer, EventId>;
 
+  /// \brief Mapping from product-world identifier to created successor world.
+  using ProductWorldMap = std::map<ProductWorld, KripkeWorldPointer>;
 
-    // === DEL Product Update Helpers ===
-    /// \brief Product-world identifier `(source world, event id)`.
-    using ProductWorld =
-        std::pair<KripkeWorldPointer, EventId>;
+  /// \brief Work queue of product worlds whose outgoing relations remain to
+  /// expand.
+  using ProductWorldQueue = std::queue<ProductWorld>;
 
-    /// \brief Mapping from product-world identifier to created successor world.
-    using ProductWorldMap =
-        std::map<ProductWorld, KripkeWorldPointer>;
+  /// \brief Cache of event applicability for `(world,event)` pairs.
+  using ApplicabilityCache = std::map<ProductWorld, bool>;
 
-    /// \brief Work queue of product worlds whose outgoing relations remain to expand.
-    using ProductWorldQueue =
-        std::queue<ProductWorld>;
+  /// \brief Observability type selected for each agent on the source state.
+  using ResolvedObservability = std::map<Agent, ObservabilityType>;
 
-    /// \brief Cache of event applicability for `(world,event)` pairs.
-    using ApplicabilityCache =
-        std::map<ProductWorld, bool>;
+  /** \brief Check whether one event precondition holds in one source world. */
+  [[nodiscard]]
+  bool is_event_applicable(const Event &event,
+                           const KripkeWorldPointer &world) const;
 
-    /// \brief Observability type selected for each agent on the source state.
-    using ResolvedObservability =
-        std::map<Agent, ObservabilityType>;
+  /**
+   * \brief Cached version of \ref is_event_applicable.
+   * \param event The event to test.
+   * \param world The source world where the precondition is evaluated.
+   * \param cache Applicability cache shared during successor construction.
+   * \return True if the event is applicable in the world.
+   */
+  [[nodiscard]] bool
+  is_event_applicable_cached(const Event &event,
+                             const KripkeWorldPointer &world,
+                             ApplicabilityCache &cache) const;
 
-    /** \brief Check whether one event precondition holds in one source world. */
-    [[nodiscard]]
-    bool is_event_applicable(
-        const Event &event,
-        const KripkeWorldPointer &world) const;
+  /**
+   * \brief Apply one event's postconditions to one source world valuation.
+   * \param event The event whose postconditions are evaluated.
+   * \param world The source world providing the valuation and context.
+   * \return The valuation assigned to the created product world.
+   */
+  [[nodiscard]]
+  FluentsSet apply_event_postconditions(const Event &event,
+                                        const KripkeWorldPointer &world) const;
 
-    /**
-     * \brief Cached version of \ref is_event_applicable.
-     * \param event The event to test.
-     * \param world The source world where the precondition is evaluated.
-     * \param cache Applicability cache shared during successor construction.
-     * \return True if the event is applicable in the world.
-     */
-    [[nodiscard]] bool is_event_applicable_cached(
-        const Event &event,
-        const KripkeWorldPointer &world,
-        ApplicabilityCache &cache) const;
+  /**
+   * \brief Resolve one observability type per agent on the source state.
+   * \param action The action whose observability cases are evaluated.
+   * \return Mapping from each agent to the selected observability type.
+   */
+  [[nodiscard]]
+  ResolvedObservability resolve_observability_types(const Action &action) const;
 
-    /**
-     * \brief Apply one event's postconditions to one source world valuation.
-     * \param event The event whose postconditions are evaluated.
-     * \param world The source world providing the valuation and context.
-     * \return The valuation assigned to the created product world.
-     */
-    [[nodiscard]]
-    FluentsSet apply_event_postconditions(
-        const Event &event,
-        const KripkeWorldPointer &world) const;
+  /**
+   * \brief Return the successor world for one product pair, creating it if
+   * needed. \param source_world Source world from the predecessor state. \param
+   * event Event applied at \p source_world. \param successor Successor state
+   * under construction. \param product_worlds Cache of already-created product
+   * worlds. \param pending Queue of product worlds still to expand. \param
+   * next_repetition Repetition counter for duplicate valuations. \return The
+   * created or reused successor-world pointer.
+   */
+  KripkeWorldPointer get_or_create_product_world(
+      const KripkeWorldPointer &source_world, const Event &event,
+      KripkeState &successor, ProductWorldMap &product_worlds,
+      ProductWorldQueue &pending, unsigned short &next_repetition) const;
 
-    /**
-     * \brief Resolve one observability type per agent on the source state.
-     * \param action The action whose observability cases are evaluated.
-     * \return Mapping from each agent to the selected observability type.
-     */
-    [[nodiscard]]
-    ResolvedObservability resolve_observability_types(
-        const Action &action) const;
+  /**
+   * \brief Seed the designated part of the reachable product model.
+   * \param action Action being applied.
+   * \param successor Successor state under construction.
+   * \param product_worlds Cache of already-created product worlds.
+   * \param pending Queue of product worlds still to expand.
+   * \param applicability_cache Cache of `(world,event)` executability tests.
+   * \param next_repetition Repetition counter for duplicate valuations.
+   */
+  void create_designated_product_worlds(const Action &action,
+                                        KripkeState &successor,
+                                        ProductWorldMap &product_worlds,
+                                        ProductWorldQueue &pending,
+                                        ApplicabilityCache &applicability_cache,
+                                        unsigned short &next_repetition) const;
 
-    /**
-     * \brief Return the successor world for one product pair, creating it if needed.
-     * \param source_world Source world from the predecessor state.
-     * \param event Event applied at \p source_world.
-     * \param successor Successor state under construction.
-     * \param product_worlds Cache of already-created product worlds.
-     * \param pending Queue of product worlds still to expand.
-     * \param next_repetition Repetition counter for duplicate valuations.
-     * \return The created or reused successor-world pointer.
-     */
-    KripkeWorldPointer get_or_create_product_world(
-        const KripkeWorldPointer &source_world,
-        const Event &event,
-        KripkeState &successor,
-        ProductWorldMap &product_worlds,
-        ProductWorldQueue &pending,
-        unsigned short &next_repetition) const;
-
-    /**
-     * \brief Seed the designated part of the reachable product model.
-     * \param action Action being applied.
-     * \param successor Successor state under construction.
-     * \param product_worlds Cache of already-created product worlds.
-     * \param pending Queue of product worlds still to expand.
-     * \param applicability_cache Cache of `(world,event)` executability tests.
-     * \param next_repetition Repetition counter for duplicate valuations.
-     */
-    void create_designated_product_worlds(
-        const Action &action,
-        KripkeState &successor,
-        ProductWorldMap &product_worlds,
-        ProductWorldQueue &pending,
-        ApplicabilityCache &applicability_cache,
-        unsigned short &next_repetition) const;
-
-    /**
-     * \brief Expand the reachable product relations induced by world and event accessibility.
-     * \param action Action being applied.
-     * \param observability Observability type selected for each agent.
-     * \param successor Successor state under construction.
-     * \param product_worlds Cache of already-created product worlds.
-     * \param pending Queue of product worlds still to expand.
-     * \param applicability_cache Cache of `(world,event)` executability tests.
-     * \param next_repetition Repetition counter for duplicate valuations.
-     */
-    void expand_product_relations(
-        const Action &action,
-        const ResolvedObservability &observability,
-        KripkeState &successor,
-        ProductWorldMap &product_worlds,
-        ProductWorldQueue &pending,
-        ApplicabilityCache &applicability_cache,
-        unsigned short &next_repetition) const;
-
-
+  /**
+   * \brief Expand the reachable product relations induced by world and event
+   * accessibility. \param action Action being applied. \param observability
+   * Observability type selected for each agent. \param successor Successor
+   * state under construction. \param product_worlds Cache of already-created
+   * product worlds. \param pending Queue of product worlds still to expand.
+   * \param applicability_cache Cache of `(world,event)` executability tests.
+   * \param next_repetition Repetition counter for duplicate valuations.
+   */
+  void expand_product_relations(const Action &action,
+                                const ResolvedObservability &observability,
+                                KripkeState &successor,
+                                ProductWorldMap &product_worlds,
+                                ProductWorldQueue &pending,
+                                ApplicabilityCache &applicability_cache,
+                                unsigned short &next_repetition) const;
 
   /* This is to allow bisimulation to reduce the size of the object*/
   friend class Bisimulation;

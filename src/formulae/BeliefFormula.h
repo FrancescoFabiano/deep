@@ -45,7 +45,6 @@ public:
   /** \brief Empty Constructor */
   BeliefFormula() = default;
 
-
   /** \brief Copy Constructor
    *  \param[in] to_copy The \ref BeliefFormula to copy in *this*.
    */
@@ -179,7 +178,8 @@ public:
 
 private:
   // --- Data members ---
-  /// \brief Discriminator for the normalized formula node stored in this object.
+  /// \brief Discriminator for the normalized formula node stored in this
+  /// object.
   BeliefFormulaType m_formula_type = BeliefFormulaType::BF_EMPTY;
 
   /// \brief Grounded propositional content used when \ref m_formula_type is
@@ -193,7 +193,8 @@ private:
   /// \ref PROPOSITIONAL_FORMULA.
   BeliefFormulaOperator m_operator{};
 
-  /// \brief Grounded agent group used by \ref E_FORMULA and \ref C_FORMULA nodes.
+  /// \brief Grounded agent group used by \ref E_FORMULA and \ref C_FORMULA
+  /// nodes.
   AgentsSet m_group_agents;
 
   /// \brief First child formula for unary and binary normalized nodes.
