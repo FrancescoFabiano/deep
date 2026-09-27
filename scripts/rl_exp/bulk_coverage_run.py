@@ -62,7 +62,9 @@ def build_flags(base_folder, domain_name, fringe, strict, extra_args):
     
     if uses_rl:
         data_root = Path(base_folder).parent.parent
-        model_path = data_root / "_models" / domain_name / f"frontier_policy_{fringe}.onnx"
+        # frontier_policy_<F>.onnx (RL) or distance_estimator_<F>.onnx (GNN): same contract
+        basename = os.environ.get("RL_MODEL_BASENAME", "frontier_policy")
+        model_path = data_root / "_models" / domain_name / f"{basename}_{fringe}.onnx"
         model_path = model_path.resolve()
 
         flags += ["--RL_model", str(model_path)]

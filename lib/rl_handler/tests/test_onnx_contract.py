@@ -8,8 +8,8 @@ contract -- renaming one would silently still work, while REORDERING would
 silently produce garbage. These tests therefore pin ORDER and DTYPE, and check
 names only as documentation.
 
-  merged   (5): node_features, edge_index, edge_attr, membership, mask
-  separated(9): ... membership, goal_node_features, goal_edge_index,
+  merged   (6): node_features, edge_index, edge_attr, membership, pointed_ids, mask
+  separated(10): ... pointed_ids, goal_node_features, goal_edge_index,
                     goal_edge_attr, goal_batch, mask
   output:       logits float32 [F];  higher logit = expanded sooner
 
@@ -37,9 +37,9 @@ from src.trainer import RLFrontierTrainer
 
 CONTEXT_MODES = ("none", "mean_pool", "self_attention")
 
-MERGED_INPUTS = ["node_features", "edge_index", "edge_attr", "membership", "mask"]
+MERGED_INPUTS = ["node_features", "edge_index", "edge_attr", "membership", "pointed_ids", "mask"]
 SEPARATED_INPUTS = [
-    "node_features", "edge_index", "edge_attr", "membership",
+    "node_features", "edge_index", "edge_attr", "membership", "pointed_ids",
     "goal_node_features", "goal_edge_index", "goal_edge_attr", "goal_batch",
     "mask",
 ]
@@ -63,6 +63,7 @@ def _rng_graph(rng: np.random.Generator, n: int = 4, e: int = 5) -> StateGraph:
         edge_attr=torch.from_numpy(
             rng.integers(0, 200, size=e, dtype=np.int64).copy()
         ),
+        pointed_ids=torch.tensor([0], dtype=torch.int64),   # first world designated
     )
 
 
@@ -109,7 +110,7 @@ def test_merged_exports_five_inputs_in_order(mode, tmp_path):
     p = _export(_model(mode), tmp_path, 8, "merged")
     g = onnx.load(str(p))
     assert [i.name for i in g.graph.input] == MERGED_INPUTS
-    assert [o.name for o in g.graph.output] == ["logits"]
+    assert [o.name for o in g.graph.output] == ["scores"]
 
 
 @pytest.mark.parametrize("mode", CONTEXT_MODES)
@@ -128,7 +129,7 @@ def test_mask_is_last_and_goal_tensors_sit_before_it(mode, kind, tmp_path):
     names = [i.name for i in onnx.load(str(p)).graph.input]
     assert names[-1] == "mask"
     if kind == "separated":
-        assert names[4:8] == SEPARATED_INPUTS[4:8]
+        assert names[5:9] == SEPARATED_INPUTS[5:9]
 
 
 @pytest.mark.parametrize("mode", CONTEXT_MODES)
@@ -192,6 +193,7 @@ def test_onnx_reproduces_pytorch_scores(mode, kind, tmp_path):
                 edge_index=packed["edge_index"],
                 edge_attr=packed["edge_attr"],
                 membership=packed["membership"],
+                pointed_ids=packed["pointed_ids"],
                 candidate_batch=None,
                 mask=packed["mask"],
                 **kw,
@@ -234,6 +236,7 @@ def test_eager_matches_onnx_when_the_beam_is_not_full(mode, tmp_path):
             edge_index=packed_K["edge_index"],
             edge_attr=packed_K["edge_attr"],
             membership=packed_K["membership"],
+            pointed_ids=packed_K["pointed_ids"],
             candidate_batch=None,
             mask=packed_K["mask"],
         ).numpy()
@@ -266,13 +269,14 @@ def test_batched_path_matches_single_path(mode):
                 edge_index=packed["edge_index"],
                 edge_attr=packed["edge_attr"],
                 membership=packed["membership"],
+                pointed_ids=packed["pointed_ids"],
                 candidate_batch=None,
                 mask=packed["mask"],
             ))
 
     # pack both fringes into one graph: membership continues across fringes,
     # candidate_batch says which fringe each pooled slot belongs to.
-    nf, ei, ea, mem = [], [], [], []
+    nf, ei, ea, mem, pt = [], [], [], [], []
     node_off, slot_off = 0, 0
     for c in caches:
         p = pack_fringe(c, list(range(K)), K)
@@ -280,6 +284,7 @@ def test_batched_path_matches_single_path(mode):
         ei.append(p["edge_index"] + node_off)
         ea.append(p["edge_attr"])
         mem.append(p["membership"] + slot_off)
+        pt.append(p["pointed_ids"] + node_off)
         node_off += p["node_features"].numel()
         slot_off += K
     cb = torch.cat([torch.full((K,), i, dtype=torch.int64) for i in range(len(caches))])
@@ -289,6 +294,7 @@ def test_batched_path_matches_single_path(mode):
             edge_index=torch.cat(ei, dim=1),
             edge_attr=torch.cat(ea),
             membership=torch.cat(mem),
+            pointed_ids=torch.cat(pt),
             candidate_batch=cb,
             mask=None,
         )

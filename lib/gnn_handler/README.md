@@ -1,143 +1,75 @@
-
 ## About the Project
-This project develops an estimator that predicts how far a given state is from the goal within dynamic epistemic search
-trees. Each search space is modeled as a set of Kripke structures.
+
+A GNN distance estimator for dynamic epistemic search: every state (a Kripke
+structure) of a planner **fringe** gets an estimated distance to the goal, and
+the planner expands the closest one.  It is deployed through the same C++
+consumer as the RL fringe ranker (`FringeEvalRL`), so the two models are
+interchangeable at the planner: only the network and its training objective
+differ.  Everything between the generator's tables and the ONNX file --
+DOT parsing, beam construction, packing, the ONNX contract -- lives in
+`lib/deep_nn` and is shared with `lib/rl_handler`.
 
 ## 1. Installation
-1. Create a new python virtual environment (with 'python > 3.10'):
-   ```
-   python -m venv .venv
-   source .venv/bin/activate
-   ```
-2. Install requirements:
-   ```
-   pip install -r requirements.txt
-   ```
-3. Install setup:
-   ```
-   python setup.py install
-   ```
-4. Enable pre‑commit hooks
-   ```
-   pre-commit install
-   ```
-5. Run all hooks against existing files
-   ```
-   pre-commit run --all-files
-   ```
+
+```
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+```
 
 ## 2. Usage
 
-Launch `__main__.py` and customize your process with the available argparse options:
+### Training data
 
-```bash
-python __main__.py [OPTIONS]
+Generation tables produced by `deep --dataset` (merged mode, `HASHED`), in the
+batch layout the RL handler uses:
+
+```
+<batch>/_models/<domain>/training_data/<instance>/<instance>_<STRAT>_depth_<D>.csv
+<batch>/_models/<domain>/test_data/<instance>/...
 ```
 
-### Data Options
+The train/test split *is* these folders: `training_data` trains,
+`test_data` is evaluated only.  Separated models are trained from the same
+merged DOTs: the separated state and goal tensors are derived from them
+(`deep_nn.dot.separated_view`), because a separated-generated DOT records no
+designated worlds (GitHub issue #2).
 
-* `--subset-train <str>...`
-  Name(s) of problem subsets to use for training.
-  **Default:** `[]`
-* `--folder-raw-data <str>`
-  Path where raw or intermediate data lives (or will be built).
-  **Default:** `out/NN/Training`
-* `--dir-save-data <str>`
-  Directory into which processed data will be saved.
-  **Default:** `data`
-* `--unreachable-state-value <int>`
-  Numeric value to assign unreachable states in your distance matrix.
-  **Default:** `10^6`
-* `--test-size <float>`
-  Fraction of the dataset to reserve for testing (between 0.0 and 1.0).
-  **Default:** `0.2`
-* `--max-percentage-per-class <float>`
-  Highest possible percentage for one class in the target variable..
-  **Default:** `0.2`
+### Train
 
-### Model & Output Options
-
-* `--model-name <str>`
-  Name for the distance estimator model (used for filenames and logging).
-  **Default:** `distance_estimator`
-* `--normalization-constants-name <str>`
-  Name of the normalization constants file for rescaling outputs.
-  **Default:** `C`
-* `--dir-save-model <str>`
-  Directory into which trained models will be saved.
-  **Default:** `models`
-* `--experiment-name <str>`
-  Identifier for this experiment's data and model outputs.
-  **Default:** ``
-
-### Training Parameters
-
-* `--n-train-epochs <int>`
-  Number of epochs for training the neural network.
-  **Default:** `500`
-* `--batch-size <int>`
-  Batch size for the training loop.
-  **Default:** `2048`
-* `--seed <int>`
-  Random seed for reproducibility of splits and initialization.
-  **Default:** `42`
-
-### Boolean Flags
-
-Each of these accepts `true` or `false` (case-insensitive):
-
-* `--build-data <bool>`
-  Whether to (re)build the processed dataset before training.
-  **Default:** `true`
-* `--train <bool>`
-  Whether to actually train the model after data is available.
-  **Default:** `true`
-* `--if-try-example <bool>`
-  Run inference on example samples using PyTorch and ONNX.
-  **Default:** `false`
-* `--use-goal <bool>`
-  Include goal information as part of the input features.
-  **Default:** `false`
-* `--use-depth <bool>`
-  Include depth information (e.g., search depth) as a feature.
-  **Default:** `false`
-* `--verbose <bool>`
-  Print detailed evaluation errors and progress logs.
-  **Default:** `false`
-
-### Feature Options
-
-* `--dataset_type <hash|map|bitmask>`
-  Strategy for ordering your state representations.
-  **Default:** `hash`
-* `--kind-of-data <merged|separated>`
-  Whether to merge all data into a single set or keep splits separate.
-  **Default:** `merged`
-
----
-
-### Example Commands
-
-Build data and train with goal and depth features enabled:
-
-```bash
-python __main__.py \
-  --build-data true \
-  --train true \
-  --use-goal true \
-  --use-depth true \
-  --n-train-epochs 300 \
-  --batch-size 1024
+```
+python lib/gnn_handler/__main__.py \
+    --train-csv <tables...> --test-csv <tables...> \
+    --dir-save-model <batch>/_models/<domain>/seed42 \
+    --kind-of-data merged|separated --fringe-sizes 4 8 16 32 --epochs 200
 ```
 
-## Separated encoding
+or, for every domain of a batch, `python scripts/gnn_exp/train_models.py <batch>`.
 
-`--kind-of-data separated` requires `--use-goal true`: separated state DOTs are
-goal-free, so the per-instance `goal_tree.dot` (the CSV `Goal` column) is fed as
-a separate goal graph; `merged` leaves the goal inlined and never feeds it again.
-The separated distance-estimator ONNX exports the goal inputs
-(`goal_node_ids, goal_edge_index, goal_edge_attr, goal_batch`). Training + export
-are **ready**; deployment is pending the C++ `GraphNN::run_inference` separated
-branch to feed `get_goal_tensor()` into those inputs (mirroring `FringeEvalRL`;
-the goal tensor is already built at solve time). See
-`lib/rl_handler/SEPARATED.md` for the full contract.
+One model is trained per fringe size `F` on the planner-shaped beams of the
+behaviour rollouts (`src/beams.py`); the loss is MSE on the scaled distance
+`distance * slope + intercept` of every labelled slot (a state the generator
+marked unreachable is packed but not a target).  The best checkpoint on the
+test beams (or on the train beams when there is no test data) is exported as
+`<dir>_fringe<F>/distance_estimator_<F>.onnx` and checked against
+onnxruntime on real beams.
+
+### Deploy
+
+```
+deep <domain> <problem> --act_lib <lib> -b -c --search RL --heuristics RL_H \
+     --RL_model distance_estimator_<F>.onnx --RL_fringe_size <F> [--dataset_separated]
+```
+
+The ONNX follows the `FringeEvalRL` contract (`lib/deep_nn/contract.py`):
+inputs `node_features, edge_index, edge_attr, membership, pointed_ids,
+[goal_node_features, goal_edge_index, goal_edge_attr, goal_batch], mask`,
+output `scores[F] = -distance` (the planner sorts descending).  No constant
+file is needed: the scaling is inverted inside the graph.
+
+Only `HASHED` data reaches the planner today (issue #1).
+
+## 3. Tests
+
+```
+cd lib/gnn_handler && ../../.venv/bin/python -m pytest tests -q
+```

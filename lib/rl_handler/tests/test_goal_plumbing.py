@@ -121,7 +121,7 @@ def test_Td_eval_score_path_receives_goal(t19):
     assert "goal_node_features" in p
     seen = _spy_goal_emb(net)
     net(node_features=p["node_features"], edge_index=p["edge_index"], edge_attr=p["edge_attr"],
-        membership=p["membership"], candidate_batch=None, mask=p["mask"],
+        membership=p["membership"], pointed_ids=p["pointed_ids"], candidate_batch=None, mask=p["mask"],
         goal_node_features=p.get("goal_node_features"), goal_edge_index=p.get("goal_edge_index"),
         goal_edge_attr=p.get("goal_edge_attr"), goal_batch=p.get("goal_batch"))
     assert seen["none"] is False
@@ -140,7 +140,7 @@ def test_Te_merged_regression_no_goal_keys_and_forward_unchanged(t19):
     # merged forward: passing explicit goal_*=None must equal omitting them entirely
     net = _net(sep=False).eval()
     kw = dict(node_features=ps["node_features"], edge_index=ps["edge_index"],
-              edge_attr=ps["edge_attr"], membership=ps["membership"],
+              edge_attr=ps["edge_attr"], membership=ps["membership"], pointed_ids=ps["pointed_ids"],
               candidate_batch=None, mask=ps["mask"])
     with torch.no_grad():
         a = net(**kw)
@@ -169,18 +169,15 @@ def test_Tf_goal_columns_now_receive_gradient(t19):
 
 
 # ------------------------------------------------- T-g / T-h / T-i (boundary) ---
-def test_Tg_separated_missing_goal_dot_fails_loud(tmp_path):
-    inst_dir = tmp_path / "CC_x"
-    inst_dir.mkdir()
-    csv = inst_dir / "CC_x_depth_25.csv"
-    csv.write_text("")                       # state CSV exists, goal_tree.dot does NOT
-    cfg = RunConfig(train_csvs=[str(csv)], dir_save_model=tmp_path, kind_of_data="separated")
-
-    class _I:
-        name = "CC_x"
-        csv_path = str(csv)          # the goal is looked up beside THIS tree's CSV
-    with pytest.raises(FileNotFoundError, match="CC_x"):
-        _load_goals(cfg, [str(csv)], [_I()])
+def test_Tg_separated_on_separated_generated_dots_fails_loud(tmp_path):
+    """The goal (and the designated worlds) come from MERGED DOTs; a separated-
+    generated file carries neither, so building a separated cache from it must
+    fail with the reason, never fall back to a goal-less run."""
+    from src.offline.encoder import InstanceCache
+    p = tmp_path / "000001.dot"
+    p.write_text('digraph G {\n  5 -> 6 [label="7"];\n  6 -> 5 [label="7"];\n}\n')
+    with pytest.raises(ValueError, match="not a merged DOT"):
+        InstanceCache.from_paths([str(p)], separated=True, verbose=False)
 
 
 def test_Th_merged_with_goal_supplied_is_rejected(t19):
@@ -214,7 +211,7 @@ def test_Tj_separated_logits_depend_on_the_goal(t19):
         p = pack_single(cache, beam, len(beam), "cpu", goal_graph=_goal(seed=goal_seed))
         with torch.no_grad():
             return net(node_features=p["node_features"], edge_index=p["edge_index"],
-                       edge_attr=p["edge_attr"], membership=p["membership"],
+                       edge_attr=p["edge_attr"], membership=p["membership"], pointed_ids=p["pointed_ids"],
                        candidate_batch=None, mask=p["mask"],
                        goal_node_features=p.get("goal_node_features"),
                        goal_edge_index=p.get("goal_edge_index"),
@@ -239,4 +236,4 @@ def test_merged_load_goals_returns_none(tmp_path):
     csv.parent.mkdir()
     csv.write_text("")
     cfg = RunConfig(train_csvs=[str(csv)], dir_save_model=tmp_path, kind_of_data="merged")
-    assert _load_goals(cfg, [str(csv)], []) is None
+    assert _load_goals(cfg, [], {}) is None

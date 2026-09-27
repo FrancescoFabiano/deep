@@ -1,151 +1,77 @@
-import os
-import sys
-import time
+"""Train the GNN distance estimator for every domain of a batch.
+
+Twin of scripts/rl_exp/train_models.py: the same data discovery (one generation
+table per (instance, strategy) under <batch>/_models/<domain>/training_data,
+held-out tables under test_data) drives lib/gnn_handler/__main__.py instead of
+the RL trainer.  TRAIN = all of training_data, TEST = all of test_data; nothing
+is carved out.  Flags this script does not know are forwarded verbatim.
+
+    python scripts/gnn_exp/train_models.py exp/gnn_exp/batch1 --fringe-sizes 4 8 -- --epochs 50
+
+The exported ``distance_estimator_<F>.onnx`` is installed beside the RL one
+(``<batch>/_models/<domain>/``); deploy it with scripts/rl_exp/bulk_coverage_run.py
+and ``RL_MODEL_BASENAME=distance_estimator``.
+"""
+
+from __future__ import annotations
+
 import argparse
+import shutil
 import subprocess
-import concurrent.futures
-import multiprocessing
+import sys
+from pathlib import Path
 
-# The multi-strategy generator's directory level. The GNN distance estimator
-# reads the flat S_DFS layout only (one state in, one score out; no strategies).
-STRATEGY_DIRS = {"BFS", "DFS", "S_DFS", "HFS"}
+REPO_ROOT = Path(__file__).resolve().parents[2]
+GNN_MAIN = REPO_ROOT / "lib" / "gnn_handler" / "__main__.py"
+sys.path.insert(0, str(REPO_ROOT / "lib"))
+from deep_nn.strategies import parse_strategy_list  # noqa: E402
 
-
-def find_training_data_folders(batch_root):
-    models_root = os.path.join(batch_root, "_models")
-    training_data_folders = []
-
-    for root, dirs, _ in os.walk(models_root):
-        if "training_data" in dirs:
-            training_data_path = os.path.join(root, "training_data")
-            training_data_folders.append(training_data_path)
-
-    return training_data_folders
+sys.path.insert(0, str(REPO_ROOT / "scripts" / "rl_exp"))
+from train_models import domain_test_csvs, domain_train_csvs, find_domains  # noqa: E402
 
 
-def run_training(training_data_folder, batch_root, no_goal, dataset_type):
-    if not os.path.isdir(training_data_folder):
-        print(f"[ERROR] Training data folder not found: {training_data_folder}")
-        return
+def main() -> None:
+    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    p.add_argument("batch_root", help="batch folder holding _models/<domain>/training_data")
+    p.add_argument("--no_goal", action="store_true", help="train separated models (--kind-of-data separated)")
+    p.add_argument("--fringe-sizes", type=int, nargs="+", default=[4])
+    p.add_argument("--seed", type=int, default=42)
+    p.add_argument("--strategies", nargs="+", default=None,
+                   help="restrict to these generation strategies (default: every table on disk)")
+    args, forwarded = p.parse_known_args()
+    if forwarded and forwarded[0] == "--":
+        forwarded = forwarded[1:]
+    strategies = parse_strategy_list(args.strategies) if args.strategies else None
 
-    instance_names = sorted(
-        [
-            name
-            for name in os.listdir(training_data_folder)
-            if os.path.isdir(os.path.join(training_data_folder, name))
-        ]
-    )
-    if not instance_names:
-        print(f"[WARNING] No training instances found in {training_data_folder}")
-        return
-    strat = sorted(set(instance_names) & STRATEGY_DIRS)
-    if strat:
-        print(f"[ERROR] {training_data_folder} holds the per-strategy layout {strat}; the "
-              f"GNN reads the flat <training_data>/<instance>/ layout (generate WITHOUT "
-              f"--dataset-generation). Skipping.")
-        return
+    models_root = Path(args.batch_root) / "_models"
+    domains = find_domains(models_root)
+    if not domains:
+        raise SystemExit(f"no _models/<domain>/training_data under {args.batch_root}")
 
-    model_dir = os.path.dirname(training_data_folder)
-
-    cmd = [
-        sys.executable,          # the interpreter running this script, not whatever `python3` is
-        "lib/gnn_handler/__main__.py",
-        "--folder-raw-data",
-        training_data_folder,
-        "--subset-train",
-        *instance_names,
-        "--dir-save-model",
-        model_dir,
-        "--dir-save-data",
-        model_dir,
-        "--dataset_type",
-        dataset_type,
-    ]
-
-    if no_goal:
-        # Separated data: the state DOT is goal-free, so the instance's
-        # goal_tree.dot is fed as a second graph (both halves are required by
-        # the trainer; sending only the first was why this path never ran).
-        cmd += ["--kind-of-data", "separated", "--use-goal", "true"]
-
-    print(" ".join(cmd))
-    # print(f"[INFO] Launching training for {training_data_folder}")
-
-    try:
-        process = subprocess.Popen(
-            cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1
-        )
-
-        prefix = f"[{os.path.basename(model_dir)}]".ljust(20)
-        print(f"{prefix} Showing one log line every 15 seconds...")
-
-        last_print_time = 0  # epoch time
-        from collections import deque
-        recent = deque(maxlen=40)   # the tail of the child's output, for failures
-
-        for line in iter(process.stdout.readline, ""):
-            recent.append(line.rstrip())
-            now = time.time()
-            if now - last_print_time >= 15:
-                print(f"{prefix} {line.strip()}")
-                last_print_time = now
-
-        process.stdout.close()
-        return_code = process.wait()
-
-        if return_code == 0:
-            print(f"{prefix} [SUCCESS] Training completed.")
-        else:
-            # A swallowed traceback is a failure nobody can act on: show the tail.
-            print(f"{prefix} [ERROR] Training failed with code {return_code}; last "
-                  f"{len(recent)} lines of its output:")
-            for ln in recent:
-                print(f"{prefix}   {ln}")
-
-    except Exception as e:
-        print(f"[ERROR] Unexpected error during training {training_data_folder}: {e}")
-
-
-def main():
-    parser = argparse.ArgumentParser(
-        description="Run training in parallel for all training_data folders under a batch root."
-    )
-    parser.add_argument(
-        "batch_root", help="Path to batch folder (e.g., exp/gnn_exp/batch1)"
-    )
-    parser.add_argument(
-        "--no_goal",
-        action="store_true",
-        help="Set '--kind-of-data separated' for model training",
-    )
-    parser.add_argument(
-        "--dataset_type",
-        choices=["MAPPED", "HASHED", "BITMASK"],
-        default="HASHED",
-        help="Specifies how node labels are represented in dataset generation. Options: MAPPED (compact integer mapping), HASHED (standard hashing), or BITMASK (bitmask representation of fluents and goals).",
-    )
-
-    args = parser.parse_args()
-
-    training_data_folders = find_training_data_folders(args.batch_root)
-    if not training_data_folders:
-        print(
-            f"[ERROR] No training_data folders found under: {args.batch_root}/_models/"
-        )
-        return
-
-    max_workers = min(multiprocessing.cpu_count(), len(training_data_folders))
-    # print(f"[INFO] Running with up to {max_workers} parallel threads.")
-
-    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = [
-            executor.submit(
-                run_training, folder, args.batch_root, args.no_goal, args.dataset_type
-            )
-            for folder in training_data_folders
-        ]
-        for future in concurrent.futures.as_completed(futures):
-            future.result()  # trigger exceptions if any
+    for domain in domains:
+        train_csvs = domain_train_csvs(models_root, domain, strategies)
+        test_csvs = domain_test_csvs(models_root, domain, strategies)
+        if not train_csvs:
+            print(f"[{domain}] no training_data tables, skipped")
+            continue
+        domain_dir = models_root / domain
+        cmd = [sys.executable, str(GNN_MAIN), "--seed", str(args.seed),
+               "--dir-save-model", str(domain_dir / f"seed{args.seed}"),
+               "--train-csv", *(str(c.resolve()) for c in train_csvs)]
+        if test_csvs:
+            cmd += ["--test-csv", *(str(c.resolve()) for c in test_csvs)]
+        if args.no_goal:
+            cmd += ["--kind-of-data", "separated"]
+        cmd += ["--fringe-sizes", *map(str, args.fringe_sizes), *forwarded]
+        print(f"[{domain}] {' '.join(cmd)}")
+        rc = subprocess.run(cmd, cwd=REPO_ROOT).returncode
+        if rc != 0:
+            raise SystemExit(f"[{domain}] gnn_handler exited with code {rc}")
+        for F in args.fringe_sizes:
+            exported = domain_dir / f"seed{args.seed}_fringe{F}" / f"distance_estimator_{F}.onnx"
+            if exported.exists():
+                shutil.copy2(exported, domain_dir / exported.name)
+                print(f"[{domain}] installed {domain_dir / exported.name}")
 
 
 if __name__ == "__main__":

@@ -160,12 +160,6 @@ class BaseModel(ABC):
         """
         raise NotImplementedError
 
-    @abstractmethod
-    def predict_single(self, *args, **kwargs):
-        """
-        Predict on a single example (e.g. file paths or tensors),
-        """
-        raise NotImplementedError
 
     @staticmethod
     def save_and_plot_metrics(history, checkpoint_dir, n_epochs, best_epoch=None):
@@ -214,7 +208,6 @@ class BaseModel(ABC):
         return history
 
     @abstractmethod
-    def to_onnx(
-        self, onnx_path: str | Path, with_goal: bool = False, with_depth: bool = False
-    ) -> None:
+    def to_onnx(self, onnx_path: str | Path, fringe_size: int, params: dict) -> Path:
+        """Export for the planner (lib/deep_nn/contract.py)."""
         raise NotImplementedError

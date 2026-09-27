@@ -78,6 +78,7 @@ def test_score_is_a_single_scalar_per_slot():
         edge_index=torch.zeros((2, e), dtype=torch.int64),
         edge_attr=torch.zeros(e, dtype=torch.int64),
         membership=torch.arange(n) % k,
+        pointed_ids=torch.zeros(0, dtype=torch.int64),
         candidate_batch=None,
         mask=torch.ones(k, dtype=torch.uint8),
     )
@@ -93,6 +94,7 @@ def test_masked_slots_are_masked():
         edge_index=torch.zeros((2, e), dtype=torch.int64),
         edge_attr=torch.zeros(e, dtype=torch.int64),
         membership=torch.arange(n) % k,
+        pointed_ids=torch.zeros(0, dtype=torch.int64),
         candidate_batch=None, mask=mask,
     )
     assert s[2] <= -1e8

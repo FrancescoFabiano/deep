@@ -344,6 +344,7 @@ class QTrainer:
         out = net(
             node_features=p["node_features"], edge_index=p["edge_index"],
             edge_attr=p["edge_attr"], membership=p["membership"],
+            pointed_ids=p["pointed_ids"],
             candidate_batch=p["candidate_batch"], mask=None,
             goal_node_features=p.get("goal_node_features"),
             goal_edge_index=p.get("goal_edge_index"),
@@ -485,6 +486,7 @@ class QTrainer:
                 s = self.model(
                     node_features=p["node_features"], edge_index=p["edge_index"],
                     edge_attr=p["edge_attr"], membership=p["membership"],
+                    pointed_ids=p["pointed_ids"],
                     candidate_batch=None, mask=p["mask"],
                     goal_node_features=p.get("goal_node_features"),
                     goal_edge_index=p.get("goal_edge_index"),

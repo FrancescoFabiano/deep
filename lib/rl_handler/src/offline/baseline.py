@@ -81,7 +81,7 @@ def score_beam(
         s = model(
             node_features=p["node_features"], edge_index=p["edge_index"],
             edge_attr=p["edge_attr"], membership=p["membership"],
-            candidate_batch=None, mask=p["mask"],
+            pointed_ids=p["pointed_ids"], candidate_batch=None, mask=p["mask"],
         )
     return s.detach().cpu().tolist()
 
