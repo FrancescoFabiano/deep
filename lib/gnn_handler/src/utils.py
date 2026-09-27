@@ -20,6 +20,7 @@ from src.models.distance_estimator import (
     DistanceEstimator,
     OnnxNegativeDistance,
     OnnxNegativeDistanceSeparated,
+    OnnxScaledDistance,
 )
 
 # The historical fixed range of the target map, used when the generation depth
@@ -27,6 +28,8 @@ from src.models.distance_estimator import (
 LEGACY_MAX_DEPTH = 50
 MIN_V_NN = 1e-3
 
+# The C++ GraphNN per-state consumer (HFS/A* with --heuristics GNN), by position.
+STATE_INPUTS = ("node_features", "edge_index", "edge_attr", "batch", "pointed_ids")
 MODEL_INPUTS = ("node_features", "edge_index", "edge_attr", "membership", "pointed_ids",
                 "candidate_batch", "mask", "goal_node_features", "goal_edge_index",
                 "goal_edge_attr", "goal_batch")
@@ -47,6 +50,12 @@ def normalization_params(max_depth: int) -> Dict[str, float]:
 
 def scale_distance(distance: torch.Tensor, params: Dict[str, float]) -> torch.Tensor:
     return (distance * params["slope"] + params["intercept"]).to(torch.float32)
+
+
+def constant_file(state_onnx: str | Path) -> Path:
+    """`distance_estimator_4_state.onnx` -> `distance_estimator_4_state_C.txt`."""
+    p = Path(state_onnx)
+    return p.with_name(p.stem + "_C.txt")
 
 
 def model_inputs(batch: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
@@ -108,6 +117,31 @@ class DistanceEstimatorModel(BaseModel):
             return contract.export(wrapper, onnx_path, fringe_size, separated=self.model.use_goal)
         finally:
             self.model.to(self.device)
+
+    def to_onnx_state(self, onnx_path: str | Path, params: Dict[str, float]) -> Path:
+        """Per-state export for the C++ GraphNN consumer, plus the constant file
+        (``<stem>_C.txt``) it inverts the target scaling with."""
+        if self.model.use_goal:
+            raise ValueError("the GraphNN consumer supports merged models only")
+        onnx_path = Path(onnx_path)
+        n, e = 8, 12
+        dummy = (torch.zeros(n, dtype=torch.int64), torch.zeros((2, e), dtype=torch.int64),
+                 torch.zeros((e, 1), dtype=torch.int64), torch.zeros(n, dtype=torch.int64),
+                 torch.arange(2, dtype=torch.int64))
+        axes = {"node_features": {0: "N"}, "edge_index": {1: "E"}, "edge_attr": {0: "E"},
+                "batch": {0: "N"}, "pointed_ids": {0: "P"}}
+        try:
+            torch.onnx.export(OnnxScaledDistance(self.model).eval().cpu(), dummy, onnx_path.as_posix(),
+                              opset_version=contract.OPSET, dynamo=False, input_names=list(STATE_INPUTS),
+                              output_names=["scaled_distance"], dynamic_axes=axes, do_constant_folding=False)
+        finally:
+            self.model.to(self.device)
+        import onnx
+        names = [i.name for i in onnx.load(str(onnx_path)).graph.input]
+        if names != list(STATE_INPUTS):
+            raise ValueError(f"{onnx_path}: inputs {names} != {STATE_INPUTS} (an unused input was pruned)")
+        constant_file(onnx_path).write_text(f"slope = {params['slope']}\nintercept = {params['intercept']}\n")
+        return onnx_path
 
     def verify_onnx(self, onnx_path: str | Path, feeds: Sequence[Dict[str, torch.Tensor]],
                     params: Dict[str, float]) -> Dict[str, float]:

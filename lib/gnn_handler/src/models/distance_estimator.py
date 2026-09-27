@@ -155,3 +155,17 @@ class OnnxNegativeDistanceSeparated(OnnxNegativeDistance):
             node_features, edge_index, edge_attr, membership, pointed_ids, mask=mask,
             goal_node_features=goal_node_features, goal_edge_index=goal_edge_index,
             goal_edge_attr=goal_edge_attr, goal_batch=goal_batch))
+
+
+class OnnxScaledDistance(nn.Module):
+    """One state for the C++ ``GraphNN`` consumer (``--heuristics GNN`` under HFS
+    or A*): inputs ``node_features, edge_index, edge_attr [E,1], batch,
+    pointed_ids``; output the scaled distance ``[1]``.  The planner inverts the
+    scaling with the constant file (``slope = ``, ``intercept = ``) and rounds."""
+
+    def __init__(self, core: DistanceEstimator):
+        super().__init__()
+        self.core = core
+
+    def forward(self, node_features, edge_index, edge_attr, batch, pointed_ids):
+        return self.core(node_features, edge_index, edge_attr, batch, pointed_ids)

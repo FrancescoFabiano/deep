@@ -1,0 +1,119 @@
+"""Cheap contracts: config validation, the split rule, the flags stage 2 sends, stage 4 on a toy CSV.
+
+    .venv/bin/python -m pytest scripts/pipeline/tests -q
+"""
+import csv
+import importlib.util
+import sys
+from pathlib import Path
+
+import pytest
+
+SCRIPTS = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(SCRIPTS))
+from pipeline import config, infer, instances, report, train  # noqa: E402
+
+BASIC = config.REPO / "exp" / "trials" / "basic"
+
+
+def _trial(tmp_path, **overrides):
+    """A copy of basic's config with tiny instances; `overrides` patch [section] keys."""
+    text = (BASIC / "trial.toml").read_text()
+    for key, value in overrides.items():
+        text = "\n".join(f"{key} = {value}" if line.split("=")[0].strip() == key else line for line in text.splitlines())
+    (tmp_path / "trial.toml").write_text(text)
+    inst = tmp_path / "instances"
+    (inst / "d1" / "problems").mkdir(parents=True)
+    (inst / "act_lib.epddl").write_text("")
+    (inst / "d1" / "domain.epddl").write_text("")
+    for k in range(10):
+        (inst / "d1" / "problems" / f"p-{k:02d}.epddl").write_text("")
+    return config.load(tmp_path, dry_run=True)
+
+
+def test_basic_config_loads():
+    cfg = config.load(BASIC, dry_run=True)
+    assert cfg.strategies == cfg.data["strategies"]
+
+
+@pytest.mark.parametrize("key,value", [("train_pct", 0), ("rl_exploitation", 95), ('gnn_searches', '["BFS"]')])
+def test_invalid_config_is_refused(tmp_path, key, value):
+    with pytest.raises(SystemExit):
+        _trial(tmp_path, **{key: value})
+
+
+def test_split_is_sorted_and_frozen(tmp_path):
+    cfg = _trial(tmp_path)
+    insts = instances.load(cfg)
+    assert [i.split for i in insts] == ["train"] * 7 + ["test"] * 3
+    assert [i.problem for i in insts][:2] == ["p-00", "p-01"]
+    rows = list(csv.DictReader(cfg.split_file.open()))
+    rows[0]["split"] = "test"
+    with cfg.split_file.open("w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=rows[0].keys()); w.writeheader(); w.writerows(rows)
+    assert instances.load(cfg)[0].split == "test"      # the file, not the rule, is authoritative
+
+
+def _accepted(main_py: Path) -> set:
+    """Option strings of a trainer's parser. Both handlers own a top-level `src`
+    package, so each load starts from a clean module cache and path."""
+    for name in [n for n in sys.modules if n == "src" or n.startswith("src.")]:
+        del sys.modules[name]
+    spec = importlib.util.spec_from_file_location(main_py.stem + "_mod", main_py)
+    m = importlib.util.module_from_spec(spec)
+    sys.path.insert(0, str(main_py.parent))
+    try:
+        spec.loader.exec_module(m)
+    finally:
+        sys.path.remove(str(main_py.parent))
+    parser = m.build_parser() if hasattr(m, "build_parser") else None
+    if parser is None:                       # gnn_handler: parse_args builds its parser inline
+        import argparse
+        real = argparse.ArgumentParser.parse_args
+        captured = {}
+        argparse.ArgumentParser.parse_args = lambda self, *a, **k: captured.setdefault("p", self) and self
+        try:
+            m.parse_args([])
+        finally:
+            argparse.ArgumentParser.parse_args = real
+        parser = captured["p"]
+    return {o for a in parser._actions for o in a.option_strings}
+
+
+@pytest.mark.parametrize("kind", ["rl", "gnn"])
+def test_trainers_accept_the_flags_stage2_sends(kind):
+    sent = {"--train-csv", "--test-csv", "--dir-save-model", "--fringe-sizes", "--epochs", "--batch-size",
+            "--seed", "--dataset-type", *train.FIXED_FLAGS[kind]}
+    missing = sent - _accepted(train.TRAINERS[kind])
+    assert not missing, f"{kind} trainer rejects {missing}"
+
+
+def test_methods_follow_the_installed_models(tmp_path):
+    cfg = _trial(tmp_path)
+    d = cfg.models_dir / "d1"
+    d.mkdir(parents=True)
+    for name in ["rl_F4.onnx", "gnn_F8.onnx", "gnn_F8_state.onnx", "gnn_F8_state_C.txt"]:
+        (d / name).write_text("")
+    got = [(m.name, m.F) for m in infer.methods(cfg, "d1")]
+    assert got == [("BFS", 0), ("RL", 4), ("GNN_RL", 8), ("GNN_Astar", 8)]
+
+
+def test_report_on_toy_results(tmp_path):
+    cfg = _trial(tmp_path)
+    cfg.results_file.parent.mkdir(parents=True)
+    rows = []
+    for k in range(4):
+        split = "train" if k < 3 else "test"
+        rows.append(dict(domain="d1", split=split, problem=f"p-{k:02d}", method="BFS", F=0, status="SOLVED",
+                         plan_length=3, nodes_expanded=100 * (k + 1), init_ms=1, search_ms=5, total_ms=6, wall_s=0.1))
+        for F in (4, 8):
+            rows.append(dict(domain="d1", split=split, problem=f"p-{k:02d}", method="RL", F=F,
+                             status="SOLVED" if k < 3 else "TIMEOUT", plan_length=3, nodes_expanded=50 * (k + 1),
+                             init_ms=1, search_ms=5, total_ms=6, wall_s=0.1))
+    with cfg.results_file.open("w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=infer.COLUMNS); w.writeheader(); w.writerows(rows)
+    report.run(cfg)
+    tex = (cfg.report_dir / "tables" / "nodes_train.tex").read_text()
+    assert r"\begin{tabular}" in tex and "(+50\\%)" in tex
+    assert (cfg.report_dir / "tables" / "coverage_test.csv").read_text().splitlines()[1] == "d1,1/1,0/1,0/1"
+    assert (cfg.report_dir / "figures" / "d1_nodes_vs_bfs.png").exists()

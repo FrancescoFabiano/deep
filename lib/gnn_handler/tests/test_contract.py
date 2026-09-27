@@ -10,7 +10,7 @@ ort = pytest.importorskip("onnxruntime")
 from conftest import Cache, random_graph
 from deep_nn import contract
 from deep_nn.pack import pack_fringe, pack_goal_tensors
-from src.utils import DistanceEstimatorModel, model_inputs, normalization_params
+from src.utils import STATE_INPUTS, DistanceEstimatorModel, constant_file, model_inputs, normalization_params
 
 
 def _model(separated: bool) -> DistanceEstimatorModel:
@@ -83,3 +83,19 @@ def test_non_hashed_export_is_refused(tmp_path):
     main = mod.main
     with pytest.raises(SystemExit, match="HASHED"):
         main(["--train-csv", "x.csv", "--dir-save-model", str(tmp_path), "--dataset-type", "BITMASK"])
+
+
+def test_state_export_matches_torch_and_writes_constants(tmp_path):
+    m = _model(False)
+    params = normalization_params(10)
+    path = m.to_onnx_state(tmp_path / "s.onnx", params)
+    assert [i.name for i in onnx.load(str(path)).graph.input] == list(STATE_INPUTS)
+    feed = _feed(1, 1, False)          # one state: membership is all zeros, like the planner's batch
+    got = contract.run_onnx(path, {"node_features": feed["node_features"], "edge_index": feed["edge_index"],
+                                   "edge_attr": feed["edge_attr"].view(-1, 1), "batch": feed["membership"],
+                                   "pointed_ids": feed["pointed_ids"]})
+    with torch.no_grad():
+        want = m.model(**model_inputs(feed)).numpy()
+    assert got.shape == (1,) and abs(float(got[0]) - float(want[0])) < 1e-5
+    text = constant_file(path).read_text()
+    assert f"slope = {params['slope']}" in text and f"intercept = {params['intercept']}" in text

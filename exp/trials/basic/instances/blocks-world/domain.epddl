@@ -1,0 +1,185 @@
+;; DOMAIN
+;; Blocks World
+;;
+;; DESCRIPTION
+;; ...
+;;
+;; ACTIONS
+;;  - move (public-ontic)
+;;
+
+(define (domain blocks-world)
+    (:requirements 
+        :pal :typing :lists :partial-observability :ontic-actions
+    )
+
+    (:action-type-libraries
+        basic
+    )
+
+    (:types
+        block
+    )
+
+    (:predicates
+        (on ?b1 ?b2 - block)
+        (on-table ?b - block)
+        (clear ?b - block)
+        (holding ?b - block)
+        (arm-empty)
+    )
+
+    (:constants
+        Robot - agent
+    )
+
+    ;------------------PICK-UP----------------
+
+    (:event e-pick-up
+        :parameters
+            (?b - block)
+        :precondition
+            (and
+                (on-table ?b)               ; ?b must be on the table, it must
+                (clear ?b)                  ; be clear, and the Robot's arm
+                (arm-empty) )               ; must be empty
+        :effects
+            (:and
+                (not (on-table ?b))
+                ; (not (clear ?b))
+                (not (arm-empty))
+                (holding ?b) )
+    )
+
+    (:action pick-up
+        :parameters
+            (?b - block)
+        :action-type
+            (public-ontic
+                (e-pick-up ?b) )
+        :observability-conditions
+            (Robot Fully)
+    )
+
+    ;------------------PUT-DOWN----------------
+
+    (:event e-put-down
+        :parameters
+            (?b - block)
+        :precondition
+            (holding ?b)
+        :effects
+            (:and
+                (not (holding ?b))
+                (clear ?b)
+                (arm-empty)
+                (on-table ?b) )
+    )
+
+    (:action put-down
+        :parameters
+            (?b - block)
+        :action-type
+            (public-ontic
+                (e-put-down ?b) )
+        :observability-conditions
+            (Robot Fully)
+    )
+
+
+    ;--------------------STACK------------------
+
+    (:event e-stack
+        :parameters
+            (?b1 ?b2 - block)
+        :precondition
+            (and
+                (holding ?b1)
+                (clear ?b2) )
+        :effects
+            (:and
+                (not (holding ?b1))
+                (not (clear ?b2))
+                (clear ?b1)
+                (arm-empty)
+                (on ?b1 ?b2) )
+    )
+
+    (:action stack
+        :parameters
+            (?b1 ?b2 - block)
+        :action-type
+            (public-ontic
+                (e-stack ?b1 ?b2) )
+        :observability-conditions
+            (Robot Fully)
+    )
+
+
+    ;-------------------UNSTACK-----------------
+           
+    (:event e-unstack
+        :parameters
+            (?b1 ?b2 - block)
+        :precondition
+            (and
+                (on ?b1 ?b2)
+                (clear ?b1)
+                (arm-empty) )
+        :effects
+            (:and
+                (holding ?b1)
+                (clear ?b2)
+                (not (clear ?b1))
+                (not (arm-empty))
+                (not (on ?b1 ?b2)) )
+    )
+
+    (:action unstack
+        :parameters
+            (?b1 ?b2 - block)
+        :action-type
+            (public-ontic
+                (e-unstack ?b1 ?b2) )
+        :observability-conditions
+            (Robot Fully)
+    )
+
+
+    ;; ;--------------------MOVE------------------
+
+    ;; (:event e-move
+    ;;     :parameters
+    ;;         (?b - block
+    ;;          ?x ?y - object)
+    ;;     :precondition
+    ;;         (and
+    ;;             (on ?b ?x)                              ; ?b must be on top of ?x,
+    ;;             (clear ?b)                              ; ?b must be clear, and
+    ;;             (forall (?b2 - block | (= ?b2 ?y))      ; if ?y is a block, then ?y must be clear
+    ;;                 (clear ?b2) ))
+    ;;     :effects
+    ;;         (:and
+    ;;             (on ?b ?y)                              ; ?b is moved on ?y, and it is no longer
+    ;;             (not (on ?b ?x))                        ; on top of ?x.
+    ;;             (:forall (?b2 - block | (= ?b2 ?x))     ; If ?x is a block, we set it to clear.
+    ;;                 (clear ?b2) )                       ; 
+    ;;             (:forall (?b2 - block | (= ?b2 ?y))     ; Similarly, if ?y is a block, we set it
+    ;;                 (not (clear ?b2)) ))                ; to non clear.
+    ;; )
+
+    ;; (:action move
+    ;;     :parameters
+    ;;         (?b - block
+    ;;          ?x ?y - object |
+    ;;             (and
+    ;;                 (/= ?b ?x)
+    ;;                 (/= ?b ?y)
+    ;;                 (/= ?x ?y) ))
+    ;;     :action-type
+    ;;         (public-ontic
+    ;;             (e-move ?b ?x ?y) )
+    ;;     :observability-conditions
+    ;;         (Robot Fully)
+    ;; )
+)

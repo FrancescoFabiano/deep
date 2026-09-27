@@ -7,7 +7,7 @@ deploy with ``--search RL --heuristics RL_H --RL_model <file> --RL_fringe_size F
 (plus ``--dataset_separated`` for a separated model).
 
 The train/test split is the data: ``--train-csv`` tables train, ``--test-csv``
-tables are evaluated only.  Driven by scripts/gnn_exp/train_models.py.
+tables are evaluated only.  Driven by scripts/trial.py train.
 """
 
 from __future__ import annotations
@@ -83,6 +83,8 @@ def train_one(args, fringe_size: int) -> Path:
         print(f"[gnn] exported {onnx_path}: contract OK, torch vs onnxruntime on "
               f"{check['n_checked']} beams max |diff| = {check['max_abs_diff']:.2e}")
         info.update(onnx=str(onnx_path), **{f"onnx_{k}": v for k, v in check.items()})
+        if not m.model.use_goal:   # HFS/A* consumer: one state at a time, scaling inverted by the planner
+            info["state_onnx"] = str(m.to_onnx_state(out_dir / f"{args.model_name}_{fringe_size}_state.onnx", params))
     (out_dir / f"{args.model_name}_info.txt").write_text(
         "".join(f"{k} = {v}\n" for k, v in info.items()))
     return onnx_path

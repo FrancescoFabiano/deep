@@ -176,7 +176,7 @@ def shipped_instances() -> Dict[str, TreeInstance]:
     if missing:
         pytest.skip(
             f"generation tables not found for {missing}; regenerate with "
-            f"scripts/gnn_exp/create_all_training_data.py"
+            f"scripts/trial.py data"
         )
     return out
 

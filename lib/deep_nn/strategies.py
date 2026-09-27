@@ -232,7 +232,7 @@ def select_tables(
             raise ValueError(
                 f"requested strategies {[dir_name(s) for s in missing]} were never "
                 f"generated here; available: {[dir_name(s) for s in avail] or 'none'}. "
-                f"Generate them (create_all_training_data.py --dataset-generation ...) "
+                f"Generate them (scripts/trial.py data --strategies ...) "
                 f"or drop them from --strategies."
             )
     out: List[Path] = []

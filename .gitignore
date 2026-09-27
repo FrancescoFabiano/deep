@@ -80,3 +80,8 @@ exp/**/_results*/
 !/utils/configs/
 !/utils/configs/*.ut
 !/utils/configs/README.md
+
+# trial outputs (exp/trials/<trial>/): inputs, split and report are tracked
+exp/trials/*/data/
+exp/trials/*/models/
+exp/trials/*/results/
