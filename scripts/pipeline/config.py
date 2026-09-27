@@ -55,12 +55,14 @@ class Config:
         return int(self.data.get("depth_overrides", {}).get(domain, self.data["depth"]))
 
 
-def load(trial_dir: Path, domains=None, strategies=None, dry_run=False) -> Config:
+def load(trial_dir: Path, domains=None, strategies=None, models=None, dry_run=False) -> Config:
     raw = tomllib.loads((trial_dir / "trial.toml").read_text())
     for section, keys in REQUIRED.items():
         missing = [k for k in keys if k not in raw.get(section, {})]
         if missing:
             raise SystemExit(f"trial.toml [{section}] is missing {missing}")
+    if models:
+        raw["train"]["models"] = list(models)
     cfg = Config(trial_dir, raw["trial"], raw["split"], raw["data"], raw["train"], raw["inference"],
                  domains, list(strategies or raw["data"]["strategies"]), dry_run)
     _validate(cfg)

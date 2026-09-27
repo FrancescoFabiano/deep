@@ -5,7 +5,7 @@
     python scripts/trial.py train  exp/trials/basic
     python scripts/trial.py infer  exp/trials/basic
     python scripts/trial.py report exp/trials/basic
-    python scripts/trial.py all    exp/trials/basic
+    python scripts/trial.py all    exp/trials/basic --domains gossip --models rl
 
 Every stage reads the same config and writes only inside the trial folder:
 data/ (generation trees), models/ (ONNX), results/results.csv, report/ (tables, figures).
@@ -27,10 +27,11 @@ def main() -> None:
     p.add_argument("trial_dir")
     p.add_argument("--domains", nargs="+", help="restrict to these domains (default: all in instances/)")
     p.add_argument("--strategies", nargs="+", help="data: generate only these strategies")
+    p.add_argument("--models", nargs="+", choices=["rl", "gnn"], help="train: only these model kinds (default: [train].models)")
     p.add_argument("--dry-run", action="store_true", help="print the commands, run nothing")
     a = p.parse_args()
     sys.stdout.reconfigure(line_buffering=True)     # progress lines reach a redirected log as they happen
-    cfg = config.load(Path(a.trial_dir), domains=a.domains, strategies=a.strategies, dry_run=a.dry_run)
+    cfg = config.load(Path(a.trial_dir), domains=a.domains, strategies=a.strategies, models=a.models, dry_run=a.dry_run)
     for name in (list(STAGES) if a.stage == "all" else [a.stage]):
         print(f"===== {name} =====")
         STAGES[name](cfg)

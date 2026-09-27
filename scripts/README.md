@@ -5,7 +5,7 @@ holding a `trial.toml`; the script runs four stages over it and writes only insi
 that folder.
 
 ```
-python scripts/trial.py <stage> exp/trials/<trial> [--domains D ...] [--strategies S ...] [--dry-run]
+python scripts/trial.py <stage> exp/trials/<trial> [--domains D ...] [--strategies S ...] [--models rl|gnn ...] [--dry-run]
 ```
 
 | stage    | reads                          | writes                                   | what it does |
@@ -17,9 +17,18 @@ python scripts/trial.py <stage> exp/trials/<trial> [--domains D ...] [--strategi
 | `all`    | | | the four in order |
 
 Flags: `--domains` restricts any stage to some domains; `--strategies` restricts
-`data` to some generation strategies; `--dry-run` prints the planner/trainer
+`data` to some generation strategies; `--models` restricts `train` to `rl` and/or
+`gnn`; `--dry-run` prints the planner/trainer
 commands and runs nothing. Stages skip what is already on disk (a tree, a model,
 a results row), so rerunning after a crash resumes.
+
+Typical use, one domain, one model kind per command (the second command reuses the
+trees and results of the first and only adds the missing models and rows):
+
+```
+python scripts/trial.py all exp/trials/basic --domains gossip --models rl
+python scripts/trial.py all exp/trials/basic --domains gossip --models gnn
+```
 
 ## A trial folder
 
