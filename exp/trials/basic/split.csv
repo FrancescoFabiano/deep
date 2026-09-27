@@ -3,9 +3,9 @@ active-muddy-child,amc-03-02-clean,train
 active-muddy-child,amc-03-03-muddy,train
 active-muddy-child,amc-06-03-clean,train
 active-muddy-child,amc-06-06-muddy,train
-active-muddy-child,amc-09-05-clean,train
-active-muddy-child,amc-09-05-muddy,train
-active-muddy-child,amc-09-09-muddy,train
+active-muddy-child,amc-09-05-clean,test
+active-muddy-child,amc-09-05-muddy,test
+active-muddy-child,amc-09-09-muddy,test
 active-muddy-child,amc-12-06-clean,test
 active-muddy-child,amc-12-06-muddy,test
 active-muddy-child,amc-12-12-muddy,test
