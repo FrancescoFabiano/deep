@@ -15,7 +15,7 @@ from . import deep, instances
 from .config import REPO, Config
 
 SUCCESS = (0, 2, 3)              # ExitHandler: found goal / not planning mode / ... with warning
-NO_GOAL = "No goals found"       # the generator still writes a rootless table of dead ends: not a tree
+NO_GOAL = "No goals found"       # rc 4 (DatasetNoGoalFound) since upstream 31217ba; the text covers older binaries
 SEEDLESS = ("BFS", "HFS")        # deterministic: retrying with another seed reproduces the tree
 FINGERPRINT = ("strategies", "hfs_heuristic", "depth", "depth_overrides", "seed", "discard_factor",
                "max_generation", "max_creation", "dataset_type")
