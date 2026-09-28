@@ -141,3 +141,8 @@ are **ready**; deployment is pending the C++ `GraphNN::run_inference` separated
 branch to feed `get_goal_tensor()` into those inputs (mirroring `FringeEvalRL`;
 the goal tensor is already built at solve time). See
 `lib/rl_handler/SEPARATED.md` for the full contract.
+
+> **Update (2026-09-28):** the C++ separated branch is in place (commit
+> `10cc2ff`). The planner now feeds `pointed_ids` as a 5th state input (merged
+> and separated), which the current export does not declare, so models must be
+> re-exported; see `docs/python_followups.md` §1–3.

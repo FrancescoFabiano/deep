@@ -14,9 +14,12 @@ Issue numbers refer to `Giovannibriglia/deep_forked`.
 still declares 4 state inputs. Since fix #4 the planner stops with
 
 ```
-[ERROR] ONNX input count mismatch: model expects 4 input tensors but C++ prepared 5 ...
+[ERROR] ONNX input count mismatch: model expects 4 input tensors but C++ prepared 5 (check that the model was exported for this dataset type/mode and takes pointed_ids; see docs/python_followups.md).
 Error code: 899
 ```
+
+(RL uses code 905 for the same check. Exit codes above 255 reach the shell
+modulo 256: 899 shows up as 131, 905 as 137.)
 
 for every shipped model (`lib/gnn_handler/models/distance_estimator.onnx`,
 `exp/mAstar/gnn_exp/*/_models/*`). They must be re-exported with `pointed_ids`.
@@ -85,6 +88,13 @@ The Python side needs a bitmask variant of `pack_fringe` producing this
 layout.
 
 ## 5. Other pending items
+
+- **#6 (done in C++, no Python change needed):** goals with group knowledge
+  no longer abort dataset generation. The goal DOT writes `E_G phi` as the
+  conjunction of `B_a phi` for `a` in `G` (an AND-style node with one belief
+  subtree per agent), `TRUE` as a leaf and `FALSE` as `NOT(TRUE)`. Goal DOTs of
+  domains without these formulas are unchanged; gossip-like domains now
+  produce data.
 
 - **#5 (done in C++):** non-finite fringe scores are no longer fatal; the
   planner prints a `[WARNING]` and ranks them last. Ties are broken by fringe

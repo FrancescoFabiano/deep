@@ -46,7 +46,8 @@ of step with `candidate_batch`.
   `--dataset`: the `GraphNN` constructor calls `populate_with_goal()` →
   `fill_graph_tensor(m_goal_graph_tensor)` when separated, and `m_goal_string` is
   set unconditionally by `TrainingDataset::generate_goal_tree_subgraph(false)`.
-  `FringeEvalRL` pulls it via `get_goal_tensor()`. No empty-goal gap.
+  `FringeEvalRL` pulls it via `get_goal_packed()` (packed once; it replaced
+  `get_goal_tensor()` in commit `e97aa47`). No empty-goal gap.
 - **Unverified:** byte-level goal-node-ordering parity between the Python
   encoder's goal packing and the C++ `m_goal_graph_tensor` remains pending a C++
   fringe/goal tensor dump. Inference succeeds, but exact node-order equivalence
@@ -58,6 +59,10 @@ of step with `candidate_batch`.
   branch to feed `get_goal_tensor()` into them, mirroring `FringeEvalRL` (today
   `run_inference` early-exits on `--dataset_separated`). The goal tensor is
   already built at solve time, so training/export here is the ready precursor.
+  **Update (2026-09-28):** the C++ side is done (commit `10cc2ff`, issue #3):
+  `run_inference` no longer exits and feeds the 4 goal inputs after the state
+  inputs. It also feeds `pointed_ids` (5th state input), so the export must
+  add it; see `docs/python_followups.md` §1–3.
 
 ## Hardening notes
 - **Empty-goal guard:** `load_goal_graph` rejects a 0-node goal; the
