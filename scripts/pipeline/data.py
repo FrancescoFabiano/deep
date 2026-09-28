@@ -15,6 +15,7 @@ from . import deep, instances
 from .config import REPO, Config
 
 SUCCESS = (0, 2, 3)              # ExitHandler: found goal / not planning mode / ... with warning
+NO_GOAL = "No goals found"       # the generator still writes a rootless table of dead ends: not a tree
 SEEDLESS = ("BFS", "HFS")        # deterministic: retrying with another seed reproduces the tree
 FINGERPRINT = ("strategies", "hfs_heuristic", "depth", "depth_overrides", "seed", "discard_factor",
                "max_generation", "max_creation", "dataset_type")
@@ -63,14 +64,15 @@ def _generate(cfg, inst, strategy) -> None:
         work.mkdir(parents=True)
         res = deep.run(argv, timeout_s=cfg.data["timeout_s"], mem_gb=cfg.mem_gb, cwd=work)
         m = re.search(r"Dataset stored in (.+?) folder\.", res.out)
-        if res.limit is None and res.rc in SUCCESS and m:
+        if res.limit is None and res.rc in SUCCESS and m and NO_GOAL not in res.out:
             _install(work / m.group(1), tgt, m.group(1))
             (tgt / "generation.log").write_text(" ".join(argv) + "\n\n" + res.out)
             shutil.rmtree(work, ignore_errors=True)
             print(f"[data] ok   {inst.domain}/{strategy}/{inst.problem} ({res.wall_s:.0f}s)")
             return
         (tgt.parent / f"{inst.problem}.failed.log").write_text(" ".join(argv) + "\n\n" + res.out)
-        print(f"[data] FAIL {inst.domain}/{strategy}/{inst.problem} rc={res.rc} {res.limit or ''} ({res.wall_s:.0f}s)")
+        why = res.limit or ("no goal" if NO_GOAL in res.out else f"rc={res.rc}")
+        print(f"[data] FAIL {inst.domain}/{strategy}/{inst.problem} {why} ({res.wall_s:.0f}s)")
     shutil.rmtree(work, ignore_errors=True)
 
 
