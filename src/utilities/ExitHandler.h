@@ -179,8 +179,7 @@ public:
     GNNBitmaskLengthError = 896,
     GNNBitmaskRepetitionError = 897,
     GNNBitmaskGOALError = 898,
-
-    // Reserved: 899
+    GNNInputCountMismatchError = 899,
 
     // --- FringeEvalRL Related (900-919) ---
     FringeEvalInstanceError = 900,

@@ -433,6 +433,17 @@ float GraphNN<StateRepr>::run_inference(const GraphTensor &tensor) const {
 
   input_tensors.emplace_back(std::move(pointed_ids_tensor));
 
+  if (input_tensors.size() != m_input_names.size()) {
+    ExitHandler::exit_with_message(
+        ExitHandler::ExitCode::GNNInputCountMismatchError,
+        "ONNX input count mismatch: model expects " +
+            std::to_string(m_input_names.size()) +
+            " input tensors but C++ prepared " +
+            std::to_string(input_tensors.size()) +
+            " (models exported before pointed_ids was added have 4 inputs; "
+            "re-export the model).");
+  }
+
   // ------------------------------------------------------------------------
   // Input/output names
   // ------------------------------------------------------------------------
