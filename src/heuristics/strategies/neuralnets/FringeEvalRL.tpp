@@ -200,18 +200,6 @@ void FringeEvalRL<StateRepr>::initialize_onnx_model() {
 template <StateRepresentation StateRepr>
 PackedGraph FringeEvalRL<StateRepr>::fringe_to_tensor_minimal(
     std::vector<State<StateRepr>> &states) {
-  switch (ArgumentParser::get_instance().get_dataset_type()) {
-  case DatasetType::HASHED:
-    break;
-  case DatasetType::BITMASK:
-  case DatasetType::MAPPED:
-  default: {
-    ExitHandler::exit_with_message(
-        ExitHandler::ExitCode::FringeNotImplementedError,
-        "Only HASHED datasets are supported by FringeEvalRL for now");
-  }
-  }
-
 #ifdef DEBUG
   if (static_cast<size_t>(ArgumentParser::get_instance().get_RL_fringe_size()) <
       states.size()) {
@@ -230,7 +218,10 @@ PackedGraph FringeEvalRL<StateRepr>::fringe_to_tensor_minimal(
     graphs.push_back(&state.get_tensor_representation());
   }
 
-  return OnnxInputs::pack(graphs, false, 0);
+  return OnnxInputs::pack(
+      graphs,
+      ArgumentParser::get_instance().get_dataset_type() == DatasetType::BITMASK,
+      GraphNN<StateRepr>::get_instance().get_bitmask_size());
 }
 
 template <StateRepresentation StateRepr>
@@ -245,9 +236,15 @@ FringeEvalRL<StateRepr>::get_score(std::vector<State<StateRepr>> &states,
 
   // Inputs, in the ONNX export order: nodes, edge_index, edge_attr [E],
   // membership, pointed_ids, optional goal_* (separated), then the mask.
+  // Nodes are uint8 [N, bits] under BITMASK, int64 [N] otherwise; the goal
+  // (separated) always uses int64 ids.
+  const bool is_bitmask =
+      ArgumentParser::get_instance().get_dataset_type() == DatasetType::BITMASK;
   const auto fringe_packed = fringe_to_tensor_minimal(states);
   OnnxInputs inputs(*m_memory_info);
-  inputs.add_graph(fringe_packed, false, 0, false, true);
+  inputs.add_graph(fringe_packed, is_bitmask,
+                   GraphNN<StateRepr>::get_instance().get_bitmask_size(), false,
+                   true);
 
   if (ArgumentParser::get_instance().get_dataset_separated()) {
     inputs.add_graph(GraphNN<StateRepr>::get_instance().get_goal_packed(),

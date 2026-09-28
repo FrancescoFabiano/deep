@@ -171,6 +171,11 @@ const PackedGraph &GraphNN<StateRepr>::get_goal_packed() const {
 }
 
 template <StateRepresentation StateRepr>
+size_t GraphNN<StateRepr>::get_bitmask_size() const {
+  return m_bitmask_size;
+}
+
+template <StateRepresentation StateRepr>
 int GraphNN<StateRepr>::get_score(State<StateRepr> &state) {
   const auto &state_tensor = state.get_tensor_representation();
   // const auto state_tensor =

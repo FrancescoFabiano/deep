@@ -52,6 +52,12 @@ public:
   [[nodiscard]] const PackedGraph &get_goal_packed() const;
 
   /**
+   * \brief Bits per node under BITMASK (42 merged, 32 separated); set when
+   * the first state is converted to a tensor.
+   */
+  [[nodiscard]] size_t get_bitmask_size() const;
+
+  /**
    * \brief Get the score for a given state using the neural network heuristic
    * using native C++ code \tparam StateRepr The state representation type.
    * \param state The state to evaluate.

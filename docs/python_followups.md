@@ -70,8 +70,19 @@ input `goal_node_bits`; separated BITMASK models must instead take
 Note that `edge_attr` / `goal_edge_attr` are **1-D** here and `[E, 1]` in the
 GNN path.
 
-Only HASHED is accepted at inference for now (issue #1); the BITMASK / MAPPED
-fringe layout will be documented here once implemented.
+All three dataset types are accepted (issue #1). The first input depends on
+the type; everything else is unchanged:
+
+| dataset          | `node_ids` / `node_bits`   | goal nodes (separated) |
+|------------------|----------------------------|------------------------|
+| HASHED / MAPPED  | int64 `[N]`                | int64 `goal_node_ids`  |
+| BITMASK merged   | uint8 `[N, 42]`            | (none, merged)         |
+| BITMASK separated| uint8 `[N, 32]`            | int64 `goal_node_ids`  |
+
+The states of the fringe are concatenated in order: rows of state `i` come
+after those of state `i-1`, and `membership` gives each row's state index.
+The Python side needs a bitmask variant of `pack_fringe` producing this
+layout.
 
 ## 5. Other pending items
 
