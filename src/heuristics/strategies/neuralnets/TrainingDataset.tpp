@@ -377,9 +377,9 @@ void TrainingDataset<StateRepr>::generate_goal_tree_subgraph(
                           string_goals_graph, force_non_binary_ids);
   }
 
-  m_shift_state_ids += +1;
-  // The final value of shits so that state, when mapped starts from the latest
-  // node generated for the goals + 1
+  // MAPPED state ids start after the last goal node (next_id), so state
+  // worlds never reuse a goal node id
+  m_shift_state_ids = static_cast<int>(next_id) + 1;
   if (force_non_binary_ids) {
     m_goal_forced_string = string_goals_graph.str();
   } else {
