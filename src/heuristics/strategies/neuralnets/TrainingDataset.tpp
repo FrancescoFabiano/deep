@@ -575,6 +575,47 @@ void TrainingDataset<StateRepr>::generate_goal_subtree(
     break;
   }
 
+  case BeliefFormulaType::E_FORMULA: {
+    // E_G phi is written as the conjunction of B_a phi for a in G (reusing the
+    // BELIEF_FORMULA encoding), so it stays distinct from C_G phi.
+    node_name = std::to_string(current_node_id);
+    os << "  " << to_binary_string(force_non_binary_ids, parent_node) << " -> "
+       << to_binary_string(force_non_binary_ids, node_name) << " [label=\""
+       << goal_counter << "\"];\n";
+
+    for (const auto &ag : to_print.get_group_agents()) {
+      BeliefFormula belief;
+      belief.set_formula_type(BeliefFormulaType::BELIEF_FORMULA);
+      belief.set_agent(ag);
+      belief.set_bf1(to_print.get_bf1());
+      generate_goal_subtree(belief, goal_counter, next_id, node_name, os,
+                            force_non_binary_ids);
+    }
+    break;
+  }
+
+  case BeliefFormulaType::TRUE_FORMULA: {
+    // Leaf node with no children
+    node_name = std::to_string(current_node_id);
+    os << "  " << to_binary_string(force_non_binary_ids, parent_node) << " -> "
+       << to_binary_string(force_non_binary_ids, node_name) << " [label=\""
+       << goal_counter << "\"];\n";
+    break;
+  }
+
+  case BeliefFormulaType::FALSE_FORMULA: {
+    // Written as NOT(TRUE) so that it differs from TRUE
+    node_name = std::to_string(current_node_id);
+    const std::string true_leaf = std::to_string(++next_id);
+    os << "  " << to_binary_string(force_non_binary_ids, parent_node) << " -> "
+       << to_binary_string(force_non_binary_ids, node_name) << " [label=\""
+       << goal_counter << "\"];\n";
+    os << "  " << to_binary_string(force_non_binary_ids, node_name) << " -> "
+       << to_binary_string(force_non_binary_ids, true_leaf) << " [label=\""
+       << goal_counter << "\"];\n";
+    break;
+  }
+
   case BeliefFormulaType::BF_EMPTY:
   case BeliefFormulaType::BF_TYPE_FAIL:
   default: {
