@@ -81,5 +81,9 @@ fringe layout will be documented here once implemented.
   useful.
 - **#2 (C++ pending):** separated DOTs will mark designated worlds; the
   separated DOT parser will need to read them.
-- **#7 (C++ pending):** `scripts/pipeline/data.py` detects failed generation by
-  matching `No goals found`; switch to the exit code once one is added.
+- **#7 (done in C++):** dataset generation now exits with code **4**
+  (`DatasetNoGoalFound`) when no goal is reached; the CSV is kept and always
+  has its depth-0 root row (DFS / S_DFS used to drop it). Code 2 is success,
+  3 means goals were found but fewer rows than the minimum.
+  `scripts/pipeline/data.py` should check `returncode == 4` instead of matching
+  `No goals found`.

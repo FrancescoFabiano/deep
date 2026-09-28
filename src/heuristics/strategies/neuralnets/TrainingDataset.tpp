@@ -704,15 +704,7 @@ bool TrainingDataset<StateRepr>::search_space_exploration() {
     break;
   }
 
-  if (m_goal_founds > 0) {
-    os << "Number of goals found: " << m_goal_founds << std::endl;
-  } else {
-    os << "[WARNING] No goals found with " << dataset_generation_type_string
-       << " as exploration strategy, this is not a good training set (recreate "
-          "it with more nodes for exploration, a different seed (if stochastic "
-          "in particular), mode depth, or a different strategy altogether)."
-       << std::endl;
-  }
+  os << "Number of goals found: " << m_goal_founds << std::endl;
 
   const auto end_time = std::chrono::system_clock::now();
   const std::chrono::duration<double> elapsed = end_time - start_time;
@@ -720,6 +712,16 @@ bool TrainingDataset<StateRepr>::search_space_exploration() {
   os << "\nDataset Generated in " << elapsed.count() << " seconds."
      << std::endl;
   os << "Dataset stored in " << m_folder << " folder." << std::endl;
+
+  if (m_goal_founds == 0) {
+    ExitHandler::exit_with_message(
+        ExitHandler::ExitCode::DatasetNoGoalFound,
+        "No goals found with " + dataset_generation_type_string +
+            " as exploration strategy, this is not a good training set "
+            "(recreate it with more nodes for exploration, a different seed "
+            "(if stochastic in particular), mode depth, or a different "
+            "strategy altogether).");
+  }
 
   return result;
 }
@@ -1368,12 +1370,14 @@ void TrainingDataset<StateRepr>::add_to_dataset(
     return;
   }
 
-  if (score >= m_failed_state) {
+  // The root (depth 0) is always kept so the tree stays well-formed.
+  if (score >= m_failed_state && depth > 0) {
     auto m_total_failures = m_current_nodes - m_added_to_dataset;
     if (m_total_failures % m_threshold_failures_print_modulo != 0) {
       return;
     }
-  } else {
+  }
+  if (score < m_failed_state) {
     m_added_to_dataset++;
   }
 
