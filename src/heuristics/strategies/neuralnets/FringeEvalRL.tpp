@@ -198,7 +198,8 @@ void FringeEvalRL<StateRepr>::initialize_onnx_model() {
 template <StateRepresentation StateRepr>
 PackedGraph FringeEvalRL<StateRepr>::fringe_to_tensor_minimal(
     std::vector<State<StateRepr>> &states) {
-#ifdef DEBUG
+  // The model scores exactly --RL_fringe_size slots (checked at load), so a
+  // larger fringe would read past its output.
   if (static_cast<size_t>(ArgumentParser::get_instance().get_RL_fringe_size()) <
       states.size()) {
     ExitHandler::exit_with_message(
@@ -206,7 +207,6 @@ PackedGraph FringeEvalRL<StateRepr>::fringe_to_tensor_minimal(
         "The number of states in the fringe exceeds the maximum allowed size "
         "for RL evaluation. Please check the configuration.");
   }
-#endif
 
   // The tensor is cached in each state, so read it in place (a copy of the
   // state would recompute it at every evaluation).
