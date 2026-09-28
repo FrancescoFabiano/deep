@@ -1,6 +1,8 @@
 #include "ExitHandler.h"
 #include "FringeEvalRL.h"
+#include <cmath>
 #include <fstream>
+#include <limits>
 #include <regex>
 
 // --- Singleton instance initialization ---
@@ -570,12 +572,23 @@ std::vector<float> FringeEvalRL<StateRepr>::rankScores(const float *scores,
   paired.reserve(n);
 
   for (size_t i = 0; i < n; ++i) {
-    paired.emplace_back(scores[i], i);
+    float score = scores[i];
+    // NaN/inf would break the sort ordering: demote them to the worst score
+    if (!std::isfinite(score)) {
+      ArgumentParser::get_instance().get_output_stream()
+          << "[WARNING] FringeEvalRL model returned a non-finite score ("
+          << score << ") at fringe slot " << i
+          << ", treating it as the worst score." << std::endl;
+      score = std::numeric_limits<float>::lowest();
+    }
+    paired.emplace_back(score, i);
   }
 
-  // Sort by score descending (higher score = better rank)
-  std::sort(paired.begin(), paired.end(),
-            [](const auto &a, const auto &b) { return a.first > b.first; });
+  // Sort by score descending (higher score = better rank); ties broken by
+  // original index so the ranking is reproducible.
+  std::sort(paired.begin(), paired.end(), [](const auto &a, const auto &b) {
+    return a.first != b.first ? a.first > b.first : a.second < b.second;
+  });
 
   // Create result array
   std::vector<float> ranks(n);
