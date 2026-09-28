@@ -3,6 +3,7 @@
 #include "State.h"
 #include "argparse/Configuration.h"
 #include "neuralnets/GraphTensor.h"
+#include "neuralnets/OnnxInputs.h"
 #include <onnxruntime_cxx_api.h>
 #include <string>
 #include <unordered_map>
@@ -46,9 +47,9 @@ public:
   [[nodiscard]] GraphTensor state_to_tensor_minimal(const KripkeState &kstate);
 
   /**
-   * \brief Getter for the filed m_goal_graph_tensor
+   * \brief The goal graph packed as ONNX inputs (separated mode only).
    */
-  [[nodiscard]] GraphTensor get_goal_tensor() const;
+  [[nodiscard]] const PackedGraph &get_goal_packed() const;
 
   /**
    * \brief Get the score for a given state using the neural network heuristic
@@ -100,6 +101,9 @@ private:
   ///< This is the goal tensor, computed only once for
   ///< efficiency. If merged is active also the
   ///< additional structural nodes are added
+
+  PackedGraph m_goal_packed; ///< m_goal_graph_tensor packed once as ONNX
+                             ///< inputs (separated mode only).
 
   int64_t m_symbolic_id = 0;
   ///< Current symbolic ID counter (will be
@@ -216,7 +220,7 @@ private:
    * \brief Converts the goal graph into the info that will then be added to a
    * Tensor. If the tensor are generated with the goal (merged) this info will
    * be directly embedded in the states. Otherwise, it will populate
-   * m_goal_graph_tensor to be passed as argument.
+   * m_goal_graph_tensor and m_goal_packed, fed as separate goal inputs.
    */
   void populate_with_goal();
 
