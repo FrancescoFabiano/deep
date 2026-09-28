@@ -112,6 +112,11 @@ foreach(dir ${INCLUDE_DIRS})
     list(APPEND SOURCES ${TMP_SOURCES})
 endforeach()
 
+# neuralnets/ is not an include directory, so its sources are listed here
+if(ENABLE_NEURALNETS)
+    list(APPEND SOURCES src/heuristics/strategies/neuralnets/OnnxInputs.cpp)
+endif()
+
 
 # === Doxygen ===
 

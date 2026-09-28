@@ -38,6 +38,8 @@ public:
         2, ///< Program completed successfully without planning mode.
     SuccessNotPlanningModeWarning = 3, ///< Program completed successfully but
                                        ///< something is not as it should be.
+    DatasetNoGoalFound = 4, ///< Dataset generated (with its root) but no goal
+                            ///< was reached during the exploration.
 
     // ========================================================================
     // Argument / Input
@@ -179,8 +181,7 @@ public:
     GNNBitmaskLengthError = 896,
     GNNBitmaskRepetitionError = 897,
     GNNBitmaskGOALError = 898,
-
-    // Reserved: 899
+    GNNInputCountMismatchError = 899,
 
     // --- FringeEvalRL Related (900-919) ---
     FringeEvalInstanceError = 900,

@@ -63,6 +63,12 @@ File naming `<exp_dir>/_models/<domain>/frontier_policy_<F>.onnx`
 
 ### 1.1 LIMITATION — the RL path is HASHED-only, so cross-configuration transfer is blocked upstream
 
+> **Update (2026-09-28):** lifted on the C++ side (commit `a9c7e66`,
+> issue #1). `FringeEvalRL` now accepts `MAPPED` (int64 ids) and `BITMASK`
+> (uint8 `[N, 42]` merged, `[N, 32]` separated). The measurements below were
+> taken with the HASHED-only binary; the Python bitmask packing is still to do
+> (see `docs/python_followups.md` §4).
+
 The RL consumer (`FringeEvalRL`) accepts only `HASHED` node ids
 (`FringeEvalRL.tpp:199-213` exits with *"This datatypes for FringeTensor have not
 been implemented yet"* for `BITMASK` and `MAPPED`).

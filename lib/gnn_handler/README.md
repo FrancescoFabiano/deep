@@ -66,7 +66,13 @@ inputs `node_features, edge_index, edge_attr, membership, pointed_ids,
 output `scores[F] = -distance` (the planner sorts descending).  No constant
 file is needed: the scaling is inverted inside the graph.
 
-Only `HASHED` data reaches the planner today (issue #1).
+The planner accepts HASHED, MAPPED and BITMASK fringes (issue #1 fixed upstream,
+commit a9c7e66); the Python exporter still produces HASHED models only, the
+BITMASK layout is specified in `docs/python_followups.md`.
+
+For HFS/A* (`--heuristics GNN`) the same model is exported per state as
+`distance_estimator_<F>_state.onnx` plus `_state_C.txt` (slope/intercept);
+inputs `node_features, edge_index, edge_attr [E,1], batch, pointed_ids`.
 
 ## 3. Tests
 

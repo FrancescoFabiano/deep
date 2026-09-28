@@ -46,7 +46,8 @@ of step with `candidate_batch`.
   `--dataset`: the `GraphNN` constructor calls `populate_with_goal()` →
   `fill_graph_tensor(m_goal_graph_tensor)` when separated, and `m_goal_string` is
   set unconditionally by `TrainingDataset::generate_goal_tree_subgraph(false)`.
-  `FringeEvalRL` pulls it via `get_goal_tensor()`. No empty-goal gap.
+  `FringeEvalRL` pulls it via `get_goal_packed()` (packed once; it replaced
+  `get_goal_tensor()` in commit `e97aa47`). No empty-goal gap.
 - **Unverified:** byte-level goal-node-ordering parity between the Python
   encoder's goal packing and the C++ `m_goal_graph_tensor` remains pending a C++
   fringe/goal tensor dump. Inference succeeds, but exact node-order equivalence
@@ -60,6 +61,11 @@ of step with `candidate_batch`.
 - **gnn_handler deploys through `FringeEvalRL` too** (fringe contract, scores =
   `-distance`), so the `GraphNN::run_inference` separated branch is no longer
   on the deployment path.
+- **Upstream 2026-09-28:** separated DOTs now mark designated worlds
+  (`<id> [shape=doublecircle];`, issue #2, commit f117a71) and `GraphNN::run_inference`
+  has a separated branch (issue #3, commit 10cc2ff). `deep_nn.dot` still derives
+  separated inputs from merged DOTs; reading the new lines is a pending follow-up
+  (`docs/python_followups.md`).
 
 ## Hardening notes
 - **Empty-goal guard:** `load_goal_graph` rejects a 0-node goal; the

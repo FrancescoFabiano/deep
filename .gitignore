@@ -85,3 +85,6 @@ exp/**/_results*/
 exp/trials/*/data/
 exp/trials/*/models/
 exp/trials/*/results/
+
+# Local MCP server config
+/.mcp.json

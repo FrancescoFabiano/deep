@@ -377,9 +377,9 @@ void TrainingDataset<StateRepr>::generate_goal_tree_subgraph(
                           string_goals_graph, force_non_binary_ids);
   }
 
-  m_shift_state_ids += +1;
-  // The final value of shits so that state, when mapped starts from the latest
-  // node generated for the goals + 1
+  // MAPPED state ids start after the last goal node (next_id), so state
+  // worlds never reuse a goal node id
+  m_shift_state_ids = static_cast<int>(next_id) + 1;
   if (force_non_binary_ids) {
     m_goal_forced_string = string_goals_graph.str();
   } else {
@@ -575,6 +575,47 @@ void TrainingDataset<StateRepr>::generate_goal_subtree(
     break;
   }
 
+  case BeliefFormulaType::E_FORMULA: {
+    // E_G phi is written as the conjunction of B_a phi for a in G (reusing the
+    // BELIEF_FORMULA encoding), so it stays distinct from C_G phi.
+    node_name = std::to_string(current_node_id);
+    os << "  " << to_binary_string(force_non_binary_ids, parent_node) << " -> "
+       << to_binary_string(force_non_binary_ids, node_name) << " [label=\""
+       << goal_counter << "\"];\n";
+
+    for (const auto &ag : to_print.get_group_agents()) {
+      BeliefFormula belief;
+      belief.set_formula_type(BeliefFormulaType::BELIEF_FORMULA);
+      belief.set_agent(ag);
+      belief.set_bf1(to_print.get_bf1());
+      generate_goal_subtree(belief, goal_counter, next_id, node_name, os,
+                            force_non_binary_ids);
+    }
+    break;
+  }
+
+  case BeliefFormulaType::TRUE_FORMULA: {
+    // Leaf node with no children
+    node_name = std::to_string(current_node_id);
+    os << "  " << to_binary_string(force_non_binary_ids, parent_node) << " -> "
+       << to_binary_string(force_non_binary_ids, node_name) << " [label=\""
+       << goal_counter << "\"];\n";
+    break;
+  }
+
+  case BeliefFormulaType::FALSE_FORMULA: {
+    // Written as NOT(TRUE) so that it differs from TRUE
+    node_name = std::to_string(current_node_id);
+    const std::string true_leaf = std::to_string(++next_id);
+    os << "  " << to_binary_string(force_non_binary_ids, parent_node) << " -> "
+       << to_binary_string(force_non_binary_ids, node_name) << " [label=\""
+       << goal_counter << "\"];\n";
+    os << "  " << to_binary_string(force_non_binary_ids, node_name) << " -> "
+       << to_binary_string(force_non_binary_ids, true_leaf) << " [label=\""
+       << goal_counter << "\"];\n";
+    break;
+  }
+
   case BeliefFormulaType::BF_EMPTY:
   case BeliefFormulaType::BF_TYPE_FAIL:
   default: {
@@ -663,15 +704,7 @@ bool TrainingDataset<StateRepr>::search_space_exploration() {
     break;
   }
 
-  if (m_goal_founds > 0) {
-    os << "Number of goals found: " << m_goal_founds << std::endl;
-  } else {
-    os << "[WARNING] No goals found with " << dataset_generation_type_string
-       << " as exploration strategy, this is not a good training set (recreate "
-          "it with more nodes for exploration, a different seed (if stochastic "
-          "in particular), mode depth, or a different strategy altogether)."
-       << std::endl;
-  }
+  os << "Number of goals found: " << m_goal_founds << std::endl;
 
   const auto end_time = std::chrono::system_clock::now();
   const std::chrono::duration<double> elapsed = end_time - start_time;
@@ -679,6 +712,16 @@ bool TrainingDataset<StateRepr>::search_space_exploration() {
   os << "\nDataset Generated in " << elapsed.count() << " seconds."
      << std::endl;
   os << "Dataset stored in " << m_folder << " folder." << std::endl;
+
+  if (m_goal_founds == 0) {
+    ExitHandler::exit_with_message(
+        ExitHandler::ExitCode::DatasetNoGoalFound,
+        "No goals found with " + dataset_generation_type_string +
+            " as exploration strategy, this is not a good training set "
+            "(recreate it with more nodes for exploration, a different seed "
+            "(if stochastic in particular), mode depth, or a different "
+            "strategy altogether).");
+  }
 
   return result;
 }
@@ -1327,12 +1370,14 @@ void TrainingDataset<StateRepr>::add_to_dataset(
     return;
   }
 
-  if (score >= m_failed_state) {
+  // The root (depth 0) is always kept so the tree stays well-formed.
+  if (score >= m_failed_state && depth > 0) {
     auto m_total_failures = m_current_nodes - m_added_to_dataset;
     if (m_total_failures % m_threshold_failures_print_modulo != 0) {
       return;
     }
-  } else {
+  }
+  if (score < m_failed_state) {
     m_added_to_dataset++;
   }
 
