@@ -5,7 +5,7 @@ holding a `trial.toml`; the script runs four stages over it and writes only insi
 that folder.
 
 ```
-python scripts/trial.py <stage> exp/trials/<trial> [--domains D ...] [--strategies S ...] [--models rl|gnn ...] [--dry-run]
+python scripts/trial.py <stage> exp/trials/<trial> [--domains D ...] [--strategies S ...] [--models rl|gnn ...] [--workers N] [--dry-run]
 ```
 
 | stage    | reads                          | writes                                   | what it does |
@@ -13,14 +13,15 @@ python scripts/trial.py <stage> exp/trials/<trial> [--domains D ...] [--strategi
 | `data`   | `instances/`, `split.csv`      | `data/<domain>/<STRAT>/<problem>/`       | `deep --dataset` once per (train problem, strategy) |
 | `train`  | `data/` train-split trees      | `models/<domain>/*.onnx`                 | RL fringe ranker and/or GNN distance estimator, one model per F |
 | `infer`  | `instances/`, `models/`        | `results/results.csv`                    | BFS and every model on every problem, one row per (problem, method, F) |
-| `report` | `results/results.csv`          | `report/tables/*.tex *.csv`, `report/figures/*.png` | coverage, IQM nodes, IQM time, per-instance tables; per-domain figures |
+| `report` | `results/results.csv`          | `report/tables/*.tex *.csv`, `report/figures/*.png` | coverage; IQM nodes and time, both on the problems solved by every method (`*_common_*`) and on each method's own solved set (`*_solved_*`); per-instance table; per-domain figures |
 | `all`    | | | the four in order |
 
 Flags: `--domains` restricts any stage to some domains; `--strategies` restricts
 `data` to some generation strategies; `--models` restricts `train` to `rl` and/or
-`gnn`; `--dry-run` prints the planner/trainer
+`gnn`; `--workers` overrides the parallelism (mind `mem_gb` x workers vs RAM); `--dry-run` prints the planner/trainer
 commands and runs nothing. Stages skip what is already on disk (a tree, a model,
-a results row), so rerunning after a crash resumes.
+a results row), so rerunning after a crash resumes. To redo some inference runs
+(e.g. after raising `mem_gb`), delete their rows from `results/results.csv` and rerun `infer`.
 
 Typical use, one domain, one model kind per command (the second command reuses the
 trees and results of the first and only adds the missing models and rows):

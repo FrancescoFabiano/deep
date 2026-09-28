@@ -2,7 +2,7 @@
 name = "basic"
 deep_exe = "cmake-build-release-nn/bin/deep"
 workers = 4          # parallel planner runs (generation and inference)
-mem_gb = 8           # a planner run above this RSS is killed (MEMOUT)
+mem_gb = 16          # a planner run above this RSS is killed (MEMOUT); mind mem_gb x workers vs RAM
 
 [split]
 train_pct = 70       # per domain: problems sorted by name, first 70% train, rest test

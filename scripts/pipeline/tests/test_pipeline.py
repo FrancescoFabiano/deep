@@ -113,7 +113,10 @@ def test_report_on_toy_results(tmp_path):
     with cfg.results_file.open("w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=infer.COLUMNS); w.writeheader(); w.writerows(rows)
     report.run(cfg)
-    tex = (cfg.report_dir / "tables" / "nodes_train.tex").read_text()
+    tex = (cfg.report_dir / "tables" / "nodes_common_train.tex").read_text()
     assert r"\begin{tabular}" in tex and "(+50\\%)" in tex
+    solved = (cfg.report_dir / "tables" / "nodes_solved_test.csv").read_text().splitlines()[1]
+    assert solved == "d1,400 (1),-- (0),-- (0)"        # own solved set: BFS solved p-03, RL nothing
     assert (cfg.report_dir / "tables" / "coverage_test.csv").read_text().splitlines()[1] == "d1,1/1,0/1,0/1"
-    assert (cfg.report_dir / "figures" / "d1_nodes_vs_bfs.png").exists()
+    for name in ("coverage_vs_F", "nodes_common_vs_F", "nodes_solved_vs_F", "nodes_vs_bfs"):
+        assert (cfg.report_dir / "figures" / f"d1_{name}.png").exists()

@@ -1,9 +1,13 @@
 """Stage 4: results/results.csv -> report/tables/*.tex *.csv and report/figures/*.png.
 
-Tables (per split): coverage (solved/total), nodes and time (IQM on the problems
-every method solved, with the reduction vs BFS), and one per-instance table of
-nodes expanded (best in bold). Figures per domain: coverage vs F, IQM nodes vs F,
-nodes vs BFS nodes. The reading of the numbers belongs in the paper, not here.
+Two aggregations of nodes expanded and total time, per split:
+  common  IQM over the problems EVERY method solved (same set for all columns, so
+          the reduction vs BFS is apples to apples);
+  solved  IQM over each method's OWN solved problems, with that count (the set
+          differs per column; it is what a method achieves on what it can solve).
+Plus coverage (solved/total) and one per-instance table of nodes expanded (best in
+bold). Figures per domain: coverage vs F, nodes vs F for both aggregations, nodes
+vs BFS nodes. The reading of the numbers belongs in the paper, not here.
 """
 from __future__ import annotations
 
@@ -15,6 +19,8 @@ from .config import Config
 # Color follows the method, in a fixed order; BFS is the neutral baseline.
 COLORS = {"BFS": "#52514e", "RL": "#2a78d6", "GNN_RL": "#eb6834", "GNN_Astar": "#1baf7a", "GNN_HFS": "#eda100"}
 MARKERS = {4: "o", 8: "s", 16: "^", 32: "D"}
+METRICS = {"nodes": "nodes_expanded", "time": "total_ms"}
+UNITS = {"nodes": "nodes expanded", "time": "total time in ms"}
 
 
 def run(cfg: Config) -> None:
@@ -28,15 +34,19 @@ def run(cfg: Config) -> None:
 
     for split, part in df.groupby("split"):
         _write(coverage(part, labels), tables / f"coverage_{split}", f"Solved problems ({split})", f"tab:coverage_{split}")
-        _write(common_iqm(part, labels, "nodes_expanded"), tables / f"nodes_{split}",
-               f"IQM nodes expanded on commonly solved problems, reduction vs BFS ({split})", f"tab:nodes_{split}")
-        _write(common_iqm(part, labels, "total_ms"), tables / f"time_{split}",
-               f"IQM total time in ms on commonly solved problems, reduction vs BFS ({split})", f"tab:time_{split}")
+        for name, col in METRICS.items():
+            _write(common_iqm(part, labels, col), tables / f"{name}_common_{split}",
+                   f"IQM {UNITS[name]} on the problems solved by every method, reduction vs BFS ({split})",
+                   f"tab:{name}_common_{split}")
+            _write(solved_iqm(part, labels, col), tables / f"{name}_solved_{split}",
+                   f"IQM {UNITS[name]} on each method's own solved problems (count in parentheses) ({split})",
+                   f"tab:{name}_solved_{split}")
     _write(per_instance(df, labels), tables / "per_instance", "Nodes expanded per problem (best in bold)", "tab:per_instance")
 
     for domain, part in df.groupby("domain"):
         plot_vs_F(part, figures / f"{domain}_coverage_vs_F.png", metric="coverage")
-        plot_vs_F(part, figures / f"{domain}_nodes_vs_F.png", metric="nodes")
+        plot_vs_F(part, figures / f"{domain}_nodes_common_vs_F.png", metric="common")
+        plot_vs_F(part, figures / f"{domain}_nodes_solved_vs_F.png", metric="solved")
         plot_vs_bfs(part, figures / f"{domain}_nodes_vs_bfs.png")
     print(f"[report] tables -> {tables}\n[report] figures -> {figures}")
 
@@ -51,9 +61,10 @@ def coverage(df, labels) -> pd.DataFrame:
 
 
 def common_iqm(df, labels, metric) -> pd.DataFrame:
+    """One row per domain: IQM over the problems every method solved, reduction vs BFS."""
     rows = {}
     for domain, part in df.groupby("domain"):
-        common = _common_problems(part)
+        common = common_problems(part)
         sub = part[part["problem"].isin(common)]
         base = iqm(sub.loc[sub["label"] == "BFS", metric])
         row = {"n": str(len(common))}
@@ -67,14 +78,27 @@ def common_iqm(df, labels, metric) -> pd.DataFrame:
     return pd.DataFrame.from_dict(rows, orient="index").reindex(columns=["n", *labels]).fillna("")
 
 
+def solved_iqm(df, labels, metric) -> pd.DataFrame:
+    """One row per domain: IQM over each method's own solved problems, with the count."""
+    rows = {}
+    for domain, part in df.groupby("domain"):
+        row = {}
+        for label in labels:
+            vals = part.loc[(part["label"] == label) & part["solved"], metric]
+            row[label] = f"{iqm(vals):.0f} ({len(vals)})" if len(vals) else "-- (0)"
+        rows[domain] = row
+    return pd.DataFrame.from_dict(rows, orient="index").reindex(columns=labels).fillna("")
+
+
 def per_instance(df, labels) -> pd.DataFrame:
-    nodes = df.pivot_table(index=["domain", "split", "problem"], columns="label", values="nodes_expanded", aggfunc="first")
-    nodes = nodes.where(df.pivot_table(index=["domain", "split", "problem"], columns="label", values="solved", aggfunc="first").astype(bool))
+    idx = ["domain", "split", "problem"]
+    nodes = df.pivot_table(index=idx, columns="label", values="nodes_expanded", aggfunc="first")
+    nodes = nodes.where(df.pivot_table(index=idx, columns="label", values="solved", aggfunc="first").astype(bool))
     nodes = nodes.reindex(columns=[l for l in labels if l in nodes.columns])
     out = nodes.copy().astype(object)
-    for idx, row in nodes.iterrows():
+    for i, row in nodes.iterrows():
         best = row.min()
-        out.loc[idx] = [("--" if pd.isna(v) else (f"\\textbf{{{int(v)}}}" if v == best else f"{int(v)}")) for v in row]
+        out.loc[i] = [("--" if pd.isna(v) else (f"\\textbf{{{int(v)}}}" if v == best else f"{int(v)}")) for v in row]
     return out
 
 
@@ -87,7 +111,7 @@ def iqm(values) -> float:
     return float(v[(v >= lo) & (v <= hi)].mean())
 
 
-def _common_problems(df) -> set:
+def common_problems(df) -> set:
     solved = df[df["solved"]].groupby("label")["problem"].agg(set)
     return set.intersection(*solved) if len(solved) == len(df["label"].unique()) and len(solved) else set()
 
@@ -124,33 +148,35 @@ def _learned(df):
     return [m for m in COLORS if m != "BFS" and m in set(df["method"])]
 
 
+def _value(rows, metric: str, common: set) -> float:
+    """The y value of one (method, F) group of rows under the chosen aggregation."""
+    if metric == "coverage":
+        return 100 * rows["solved"].mean()
+    if metric == "common":
+        return iqm(rows.loc[rows["problem"].isin(common), "nodes_expanded"])
+    return iqm(rows.loc[rows["solved"], "nodes_expanded"])           # solved: own solved set
+
+
 def plot_vs_F(df, path, metric: str) -> None:
+    """metric: coverage (solved %), common (IQM nodes, problems solved by all), solved (IQM nodes, own solved)."""
     plt = _style()
     splits = sorted(df["split"].unique())
     fig, axes = plt.subplots(1, len(splits), figsize=(4.2 * len(splits), 3.4), sharey=True, squeeze=False)
     for ax, split in zip(axes[0], splits):
         part = df[df["split"] == split]
-        common = _common_problems(part) if metric == "nodes" else None
-        bfs = part[part["method"] == "BFS"]
-        base = 100 * bfs["solved"].mean() if metric == "coverage" else iqm(bfs[bfs["problem"].isin(common)]["nodes_expanded"])
-        ax.axhline(base, color=COLORS["BFS"], ls="--", lw=2, label="BFS")
+        common = common_problems(part) if metric == "common" else set()
+        ax.axhline(_value(part[part["method"] == "BFS"], metric, common), color=COLORS["BFS"], ls="--", lw=2, label="BFS")
         for method in _learned(part):
-            pts = []
-            for F, g in part[part["method"] == method].groupby("F"):
-                if metric == "coverage":
-                    pts.append((F, 100 * g["solved"].mean()))
-                else:
-                    pts.append((F, iqm(g[g["problem"].isin(common)]["nodes_expanded"])))
-            if pts:
-                xs, ys = zip(*pts)
-                ax.plot(xs, ys, color=COLORS[method], lw=2, marker="o", ms=7, label=method)
-        n = part.groupby("label")["problem"].nunique().max()
-        ax.set_title(f"{split}: {metric} ({'n=' + str(len(common)) + ' common' if common is not None else f'n={n}'})", loc="left")
+            pts = [(F, _value(g, metric, common)) for F, g in part[part["method"] == method].groupby("F")]
+            ax.plot(*zip(*pts), color=COLORS[method], lw=2, marker="o", ms=7, label=method)
+        n = f"n={len(common)} common" if metric == "common" else f"n={part['problem'].nunique()}"
+        ax.set_title(f"{split}: {metric} ({n})", loc="left")
+        Fs = sorted(part.loc[part["F"] > 0, "F"].unique())
         ax.set_xscale("log", base=2)
-        ax.set_xticks(sorted(part.loc[part["F"] > 0, "F"].unique()))
-        ax.set_xticklabels([str(x) for x in sorted(part.loc[part["F"] > 0, "F"].unique())])
+        ax.set_xticks(Fs)
+        ax.set_xticklabels([str(x) for x in Fs])
         ax.set_xlabel("fringe size F")
-        if metric == "nodes":
+        if metric != "coverage":
             ax.set_yscale("log")
     axes[0][0].set_ylabel("solved %" if metric == "coverage" else "IQM nodes expanded")
     axes[0][-1].legend(loc="best")
