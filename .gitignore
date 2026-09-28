@@ -80,3 +80,6 @@ exp/**/_results*/
 !/utils/configs/
 !/utils/configs/*.ut
 !/utils/configs/README.md
+
+# Local MCP server config
+/.mcp.json
