@@ -611,15 +611,19 @@ void HelperPrint::print_dataset_format(const KripkeState &kstate,
           << training_dataset->get_to_state_edge_id_string() << "\"];"
           << std::endl;
     }
+  } else {
+    // Separated: no epsilon node, so mark the designated worlds directly (one
+    // line each, also for worlds with no belief edge).
+    for (const auto &designated_world : kstate.get_designated_worlds()) {
+      ofs << "  " << world_map.at(designated_world.get_id_casted())
+          << " [shape=doublecircle];" << std::endl;
+    }
   }
 
   // Print nodes Removed to minimize the size of the dataset
   /*for (const auto& [hash, id] : world_map) {
       ofs << (use_hash ? std::to_string(hash) : id) << ";" << std::endl;
   }*/
-
-  // ofs << (use_hash ? std::to_string(pointed_hash) : world_map[pointed_hash])
-  //     << " [shape=doublecircle];" << std::endl;
 
   // Edges
   // std::map<std::pair<KripkeWorldId, KripkeWorldId>, std::set<Agent>>

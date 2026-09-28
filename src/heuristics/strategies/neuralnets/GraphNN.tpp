@@ -754,8 +754,9 @@ bool GraphNN<StateRepr>::check_tensor_against_dot(
    * edges.
    *
    * This check applies to merged/non-separated tensors. In the
-   * separated representation there are no to-state edges, so the
-   * pointed IDs cannot be cross-checked this way.
+   * separated representation there are no to-state edges; there the
+   * pointed IDs are checked by the DOT comparison below (doublecircle
+   * lines).
    */
   if (!ArgumentParser::get_instance().get_dataset_separated()) {
 
@@ -849,36 +850,33 @@ bool GraphNN<StateRepr>::write_and_compare_tensor_to_dot(
         "edge_src and edge_dst must have the same number of edges.");
   }
 
+  // Node label as printed in the dataset DOT (bitmask string or id)
+  const bool bitmask_labels = ArgumentParser::get_instance().get_dataset_type() ==
+                                  DatasetType::BITMASK &&
+                              !is_goal;
+  auto node_label = [&](const int64_t symbolic) {
+    if (!bitmask_labels) {
+      return std::to_string(real_node_ids[symbolic]);
+    }
+    std::string label;
+    for (size_t i = 0; i < m_bitmask_size; ++i) {
+      label += std::to_string(
+          real_node_ids_bitmask[symbolic * m_bitmask_size + i]);
+    }
+    return label;
+  };
+
+  // Separated states mark their designated worlds before the edges
+  if (!is_goal && ArgumentParser::get_instance().get_dataset_separated()) {
+    for (const auto pointed_id : state_tensor.pointed_ids) {
+      ofs << "  " << node_label(pointed_id) << " [shape=doublecircle];\n";
+    }
+  }
+
   // Print edges with optional edge_attrs label
   for (size_t e = 0; e < num_edges; ++e) {
-    int64_t src_symbolic = edge_src[e];
-    int64_t dst_symbolic = edge_dst[e];
-
-    int64_t attr = edge_attrs[e];
-    std::string src_str, dst_str;
-
-    if (ArgumentParser::get_instance().get_dataset_type() ==
-            DatasetType::BITMASK &&
-        !is_goal) {
-      src_str = "";
-      dst_str = "";
-      size_t iteration = 0;
-      while (iteration < m_bitmask_size) {
-        src_str += std::to_string(
-            real_node_ids_bitmask[src_symbolic * m_bitmask_size + iteration]);
-        dst_str += std::to_string(
-            real_node_ids_bitmask[dst_symbolic * m_bitmask_size + iteration]);
-        ++iteration;
-      }
-    } else {
-      auto src = real_node_ids[src_symbolic];
-      auto dst = real_node_ids[dst_symbolic];
-      src_str = std::to_string(src);
-      dst_str = std::to_string(dst);
-    }
-
-    ofs << "  " << src_str << " -> " << dst_str << " [label=\""
-        << std::to_string(attr) << "\"]" << ";\n";
+    ofs << "  " << node_label(edge_src[e]) << " -> " << node_label(edge_dst[e])
+        << " [label=\"" << std::to_string(edge_attrs[e]) << "\"]" << ";\n";
   }
 
   ofs << "}\n";

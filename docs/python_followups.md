@@ -79,8 +79,18 @@ fringe layout will be documented here once implemented.
   planner prints a `[WARNING]` and ranks them last. Ties are broken by fringe
   index. The export-time non-finite check proposed in the issue is still
   useful.
-- **#2 (C++ pending):** separated DOTs will mark designated worlds; the
-  separated DOT parser will need to read them.
+- **#2 (done in C++):** separated state DOTs now contain one line per
+  designated world, before the edges, with the same id spelling as the edge
+  lines (decimal, mapped id or bitmask string):
+
+  ```
+    <world_id> [shape=doublecircle];
+  ```
+
+  Every designated world appears, even one with no belief edge. The order
+  matches `pointed_ids`. Merged DOTs are unchanged (still `epsilon -> w`
+  edges). The separated DOT parser should build `pointed_ids` from these lines
+  instead of deriving them from the merged twin.
 - **#7 (done in C++):** dataset generation now exits with code **4**
   (`DatasetNoGoalFound`) when no goal is reached; the CSV is kept and always
   has its depth-0 root row (DFS / S_DFS used to drop it). Code 2 is success,
