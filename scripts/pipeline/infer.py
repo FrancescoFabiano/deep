@@ -1,8 +1,9 @@
 """Stage 3: BFS and every trained model on every instance -> results/results.csv.
 
 One row per (problem, method, F); rows already present are not rerun. Methods come
-from what models/<domain>/ holds: RL (rl_F*.onnx), GNN_RL (the GNN ranking the RL
-beam), GNN_<search> for each [inference].gnn_searches (the per-state export).
+from what models/<domain>/ (models/pooled/ in a [train].pooled trial) holds: RL
+(rl_F*.onnx), GNN_RL (the GNN ranking the RL beam), GNN_<search> for each
+[inference].gnn_searches (the per-state export).
 """
 from __future__ import annotations
 
@@ -62,7 +63,7 @@ def methods(cfg: Config, domain: str) -> list[Method]:
 
 
 def _models(cfg, domain, kind):
-    found = [(re.fullmatch(rf"{kind}_F(\d+)\.onnx", p.name), p) for p in (cfg.models_dir / domain).glob(f"{kind}_F*.onnx")]
+    found = [(re.fullmatch(rf"{kind}_F(\d+)\.onnx", p.name), p) for p in cfg.model_dir(domain).glob(f"{kind}_F*.onnx")]
     return sorted((int(m.group(1)), p) for m, p in found if m)
 
 

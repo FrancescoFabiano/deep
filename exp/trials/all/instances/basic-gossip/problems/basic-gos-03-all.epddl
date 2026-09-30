@@ -1,0 +1,33 @@
+;; Solution:
+;;  0. tell_C_B
+;;  1. tell_B_C
+;;  2. tell_C_A
+;;  3. tell_B_A
+;;  4. tell_A_C
+;;  5. tell_A_B
+
+(define (problem gos-3-all)  ;; 3 agents
+    (:domain gossip)
+
+    (:requirements
+        :finitary-S5-theories :universal-goals :modal-goals
+    )
+
+    (:agents
+        A B C
+    )
+
+    (:init
+        (:and
+            (forall (?i - agent)
+                (secret ?i) )
+            ;; It is common knowledge that each agent knows whether her secret holds
+            (:forall (?i - agent)
+                ([C. All] ([Kw. ?i] (secret ?i))) ))
+    )
+
+    (:goal
+        (forall (?i - agent)
+            ([Kw. All] (secret ?i)) )
+    )
+)

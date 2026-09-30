@@ -5,6 +5,8 @@ workers = 4          # parallel planner runs (generation and inference)
 mem_gb = 16          # a planner run above this RSS is killed (MEMOUT); mind mem_gb x workers vs RAM
 
 [split]
+# split.csv is authoritative and was written by scripts/make_splits.py from deep_solutions.csv
+# (baseline solved -> train, everything else -> test). The rule below only applies if the file is deleted.
 train_pct = 70       # per domain: problems sorted by name, first 70% train, rest test
 # shuffle_seed = 0   # uncomment for a seeded random split instead
 

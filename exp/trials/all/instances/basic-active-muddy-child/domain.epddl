@@ -1,0 +1,51 @@
+;; DOMAIN
+;; Active Muddy Child
+;;
+;; DESCRIPTION
+;; ...
+;;
+;; ACTIONS
+;;  - ask (public-sensing)
+;;
+
+
+(define (domain active-muddy-child)
+    (:requirements
+        :partial-observability :modal-preconditions :knowing-whether
+    )
+
+    (:action-type-libraries
+        basic
+    )
+
+    (:predicates
+        (muddy ?i - agent)
+    )
+
+    ;--------------------ASK------------------
+
+    (:event e-ask-pos
+        :parameters
+            (?i - agent)
+        :precondition
+            ([Kw. ?i] (muddy ?i))
+    )
+
+    (:event e-ask-neg
+        :parameters
+            (?i - agent)
+        :precondition
+            (<Kw. ?i> (muddy ?i))
+    )
+
+    (:action ask
+        :parameters
+            (?i - agent)
+        :action-type
+            (public-sensing
+                (e-ask-pos ?i)
+                (e-ask-neg ?i) )
+        :observability-conditions
+            (default Fully)
+    )
+)

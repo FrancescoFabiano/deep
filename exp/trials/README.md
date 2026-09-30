@@ -27,4 +27,21 @@ Methods at inference: `BFS`; `RL@F` (RL search, RL model); `GNN_RL@F` (RL beam r
 by the GNN); `GNN_Astar@F` / `GNN_HFS@F` (the per-state GNN as heuristic).
 
 To make a new trial copy `basic/trial.toml`, drop instances under `instances/`
-(one `domain.epddl` + `problems/` per domain, the action library as `act_lib.epddl`).
+(one `domain.epddl` + `problems/` per domain, the action library as `act_lib.epddl`,
+or per domain as `<domain>/act_lib.epddl` when the domains need different ones).
+
+## The four trials
+
+`basic`, `intermediate`, `hard` hold one IPC 2026 tier each (copied from
+`exp/ipc2026-benchmarks/`); `all` holds every tier, with domain and problem names
+prefixed by the tier (`basic-gossip/basic-gos-03-all`), because gossip and
+blocks-world appear in every tier with the same problem names and the trainers key
+trees by problem name. `all` sets `[train] pooled = true`: one RL and one GNN model
+per F from the train trees of every domain, installed under `models/pooled/` and
+used on every test problem.
+
+Every `split.csv` comes from `scripts/make_splits.py` over `deep_solutions.csv`, the
+baseline planner's results on the whole benchmark (1200 s CPU, 16 GB): a problem the
+baseline solved is train, every other one (memout, timeout, no plan found) is test.
+So test measures coverage beyond the baseline, and BFS solves none of it by
+construction. Re-run the script if `deep_solutions.csv` changes.

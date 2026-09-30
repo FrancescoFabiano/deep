@@ -1,0 +1,76 @@
+(define (problem sc-6-7)    ;; 6 agents; 7 rooms
+    (:domain selective-communication)
+
+    (:requirements
+        :typing :equality :list-comprehensions
+        :finitary-S5-theories :modal-goals :facts
+    )
+
+    (:agents
+        A B C D E F
+    )
+
+    (:objects
+        room1 room2 room3 room4 room5 room6 room7 - room
+    )
+
+    (:facts-init
+        (neighbor room1 room2)
+        (neighbor room2 room3)
+        (neighbor room3 room4)
+        (neighbor room4 room5)
+        (neighbor room5 room6)
+        (neighbor room6 room7)
+        (leftmost room1)
+        (rightmost room7)
+    )
+
+    (:init
+        :worlds (w-info w-not-info)
+        :relations
+            (A (:forall (?x ?y - world) (?x ?y)) 
+             B (:forall (?x ?y - world) (?x ?y)) 
+             C (:forall (?x ?y - world) (?x ?y)) 
+             D (:forall (?x ?y - world) (?x ?y)) 
+             E (:forall (?x ?y - world) (?x ?y)) 
+             F (:forall (?x ?y - world) (?x ?y)) )
+        :labels
+            (w-info
+                (:and
+                    (info)
+                    (at A room1)
+                    (at B room2)
+                    (at C room3)
+                    (at D room4)
+                    (at E room5)
+                    (at F room6)
+                    (close A B)
+                    (close B C)
+                    (close C D)
+                    (close D E)
+                    (close E F)
+                    (:forall (?i - agent)
+                        (close ?i ?i) ))
+             w-not-info
+                (:and
+                    (at A room1)
+                    (at B room2)
+                    (at C room3)
+                    (at D room4)
+                    (at E room5)
+                    (at F room6)
+                    (close A B)
+                    (close B C)
+                    (close C D)
+                    (close D E)
+                    (close E F)
+                    (:forall (?i - agent)
+                        (close ?i ?i) )))
+        :designated
+            (w-info)
+    )
+
+    (:goal
+        ([All] (info))
+    )
+)

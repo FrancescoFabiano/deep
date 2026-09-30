@@ -1,4 +1,5 @@
-"""Stage 2: one model per (domain, kind, F) from the train-split trees.
+"""Stage 2: one model per (domain, kind, F) from the train-split trees, or with
+[train].pooled one model per (kind, F) from every domain's train trees (models/pooled/).
 
 rl  -> lib/rl_handler/offline_main.py   (fringe ranker, one run per F)
 gnn -> lib/gnn_handler/__main__.py      (distance estimator; one run exports every F)
@@ -15,7 +16,7 @@ import subprocess
 import sys
 
 from . import instances
-from .config import REPO, Config
+from .config import POOLED_DIR, REPO, Config
 
 sys.path.insert(0, str(REPO / "lib"))
 from deep_nn.strategies import discover_tables, select_tables  # noqa: E402
@@ -34,13 +35,25 @@ EXPORTS = {   # (file the trainer writes under run_fringe<F>/, installed name)
 
 def run(cfg: Config) -> None:
     insts = instances.load(cfg)
-    for domain in sorted({i.domain for i in insts}):
-        train_csvs, test_csvs = _tables(cfg, insts, domain)
+    domains = sorted({i.domain for i in insts})
+    # [train].pooled: one model set from every domain's train trees, installed under models/pooled/
+    groups = [(POOLED_DIR, domains)] if cfg.pooled else [(d, [d]) for d in domains]
+    for label, members in groups:
+        # the trainers key trees by problem name, so a pooled trial needs names unique across domains
+        names = [i.problem for i in insts if i.domain in members]
+        dupes = sorted({n for n in names if names.count(n) > 1})
+        if dupes:
+            raise SystemExit(f"[train] {label}: problem names repeat across domains {dupes}; rename the problem files")
+        train_csvs, test_csvs = [], []
+        for domain in members:
+            tr, te = _tables(cfg, insts, domain)
+            train_csvs += tr
+            test_csvs += te
         if not train_csvs:
-            print(f"[train] {domain}: no train trees under {cfg.data_dir / domain}, skipped")
+            print(f"[train] {label}: no train trees under {cfg.data_dir}, skipped")
             continue
         for kind in cfg.train["models"]:
-            _train(cfg, domain, kind, train_csvs, test_csvs)
+            _train(cfg, label, kind, train_csvs, test_csvs)
 
 
 def _tables(cfg, insts, domain):
@@ -54,11 +67,11 @@ def _tables(cfg, insts, domain):
     return pick("train"), pick("test")
 
 
-def _train(cfg, domain, kind, train_csvs, test_csvs) -> None:
-    out = cfg.models_dir / domain
+def _train(cfg, label, kind, train_csvs, test_csvs) -> None:
+    out = cfg.models_dir / label             # the domain, or POOLED_DIR
     installed = [(out / dst.format(F=F)) for F in cfg.train["fringe_sizes"] for _, dst in EXPORTS[kind]]
     if all(p.exists() for p in installed):
-        print(f"[train] {domain}/{kind}: models present, skipped")
+        print(f"[train] {label}/{kind}: models present, skipped")
         return
     t = cfg.train
     cmd = [sys.executable, str(TRAINERS[kind]), "--train-csv", *map(str, train_csvs),
@@ -67,7 +80,7 @@ def _train(cfg, domain, kind, train_csvs, test_csvs) -> None:
            "--dataset-type", cfg.data["dataset_type"], *FIXED_FLAGS[kind], *map(str, t.get(kind, {}).get("extra", []))]
     if test_csvs:
         cmd += ["--test-csv", *map(str, test_csvs)]
-    print(f"[train] {domain}/{kind}: {len(train_csvs)} train tables, {len(test_csvs)} test tables")
+    print(f"[train] {label}/{kind}: {len(train_csvs)} train tables, {len(test_csvs)} test tables")
     print(" ".join(cmd))
     if cfg.dry_run:
         return
@@ -75,4 +88,4 @@ def _train(cfg, domain, kind, train_csvs, test_csvs) -> None:
     for F in t["fringe_sizes"]:
         for src, dst in EXPORTS[kind]:
             shutil.copy2(out / kind / f"run_fringe{F}" / src.format(F=F), out / dst.format(F=F))
-    print(f"[train] {domain}/{kind}: installed {[p.name for p in installed]}")
+    print(f"[train] {label}/{kind}: installed {[p.name for p in installed]}")

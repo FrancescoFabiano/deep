@@ -1,0 +1,16 @@
+domain,problem,split
+blocks-world,bw-3-3-2-clumsy,train
+blocks-world,bw-3-5-2-clumsy,train
+blocks-world,bw-4-5-2-clumsy,test
+blocks-world,bw-4-7-3-clumsy,test
+blocks-world,bw-5-8-3-clumsy,test
+gossip,gos-04-all-deceived,train
+gossip,gos-04-imp-deceived,train
+gossip,gos-06-all-deceived,test
+gossip,gos-06-imp-deceived,test
+gossip,gos-08-all-deceived,test
+gossip,gos-08-imp-deceived,test
+gossip,gos-10-all-deceived,test
+gossip,gos-10-imp-deceived,test
+gossip,gos-12-all-deceived,test
+gossip,gos-12-imp-deceived,test

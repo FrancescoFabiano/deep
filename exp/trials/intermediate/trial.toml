@@ -1,0 +1,43 @@
+[trial]
+name = "intermediate"
+deep_exe = "cmake-build-release-nn/bin/deep"
+workers = 2          # parallel planner runs (generation and inference); train problems peak at 6-10 GB
+mem_gb = 16          # a planner run above this RSS is killed (MEMOUT); mind mem_gb x workers vs RAM
+
+[split]
+# split.csv is authoritative and was written by scripts/make_splits.py from deep_solutions.csv
+# (baseline solved -> train, everything else -> test). The rule below only applies if the file is deleted.
+train_pct = 70       # per domain: problems sorted by name, first 70% train, rest test
+# shuffle_seed = 0   # uncomment for a seeded random split instead
+
+[data]
+strategies = ["BFS", "DFS", "S_DFS", "HFS"]   # one tree per (problem, strategy)
+hfs_heuristic = "SUBGOALS"                    # HFS only
+depth = 25
+depth_overrides = {}                          # e.g. { gossip = 30 }
+seed = 42                                     # DFS / S_DFS retry with seed+1, seed+2, ...
+max_retries = 3
+discard_factor = 0.4                          # S_DFS only
+max_generation = 100000                       # visit ceiling
+max_creation = 60000                          # write ceiling
+dataset_type = "HASHED"
+timeout_s = 3600
+generate_test = false                         # also build trees for test problems (diagnostics only)
+
+[train]
+models = ["rl", "gnn"]
+strategies = "all"                            # or a subset of [data].strategies
+fringe_sizes = [4, 8, 16, 32]
+epochs = 100
+batch_size = 64
+seed = 0
+[train.rl]
+extra = []                                    # forwarded to lib/rl_handler/offline_main.py
+[train.gnn]
+extra = []                                    # forwarded to lib/gnn_handler/__main__.py
+
+[inference]
+timeout_s = 180
+rl_exploration = 10                           # exploration + exploitation must be < 100
+rl_exploitation = 70
+gnn_searches = ["Astar"]                      # GNN as heuristic under Astar and/or HFS

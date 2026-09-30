@@ -1,0 +1,124 @@
+(define (action-type-library intermediate)
+    (:requirements
+        :lists :list-comprehensions :equality
+        :partial-observability :multi-pointed-models :events-conditions
+        :KD45-frames :negative-list-formulas
+    )
+
+
+    ;--------------------ONTIC------------------
+
+    (:action-type public-ontic
+        :events     (?pos)
+        :observability-types (Fully)
+        :relations  (Fully (:forall (?e - event) (?e ?e)))
+        :designated (?pos)
+        :conditions (?pos (:non-trivial-postconditions))
+    )
+
+    (:action-type private-ontic
+        :events     (?pos ?nil)
+        :observability-types (Fully Oblivious)
+        :relations  (Fully     (:forall (?e - event) (?e ?e))
+                     Oblivious (:forall (?e - event) (?e ?nil)) )
+        :designated (?pos)
+        :conditions (?pos (:non-trivial-postconditions)
+                     ?nil (:trivial-event) )
+    )
+
+
+    ;--------------------SENSING------------------
+
+    (:action-type public-sensing
+        :events     (?pos ?neg)
+        :observability-types (Fully)
+        :relations  (Fully (:forall (?e - event) (?e ?e)))
+        :designated (?pos ?neg)
+        :conditions (?pos (:trivial-postconditions)
+                     ?neg (:trivial-postconditions) )
+    )
+
+    (:action-type private-sensing
+        :events     (?pos ?neg ?nil)
+        :observability-types (Fully Oblivious)
+        :relations  (Fully     (:forall (?e - event) (?e ?e))
+                     Oblivious (:forall (?e - event) (?e ?nil)) )
+        :designated (?pos ?neg)
+        :conditions (?pos (:trivial-postconditions)
+                     ?nil (:trivial-event) )
+    )
+
+    (:action-type semi-private-sensing
+        :events     (?pos ?neg)
+        :observability-types (Fully Partially)
+        :relations  (Fully     (:forall (?e    - event) (?e ?e))
+                     Partially (:forall (?e ?f - event) (?e ?f)) )
+        :designated (?pos ?neg)
+        :conditions (?pos (:trivial-postconditions)
+                     ?neg (:trivial-postconditions) )
+    )
+
+    (:action-type quasi-private-sensing
+        :events     (?pos ?neg ?nil)
+        :observability-types (Fully Partially Oblivious)
+        :relations  (Fully     (:forall (?e - event) (?e ?e))
+                     Partially (:forall (?e ?f - event |
+                        (imply
+                            (/= ?e ?f)
+                            (and (/= ?e ?nil) (/= ?f ?nil)) ))
+                        (?e ?f) )
+                     Oblivious (:forall (?e - event) (?e ?nil)) )
+        :designated (?pos ?neg)
+        :conditions (?pos (:trivial-postconditions)
+                     ?neg (:trivial-postconditions)
+                     ?nil (:trivial-event) )
+    )
+
+
+    ;--------------------ANNOUNCEMENT------------------
+
+    (:action-type public-announcement
+        :events     (?pos ?neg)
+        :observability-types (Fully)
+        :relations  (Fully (:forall (?e - event) (?e ?e)))
+        :designated (?pos)
+        :conditions (?pos (:trivial-postconditions)
+                     ?neg (:trivial-postconditions) )
+    )
+
+    (:action-type private-announcement
+        :events     (?pos ?nil)
+        :observability-types (Fully Oblivious)
+        :relations  (Fully     (:forall (?e - event) (?e ?e))
+                     Oblivious (:forall (?e - event) (?e ?nil)) )
+        :designated (?pos)
+        :conditions (?pos (:trivial-postconditions)
+                     ?nil (:trivial-event) )
+    )
+
+    (:action-type semi-private-announcement
+        :events     (?pos ?neg)
+        :observability-types (Fully Partially)
+        :relations  (Fully     (:forall (?e    - event) (?e ?e))
+                     Partially (:forall (?e ?f - event) (?e ?f)) )
+        :designated (?pos)
+        :conditions (?pos (:trivial-postconditions)
+                     ?neg (:trivial-postconditions) )
+    )
+
+    (:action-type quasi-private-announcement
+        :events     (?pos ?neg ?nil)
+        :observability-types (Fully Partially Oblivious)
+        :relations  (Fully     (:forall (?e - event) (?e ?e))
+                     Partially (:forall (?e ?f - event |
+                        (imply
+                            (/= ?e ?f)
+                            (and (/= ?e ?nil) (/= ?f ?nil)) ))
+                        (?e ?f) )
+                     Oblivious (:forall (?e - event) (?e ?nil)) )
+        :designated (?pos)
+        :conditions (?pos (:trivial-postconditions)
+                     ?neg (:trivial-postconditions)
+                     ?nil (:trivial-event) )
+    )
+)

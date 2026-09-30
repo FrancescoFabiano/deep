@@ -29,7 +29,7 @@ class Result:
 def base_argv(cfg: Config, inst: Instance) -> list[str]:
     # absolute: generation runs in a private work dir, not the repo root
     return [str(cfg.deep_exe), str(inst.domain_file.resolve()), str(inst.problem_file.resolve()),
-            "--act_lib", str(cfg.act_lib.resolve()), "-b", "-c"]
+            "--act_lib", str(inst.act_lib.resolve()), "-b", "-c"]
 
 
 def run(argv: list[str], *, timeout_s: float, mem_gb: float, cwd=None) -> Result:

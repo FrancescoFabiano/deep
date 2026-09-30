@@ -1,0 +1,198 @@
+;; DOMAIN
+;; Gossip
+;;
+;; DESCRIPTION
+;; ...
+;;
+;; ACTIONS
+;;  - tell (private-announcement)
+;;  - lie (private-deception)
+;;  - give-earpiece (private-ontic)
+;;  - catch (private-2x-deception)
+;;
+
+
+(define (domain gossip)
+    (:requirements
+        :typing :equality :lists :facts :list-comprehensions :partial-observability
+        :general-preconditions :negative-list-formulas :knowing-whether
+        :ontic-actions
+    )
+
+    (:action-type-libraries
+        hard
+    )
+
+    (:types
+        normal-agent detective impostor - agent
+    )
+
+    (:predicates
+        (secret ?i - (either normal-agent impostor))
+        (is-spying ?i - normal-agent)
+    )
+
+    (:event nil)
+
+    ;--------------------TELL------------------
+
+    (:event e-tell
+        :parameters
+            (?i - normal-agent
+             ?j - agent)
+        :precondition
+            (and
+                (secret ?i)
+                (<Kw. ?j> (secret ?i)) )
+    )
+
+    (:action tell
+        :parameters
+            (?i - normal-agent
+             ?j - agent |
+                (/= ?i ?j) )
+        :action-type
+            (private-announcement
+                (e-tell ?i ?j)
+                (nil) )
+        :observability-conditions
+            (:and
+                (?i Fully)
+                (?j Fully)
+                (default Oblivious) )
+    )
+
+
+    ;--------------------LIE------------------
+
+    (:event e-lie-actual
+        :parameters
+            (?i - impostor
+             ?j - normal-agent)
+        :precondition
+            (and
+                (secret ?i)
+                (<Kw. ?j> (secret ?i)) )
+    )
+
+    (:event e-lie-deceive
+        :parameters
+            (?i - impostor
+             ?j - normal-agent)
+        :precondition
+            (and
+                (not (secret ?i))
+                (<Kw. ?j> (secret ?i)) )
+    )
+
+    (:action lie
+        :parameters
+            (?i - impostor
+             ?j - normal-agent)
+        :action-type
+            (private-deception
+                (e-lie-actual  ?i ?j)
+                (e-lie-deceive ?i ?j)
+                (nil) )
+        :observability-conditions
+            (:and
+                (?i Fully)
+                (?j Deceived)
+                (default Oblivious) )
+    )
+
+
+    ;------------------GIVE-BUG----------------
+
+    (:event e-give-earpiece
+        :parameters
+            (?i - normal-agent)
+        :precondition
+            (not (is-spying ?i))
+        :effects
+            (is-spying ?i)
+    )
+
+    (:action give-earpiece
+        :parameters
+            (?d - detective
+             ?i - normal-agent)
+        :action-type
+            (private-ontic
+                (e-give-earpiece ?i)
+                (nil) )
+        :observability-conditions
+            (:and
+                (?d Fully)
+                (?i Fully)
+                (:forall (?j - normal-agent |
+                            (and
+                                (/= ?j ?d)
+                                (/= ?j ?i) ))
+                    (?j (if (is-spying ?j) Fully)) )
+                (default Oblivious) )
+    )
+
+
+    ;-------------------CATCH-----------------
+
+    (:event e-catch-actual
+        :parameters
+            (?d - detective
+             ?i - impostor)
+        :precondition
+            (and
+                (secret ?i)
+                (<Kw. ?d> (secret ?i)) )
+    )
+
+    (:event e-catch-spy
+        :parameters
+            (?i - impostor)
+        :effects
+            (secret ?i)
+    )
+    
+    (:event e-catch-true-deceive
+        :parameters
+            (?d - detective
+             ?i - impostor)
+        :precondition
+            (and
+                (secret ?i)
+                (<Kw. ?d> (secret ?i)) )
+    )
+
+    (:event e-catch-false-deceive
+        :parameters
+            (?d - detective
+             ?i - impostor)
+        :precondition
+            (and
+                (not (secret ?i))
+                (<Kw. ?d> (secret ?i)) )
+    )
+
+    (:action catch
+        :parameters
+            (?d - detective
+             ?i - impostor)
+        :action-type
+            (private-2x-deception
+                (e-catch-actual        ?d ?i)
+                (e-catch-true-deceive  ?d ?i)
+                (e-catch-false-deceive ?d ?i)
+                (e-catch-spy              ?i)
+                (nil) )
+        :observability-conditions
+            (:and
+                (?d FalselyDeceived)
+                (?i TrulyDeceived)
+                (:forall (?j - normal-agent |
+                            (and
+                                (/= ?j ?d)
+                                (/= ?j ?i) ))
+                    (?j (if (is-spying ?j) Spying)) )
+                (default Oblivious) )
+    )
+)

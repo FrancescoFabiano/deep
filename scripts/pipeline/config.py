@@ -9,6 +9,7 @@ REPO = Path(__file__).resolve().parents[2]
 STRATEGIES = ("BFS", "DFS", "S_DFS", "HFS")
 MODELS = ("rl", "gnn")
 GNN_SEARCHES = ("Astar", "HFS")
+POOLED_DIR = "pooled"          # models/<POOLED_DIR>/ holds the one model set of a [train].pooled trial
 REQUIRED = {
     "trial": ["deep_exe"],
     "split": ["train_pct"],
@@ -47,6 +48,17 @@ class Config:
     @property
     def models_dir(self) -> Path: return self.trial_dir / "models"
     @property
+    def pooled(self) -> bool: return bool(self.train.get("pooled", False))
+
+    def act_lib_for(self, domain: str) -> Path:
+        """instances/<domain>/act_lib.epddl when the domain ships its own, else the shared one."""
+        own = self.instances_dir / domain / "act_lib.epddl"
+        return own if own.is_file() else self.act_lib
+
+    def model_dir(self, domain: str) -> Path:
+        """Where stage 2 installs and stage 3 finds a domain's models (one shared dir when pooled)."""
+        return self.models_dir / (POOLED_DIR if self.pooled else domain)
+    @property
     def results_file(self) -> Path: return self.trial_dir / "results" / "results.csv"
     @property
     def report_dir(self) -> Path: return self.trial_dir / "report"
@@ -77,7 +89,10 @@ def _validate(cfg: Config) -> None:
             raise SystemExit(f"trial.toml: {msg}")
     d, t, i = cfg.data, cfg.train, cfg.inference
     check(cfg.dry_run or cfg.deep_exe.is_file(), f"deep_exe not found: {cfg.deep_exe}")
-    check(cfg.act_lib.is_file(), f"missing {cfg.act_lib}")
+    domains = [p.name for p in cfg.instances_dir.iterdir() if (p / "domain.epddl").is_file()] if cfg.instances_dir.is_dir() else []
+    check(domains, f"no <domain>/domain.epddl under {cfg.instances_dir}")
+    no_lib = [d for d in domains if not cfg.act_lib_for(d).is_file()]
+    check(not no_lib, f"no action library for {no_lib}: add instances/act_lib.epddl or instances/<domain>/act_lib.epddl")
     check(0 < cfg.split["train_pct"] < 100, "[split] train_pct must be in (0, 100)")
     check(set(d["strategies"]) <= set(STRATEGIES), f"[data] strategies must be among {STRATEGIES}")
     check(set(cfg.strategies) <= set(d["strategies"]), f"--strategies must be among [data] strategies {d['strategies']}")

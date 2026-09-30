@@ -1,0 +1,33 @@
+(define (problem gos-12-all-deceived)  ;; 12 agents; goal is that all normal agents are deceived
+    (:domain gossip)
+
+    (:requirements
+        :typing :finitary-S5-theories :modal-goals :negative-goals :universal-goals
+    )
+
+    (:agents
+        A B C D E F G H J K - normal-agent
+        Detective           - detective
+        Impostor            - impostor
+    )
+
+    (:init
+        (:and
+            (forall (?i - (either normal-agent impostor))
+                (secret ?i) )
+            (forall (?i - normal-agent)
+                (not (is-spying ?i)) )
+            ([C. All]
+                (forall (?i - normal-agent)
+                    (not (is-spying ?i)) ))
+            ;; It is common knowledge that each agent knows whether her secret holds
+            (:forall (?i - (either normal-agent impostor))
+                ([C. All] ([Kw. ?i] (secret ?i))) ))
+    )
+
+    (:goal
+        ;; All normal agents falsely believe the impostor's secret
+        (forall (?i - impostor ?j - normal-agent)
+            ([?j] (not (secret ?i))) )
+    )
+)

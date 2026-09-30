@@ -88,6 +88,42 @@ def test_trainers_accept_the_flags_stage2_sends(kind):
     assert not missing, f"{kind} trainer rejects {missing}"
 
 
+def test_act_lib_per_domain_overrides_the_shared_one(tmp_path):
+    cfg = _trial(tmp_path)
+    (cfg.instances_dir / "d2" / "problems").mkdir(parents=True)
+    (cfg.instances_dir / "d2" / "domain.epddl").write_text("")
+    (cfg.instances_dir / "d2" / "problems" / "q-00.epddl").write_text("")
+    (cfg.instances_dir / "d2" / "act_lib.epddl").write_text("")
+    libs = {i.domain: i.act_lib for i in instances.load(cfg)}
+    assert libs["d1"] == cfg.act_lib and libs["d2"] == cfg.instances_dir / "d2" / "act_lib.epddl"
+    cfg.act_lib.unlink()                                  # d1 now has no library at all
+    with pytest.raises(SystemExit):
+        config.load(tmp_path, dry_run=True)
+
+
+def test_pooled_trains_once_and_refuses_repeated_problem_names(tmp_path, capsys):
+    _trial(tmp_path)
+    toml = tmp_path / "trial.toml"
+    toml.write_text(toml.read_text().replace("[train]\n", "[train]\npooled = true\n"))
+    cfg = config.load(tmp_path, dry_run=True)
+    assert cfg.pooled and cfg.model_dir("d1") == cfg.models_dir / config.POOLED_DIR
+    (cfg.instances_dir / "d2" / "problems").mkdir(parents=True)
+    (cfg.instances_dir / "d2" / "domain.epddl").write_text("")
+    (cfg.instances_dir / "d2" / "problems" / "p-00.epddl").write_text("")   # same name as in d1
+    cfg.split_file.unlink(missing_ok=True)
+    with pytest.raises(SystemExit, match="p-00"):
+        train.run(cfg)
+    (cfg.instances_dir / "d2" / "problems" / "p-00.epddl").rename(cfg.instances_dir / "d2" / "problems" / "q-00.epddl")
+    cfg.split_file.unlink(missing_ok=True)
+    for dom, prob in [("d1", "p-00"), ("d2", "q-00")]:
+        d = cfg.data_dir / dom / "BFS" / prob
+        d.mkdir(parents=True)
+        (d / f"{prob}_BFS_depth_25.csv").write_text("")
+    train.run(cfg)
+    out = capsys.readouterr().out
+    assert f"[train] {config.POOLED_DIR}/rl: 2 train tables" in out and "[train] d1/" not in out
+
+
 def test_methods_follow_the_installed_models(tmp_path):
     cfg = _trial(tmp_path)
     d = cfg.models_dir / "d1"

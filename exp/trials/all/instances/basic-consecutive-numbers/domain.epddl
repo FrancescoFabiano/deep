@@ -1,0 +1,49 @@
+;; DOMAIN
+;; Consecutive Numbers
+;;
+;; DESCRIPTION
+;; ...
+;;
+;; ACTIONS
+;;  - idk (public-announcement)
+;;
+
+
+(define (domain consecutive-numbers)
+    (:requirements
+        :typing :equality :list-comprehensions :facts
+        :partial-observability :general-preconditions
+    )
+
+    (:action-type-libraries basic)
+
+    (:types
+        number
+    )
+
+    (:predicates
+        (has ?i - agent ?n - number)
+        (:fact consecutive ?m ?n - number)
+        (:fact assignable ?i - agent ?n - number)
+    )
+
+    (:event e-idk
+        :parameters
+            (?i ?j - agent
+             ?n - number)
+        :precondition 
+            (not ([?i] (has ?j ?n)))
+    )
+
+    (:action idk
+        :parameters
+            (?i ?j - agent
+             ?n - number |
+                (/= ?i ?j) )
+        :action-type
+            (public-announcement
+                (e-idk ?i ?j ?n) )
+        :observability-conditions
+            (default Fully)
+    )
+)

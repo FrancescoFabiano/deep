@@ -4,6 +4,9 @@ instances/<domain>/domain.epddl + problems/*.epddl. The split is computed once p
 domain -- problems sorted by name (or shuffled with [split].shuffle_seed), the first
 ceil(train_pct%) train, the rest test -- and written to split.csv, which every
 stage then reads. Edit or delete that file to change the split.
+
+The action library is instances/<domain>/act_lib.epddl when present (a trial mixing
+benchmark tiers, whose libraries differ), else instances/act_lib.epddl.
 """
 from __future__ import annotations
 
@@ -23,6 +26,7 @@ class Instance:
     split: str
     domain_file: Path
     problem_file: Path
+    act_lib: Path
 
     @property
     def key(self) -> tuple[str, str]:
@@ -41,7 +45,8 @@ def load(cfg: Config) -> list[Instance]:
         rows = [r for r in rows if r["domain"] in cfg.domains]
     return [Instance(r["domain"], r["problem"], r["split"],
                      cfg.instances_dir / r["domain"] / "domain.epddl",
-                     cfg.instances_dir / r["domain"] / "problems" / f"{r['problem']}.epddl") for r in rows]
+                     cfg.instances_dir / r["domain"] / "problems" / f"{r['problem']}.epddl",
+                     cfg.act_lib_for(r["domain"])) for r in rows]
 
 
 def _write_split(cfg: Config) -> None:
