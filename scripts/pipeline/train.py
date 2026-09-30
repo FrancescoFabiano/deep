@@ -3,7 +3,7 @@
 
 rl  -> lib/rl_handler/offline_main.py   (fringe ranker, one run per F)
 gnn -> lib/gnn_handler/__main__.py      (distance estimator; one run exports every F)
-Installed flat under models/<domain>/:
+Installed flat under models/<domain>/ (models/pooled/ when [train].pooled):
     rl_F<F>.onnx                         RL search + RL_H heuristic
     gnn_F<F>.onnx                        RL (beam) search with the GNN as ranker
     gnn_F<F>_state.onnx + _state_C.txt   HFS / A* with --heuristics GNN
@@ -68,24 +68,43 @@ def _tables(cfg, insts, domain):
 
 
 def _train(cfg, label, kind, train_csvs, test_csvs) -> None:
+    """The RL trainer batches batch_size x F fringe states per step, so it runs once per F
+    with the batch capped by [train].max_batch_states (and resumes per F). The GNN is
+    per-state: one run, every F exported."""
+    t = cfg.train
+    groups = [[F] for F in t["fringe_sizes"]] if kind == "rl" else [list(t["fringe_sizes"])]
+    for Fs in groups:
+        _train_group(cfg, label, kind, Fs, train_csvs, test_csvs)
+
+
+def _batch_size(cfg, kind, F) -> int:
+    t = cfg.train
+    if kind == "rl" and "max_batch_states" in t:
+        return max(1, min(int(t["batch_size"]), int(t["max_batch_states"]) // F))
+    return int(t["batch_size"])
+
+
+def _train_group(cfg, label, kind, Fs, train_csvs, test_csvs) -> None:
     out = cfg.models_dir / label             # the domain, or POOLED_DIR
-    installed = [(out / dst.format(F=F)) for F in cfg.train["fringe_sizes"] for _, dst in EXPORTS[kind]]
+    tag = f"{label}/{kind}" + (f"@F{Fs[0]}" if len(Fs) == 1 else "")
+    installed = [(out / dst.format(F=F)) for F in Fs for _, dst in EXPORTS[kind]]
     if all(p.exists() for p in installed):
-        print(f"[train] {label}/{kind}: models present, skipped")
+        print(f"[train] {tag}: models present, skipped")
         return
     t = cfg.train
+    batch = _batch_size(cfg, kind, Fs[0])
     cmd = [sys.executable, str(TRAINERS[kind]), "--train-csv", *map(str, train_csvs),
-           "--dir-save-model", str(out / kind / "run"), "--fringe-sizes", *map(str, t["fringe_sizes"]),
-           "--epochs", str(t["epochs"]), "--batch-size", str(t["batch_size"]), "--seed", str(t["seed"]),
+           "--dir-save-model", str(out / kind / "run"), "--fringe-sizes", *map(str, Fs),
+           "--epochs", str(t["epochs"]), "--batch-size", str(batch), "--seed", str(t["seed"]),
            "--dataset-type", cfg.data["dataset_type"], *FIXED_FLAGS[kind], *map(str, t.get(kind, {}).get("extra", []))]
     if test_csvs:
         cmd += ["--test-csv", *map(str, test_csvs)]
-    print(f"[train] {label}/{kind}: {len(train_csvs)} train tables, {len(test_csvs)} test tables")
+    print(f"[train] {tag}: {len(train_csvs)} train tables, {len(test_csvs)} test tables, batch {batch}")
     print(" ".join(cmd))
     if cfg.dry_run:
         return
     subprocess.run(cmd, cwd=REPO, check=True)
-    for F in t["fringe_sizes"]:
+    for F in Fs:
         for src, dst in EXPORTS[kind]:
             shutil.copy2(out / kind / f"run_fringe{F}" / src.format(F=F), out / dst.format(F=F))
-    print(f"[train] {label}/{kind}: installed {[p.name for p in installed]}")
+    print(f"[train] {tag}: installed {[p.name for p in installed]}")

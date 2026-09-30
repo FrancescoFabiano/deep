@@ -30,6 +30,7 @@ strategies = "all"                            # or a subset of [data].strategies
 fringe_sizes = [4, 8, 16, 32]
 epochs = 100
 batch_size = 64
+max_batch_states = 256                        # RL: batch = min(batch_size, 256 // F), one trainer run per F (8 GB GPU)
 seed = 0
 [train.rl]
 extra = []                                    # forwarded to lib/rl_handler/offline_main.py

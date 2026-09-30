@@ -121,7 +121,7 @@ def test_pooled_trains_once_and_refuses_repeated_problem_names(tmp_path, capsys)
         (d / f"{prob}_BFS_depth_25.csv").write_text("")
     train.run(cfg)
     out = capsys.readouterr().out
-    assert f"[train] {config.POOLED_DIR}/rl: 2 train tables" in out and "[train] d1/" not in out
+    assert f"[train] {config.POOLED_DIR}/rl@F4: 2 train tables" in out and "[train] d1/" not in out
 
 
 def test_methods_follow_the_installed_models(tmp_path):
