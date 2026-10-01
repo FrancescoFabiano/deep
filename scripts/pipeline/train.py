@@ -38,6 +38,7 @@ def run(cfg: Config) -> None:
     domains = sorted({i.domain for i in insts})
     # [train].pooled: one model set from every domain's train trees, installed under models/pooled/
     groups = [(POOLED_DIR, domains)] if cfg.pooled else [(d, [d]) for d in domains]
+    failed: list[str] = []            # a failed run must not block the other domains / F
     for label, members in groups:
         # the trainers key trees by problem name, so a pooled trial needs names unique across domains
         names = [i.problem for i in insts if i.domain in members]
@@ -53,7 +54,9 @@ def run(cfg: Config) -> None:
             print(f"[train] {label}: no train trees under {cfg.data_dir}, skipped")
             continue
         for kind in cfg.train["models"]:
-            _train(cfg, label, kind, train_csvs, test_csvs)
+            failed += _train(cfg, label, kind, train_csvs, test_csvs)
+    if failed:
+        raise SystemExit(f"[train] {len(failed)} run(s) failed, the rest were trained: {failed}")
 
 
 def _tables(cfg, insts, domain):
@@ -67,14 +70,21 @@ def _tables(cfg, insts, domain):
     return pick("train"), pick("test")
 
 
-def _train(cfg, label, kind, train_csvs, test_csvs) -> None:
+def _train(cfg, label, kind, train_csvs, test_csvs) -> list[str]:
     """The RL trainer batches batch_size x F fringe states per step, so it runs once per F
     with the batch capped by [train].max_batch_states (and resumes per F). The GNN is
-    per-state: one run, every F exported."""
+    per-state: one run, every F exported. Returns the tags of the runs that failed."""
     t = cfg.train
     groups = [[F] for F in t["fringe_sizes"]] if kind == "rl" else [list(t["fringe_sizes"])]
+    failed = []
     for Fs in groups:
-        _train_group(cfg, label, kind, Fs, train_csvs, test_csvs)
+        try:
+            _train_group(cfg, label, kind, Fs, train_csvs, test_csvs)
+        except subprocess.CalledProcessError as e:
+            tag = f"{label}/{kind}" + (f"@F{Fs[0]}" if len(Fs) == 1 else "")
+            print(f"[train] FAIL {tag}: trainer exited {e.returncode}")
+            failed.append(tag)
+    return failed
 
 
 def _batch_size(cfg, kind, F) -> int:

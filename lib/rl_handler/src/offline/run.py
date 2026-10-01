@@ -44,7 +44,7 @@ from .policies import (
 )
 from .strategies import STRATEGIES, dir_name
 from .unify import UnifiedInstance, report_unified, unify_instances
-from .qlearning import QTrainer, TrainConfig, default_reward_scale
+from .qlearning import DivergenceError, QTrainer, TrainConfig, default_reward_scale
 from .selection import (
     Candidate,
     GateResult,
@@ -595,10 +595,22 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
     _ckpt_set = set(ckpt_steps)
     import time as _time
     t_train, t_eval = 0.0, 0.0     # wall split: trainer.step vs per-checkpoint eval
+    diverged = None
     for step in range(1, S + 1):
         if trainer is not None:
             _t0 = _time.perf_counter()
-            log = trainer.step()
+            try:
+                log = trainer.step()
+            except DivergenceError as e:
+                # gamma~1 gives no contraction: late drift is expected on long runs. The
+                # checkpoints saved so far were all under the ceiling, so stop here and
+                # select among them (early stopping) instead of losing the run.
+                if not cands:
+                    raise
+                diverged = (step, str(e))
+                print(f"[run] DIVERGED at step {step}/{S}: {e}")
+                print(f"[run] stopping early; selecting among {len(cands)} checkpoint(s)")
+                break
             t_train += _time.perf_counter() - _t0
         bar.update(cfg.batch_size / N_train)
         if step in _ckpt_set:
@@ -867,7 +879,10 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
     except Exception as e:                       # plotting must never fail a run
         print(f"[run] (figures skipped: {e})")
 
-    return {"selected": best, "baselines": baselines, "gates": gates, "run_dir": run_dir}
+    if diverged is not None:
+        (run_dir / "diverged.txt").write_text(f"step {diverged[0]} of {S}\n{diverged[1]}\n")
+    return {"selected": best, "baselines": baselines, "gates": gates, "run_dir": run_dir,
+            "diverged_at": diverged[0] if diverged else None}
 
 
 def _mk(p: Path) -> Path:

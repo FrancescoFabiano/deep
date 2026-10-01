@@ -156,3 +156,30 @@ def test_report_on_toy_results(tmp_path):
     assert (cfg.report_dir / "tables" / "coverage_test.csv").read_text().splitlines()[1] == "d1,1/1,0/1,0/1"
     for name in ("coverage_vs_F", "nodes_common_vs_F", "nodes_solved_vs_F", "nodes_vs_bfs"):
         assert (cfg.report_dir / "figures" / f"d1_{name}.png").exists()
+
+
+def test_a_failed_run_does_not_block_the_others(tmp_path, monkeypatch):
+    _trial(tmp_path)
+    cfg = config.load(tmp_path, dry_run=False)
+    d = cfg.data_dir / "d1" / "BFS" / "p-00"
+    d.mkdir(parents=True)
+    (d / "p-00_BFS_depth_25.csv").write_text("")
+    calls = []
+
+    def fake_run(cmd, **kw):
+        F = int(cmd[cmd.index("--fringe-sizes") + 1])
+        calls.append(F)
+        if F == 4 and "offline_main" in cmd[1]:                # the RL F=4 run fails
+            raise train.subprocess.CalledProcessError(1, cmd)
+        out = Path(cmd[cmd.index("--dir-save-model") + 1]).parent
+        for f in [F] if "offline_main" in cmd[1] else cfg.train["fringe_sizes"]:
+            (out / f"run_fringe{f}").mkdir(parents=True, exist_ok=True)
+            kind = "rl" if "offline_main" in cmd[1] else "gnn"
+            for src, _ in train.EXPORTS[kind]:
+                (out / f"run_fringe{f}" / src.format(F=f)).write_text("")
+    monkeypatch.setattr(train.subprocess, "run", fake_run)
+    with pytest.raises(SystemExit, match="d1/rl@F4"):
+        train.run(cfg)
+    assert calls == [4, 8, 16, 32, 4]                      # every RL F tried, then the GNN
+    assert (cfg.models_dir / "d1" / "rl_F8.onnx").exists() and (cfg.models_dir / "d1" / "gnn_F4.onnx").exists()
+    assert not (cfg.models_dir / "d1" / "rl_F4.onnx").exists()
