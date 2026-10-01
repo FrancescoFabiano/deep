@@ -1,11 +1,16 @@
 """Every state graph of every instance in a few concatenated tensors, so a batch of
 beams is packed by index arithmetic instead of a Python loop over slots.
 
-`pack_batch` (batching.py) spends its time in ~3 x batch_size x F small `torch.cat`s
-and host->device copies per step: 36% of a blocks-world step, 16% of a muddy-child
-step (profiled 2026-10-01). `ResidentTrees.pack` produces the SAME tensors (byte
+`pack_batch` (batching.py) builds a batch with ~batch_size x F small `torch.cat`s
+and host->device copies. `ResidentTrees.pack` produces the SAME tensors (byte
 identical, checked in tests/test_resident.py) with ~10 vectorised ops on the device
 the trees live on and no per-step copy but the slot ids.
+
+MEASURED (2026-10-01, idle GPU, F=8, batch 32, two packs per step): blocks-world
+pack 4.4 -> 3.2 ms of an ~18 ms step; muddy-child 50 -> 44 ms of ~325 ms, with its
+3.5 GB of trees forced to a CPU store. No net step-time gain, so the trainer keeps it
+OFF by default (`--resident-packing`). Kept because it is correct and the right
+shape if packing ever dominates again (e.g. far larger batches).
 
 Layout: states of all instances concatenated in (instance, state id) order; per
 state the node, edge and pointed counts and their start offsets. Edges keep the
@@ -25,8 +30,15 @@ def _exclusive_cumsum(x: torch.Tensor) -> torch.Tensor:
 
 
 class ResidentTrees:
-    def __init__(self, caches: Dict[str, InstanceCache], device):
+    """`device`: where the packed batches go. `store`: where the trees live and the
+    gathers run -- the same device, or "cpu" when the trees are too big for the GPU
+    (muddy-child's 28 trees are 3.5 GB; the batch is then packed on the CPU with the
+    same vectorised ops and copied once)."""
+
+    def __init__(self, caches: Dict[str, InstanceCache], device, store=None):
         self.device = device
+        self.store = device if store is None else store
+        device = self.store
         self.base: Dict[str, int] = {}            # instance -> global id of its state 0
         nodes: List[torch.Tensor] = []
         edges: List[torch.Tensor] = []
@@ -47,6 +59,7 @@ class ResidentTrees:
                 n_pointed.append(int(g.pointed_ids.numel()))
         if not n_nodes:
             raise ValueError("no state graphs to make resident")
+        self._bytes = sum(t.numel() * t.element_size() for t in nodes + edges + attrs + pointed)
         self.node_ids = torch.cat(nodes).to(device)                 # [sum n]
         self.edge_index = torch.cat(edges, dim=1).to(device)        # [2, sum e], local indices
         self.edge_attr = torch.cat(attrs).to(device)                # [sum e]
@@ -67,8 +80,12 @@ class ResidentTrees:
         return int(self._n_nodes_cpu.numel())
 
     def memory_bytes(self) -> int:
-        return sum(t.numel() * t.element_size()
-                   for t in (self.node_ids, self.edge_index, self.edge_attr, self.pointed_ids))
+        return self._bytes
+
+    @staticmethod
+    def size_bytes(caches: Dict[str, InstanceCache]) -> int:
+        return sum(t.numel() * t.element_size() for c in caches.values() for g in c.states
+                   for t in (g.node_ids, g.edge_index, g.edge_attr, g.pointed_ids))
 
     def global_ids(self, picks: Sequence[Tuple[str, Sequence[int]]]) -> Tuple[torch.Tensor, List[int]]:
         """Global state id of every slot, in pick order, and the beam sizes."""
@@ -92,7 +109,18 @@ class ResidentTrees:
     def pack(self, picks: Sequence[Tuple[str, Sequence[int]]],
              goal_graphs: Optional[Sequence[StateGraph]] = None) -> Dict[str, torch.Tensor]:
         """Same keys and values as `batching.pack_batch` (on `self.device`)."""
-        dev = self.device
+        out = self._pack_on_store(picks)
+        if str(self.store) != str(self.device):
+            out = {k: v.to(self.device, non_blocking=True) if isinstance(v, torch.Tensor) else v
+                   for k, v in out.items()}
+        if goal_graphs is not None:
+            if len(goal_graphs) != len(picks):
+                raise ValueError(f"goal_graphs ({len(goal_graphs)}) must align with picks ({len(picks)}).")
+            out.update({k: v.to(self.device) for k, v in pack_goal_tensors(goal_graphs).items()})
+        return out
+
+    def _pack_on_store(self, picks) -> Dict[str, torch.Tensor]:
+        dev = self.store
         sid_cpu, sizes = self.global_ids(picks)
         total_n = int(self._n_nodes_cpu[sid_cpu].sum())
         total_e = int(self._n_edges_cpu[sid_cpu].sum())
@@ -129,8 +157,4 @@ class ResidentTrees:
             "n_slots": int(sid_cpu.numel()),
             "beam_sizes": beam_sizes.to(dev, non_blocking=True),
         }
-        if goal_graphs is not None:
-            if len(goal_graphs) != len(picks):
-                raise ValueError(f"goal_graphs ({len(goal_graphs)}) must align with picks ({len(picks)}).")
-            out.update({k: v.to(dev) for k, v in pack_goal_tensors(goal_graphs).items()})
         return out

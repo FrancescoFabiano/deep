@@ -131,7 +131,7 @@ class RunConfig:
     gnn_layers: int = 2
     lr: float = 1e-4
     batch_size: int = 64
-    resident_packing: bool = True   # batches from device-resident trees (resident.py)
+    resident_packing: bool = False  # batches from device-resident trees (resident.py); no measured gain
     cql_alpha: float = 0.0
     gamma: float = DEFAULT_GAMMA    # 0.9999: paper's discounted reward ~= SSP limit
     reward_scale: Optional[float] = None

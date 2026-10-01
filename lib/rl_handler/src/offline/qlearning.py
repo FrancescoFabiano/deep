@@ -104,8 +104,12 @@ class TrainConfig:
     seed: int = 0
     device: Optional[str] = None
     # Pack batches from device-resident trees (resident.py) instead of pack_batch's
-    # per-slot loop: same tensors, a fraction of the time. Off = the historical path.
-    resident_packing: bool = True
+    # per-slot loop: same tensors. Measured 2026-10-01 on an idle GPU: pack 4.4 -> 3.2
+    # ms/step on blocks-world, 50 -> 44 on muddy-child (3.5 GB of trees, CPU store), and
+    # no net step-time gain either way, so OFF by default; the shared next-beam pack in
+    # step() is where the real saving was.
+    resident_packing: bool = False
+    resident_gpu_max_mb: float = 1024.0   # bigger tree sets stay on the CPU and are packed there
     # Divergence guard: |Q| beyond this multiple of the cap means drift, not learning.
     q_abort_multiple: float = 3.0
     # How often the guard MATERIALISES |Q| (a GPU->CPU sync). 1 = every step (the
@@ -216,10 +220,12 @@ class QTrainer:
         self.goals = goals
         self.by_name = {i.name: i for i in instances}
         self.caches = caches
-        self.resident = ResidentTrees(caches, self.device) if cfg.resident_packing else None
-        if self.resident is not None:
-            print(f"[trainer] resident trees: {self.resident.n_states} states, "
-                  f"{self.resident.memory_bytes() / 1e6:.0f} MB on {self.device}")
+        self.resident = None
+        if cfg.resident_packing:
+            mb = ResidentTrees.size_bytes(caches) / 1e6
+            store = self.device if mb <= cfg.resident_gpu_max_mb else "cpu"
+            self.resident = ResidentTrees(caches, self.device, store=store)
+            print(f"[trainer] resident trees: {self.resident.n_states} states, {mb:.0f} MB on {store}")
         self.data = list(transitions)
         if not self.data:
             raise ValueError("no transitions to train on")
