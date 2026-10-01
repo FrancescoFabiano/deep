@@ -18,13 +18,15 @@ Layout of a trial:
 instances/act_lib.epddl, <domain>/domain.epddl, <domain>/problems/*.epddl   the frozen inputs
 split.csv                    train/test per problem, written once from [split]
 data/<domain>/<STRAT>/<problem>/                                             stage 1
-models/<domain>/{rl,gnn}_F<F>.onnx, gnn_F<F>_state.onnx (+_C.txt)            stage 2
+models/<domain>/{rl,gnn}_F<F>.onnx, gnn_state.onnx (+_C.txt)                 stage 2
 results/results.csv          one row per (problem, method, F)                stage 3
 report/tables/*.tex *.csv, report/figures/*.png                              stage 4
 ```
 
-Methods at inference: `BFS`; `RL@F` (RL search, RL model); `GNN_RL@F` (RL beam ranked
-by the GNN); `GNN_Astar@F` / `GNN_HFS@F` (the per-state GNN as heuristic).
+Methods at inference: `BFS`; `RL@F` (RL search, RL model, F in `[train].fringe_sizes`);
+`GNN_RL@F` (RL beam ranked by the GNN, F in 1/4/8/16/32: the GNN scores states, so it
+is trained once and exported at every width); `GNN_Astar` / `GNN_HFS` (the per-state
+GNN as heuristic, no fringe).
 
 To make a new trial copy `basic/trial.toml`, drop instances under `instances/`
 (one `domain.epddl` + `problems/` per domain, the action library as `act_lib.epddl`,

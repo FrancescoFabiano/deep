@@ -2,8 +2,8 @@
 
 One row per (problem, method, F); rows already present are not rerun. Methods come
 from what models/<domain>/ (models/pooled/ in a [train].pooled trial) holds: RL
-(rl_F*.onnx), GNN_RL (the GNN ranking the RL beam), GNN_<search> for each
-[inference].gnn_searches (the per-state export).
+(rl_F*.onnx), GNN_RL (gnn_F*.onnx, the GNN ranking the RL beam), and GNN_<search>
+for each [inference].gnn_searches once (gnn_state.onnx, per-state: no fringe, F=0).
 """
 from __future__ import annotations
 
@@ -55,10 +55,11 @@ def methods(cfg: Config, domain: str) -> list[Method]:
         out.append(Method("RL", F, ("-s", "RL", "-u", "RL_H", "--RL_model", str(onnx), "--RL_fringe_size", str(F), *beam)))
     for F, onnx in _models(cfg, domain, "gnn"):
         out.append(Method("GNN_RL", F, ("-s", "RL", "-u", "RL_H", "--RL_model", str(onnx), "--RL_fringe_size", str(F), *beam)))
-        state = onnx.with_name(f"gnn_F{F}_state.onnx")
+    state = cfg.model_dir(domain) / "gnn_state.onnx"
+    if state.exists():                       # per-state heuristic: no fringe, one run per search
         for search in inf["gnn_searches"]:
-            out.append(Method(f"GNN_{search}", F, ("-s", search, "-u", "GNN", "--GNN_model", str(state),
-                                                   "--GNN_constant_file", str(state.with_name(state.stem + "_C.txt")))))
+            out.append(Method(f"GNN_{search}", 0, ("-s", search, "-u", "GNN", "--GNN_model", str(state),
+                                                   "--GNN_constant_file", str(state.with_name("gnn_state_C.txt")))))
     return out
 
 

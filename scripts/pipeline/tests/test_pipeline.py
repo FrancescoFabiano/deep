@@ -128,10 +128,10 @@ def test_methods_follow_the_installed_models(tmp_path):
     cfg = _trial(tmp_path)
     d = cfg.models_dir / "d1"
     d.mkdir(parents=True)
-    for name in ["rl_F4.onnx", "gnn_F8.onnx", "gnn_F8_state.onnx", "gnn_F8_state_C.txt"]:
+    for name in ["rl_F4.onnx", "gnn_F1.onnx", "gnn_F8.onnx", "gnn_state.onnx", "gnn_state_C.txt"]:
         (d / name).write_text("")
     got = [(m.name, m.F) for m in infer.methods(cfg, "d1")]
-    assert got == [("BFS", 0), ("RL", 4), ("GNN_RL", 8), ("GNN_Astar", 8)]
+    assert got == [("BFS", 0), ("RL", 4), ("GNN_RL", 1), ("GNN_RL", 8), ("GNN_Astar", 0)]
 
 
 def test_report_on_toy_results(tmp_path):
@@ -171,15 +171,20 @@ def test_a_failed_run_does_not_block_the_others(tmp_path, monkeypatch):
         calls.append(F)
         if F == 4 and "offline_main" in cmd[1]:                # the RL F=4 run fails
             raise train.subprocess.CalledProcessError(1, cmd)
-        out = Path(cmd[cmd.index("--dir-save-model") + 1]).parent
-        for f in [F] if "offline_main" in cmd[1] else cfg.train["fringe_sizes"]:
-            (out / f"run_fringe{f}").mkdir(parents=True, exist_ok=True)
-            kind = "rl" if "offline_main" in cmd[1] else "gnn"
-            for src, _ in train.EXPORTS[kind]:
-                (out / f"run_fringe{f}" / src.format(F=f)).write_text("")
+        run = Path(cmd[cmd.index("--dir-save-model") + 1])
+        if "offline_main" in cmd[1]:
+            (run.parent / f"run_fringe{F}").mkdir(parents=True, exist_ok=True)
+            (run.parent / f"run_fringe{F}" / train.EXPORTS["rl"][0][0].format(F=F)).write_text("")
+        else:                                              # the GNN: one run, every width exported
+            run.mkdir(parents=True, exist_ok=True)
+            for f in train.GNN_FRINGE_SIZES:
+                (run / train.EXPORTS["gnn"][0][0].format(F=f)).write_text("")
+            for src, _ in train.GNN_STATE:
+                (run / src).write_text("")
     monkeypatch.setattr(train.subprocess, "run", fake_run)
     with pytest.raises(SystemExit, match="d1/rl@F4"):
         train.run(cfg)
-    assert calls == [4, 8, 16, 32, 4]                      # every RL F tried, then the GNN
-    assert (cfg.models_dir / "d1" / "rl_F8.onnx").exists() and (cfg.models_dir / "d1" / "gnn_F4.onnx").exists()
+    assert calls == [4, 8, 16, 32, 1]                      # every RL F tried, then the one GNN run
+    assert (cfg.models_dir / "d1" / "rl_F8.onnx").exists() and (cfg.models_dir / "d1" / "gnn_state.onnx").exists()
+    assert all((cfg.models_dir / "d1" / f"gnn_F{f}.onnx").exists() for f in train.GNN_FRINGE_SIZES)
     assert not (cfg.models_dir / "d1" / "rl_F4.onnx").exists()

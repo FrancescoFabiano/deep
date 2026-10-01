@@ -112,7 +112,7 @@ class DistanceEstimatorModel(BaseModel):
     def to_onnx(self, onnx_path: str | Path, fringe_size: int, params: Dict[str, float]) -> Path:
         """Export through the shared planner contract, scores = -distance."""
         wrapper_cls = OnnxNegativeDistanceSeparated if self.model.use_goal else OnnxNegativeDistance
-        wrapper = wrapper_cls(self.model, params["slope"], params["intercept"])
+        wrapper = wrapper_cls(self.model, params["slope"], params["intercept"], fringe_size)
         try:
             return contract.export(wrapper, onnx_path, fringe_size, separated=self.model.use_goal)
         finally:

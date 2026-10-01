@@ -137,12 +137,15 @@ class OnnxNegativeDistance(nn.Module):
     rankScores sorts descending, so the shortest estimated distance is expanded
     first; no clamp, so near-goal slots do not collapse into ties (issue #5)."""
 
-    def __init__(self, core: DistanceEstimator, slope: float, intercept: float):
+    def __init__(self, core: DistanceEstimator, slope: float, intercept: float, fringe_size: int):
         super().__init__()
         self.core, self.slope, self.intercept = core, float(slope), float(intercept)
+        self.fringe_size = int(fringe_size)
 
     def scores(self, scaled: torch.Tensor) -> torch.Tensor:
-        return -(scaled - self.intercept) / self.slope
+        # reshape to the constant F: the planner refuses an output whose length ORT
+        # cannot infer statically, which the traced pooling leaves open at F=1
+        return (-(scaled - self.intercept) / self.slope).reshape(self.fringe_size)
 
     def forward(self, node_features, edge_index, edge_attr, membership, pointed_ids, mask):
         return self.scores(self.core(node_features, edge_index, edge_attr, membership, pointed_ids, mask=mask))

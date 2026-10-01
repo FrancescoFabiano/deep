@@ -101,11 +101,15 @@ class BeamDataset(Dataset):
         return DataLoader(self, batch_size=batch_size, shuffle=shuffle, collate_fn=self.collate,
                           generator=gen)
 
-    def planner_feed(self, i: int) -> Dict[str, torch.Tensor]:
-        """One beam exactly as FringeEvalRL sends it (mask of length F, one goal)."""
-        p = self[i]
+    def planner_feed(self, i: int, fringe_size: Optional[int] = None) -> Dict[str, torch.Tensor]:
+        """One beam exactly as FringeEvalRL sends it (mask of length F, one goal).
+        ``fringe_size`` re-packs the beam for an export of another width: the first
+        F states when F is smaller than the beam, padding otherwise."""
+        name, obs = self.beams[i]
+        F = self.fringe_size if fringe_size is None else int(fringe_size)
+        p = pack_fringe(self.caches[name], list(obs)[:F], F)
         if self.separated:
-            p.update(pack_goal_tensors([self.caches[p["name"]].goal]))
+            p.update(pack_goal_tensors([self.caches[name].goal]))
         return {k: v for k, v in p.items() if isinstance(v, torch.Tensor)}
 
 
