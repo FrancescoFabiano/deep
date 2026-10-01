@@ -179,6 +179,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--fill-k", type=int, default=4,
                    help="fill branches per non-full decision state (--fill-fringes only)")
     p.add_argument("--device", default=None)
+    p.add_argument("--no-resident-packing", action="store_true",
+                   help="pack training batches with the per-slot loop (batching.pack_batch) instead of "
+                        "the device-resident trees (resident.py); same tensors, slower")
     # ---- export + gates ----
     p.add_argument("--export-onnx", dest="export_onnx", action="store_true", default=True)
     p.add_argument("--no-export-onnx", dest="export_onnx", action="store_false")
@@ -224,6 +227,7 @@ def main(argv=None) -> int:
             eval_expansion_cap=a.eval_expansion_cap,
             fidelity_instances=a.fidelity_instances, deep_exe=a.deep_exe,
             device=a.device, export_onnx=a.export_onnx, dataset_type=a.dataset_type,
+            resident_packing=not a.no_resident_packing,
             behaviour_policies=a.behaviour_policies,
             unified=a.unified, frozen_eval_m=a.frozen_eval_m,
             frozen_eval_rollouts=a.frozen_eval_rollouts,

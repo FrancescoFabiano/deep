@@ -50,6 +50,7 @@ from .batching import (
 from .dataset import Transition
 from .encoder import InstanceCache, StateGraph
 from .env import DEFAULT_GAMMA, assert_gamma
+from .resident import ResidentTrees
 from .metrics import is_argmin_action, r2
 from .tree import INF_DELTA, TreeInstance
 
@@ -102,6 +103,9 @@ class TrainConfig:
     expansion_cap: int = 2000
     seed: int = 0
     device: Optional[str] = None
+    # Pack batches from device-resident trees (resident.py) instead of pack_batch's
+    # per-slot loop: same tensors, a fraction of the time. Off = the historical path.
+    resident_packing: bool = True
     # Divergence guard: |Q| beyond this multiple of the cap means drift, not learning.
     q_abort_multiple: float = 3.0
     # How often the guard MATERIALISES |Q| (a GPU->CPU sync). 1 = every step (the
@@ -212,6 +216,10 @@ class QTrainer:
         self.goals = goals
         self.by_name = {i.name: i for i in instances}
         self.caches = caches
+        self.resident = ResidentTrees(caches, self.device) if cfg.resident_packing else None
+        if self.resident is not None:
+            print(f"[trainer] resident trees: {self.resident.n_states} states, "
+                  f"{self.resident.memory_bytes() / 1e6:.0f} MB on {self.device}")
         self.data = list(transitions)
         if not self.data:
             raise ValueError("no transitions to train on")
@@ -332,15 +340,23 @@ class QTrainer:
 
     # ---- forward helpers -------------------------------------------------
 
-    def _logits(self, net: nn.Module, picks) -> tuple[torch.Tensor, Dict]:
+    def _pack(self, picks) -> Dict:
         # ONE goal decision, per instance, looked up by name (not stored per row).
         # Online and target both flow through here -> identical goal treatment, which
         # matters because double-DQN takes argmax(online) and value(target).
         goal_graphs = (
             [self.goals[name] for name, _ in picks] if self.goals is not None else None
         )
-        assert_goal_mode_consistent(net, goal_graphs is not None)
-        p = pack_batch(self.caches, picks, self.device, goal_graphs=goal_graphs)
+        if self.resident is not None:
+            return self.resident.pack(picks, goal_graphs=goal_graphs)
+        return pack_batch(self.caches, picks, self.device, goal_graphs=goal_graphs)
+
+    def _logits(self, net: nn.Module, picks) -> tuple[torch.Tensor, Dict]:
+        p = self._pack(picks)
+        return self._forward(net, p), p
+
+    def _forward(self, net: nn.Module, p: Dict) -> torch.Tensor:
+        assert_goal_mode_consistent(net, p.get("goal_node_features") is not None)
         out = net(
             node_features=p["node_features"], edge_index=p["edge_index"],
             edge_attr=p["edge_attr"], membership=p["membership"],
@@ -351,7 +367,7 @@ class QTrainer:
             goal_edge_attr=p.get("goal_edge_attr"),
             goal_batch=p.get("goal_batch"),
         )
-        return out, p
+        return out
 
     # ---- one gradient step ------------------------------------------------
 
@@ -378,8 +394,9 @@ class QTrainer:
         if nxt_ids:
             npicks = [(batch[i].instance, batch[i].obs_next) for i in nxt_ids]
             with torch.no_grad():
-                q_next_online, pn = self._logits(self.model, npicks)
-                q_next_target, _ = self._logits(self.target, npicks)
+                pn = self._pack(npicks)                 # packed ONCE for both nets
+                q_next_online = self._forward(self.model, pn)
+                q_next_target = self._forward(self.target, pn)
                 nseg = pn["candidate_batch"]
                 m = len(npicks)
                 # DOUBLE-DQN: argmax from the ONLINE net, value from the TARGET net.
