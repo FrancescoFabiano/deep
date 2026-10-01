@@ -28,7 +28,7 @@ generate_test = false                         # also build trees for test proble
 models = ["rl", "gnn"]
 pooled = true                                 # one model set from every domain's train trees -> models/pooled/
 strategies = "all"                            # or a subset of [data].strategies
-fringe_sizes = [4, 8, 16, 32]
+fringe_sizes = [4, 8, 16]                      # RL only; F=32 dropped 2026-10-01 (steps grow ~5x per doubling of F)
 epochs = 100
 batch_size = 64
 max_batch_states = 256                        # RL: batch = min(batch_size, 256 // F), one trainer run per F (8 GB GPU)
