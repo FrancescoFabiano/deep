@@ -235,7 +235,7 @@ Common build variants:
 | `./build.sh debug nn` | combine Debug and neural-network support |
 | `./build.sh verify` | enable extra correctness checks |
 | `./build.sh install_all` | install required system packages first |
-| `./build.sh nn use_gpu` | use CUDA-backed ONNX Runtime on Linux/NVIDIA |
+| `./build.sh nn use_gpu` | use CUDA-backed ONNX Runtime on Linux/NVIDIA (CUDA 12, cuDNN 9; replaces a CPU ONNX Runtime left by an earlier `nn` build) |
 | `./build.sh -h` | print the full build-script help |
 
 Build flags are unordered, so combinations such as `./build.sh install_all debug nn` are valid.
@@ -264,6 +264,10 @@ Output directories follow the selected mode:
 | Use a specific search | add `-s BFS`, `-s DFS`, `-s HFS`, or `-s Astar` |
 | Use SUBGOALS with heuristic search | add `-u SUBGOALS` |
 | Execute a known action sequence | add `-e -a action1 action2 ...` |
+| GNN heuristic, successors scored in batches (`nn` build) | add `-s HFS` or `-s Astar` with `-u GNN --GNN_model gnn_F<N>.onnx --GNN_batch N` |
+| RL beam search (`nn` build) | add `-s RL -u RL_H --RL_model rl_F<F>.onnx --RL_fringe_size F` |
+| Choose where the networks run (`nn` build) | add `--onnx_device cpu`, `cuda` (fails without CUDA) or `auto` (default); `--onnx_placement` prints the CPU/CUDA placement of every model node |
+| Keep the networks on one CPU thread | add `--onnx_threads 1` |
 
 ### Example commands
 

@@ -121,6 +121,15 @@ void ArgumentParser::parse(int argc, char **argv) {
           "Heuristic RL_H can only be used with RL search (--search RL).");
     }
 
+    if (m_GNN_batch_size > 0 &&
+        (m_heuristic_opt != "GNN" ||
+         (m_search_strategy != "HFS" && m_search_strategy != "Astar"))) {
+      ExitHandler::exit_with_message(
+          ExitHandler::ExitCode::ArgParseError,
+          "--GNN_batch can only be used with --heuristics GNN and --search "
+          "HFS or --search Astar.");
+    }
+
     if (m_RL_exploration_percentage + m_RL_exploitation_percentage >= 100) {
       ExitHandler::exit_with_message(ExitHandler::ExitCode::ArgParseError,
                                      "The sum of --RL_exploration and "
@@ -324,6 +333,17 @@ ArgumentParser::ArgumentParser() : app("deep") {
                    "HFS/Astar/RL with GNN heuristics is selected.")
       ->default_val("lib/gnn_handler/models/distance_estimator.onnx");
   search_group
+      ->add_option(
+          "--GNN_batch", m_GNN_batch_size,
+          "Evaluate the GNN heuristic on batches of up to N successors with a "
+          "fringe export of the model (--GNN_model gnn_F<N>.onnx, N its "
+          "fringe size) instead of one state at a time. The heuristic is the "
+          "model's absolute distance to the goal: --search HFS orders states "
+          "by it, --search Astar by depth + distance. 0 (default) keeps the "
+          "per-state model and its --GNN_constant_file.")
+      ->check(CLI::NonNegativeNumber)
+      ->default_val("0");
+  search_group
       ->add_option("--GNN_constant_file", m_GNN_constant_path,
                    "Specify the path to the normalization constant file for "
                    "the GNN model. "
@@ -370,6 +390,24 @@ ArgumentParser::ArgumentParser() : app("deep") {
       ->check(CLI::IsMember({"MIN", "MAX", "AVG", "RNG"}))
       ->default_val("MIN");
 
+  search_group
+      ->add_option("--onnx_device", m_onnx_device,
+                   "Where the neural networks run: 'cpu', 'cuda' (fails if "
+                   "CUDA is not available: needs a build with use_gpu and a "
+                   "GPU ONNX Runtime), or 'auto' (default: CUDA when the "
+                   "build has it, otherwise the CPU).")
+      ->check(CLI::IsMember({"auto", "cpu", "cuda"}))
+      ->default_val("auto");
+  search_group
+      ->add_option("--onnx_device_id", m_onnx_device_id,
+                   "CUDA device used by --onnx_device cuda/auto.")
+      ->check(CLI::NonNegativeNumber)
+      ->default_val("0");
+  search_group->add_flag(
+      "--onnx_placement", m_onnx_placement,
+      "Print the execution provider (CPU or CUDA) every model node was "
+      "placed on when the model is loaded, and ORT's warnings about nodes "
+      "left on the CPU or copies between devices.");
   search_group
       ->add_option("--onnx_threads", m_onnx_threads,
                    "Number of threads ONNX Runtime may use for one model "
@@ -630,6 +668,22 @@ std::string ArgumentParser::get_RL_heur_selection() const noexcept {
 }
 
 int ArgumentParser::get_onnx_threads() const noexcept { return m_onnx_threads; }
+
+const std::string &ArgumentParser::get_onnx_device() const noexcept {
+  return m_onnx_device;
+}
+
+int ArgumentParser::get_onnx_device_id() const noexcept {
+  return m_onnx_device_id;
+}
+
+bool ArgumentParser::get_onnx_placement() const noexcept {
+  return m_onnx_placement;
+}
+
+int ArgumentParser::get_GNN_batch_size() const noexcept {
+  return m_GNN_batch_size;
+}
 bool ArgumentParser::get_execute_plan() const noexcept { return m_exec_plan; }
 
 const std::string &ArgumentParser::get_plan_file() const noexcept {

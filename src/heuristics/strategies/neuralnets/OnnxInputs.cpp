@@ -1,5 +1,111 @@
 #include "OnnxInputs.h"
 
+#include "ArgumentParser.h"
+#include <algorithm>
+#include <iostream>
+#include <string_view>
+
+namespace onnx_runtime {
+namespace {
+/**
+ * \brief ORT log sink: errors always; with --onnx_placement, the node
+ * placement report (header lines and the node list that follows them) and the
+ * warnings about nodes left on the CPU or copies between devices; with -v,
+ * everything.
+ */
+void log_sink(void * /*param*/, OrtLoggingLevel severity,
+              const char * /*category*/, const char * /*logid*/,
+              const char * /*code_location*/, const char *message) {
+  static thread_local bool in_placement_list = false;
+  const auto &parser = ArgumentParser::get_instance();
+  const std::string_view text(message);
+
+  bool print = severity >= ORT_LOGGING_LEVEL_ERROR || parser.get_verbose();
+  if (!print && parser.get_onnx_placement()) {
+    const bool header = text.find("placed on [") != std::string_view::npos ||
+                        text.find("Node placements") != std::string_view::npos;
+    const bool device_warning =
+        text.find("preferred execution providers") != std::string_view::npos ||
+        text.find("Memcpy nodes") != std::string_view::npos;
+    print = header || device_warning ||
+            (in_placement_list && text.substr(0, 2) == "  ");
+    in_placement_list = header || (in_placement_list && text.substr(0, 2) == "  ");
+  }
+  if (print) {
+    parser.get_output_stream() << "[ONNX] " << text << std::endl;
+  }
+}
+} // namespace
+
+Ort::Env &env() {
+  static Ort::Env environment(ORT_LOGGING_LEVEL_WARNING, "deep", &log_sink,
+                              nullptr);
+  return environment;
+}
+
+Ort::RunOptions &run_options() {
+  thread_local Ort::RunOptions options = [] {
+    Ort::RunOptions run;
+    run.SetRunLogSeverityLevel(ORT_LOGGING_LEVEL_WARNING);
+    return run;
+  }();
+  return options;
+}
+
+void configure_session(Ort::SessionOptions &options) {
+  const auto &parser = ArgumentParser::get_instance();
+  auto &os = parser.get_output_stream();
+
+  options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
+  if (const int threads = parser.get_onnx_threads(); threads > 0) {
+    options.SetIntraOpNumThreads(threads);
+    options.SetInterOpNumThreads(threads);
+  }
+  if (parser.get_verbose() || parser.get_onnx_placement()) {
+    options.SetLogSeverityLevel(ORT_LOGGING_LEVEL_VERBOSE);
+  }
+
+  const std::string &device = parser.get_onnx_device();
+  if (device == "cpu") {
+    os << "[ONNX] device: CPU" << std::endl;
+    return;
+  }
+#ifdef USE_CUDA
+  const auto providers = Ort::GetAvailableProviders();
+  const bool has_cuda =
+      std::find(providers.begin(), providers.end(), "CUDAExecutionProvider") !=
+      providers.end();
+  std::string failure = "this ONNX Runtime has no CUDAExecutionProvider "
+                        "(CPU package installed? rebuild with: build.sh nn "
+                        "use_gpu)";
+  if (has_cuda) {
+    try {
+      OrtCUDAProviderOptions cuda_options;
+      cuda_options.device_id = parser.get_onnx_device_id();
+      options.AppendExecutionProvider_CUDA(cuda_options);
+      os << "[ONNX] device: CUDA " << cuda_options.device_id << std::endl;
+      return;
+    } catch (const Ort::Exception &e) {
+      failure = e.what();
+    }
+  }
+#else
+  const std::string failure =
+      "deep was built without CUDA (rebuild with: build.sh nn use_gpu)";
+#endif
+  if (device == "cuda") {
+    ExitHandler::exit_with_message(
+        ExitHandler::ExitCode::ArgParseError,
+        "--onnx_device cuda: CUDA is not available: " + failure);
+  }
+#ifdef USE_CUDA
+  os << "[WARNING][ONNX] CUDA unavailable, using the CPU: " << failure
+     << std::endl;
+#endif
+  os << "[ONNX] device: CPU" << std::endl;
+}
+} // namespace onnx_runtime
+
 PackedGraph OnnxInputs::pack(const GraphTensor &graph, const bool bitmask,
                              const size_t bitmask_size) {
   return pack(std::vector<const GraphTensor *>{&graph}, bitmask, bitmask_size);
@@ -113,7 +219,7 @@ OnnxInputs::run(Ort::Session &session,
     output_names_cstr.push_back(name.c_str());
   }
 
-  return session.Run(Ort::RunOptions{nullptr}, input_names_cstr.data(),
+  return session.Run(onnx_runtime::run_options(), input_names_cstr.data(),
                      m_values.data(), m_values.size(), output_names_cstr.data(),
                      output_names_cstr.size());
 }

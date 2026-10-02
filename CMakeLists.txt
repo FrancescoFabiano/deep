@@ -238,29 +238,12 @@ if(ENABLE_NEURALNETS)
     )
 
     if(ENABLE_CUDA)
-        find_package(CUDAToolkit QUIET)
-
-        if(CUDAToolkit_FOUND)
-            message(STATUS "CUDA support ENABLED and CUDA Toolkit FOUND")
-
-            target_compile_definitions(
-                    deep
-                    PRIVATE
-                    USE_CUDA
-            )
-
-            target_link_libraries(
-                    deep
-                    PRIVATE
-                    CUDA::cudart
-                    CUDA::cuda_driver
-            )
-        else()
-            message(
-                    WARNING
-                    "ENABLE_CUDA is ON but CUDA Toolkit not found - falling back to CPU mode"
-            )
-        endif()
+        # Only the ONNX Runtime GPU package is needed: deep calls no CUDA API
+        # itself, so the CUDA toolkit is not required at build time. Whether
+        # CUDA works is checked when a model loads (--onnx_device cuda fails
+        # loudly instead of falling back to the CPU).
+        message(STATUS "CUDA support ENABLED (ONNX Runtime CUDA execution provider)")
+        target_compile_definitions(deep PRIVATE USE_CUDA)
     else()
         message(STATUS "CUDA support is DISABLED")
     endif()

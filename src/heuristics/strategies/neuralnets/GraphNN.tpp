@@ -44,7 +44,10 @@ template <StateRepresentation StateRepr> GraphNN<StateRepr>::GraphNN() {
       TrainingDataset<StateRepr>::get_instance().get_goal_file_path();
 
   populate_with_goal();
-  if (Configuration::get_instance().get_heuristic_opt() == Heuristics::GNN) {
+  // The batched GNN heuristic scores through FringeEvalRL, so the per-state
+  // model is only loaded without --GNN_batch.
+  if (Configuration::get_instance().get_heuristic_opt() == Heuristics::GNN &&
+      ArgumentParser::get_instance().get_GNN_batch_size() == 0) {
     initialize_onnx_model();
   }
 }
@@ -55,54 +58,10 @@ void GraphNN<StateRepr>::initialize_onnx_model() {
     return;
 
   try {
-    m_session_options.SetGraphOptimizationLevel(
-        GraphOptimizationLevel::ORT_ENABLE_ALL);
-    if (const int threads = ArgumentParser::get_instance().get_onnx_threads();
-        threads > 0) {
-      m_session_options.SetIntraOpNumThreads(threads);
-      m_session_options.SetInterOpNumThreads(threads);
-    }
+    onnx_runtime::configure_session(m_session_options);
 
-    /*#ifdef _WIN32
-        // Windows way
-        _putenv_s("ORT_CUDA_USE_CUDNN", "0");
-        _putenv_s("CUDA_LAUNCH_BLOCKING", "1");  // optional, forces sync errors
-    #else
-        // Linux / WSL / macOS way
-        setenv("ORT_CUDA_USE_CUDNN", "0", 1);
-        setenv("CUDA_LAUNCH_BLOCKING", "1", 1);  // optional
-    #endif*/
-
-    // Add this line to show warnings (2) to complete verbose (0) (only errors
-    // and above will be shown)
-    if (ArgumentParser::get_instance().get_verbose()) {
-      m_session_options.SetLogSeverityLevel(0);
-    }
-
-#ifdef USE_CUDA
-    try {
-      OrtCUDAProviderOptions cuda_options;
-      m_session_options.AppendExecutionProvider_CUDA(cuda_options);
-      if (ArgumentParser::get_instance().get_verbose()) {
-        ArgumentParser::get_instance().get_output_stream()
-            << "[ONNX] CUDA execution provider enabled via USE_CUDA."
-            << std::endl;
-      }
-    } catch (const Ort::Exception &e) {
-      ArgumentParser::get_instance().get_output_stream()
-          << "[WARNING][ONNX] Failed to enable CUDA, defaulting to CPU: "
-          << e.what() << std::endl;
-    }
-#else
-    if (ArgumentParser::get_instance().get_verbose()) {
-      ArgumentParser::get_instance().get_output_stream()
-          << "[ONNX] Compiled without CUDA (USE_CUDA not defined), using CPU."
-          << std::endl;
-    }
-#endif
-
-    m_session = std::make_unique<Ort::Session>(m_env, m_model_path.c_str(),
-                                               m_session_options);
+    m_session = std::make_unique<Ort::Session>(
+        onnx_runtime::env(), m_model_path.c_str(), m_session_options);
     m_allocator = std::make_unique<Ort::AllocatorWithDefaultOptions>();
     m_memory_info = std::make_unique<Ort::MemoryInfo>(
         Ort::MemoryInfo::CreateCpu(OrtDeviceAllocator, OrtMemTypeCPU));

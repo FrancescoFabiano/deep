@@ -29,6 +29,37 @@ struct PackedGraph {
 };
 
 /**
+ * \brief ONNX Runtime setup shared by GraphNN and FringeEvalRL.
+ */
+namespace onnx_runtime {
+/**
+ * \brief The process-wide ONNX Runtime environment.
+ *
+ * \details One environment for every session, created on first use. Its
+ * logger prints errors, and, with --onnx_placement, the execution provider
+ * each model node was placed on (ORT reports it when a session is created).
+ */
+Ort::Env &env();
+
+/**
+ * \brief Apply the planner's ONNX options to \p options.
+ *
+ * \details Graph optimisation, --onnx_threads, logging and the device:
+ * --onnx_device cpu never uses CUDA; cuda requires it (built with use_gpu and
+ * a CUDA-capable ONNX Runtime) and fails otherwise; auto (default) uses CUDA
+ * when the build has it and falls back to the CPU with a warning.
+ * Prints the device it settled on.
+ */
+void configure_session(Ort::SessionOptions &options);
+
+/**
+ * \brief Run options for inference: per-run logging stays at warnings even
+ * when the session logs verbosely for --onnx_placement.
+ */
+Ort::RunOptions &run_options();
+} // namespace onnx_runtime
+
+/**
  * \class OnnxInputs
  * \brief Builds the ONNX input tensors shared by GraphNN and FringeEvalRL and
  * runs the model.

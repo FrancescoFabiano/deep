@@ -188,6 +188,30 @@ public:
   [[nodiscard]] int get_onnx_threads() const noexcept;
 
   /**
+   * @brief Get the batch size of the batched GNN heuristic.
+   * @return Successors scored per model call; 0 means per-state evaluation.
+   */
+  [[nodiscard]] int get_GNN_batch_size() const noexcept;
+
+  /**
+   * @brief Get where the neural networks run.
+   * @return "auto", "cpu" or "cuda".
+   */
+  [[nodiscard]] const std::string &get_onnx_device() const noexcept;
+
+  /**
+   * @brief Get the CUDA device id for the neural networks.
+   * @return Device index.
+   */
+  [[nodiscard]] int get_onnx_device_id() const noexcept;
+
+  /**
+   * @brief Whether to print the ONNX node placement at model load.
+   * @return True if requested.
+   */
+  [[nodiscard]] bool get_onnx_placement() const noexcept;
+
+  /**
    * \brief Return the type of encoding used for the information in states.
    * \return the DatasetType used to encode the labels in the GNN states.
    */
@@ -391,6 +415,26 @@ private:
    * @brief Threads ONNX Runtime may use per model evaluation (0 = its default).
    */
   int m_onnx_threads = 0;
+
+  /**
+   * @brief Batch size of the batched GNN heuristic (0 = per-state model).
+   */
+  int m_GNN_batch_size = 0;
+
+  /**
+   * @brief Where the neural networks run: auto, cpu or cuda.
+   */
+  std::string m_onnx_device = "auto";
+
+  /**
+   * @brief CUDA device id for the neural networks.
+   */
+  int m_onnx_device_id = 0;
+
+  /**
+   * @brief Print the ONNX node placement at model load.
+   */
+  bool m_onnx_placement = false;
 
   bool m_exec_plan =
       false; ///< Flag to indicate if the plan should be executed.

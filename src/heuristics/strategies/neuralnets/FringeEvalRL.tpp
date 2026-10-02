@@ -33,6 +33,14 @@ FringeEvalRL<StateRepr> &FringeEvalRL<StateRepr>::get_instance() {
 // }
 
 template <StateRepresentation StateRepr>
+std::size_t FringeEvalRL<StateRepr>::configured_fringe_size() {
+  const auto &parser = ArgumentParser::get_instance();
+  return static_cast<std::size_t>(parser.get_GNN_batch_size() > 0
+                                      ? parser.get_GNN_batch_size()
+                                      : parser.get_RL_fringe_size());
+}
+
+template <StateRepresentation StateRepr>
 FringeEvalRL<StateRepr>::FringeEvalRL() {
   // Create GNN if not created yet
   // GraphNN<StateRepr>::create_instance();
@@ -45,54 +53,10 @@ void FringeEvalRL<StateRepr>::initialize_onnx_model() {
     return;
 
   try {
-    m_session_options.SetGraphOptimizationLevel(
-        GraphOptimizationLevel::ORT_ENABLE_ALL);
-    if (const int threads = ArgumentParser::get_instance().get_onnx_threads();
-        threads > 0) {
-      m_session_options.SetIntraOpNumThreads(threads);
-      m_session_options.SetInterOpNumThreads(threads);
-    }
+    onnx_runtime::configure_session(m_session_options);
 
-    /*#ifdef _WIN32
-        // Windows way
-        _putenv_s("ORT_CUDA_USE_CUDNN", "0");
-        _putenv_s("CUDA_LAUNCH_BLOCKING", "1");  // optional, forces sync errors
-    #else
-        // Linux / WSL / macOS way
-        setenv("ORT_CUDA_USE_CUDNN", "0", 1);
-        setenv("CUDA_LAUNCH_BLOCKING", "1", 1);  // optional
-    #endif*/
-
-    // Add this line to show warnings (2) to complete verbose (0) (only errors
-    // and above will be shown)
-    if (ArgumentParser::get_instance().get_verbose()) {
-      m_session_options.SetLogSeverityLevel(0);
-    }
-
-#ifdef USE_CUDA
-    try {
-      OrtCUDAProviderOptions cuda_options;
-      m_session_options.AppendExecutionProvider_CUDA(cuda_options);
-      if (ArgumentParser::get_instance().get_verbose()) {
-        ArgumentParser::get_instance().get_output_stream()
-            << "[ONNX] CUDA execution provider enabled via USE_CUDA."
-            << std::endl;
-      }
-    } catch (const Ort::Exception &e) {
-      ArgumentParser::get_instance().get_output_stream()
-          << "[WARNING][ONNX] Failed to enable CUDA, defaulting to CPU: "
-          << e.what() << std::endl;
-    }
-#else
-    if (ArgumentParser::get_instance().get_verbose()) {
-      ArgumentParser::get_instance().get_output_stream()
-          << "[ONNX] Compiled without CUDA (USE_CUDA not defined), using CPU."
-          << std::endl;
-    }
-#endif
-
-    m_session = std::make_unique<Ort::Session>(m_env, m_model_path.c_str(),
-                                               m_session_options);
+    m_session = std::make_unique<Ort::Session>(
+        onnx_runtime::env(), m_model_path.c_str(), m_session_options);
     m_allocator = std::make_unique<Ort::AllocatorWithDefaultOptions>();
     m_memory_info = std::make_unique<Ort::MemoryInfo>(
         Ort::MemoryInfo::CreateCpu(OrtDeviceAllocator, OrtMemTypeCPU));
@@ -131,16 +95,17 @@ void FringeEvalRL<StateRepr>::initialize_onnx_model() {
       }
 
       const auto model_frontier_size = static_cast<size_t>(frontier_dim);
-      const auto configured_frontier_size = static_cast<size_t>(
-          ArgumentParser::get_instance().get_RL_fringe_size());
+      const auto configured_frontier_size = configured_fringe_size();
 
       if (model_frontier_size != configured_frontier_size) {
         ExitHandler::exit_with_message(
             ExitHandler::ExitCode::FringeEvalModelLoadError,
-            "RL fringe size mismatch: ONNX logits length is " +
-                std::to_string(model_frontier_size) +
-                " but --RL_fringe_size is " +
-                std::to_string(configured_frontier_size) + ".");
+            "Fringe size mismatch: ONNX logits length is " +
+                std::to_string(model_frontier_size) + " but " +
+                (ArgumentParser::get_instance().get_GNN_batch_size() > 0
+                     ? "--GNN_batch"
+                     : "--RL_fringe_size") +
+                " is " + std::to_string(configured_frontier_size) + ".");
       }
     }
 
@@ -205,8 +170,7 @@ PackedGraph FringeEvalRL<StateRepr>::fringe_to_tensor_minimal(
     std::vector<State<StateRepr>> &states) {
   // The model scores exactly --RL_fringe_size slots (checked at load), so a
   // larger fringe would read past its output.
-  if (static_cast<size_t>(ArgumentParser::get_instance().get_RL_fringe_size()) <
-      states.size()) {
+  if (configured_fringe_size() < states.size()) {
     ExitHandler::exit_with_message(
         ExitHandler::ExitCode::FringeEvalInstanceError,
         "The number of states in the fringe exceeds the maximum allowed size "
@@ -255,8 +219,7 @@ FringeEvalRL<StateRepr>::get_score(std::vector<State<StateRepr>> &states,
   }
 
   // Active-state mask: 1 for each occupied fringe slot.
-  std::vector<uint8_t> active_states(
-      ArgumentParser::get_instance().get_RL_fringe_size(), 0);
+  std::vector<uint8_t> active_states(configured_fringe_size(), 0);
   std::fill_n(active_states.begin(),
               std::min(states.size(), active_states.size()), 1);
   inputs.add_owned(std::move(active_states));

@@ -13,11 +13,19 @@
 
 #pragma once
 #include "states/State.h"
+#include <algorithm>
+#include <cmath>
+#include <iterator>
+#include <limits>
 #include <queue>
 #include <string>
+#include <vector>
 
 #include "argparse/Configuration.h"
 #include "heuristics/HeuristicsManager.h"
+#ifdef USE_NEURALNETS
+#include "neuralnets/FringeEvalRL.h"
+#endif
 
 /**
  * \brief Compares two states based on their heuristic value.
@@ -101,7 +109,10 @@ public:
    *
    * \return The next state in the priority queue.
    */
-  [[nodiscard]] virtual State<StateRepr> peek() { return search_space.top(); }
+  [[nodiscard]] virtual State<StateRepr> peek() {
+    flush_pending();
+    return search_space.top();
+  }
 
   /**
    * \brief Pure virtual function to return the name of the search strategy.
@@ -113,16 +124,90 @@ public:
   /**
    * \brief Clear and reset the search container.
    */
-  virtual void reset() { search_space = StatePriorityQueue(); }
+  virtual void reset() {
+    search_space = StatePriorityQueue();
+    m_pending.clear();
+  }
 
   /**
    * \brief Check whether the search container is empty.
    *
    * \return true if the container is empty, false otherwise.
    */
-  [[nodiscard]] virtual bool empty() const { return search_space.empty(); }
+  [[nodiscard]] virtual bool empty() const {
+    return search_space.empty() && m_pending.empty();
+  }
 
 protected:
+  /**
+   * \brief Whether the heuristic is the batched GNN (--GNN_batch > 0).
+   *
+   * Successors are then buffered by \ref push and scored together, up to
+   * --GNN_batch per model call, the next time the search picks a state.
+   */
+  [[nodiscard]] bool batched() const noexcept { return m_batch_size > 0; }
+
+  /** \brief Buffer a state for the next batched evaluation. */
+  void push_pending(const State<StateRepr> &s) { m_pending.push_back(s); }
+
+  /**
+   * \brief Whether the batched priority adds the state depth (A*) to the
+   * model's distance (HFS uses the distance alone).
+   */
+  [[nodiscard]] virtual bool batched_uses_depth() const { return false; }
+
+  /**
+   * \brief Score the buffered states and move them to the search space.
+   *
+   * The fringe export of the GNN outputs -distance for every slot, so the
+   * priority is the absolute distance (rounded, floored at 0), plus the
+   * depth when \ref batched_uses_depth. Batches are independent: a state's
+   * value does not depend on the other states scored with it.
+   */
+  void flush_pending() {
+    if (m_pending.empty()) {
+      return;
+    }
+#ifdef USE_NEURALNETS
+    auto &evaluator = FringeEvalRL<StateRepr>::get_instance();
+    std::vector<float> raw_scores;
+    for (std::size_t first = 0; first < m_pending.size();
+         first += m_batch_size) {
+      const std::size_t last =
+          std::min(m_pending.size(), first + m_batch_size);
+      std::vector<State<StateRepr>> batch(
+          std::make_move_iterator(m_pending.begin() + first),
+          std::make_move_iterator(m_pending.begin() + last));
+      [[maybe_unused]] const auto ranks =
+          evaluator.get_score(batch, &raw_scores);
+
+      for (std::size_t i = 0; i < batch.size(); ++i) {
+        constexpr double max_value = std::numeric_limits<short>::max();
+        double value = std::isfinite(raw_scores[i])
+                           ? std::max(0.0, -static_cast<double>(raw_scores[i]))
+                           : max_value;
+        if (batched_uses_depth()) {
+          value += batch[i].get_plan_length();
+        }
+        batch[i].set_heuristic_value(
+            static_cast<short>(std::lround(std::min(value, max_value))));
+        search_space.push(std::move(batch[i]));
+      }
+    }
+#else
+    ExitHandler::exit_with_message(
+        ExitHandler::ExitCode::HeuristicsBadDeclaration,
+        "--GNN_batch needs neural network support. Please recompile with the "
+        "nn option.");
+#endif
+    m_pending.clear();
+  }
+
+  /** \brief Name suffix of the batched heuristic, empty when per-state. */
+  [[nodiscard]] std::string batched_name() const {
+    return batched() ? ", batch " + std::to_string(m_batch_size) : "";
+  }
+
   /**
    * \brief Priority queue for managing the search space.
    *
@@ -139,4 +224,11 @@ protected:
   HeuristicsManager<StateRepr>
       m_heuristics_manager; ///< Heuristics manager to compute heuristic values
                             ///< for states.
+
+private:
+  std::size_t m_batch_size = static_cast<std::size_t>(
+      ArgumentParser::get_instance()
+          .get_GNN_batch_size()); ///< Batched GNN size (0 = off).
+  std::vector<State<StateRepr>>
+      m_pending; ///< Successors waiting for the batched GNN evaluation.
 };
