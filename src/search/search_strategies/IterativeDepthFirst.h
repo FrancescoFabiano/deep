@@ -113,7 +113,25 @@ public:
   /**
    * \brief Reset the search container.
    */
-  void reset() { search_space = std::stack<State<StateRepr>>(); }
+  void reset() {
+    search_space = std::stack<State<StateRepr>>();
+    max_depth = 1;
+    m_reached_max_depth = false;
+    m_restarted = false;
+  }
+
+  /**
+   * \brief Whether \p s may be expanded: its successors would lie beyond the
+   * current bound otherwise (the bound is then marked as reached, so a
+   * deeper iteration follows).
+   */
+  [[nodiscard]] bool expandable(const State<StateRepr> &s) {
+    if (s.get_plan_length() < max_depth) {
+      return true;
+    }
+    m_reached_max_depth = true;
+    return false;
+  }
 
   /**
    * \brief Check if the search container is empty.

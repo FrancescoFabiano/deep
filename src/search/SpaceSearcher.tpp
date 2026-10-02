@@ -191,6 +191,12 @@ bool SpaceSearcher<StateRepr, Strategy>::search_sequential(
 
     ++m_expanded_nodes;
 
+    if constexpr (depth_aware_visited) {
+      if (!m_strategy.expandable(current)) {
+        continue; // all its successors would lie beyond the depth bound
+      }
+    }
+
 #ifdef DEBUG
 
     if (m_expanded_nodes % 250 == 0) {
@@ -260,6 +266,14 @@ bool SpaceSearcher<StateRepr, Strategy>::search_sequential(
 
         if (first_visit(successor)) {
           m_strategy.push(successor);
+        } else if (const auto it = visited_depths.find(successor);
+                   it != visited_depths.end() &&
+                   !KripkeEqualityHelper::verify_equivalence(
+                       it->first.get_representation(),
+                       successor.get_representation(), true, 500, 5)) {
+          ExitHandler::exit_with_message(
+              ExitHandler::ExitCode::SearchMethodError,
+              "DEBUG: visited-state equivalence verification failed.");
         }
 
       } else if (check_visited) {

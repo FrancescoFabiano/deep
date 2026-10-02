@@ -159,6 +159,7 @@ KripkeWorldPointer KripkeState::add_rep_world(const KripkeWorld &to_add,
 
   tmp.set_repetition(repetition);
   m_worlds.insert(tmp);
+  structure_changed();
 
   return tmp;
 }
@@ -172,6 +173,7 @@ KripkeWorldPointer KripkeState::add_rep_world(KripkeWorld &&to_add,
   tmp.set_repetition(repetition);
 
   m_worlds.insert(tmp);
+  structure_changed();
 
   return tmp;
 }
@@ -236,6 +238,7 @@ void KripkeState::build_initial() {
         KripkeStorage::get_instance().add_world(std::move(world));
 
     m_worlds.insert(world_ptr);
+    structure_changed();
 
     world_map.push_back(world_ptr);
 
@@ -499,6 +502,7 @@ void KripkeState::create_designated_product_worlds(
                                       product_worlds, pending, next_repetition);
 
       successor.m_designated_worlds.insert(product_world);
+      successor.structure_changed();
     }
   }
 

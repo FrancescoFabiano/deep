@@ -114,7 +114,8 @@ public:
   State(const State &other);
 
   /** \brief Move constructor: moves the same fields the copy copies
-   * (representation, executed actions, heuristic value).*/
+   * (representation, executed actions, heuristic value, open-list keys, RL
+   * rescoring fields).*/
   State(State &&other) noexcept;
 
   /** \brief Constructor with that set *this* as successor of the given one.

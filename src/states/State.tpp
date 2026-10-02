@@ -108,6 +108,9 @@ State<StateRepr> &State<StateRepr>::operator=(const State &to_assign) {
 
 template <StateRepresentation StateRepr>
 State<StateRepr> &State<StateRepr>::operator=(State &&to_assign) noexcept {
+  if (this == &to_assign) {
+    return *this;
+  }
   m_representation = std::move(to_assign.m_representation);
   m_executed_actions_id = std::move(to_assign.m_executed_actions_id);
   m_heuristic_value = to_assign.m_heuristic_value;

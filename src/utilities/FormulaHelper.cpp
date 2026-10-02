@@ -556,9 +556,12 @@ void FormulaHelper::verify_semantic_equivalence(
 
   std::mt19937 rng(seed);
 
-  os << "[DEBUG] Checking state equivalence with " << formula_count
+  const bool verbose = ArgumentParser::get_instance().get_verbose();
+  if (verbose) {
+    os << "[DEBUG] Checking state equivalence with " << formula_count
      << " random formulas" << " (modal depth=" << modal_depth
      << ", seed=" << seed << ").";
+  }
 
   for (unsigned int i = 0; i < formula_count; ++i) {
 
@@ -583,5 +586,7 @@ void FormulaHelper::verify_semantic_equivalence(
     }
   }
 
-  os << " All good :)" << std::endl;
+  if (verbose) {
+    os << " All good :)" << std::endl;
+  }
 }

@@ -274,12 +274,15 @@ private:
   KripkeWorldPointer add_rep_world(KripkeWorld &&to_add,
                                    unsigned short repetition);
 
-  /** \brief Recompute the cached structural hash after the state changes. */
-  /** \brief Called by every structural change: the hash and the
-   * reachability guarantee no longer hold. */
+  /** \brief Called by every structural change: the hash, the reachability
+   * guarantee and a cached tensor no longer hold. */
   void structure_changed() noexcept {
     m_hash_valid = false;
     m_built_reachable = false;
+    if (m_computed_tensor_representation) {
+      m_tensor_representation = GraphTensor{};
+      m_computed_tensor_representation = false;
+    }
   }
 
   // === DEL Product Update Helpers ===
