@@ -228,8 +228,16 @@ private:
    */
   KripkeWorldPointersTransitiveMap m_beliefs;
 
-  /** \brief Cached structural hash used by fast state-comparison modes. */
-  uint64_t m_hash = 0;
+  /** \brief Structural hash, computed on first use by \ref get_hash. It is
+   * only a fast pre-check: equal hashes still go through the full comparison
+   * unless --fast-state-comparison is set. */
+  mutable uint64_t m_hash = 0;
+  /** \brief True while \ref m_hash describes the current structure. */
+  mutable bool m_hash_valid = false;
+  /** \brief True when every world is reachable from the designated ones
+   * (set by \ref compute_successor and by the contraction), so
+   * \ref contract_with_bisimulation can skip the reachability clean-up. */
+  bool m_built_reachable = false;
 
   /** \brief Tensor version of this for the various NN-based heuristics. */
   GraphTensor m_tensor_representation;
@@ -267,7 +275,12 @@ private:
                                    unsigned short repetition);
 
   /** \brief Recompute the cached structural hash after the state changes. */
-  void recompute_hash();
+  /** \brief Called by every structural change: the hash and the
+   * reachability guarantee no longer hold. */
+  void structure_changed() noexcept {
+    m_hash_valid = false;
+    m_built_reachable = false;
+  }
 
   // === DEL Product Update Helpers ===
   /// \brief Product-world identifier `(source world, event id)`.

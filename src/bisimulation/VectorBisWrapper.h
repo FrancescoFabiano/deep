@@ -33,7 +33,8 @@ public:
         throw std::out_of_range("Index " + std::to_string(index) +
                                 " is way out of bounds in VectorBisWrapper");
       }
-      data.resize(std::max(index + 100, sz + 100));
+      // grow geometrically (+100 per miss made filling N slots quadratic)
+      data.resize(std::max(index + 1, sz + std::max<size_t>(sz, 100)));
     }
     return data[index];
   }
