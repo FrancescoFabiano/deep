@@ -218,11 +218,13 @@ bool SpaceSearcher<StateRepr, Strategy>::search_sequential(
 
         if (inserted) {
 
-          if (!is_RL_search) {
+          // RL batches its successors in fringe_RL; every other strategy
+          // takes them directly (fringe_RL is only flushed for RL).
+          if (is_RL_search) {
+            fringe_RL.push_back(successor);
+          } else {
             m_strategy.push(successor);
           }
-
-          fringe_RL.push_back(successor);
 
         } else {
 
@@ -245,11 +247,11 @@ bool SpaceSearcher<StateRepr, Strategy>::search_sequential(
 
       } else {
 
-        if (!is_RL_search) {
+        if (is_RL_search) {
+          fringe_RL.push_back(successor);
+        } else {
           m_strategy.push(successor);
         }
-
-        fringe_RL.push_back(successor);
       }
 
 #else
@@ -259,11 +261,11 @@ bool SpaceSearcher<StateRepr, Strategy>::search_sequential(
        */
       if (!check_visited || visited_states.insert(successor).second) {
 
-        if (!is_RL_search) {
+        if (is_RL_search) {
+          fringe_RL.push_back(successor);
+        } else {
           m_strategy.push(successor);
         }
-
-        fringe_RL.push_back(successor);
       }
 
 #endif
