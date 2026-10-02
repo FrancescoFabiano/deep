@@ -49,7 +49,10 @@ public:
     }
     s.set_heuristic_value(heuristics_value +
                           plan_length); // Overwrite heuristic with f = g + h
-    this->search_space.push(std::move(s)); // takes the successor
+    // takes the successor; ordered by f, then lower h (deeper), then
+    // insertion order
+    this->enqueue(std::move(s), heuristics_value + plan_length,
+                  heuristics_value);
   }
 
   /**

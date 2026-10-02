@@ -17,6 +17,7 @@
  * \date May 20, 2025
  */
 #pragma once
+#include <cstdint>
 #include <concepts>
 
 #include "actions/Action.h"
@@ -163,6 +164,28 @@ public:
    *
    * @return the heuristic value of *this*.*/
   [[nodiscard]] int get_heuristic_value() const;
+
+  /** \brief Set the open-list ordering keys (lower is expanded first): the
+   * primary key (h for HFS, g + h for A*), the secondary key (A*: h) and the
+   * insertion order used to break the remaining ties. */
+  void set_search_keys(double primary, double secondary,
+                       std::uint64_t order) noexcept {
+    m_search_primary = primary;
+    m_search_secondary = secondary;
+    m_search_order = order;
+  }
+  /** \brief Primary open-list key. */
+  [[nodiscard]] double get_search_primary() const noexcept {
+    return m_search_primary;
+  }
+  /** \brief Secondary open-list key. */
+  [[nodiscard]] double get_search_secondary() const noexcept {
+    return m_search_secondary;
+  }
+  /** \brief Insertion order in the open list. */
+  [[nodiscard]] std::uint64_t get_search_order() const noexcept {
+    return m_search_order;
+  }
 
   /** \brief Getter of \ref m_old_heuristic_value.
    *
@@ -358,6 +381,10 @@ private:
    *
    * This value is given by the chosen implementation of Heuristics.*/
   int m_heuristic_value = 0;
+  /** \brief Open-list keys, see \ref set_search_keys. */
+  double m_search_primary = 0;
+  double m_search_secondary = 0;
+  std::uint64_t m_search_order = 0;
 
   /** \brief The old heuristic value of the *this*, used to compute the RL
    * heuristic value*/

@@ -18,6 +18,7 @@
 #include <iterator>
 #include <limits>
 #include <queue>
+#include <random>
 #include <string>
 #include <vector>
 
@@ -27,22 +28,51 @@
 #include "neuralnets/FringeEvalRL.h"
 #endif
 
+/** \brief How HFS/A* order states with equal values (--tie_breaking). */
+enum class TieBreaking { None, Fifo, Lifo, Random };
+
+inline TieBreaking configured_tie_breaking() {
+  const std::string &mode = ArgumentParser::get_instance().get_tie_breaking();
+  if (mode == "fifo") {
+    return TieBreaking::Fifo;
+  }
+  if (mode == "lifo") {
+    return TieBreaking::Lifo;
+  }
+  if (mode == "random") {
+    return TieBreaking::Random;
+  }
+  return TieBreaking::None;
+}
+
 /**
- * \brief Compares two states based on their heuristic value.
+ * \brief Open-list order: lower primary key first (h for HFS, f for A*). With
+ * --tie_breaking none that is all, as before tie-breaking existed; otherwise
+ * then lower secondary key (A*: h) and then the insertion key: oldest first
+ * (fifo), newest first (lifo) or a seeded random key (random).
  *
  * \tparam StateRepr The state representation type.
- * \param state1 The first state to compare.
- * \param state2 The second state to compare.
- * \return true if state1 has a higher heuristic value than state2, false
- * otherwise.
- *
- * \note Lower scores are better. States with higher heuristic values have lower
- * priority.
+ * \return true if state1 has a lower priority than state2 (max-heap
+ * convention of std::priority_queue).
  */
 template <StateRepresentation StateRepr> struct StateComparator {
+  TieBreaking mode = configured_tie_breaking();
+
   bool operator()(const State<StateRepr> &state1,
                   const State<StateRepr> &state2) const {
-    return state1.get_heuristic_value() > state2.get_heuristic_value();
+    if (state1.get_search_primary() != state2.get_search_primary()) {
+      return state1.get_search_primary() > state2.get_search_primary();
+    }
+    if (mode == TieBreaking::None) {
+      return false;
+    }
+    if (state1.get_search_secondary() != state2.get_search_secondary()) {
+      return state1.get_search_secondary() > state2.get_search_secondary();
+    }
+    // fifo and random: smaller key first (insertion counter / random draw)
+    return mode == TieBreaking::Lifo
+               ? state1.get_search_order() < state2.get_search_order()
+               : state1.get_search_order() > state2.get_search_order();
   }
 };
 
@@ -81,7 +111,10 @@ public:
   /**
    * \brief Push the initial state into the search container.
    */
-  virtual void push_initial(const State<StateRepr> &s) { search_space.push(s); }
+  virtual void push_initial(const State<StateRepr> &s) {
+    State<StateRepr> initial = s;
+    enqueue(std::move(initial), 0, 0);
+  }
 
   /**
    * \brief Push a list of states into the search container. Not implemented for
@@ -155,6 +188,18 @@ public:
 
 protected:
   /**
+   * \brief Push \p s with its ordering keys (see \ref StateComparator); the
+   * insertion order is assigned here.
+   */
+  void enqueue(State<StateRepr> &&s, const double primary,
+               const double secondary) {
+    const std::uint64_t order =
+        m_tie_breaking == TieBreaking::Random ? m_tie_rng() : m_next_order++;
+    s.set_search_keys(primary, secondary, order);
+    search_space.push(std::move(s));
+  }
+
+  /**
    * \brief Whether the heuristic is the batched GNN (--GNN_batch > 0).
    *
    * Successors are then buffered by \ref push and scored together, up to
@@ -197,15 +242,18 @@ protected:
 
       for (std::size_t i = 0; i < batch.size(); ++i) {
         constexpr double max_value = std::numeric_limits<int>::max();
-        double value = std::isfinite(raw_scores[i])
-                           ? std::max(0.0, -static_cast<double>(raw_scores[i]))
-                           : max_value;
-        if (batched_uses_depth()) {
-          value += batch[i].get_plan_length();
-        }
+        // the model's distance, rounded unless --GNN_raw_distance
+        const double distance =
+            std::isfinite(raw_scores[i])
+                ? std::min(std::max(0.0, -static_cast<double>(raw_scores[i])),
+                           max_value)
+                : max_value;
+        const double h = m_raw_distance ? distance : std::round(distance);
+        const double g = batch[i].get_plan_length();
+        const double primary = batched_uses_depth() ? g + h : h;
         batch[i].set_heuristic_value(
-            static_cast<int>(std::llround(std::min(value, max_value))));
-        search_space.push(std::move(batch[i]));
+            static_cast<int>(std::llround(std::min(primary, max_value))));
+        enqueue(std::move(batch[i]), primary, batched_uses_depth() ? h : 0);
       }
     }
 #else
@@ -245,4 +293,10 @@ private:
           .get_GNN_batch_size()); ///< Batched GNN size (0 = off).
   std::vector<State<StateRepr>>
       m_pending; ///< Successors waiting for the batched GNN evaluation.
+  std::uint64_t m_next_order = 0; ///< Insertion counter for tie-breaking.
+  TieBreaking m_tie_breaking = configured_tie_breaking();
+  std::mt19937_64 m_tie_rng{ArgumentParser::get_instance()
+                                .get_tie_breaking_seed()}; ///< random keys
+  bool m_raw_distance = ArgumentParser::get_instance()
+                            .get_GNN_raw_distance(); ///< Unrounded GNN h.
 };

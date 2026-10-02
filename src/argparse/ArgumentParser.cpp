@@ -385,6 +385,26 @@ ArgumentParser::ArgumentParser() : app("deep") {
       ->default_val("70");
 
   search_group
+      ->add_option("--tie_breaking", m_tie_breaking,
+                   "Order of HFS/A* states with equal values: 'none' (default) "
+                   "compares only h (HFS) or f (A*) and leaves ties to the "
+                   "heap; 'fifo', 'lifo' and 'random' first compare h within "
+                   "equal f (A*) and then expand the oldest, the newest or a "
+                   "random one (seeded by --tie_breaking_seed).")
+      ->check(CLI::IsMember({"none", "fifo", "lifo", "random"}))
+      ->default_val("none");
+  search_group
+      ->add_option("--tie_breaking_seed", m_tie_breaking_seed,
+                   "Seed of --tie_breaking random (the same seed gives the "
+                   "same search).")
+      ->check(CLI::NonNegativeNumber)
+      ->default_val("42");
+  search_group->add_flag(
+      "--GNN_raw_distance", m_GNN_raw_distance,
+      "With --GNN_batch, order states by the GNN's distance as predicted "
+      "(fractional) instead of rounded to an integer.");
+
+  search_group
       ->add_option("--RL_heuristics", m_RL_heur_selection,
                    "Specify the heuristic mode for RL.")
       ->check(CLI::IsMember({"MIN", "MAX", "AVG", "RNG"}))
@@ -690,6 +710,18 @@ int ArgumentParser::get_onnx_gpu_mem_limit_mib() const noexcept {
 
 bool ArgumentParser::get_onnx_placement() const noexcept {
   return m_onnx_placement;
+}
+
+bool ArgumentParser::get_GNN_raw_distance() const noexcept {
+  return m_GNN_raw_distance;
+}
+
+const std::string &ArgumentParser::get_tie_breaking() const noexcept {
+  return m_tie_breaking;
+}
+
+std::uint64_t ArgumentParser::get_tie_breaking_seed() const noexcept {
+  return m_tie_breaking_seed;
 }
 
 int ArgumentParser::get_GNN_batch_size() const noexcept {

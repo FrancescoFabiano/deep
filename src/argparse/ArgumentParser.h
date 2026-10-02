@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <CLI/CLI.hpp>
 #include <fstream>
 #include <string>
@@ -192,6 +193,24 @@ public:
    * @return Successors scored per model call; 0 means per-state evaluation.
    */
   [[nodiscard]] int get_GNN_batch_size() const noexcept;
+
+  /**
+   * @brief How HFS/A* order states with equal values.
+   * @return "none" (default), "fifo", "lifo" or "random".
+   */
+  [[nodiscard]] const std::string &get_tie_breaking() const noexcept;
+
+  /**
+   * @brief Seed of the random tie-breaking.
+   * @return The seed (default 42).
+   */
+  [[nodiscard]] std::uint64_t get_tie_breaking_seed() const noexcept;
+
+  /**
+   * @brief Whether the batched GNN orders by its unrounded distance.
+   * @return True with --GNN_raw_distance.
+   */
+  [[nodiscard]] bool get_GNN_raw_distance() const noexcept;
 
   /**
    * @brief Get where the neural networks run.
@@ -426,6 +445,21 @@ private:
    * @brief Batch size of the batched GNN heuristic (0 = per-state model).
    */
   int m_GNN_batch_size = 0;
+
+  /**
+   * @brief Tie-breaking of equal open-list keys: "lifo" or "fifo".
+   */
+  std::string m_tie_breaking = "none";
+
+  /**
+   * @brief Seed of --tie_breaking random.
+   */
+  std::uint64_t m_tie_breaking_seed = 42;
+
+  /**
+   * @brief Order the batched GNN by its unrounded distance.
+   */
+  bool m_GNN_raw_distance = false;
 
   /**
    * @brief Where the neural networks run: auto, cpu or cuda.
