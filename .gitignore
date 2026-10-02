@@ -81,10 +81,16 @@ exp/**/_results*/
 !/utils/configs/*.ut
 !/utils/configs/README.md
 
-# trial outputs (exp/trials/<trial>/): inputs, split and report are tracked
+# trial outputs (exp/trials/<trial>/): inputs, split and report are tracked; of models/
+# only the installed ONNX + constant files (not the run dirs, checkpoints, caches)
 exp/trials/*/data/
-exp/trials/*/models/
 exp/trials/*/results/
+exp/trials/*/models/*
+!exp/trials/*/models/*/
+exp/trials/*/models/*/*
+!exp/trials/*/models/*/*.onnx
+!exp/trials/*/models/*/*_C.txt
+exp/trials/*/models/*.old-*/
 
 # Local MCP server config
 /.mcp.json
