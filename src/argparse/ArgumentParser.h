@@ -212,6 +212,12 @@ public:
   [[nodiscard]] bool get_onnx_placement() const noexcept;
 
   /**
+   * @brief Get the cap on ONNX Runtime GPU memory.
+   * @return MiB; 0 means no cap.
+   */
+  [[nodiscard]] int get_onnx_gpu_mem_limit_mib() const noexcept;
+
+  /**
    * \brief Return the type of encoding used for the information in states.
    * \return the DatasetType used to encode the labels in the GNN states.
    */
@@ -435,6 +441,11 @@ private:
    * @brief Print the ONNX node placement at model load.
    */
   bool m_onnx_placement = false;
+
+  /**
+   * @brief Cap on ONNX Runtime GPU memory in MiB (0 = no cap).
+   */
+  int m_onnx_gpu_mem_limit_mib = 0;
 
   bool m_exec_plan =
       false; ///< Flag to indicate if the plan should be executed.

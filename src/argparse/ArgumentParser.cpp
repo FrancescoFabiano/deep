@@ -403,6 +403,13 @@ ArgumentParser::ArgumentParser() : app("deep") {
                    "CUDA device used by --onnx_device cuda/auto.")
       ->check(CLI::NonNegativeNumber)
       ->default_val("0");
+  search_group
+      ->add_option("--onnx_gpu_mem_limit", m_onnx_gpu_mem_limit_mib,
+                   "Cap (MiB) on the GPU memory ONNX Runtime may reserve for "
+                   "the networks; a run that needs more stops with an error. "
+                   "0 (default) means no cap.")
+      ->check(CLI::NonNegativeNumber)
+      ->default_val("0");
   search_group->add_flag(
       "--onnx_placement", m_onnx_placement,
       "Print the execution provider (CPU or CUDA) every model node was "
@@ -675,6 +682,10 @@ const std::string &ArgumentParser::get_onnx_device() const noexcept {
 
 int ArgumentParser::get_onnx_device_id() const noexcept {
   return m_onnx_device_id;
+}
+
+int ArgumentParser::get_onnx_gpu_mem_limit_mib() const noexcept {
+  return m_onnx_gpu_mem_limit_mib;
 }
 
 bool ArgumentParser::get_onnx_placement() const noexcept {

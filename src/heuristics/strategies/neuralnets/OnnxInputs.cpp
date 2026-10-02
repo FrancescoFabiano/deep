@@ -82,8 +82,19 @@ void configure_session(Ort::SessionOptions &options) {
     try {
       OrtCUDAProviderOptions cuda_options;
       cuda_options.device_id = parser.get_onnx_device_id();
+      // Grow the GPU memory arena by what is requested, not to the next power
+      // of two (ORT's default), so a run reserves close to what it needs.
+      cuda_options.arena_extend_strategy = 1; // kSameAsRequested
+      const int limit_mib = parser.get_onnx_gpu_mem_limit_mib();
+      if (limit_mib > 0) {
+        cuda_options.gpu_mem_limit = static_cast<size_t>(limit_mib) << 20;
+      }
       options.AppendExecutionProvider_CUDA(cuda_options);
-      os << "[ONNX] device: CUDA " << cuda_options.device_id << std::endl;
+      os << "[ONNX] device: CUDA " << cuda_options.device_id;
+      if (limit_mib > 0) {
+        os << " (GPU memory limit " << limit_mib << " MiB)";
+      }
+      os << std::endl;
       return;
     } catch (const Ort::Exception &e) {
       failure = e.what();
@@ -219,9 +230,17 @@ OnnxInputs::run(Ort::Session &session,
     output_names_cstr.push_back(name.c_str());
   }
 
-  return session.Run(onnx_runtime::run_options(), input_names_cstr.data(),
-                     m_values.data(), m_values.size(), output_names_cstr.data(),
-                     output_names_cstr.size());
+  try {
+    return session.Run(onnx_runtime::run_options(), input_names_cstr.data(),
+                       m_values.data(), m_values.size(),
+                       output_names_cstr.data(), output_names_cstr.size());
+  } catch (const Ort::Exception &e) {
+    // e.g. the GPU ran out of memory (or hit --onnx_gpu_mem_limit): stop with
+    // ORT's message instead of terminating on an uncaught exception.
+    ExitHandler::exit_with_message(
+        mismatch_code, std::string("ONNX inference failed: ") + e.what());
+  }
+  return {};
 }
 
 void OnnxInputs::add_view(const std::vector<int64_t> &data,
