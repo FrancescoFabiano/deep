@@ -16,7 +16,7 @@
  * before it, and \ref batch records which graph each node belongs to.
  */
 struct PackedGraph {
-  size_t num_nodes = 0; ///< Total number of nodes.
+  size_t num_nodes = 0;          ///< Total number of nodes.
   std::vector<int64_t> node_ids; ///< [num_nodes] (non-BITMASK only).
   std::vector<uint8_t>
       node_bits; ///< [num_nodes * bitmask_size], flattened (BITMASK only).

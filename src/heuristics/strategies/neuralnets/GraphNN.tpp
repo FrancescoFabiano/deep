@@ -861,17 +861,18 @@ bool GraphNN<StateRepr>::write_and_compare_tensor_to_dot(
   }
 
   // Node label as printed in the dataset DOT (bitmask string or id)
-  const bool bitmask_labels = ArgumentParser::get_instance().get_dataset_type() ==
-                                  DatasetType::BITMASK &&
-                              !is_goal;
+  const bool bitmask_labels =
+      ArgumentParser::get_instance().get_dataset_type() ==
+          DatasetType::BITMASK &&
+      !is_goal;
   auto node_label = [&](const int64_t symbolic) {
     if (!bitmask_labels) {
       return std::to_string(real_node_ids[symbolic]);
     }
     std::string label;
     for (size_t i = 0; i < m_bitmask_size; ++i) {
-      label += std::to_string(
-          real_node_ids_bitmask[symbolic * m_bitmask_size + i]);
+      label +=
+          std::to_string(real_node_ids_bitmask[symbolic * m_bitmask_size + i]);
     }
     return label;
   };
