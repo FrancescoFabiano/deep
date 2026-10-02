@@ -559,8 +559,8 @@ void FormulaHelper::verify_semantic_equivalence(
   const bool verbose = ArgumentParser::get_instance().get_verbose();
   if (verbose) {
     os << "[DEBUG] Checking state equivalence with " << formula_count
-     << " random formulas" << " (modal depth=" << modal_depth
-     << ", seed=" << seed << ").";
+       << " random formulas" << " (modal depth=" << modal_depth
+       << ", seed=" << seed << ").";
   }
 
   for (unsigned int i = 0; i < formula_count; ++i) {
