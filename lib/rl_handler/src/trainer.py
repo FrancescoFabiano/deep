@@ -1,10 +1,10 @@
 """Contract surface of the deployed planner model.
 
 This module owns everything the deployed C++ planner contract depends on:
-the ONNX export wrappers (input names/order/dtypes/dynamic axes consumed by
-FringeEvalRL), checkpoint save/load (payload format), and the `to_onnx`
+the ONNX export wrappers (the contract's positional inputs, lib/deep_nn/
+contract.py), checkpoint save/load (payload format), and the `to_onnx`
 export path — reused verbatim by the offline exporter as the contract
-guarantee.  Training logic lives in src/offline/dqn.py.
+guarantee.  Training logic lives in src/offline/qlearning.py.
 
 Do not rename RLFrontierTrainer, the wrapper classes, or any export symbol:
 checkpoints and the ONNX graph structure reference them.
@@ -17,6 +17,7 @@ from pathlib import Path
 from torch import nn
 from typing import Dict, Optional
 
+from deep_nn import contract
 from src.models.frontier_policy import FrontierPolicyNetwork
 
 FAILURE_EPS = 1e-9
@@ -34,6 +35,7 @@ class OnnxFrontierPolicyWrapper(nn.Module):
         edge_index: torch.Tensor,
         edge_attr: torch.Tensor,
         membership: torch.Tensor,
+        pointed_ids: torch.Tensor,
         mask: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
         return self.core(
@@ -41,6 +43,7 @@ class OnnxFrontierPolicyWrapper(nn.Module):
             edge_index=edge_index,
             edge_attr=edge_attr,
             membership=membership,
+            pointed_ids=pointed_ids,
             candidate_batch=None,
             mask=mask,
         )
@@ -57,6 +60,7 @@ class OnnxFrontierPolicySeparatedWrapper(nn.Module):
         edge_index: torch.Tensor,
         edge_attr: torch.Tensor,
         membership: torch.Tensor,
+        pointed_ids: torch.Tensor,
         goal_node_features: torch.Tensor,
         goal_edge_index: torch.Tensor,
         goal_edge_attr: torch.Tensor,
@@ -68,6 +72,7 @@ class OnnxFrontierPolicySeparatedWrapper(nn.Module):
             edge_index=edge_index,
             edge_attr=edge_attr,
             membership=membership,
+            pointed_ids=pointed_ids,
             candidate_batch=None,
             mask=mask,
             goal_node_features=goal_node_features,
@@ -161,7 +166,11 @@ class RLFrontierTrainer:
         cfg = payload["config"]
         cfg.setdefault("num_node_labels", 4096)
         model = FrontierPolicyNetwork(**cfg)
-        model.load_state_dict(payload["state_dict"])
+        # A checkpoint from before the `pointed_ids` input lacks the (zero-
+        # initialised) designated-world vector; it re-exports with identical scores.
+        missing, unexpected = model.load_state_dict(payload["state_dict"], strict=False)
+        if unexpected or set(missing) - {"encoder.pointed.weight"}:
+            raise RuntimeError(f"{path}: state_dict mismatch (missing {missing}, unexpected {unexpected})")
         model.eval()
         return model
 
@@ -171,108 +180,17 @@ class RLFrontierTrainer:
         node_input_dim: int,
         onnx_frontier_size: int = 32,
     ) -> None:
-        out_path = Path(out_path)
-        out_path.parent.mkdir(parents=True, exist_ok=True)
-        # ONNX tracing may specialize pooling/scatter dimensions to the traced
-        # candidate range; keep this comfortably above common frontier sizes.
-        n_candidates = int(onnx_frontier_size)
-        if n_candidates <= 0:
-            raise ValueError("onnx_frontier_size must be > 0.")
-        n_nodes, n_edges = max(8, n_candidates), 12
-        dataset_type = str(self.model.dataset_type).upper()
-        raw_node_input_dim = int(node_input_dim)
-        node_tensor_dtype = (
-            torch.float32
-            if dataset_type == "BITMASK"
-            else torch.int64
-        )
-        if dataset_type == "HASHED":
-            node_features_dummy = torch.zeros((n_nodes,), dtype=torch.int64)
-        else:
-            node_features_dummy = torch.zeros((n_nodes, raw_node_input_dim), dtype=node_tensor_dtype)
+        """Export through the shared planner contract (deep_nn.contract)."""
+        if str(self.model.dataset_type).upper() != "HASHED":
+            raise ValueError(
+                f"dataset_type {self.model.dataset_type}: FringeEvalRL deploys HASHED "
+                f"models only (issue #1)")
+        separated = self.kind_of_data == "separated" and self.model.use_goal_separate_input
+        wrapper_cls = OnnxFrontierPolicySeparatedWrapper if separated else OnnxFrontierPolicyWrapper
         model_was_training = bool(self.model.training)
         model_device = self._model_device()
         try:
-            if self.kind_of_data == "separated" and self.model.use_goal_separate_input:
-                wrapper = OnnxFrontierPolicySeparatedWrapper(self.model).eval().cpu()
-                n_goal_nodes, n_goal_edges = 6, 8
-                if dataset_type == "HASHED":
-                    goal_node_features_dummy = torch.zeros((n_goal_nodes,), dtype=torch.int64)
-                else:
-                    goal_node_features_dummy = torch.zeros(
-                        (n_goal_nodes, raw_node_input_dim),
-                        dtype=node_tensor_dtype,
-                    )
-                dummy_inputs = (
-                    node_features_dummy,
-                    torch.zeros((2, n_edges), dtype=torch.int64),
-                    torch.zeros((n_edges,), dtype=torch.int64),
-                    torch.arange(n_nodes, dtype=torch.int64) % n_candidates,
-                    goal_node_features_dummy,
-                    torch.zeros((2, n_goal_edges), dtype=torch.int64),
-                    torch.zeros((n_goal_edges,), dtype=torch.int64),
-                    torch.zeros((n_goal_nodes,), dtype=torch.int64),
-                    torch.ones((n_candidates,), dtype=torch.uint8),
-                )
-                input_names = [
-                    "node_features",
-                    "edge_index",
-                    "edge_attr",
-                    "membership",
-                    "goal_node_features",
-                    "goal_edge_index",
-                    "goal_edge_attr",
-                    "goal_batch",
-                    "mask",
-                ]
-                dynamic_axes = {
-                    "node_features": {0: "N"},
-                    "edge_index": {1: "E"},
-                    "edge_attr": {0: "E"},
-                    "membership": {0: "N"},
-                    "goal_node_features": {0: "GN"},
-                    "goal_edge_index": {1: "GE"},
-                    "goal_edge_attr": {0: "GE"},
-                    "goal_batch": {0: "GN"},
-                    "mask": {0: "F"},
-                    "logits": {0: "F"},
-                }
-            else:
-                wrapper = OnnxFrontierPolicyWrapper(self.model).eval().cpu()
-                dummy_inputs = (
-                    node_features_dummy,
-                    torch.zeros((2, n_edges), dtype=torch.int64),
-                    torch.zeros((n_edges,), dtype=torch.int64),
-                    torch.arange(n_nodes, dtype=torch.int64) % n_candidates,
-                    torch.ones((n_candidates,), dtype=torch.uint8),
-                )
-                input_names = [
-                    "node_features",
-                    "edge_index",
-                    "edge_attr",
-                    "membership",
-                    "mask",
-                ]
-                dynamic_axes = {
-                    "node_features": {0: "N"},
-                    "edge_index": {1: "E"},
-                    "edge_attr": {0: "E"},
-                    "membership": {0: "N"},
-                    "mask": {0: "F"},
-                    "logits": {0: "F"},
-                }
-
-            torch.onnx.export(
-                wrapper,
-                dummy_inputs,
-                out_path.as_posix(),
-                opset_version=18,
-                dynamo=False,
-                input_names=input_names,
-                output_names=["logits"],
-                dynamic_axes=dynamic_axes,
-                do_constant_folding=False,
-            )
+            contract.export(wrapper_cls(self.model), out_path, onnx_frontier_size, separated)
         finally:
             self.model.to(model_device)
             self.model.train(model_was_training)

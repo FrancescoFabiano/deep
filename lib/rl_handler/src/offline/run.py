@@ -23,7 +23,6 @@ from ..models.frontier_policy import FrontierPolicyNetwork
 from ..models.two_head_baseline import TwoHeadBaselineNetwork
 from ..trainer import RLFrontierTrainer
 from .batching import assert_goal_mode_consistent, default_device, pack_single
-from .encoder import load_goal_graph
 from .dataset import generate_dataset
 from .determinism import determinism_report, set_determinism
 from .encoder import InstanceCache
@@ -45,7 +44,7 @@ from .policies import (
 )
 from .strategies import STRATEGIES, dir_name
 from .unify import UnifiedInstance, report_unified, unify_instances
-from .qlearning import QTrainer, TrainConfig, default_reward_scale
+from .qlearning import DivergenceError, QTrainer, TrainConfig, default_reward_scale
 from .selection import (
     Candidate,
     GateResult,
@@ -132,6 +131,7 @@ class RunConfig:
     gnn_layers: int = 2
     lr: float = 1e-4
     batch_size: int = 64
+    resident_packing: bool = False  # batches from device-resident trees (resident.py); no measured gain
     cql_alpha: float = 0.0
     gamma: float = DEFAULT_GAMMA    # 0.9999: paper's discounted reward ~= SSP limit
     reward_scale: Optional[float] = None
@@ -223,43 +223,30 @@ def load_pool(cfg: RunConfig, repo_root: Path) -> tuple[List, Dict[str, Instance
             f"tables have their shallow goals deleted and are a DIFFERENT search "
             f"problem. See usable_pool.json for the per-instance reason."
         )
-    caches = {i.name: InstanceCache.from_paths(
-        i.state_paths_abs(repo_root),
-        cache_file=_fringe_dir(cfg).parent / "cache" / f"{i.name}.pt",
-        verbose=False) for i in insts}
-    goals = _load_goals(cfg, csvs, insts)
+    caches = {i.name: _cache_for(cfg, i, repo_root) for i in insts}
+    goals = _load_goals(cfg, insts, caches)
     return insts, caches, {"pool": pool, "unsolvable": [u.name for u in unsolvable],
                            "goals": goals}
 
 
-def _load_goals(cfg: RunConfig, csvs, insts) -> Optional[Dict[str, object]]:
-    """S2 -- validate mode against data at load time. Separated: every usable instance
-    MUST have a readable ``goal_tree.dot`` beside its state CSV (same dir); a missing one
-    FAILS LOUDLY with the instance name + expected path rather than falling back to None
-    (that silent fallback is exactly the bug this change removes). Merged: no goal is
-    loaded and None is returned.
+def _cache_for(cfg: RunConfig, inst, repo_root: Path) -> InstanceCache:
+    """States parsed once per tree. The DOTs are always MERGED (the separated
+    writer records no designated worlds, issue #2); in separated mode the cache
+    derives the planner's separated state and goal graphs from them."""
+    return InstanceCache.from_paths(
+        inst.state_paths_abs(repo_root),
+        separated=(cfg.kind_of_data == "separated"),
+        cache_file=_fringe_dir(cfg).parent / "cache" / f"{inst.name}.{cfg.kind_of_data}.pt",
+        verbose=False)
 
-    Data-layout difference: separated generation (launcher ``--no_goal`` / GEN_FLAG) emits
-    the goal as a SEPARATE per-instance ``goal_tree.dot``; merged folds the goal into each
-    state graph, so no separate goal artifact is expected.
-    """
+
+def _load_goals(cfg: RunConfig, insts, caches) -> Optional[Dict[str, object]]:
+    """Separated: one goal graph per tree, from its cache (derived from the merged
+    DOTs, so it can never be silently missing). Merged: None."""
     if cfg.kind_of_data != "separated":
         return None
-    goals: Dict[str, object] = {}
-    for i in insts:
-        # Beside THIS tree's CSV: two strategies of one instance live in two folders,
-        # each with its own goal_tree.dot, so the lookup keys on the tree, not the
-        # instance name.
-        gp = Path(i.csv_path).parent / "goal_tree.dot"
-        if not gp.exists():
-            raise FileNotFoundError(
-                f"separated mode (kind_of_data=separated) requires a goal_tree.dot for "
-                f"every usable instance, but it is missing for {i.name!r}: expected "
-                f"{gp}. Regenerate the data in separated mode, or run merged. "
-                f"(Refusing to fall back to a goal-less run -- that was the bug.)"
-            )
-        goals[i.name] = load_goal_graph(gp)
-    print(f"[run] separated: loaded goal_tree.dot for {len(goals)} instances (goal is "
+    goals = {i.name: caches[i.name].goal for i in insts}
+    print(f"[run] separated: goal graph derived for {len(goals)} instances (goal is "
           f"threaded through training, target net, and eval)")
     return goals
 
@@ -282,10 +269,7 @@ def _load_test_instances(cfg: RunConfig, repo_root: Path,
         loaded = _unify(cfg, loaded, repo_root)
     solvable, _ = partition_solvable(loaded)
     for i in solvable:
-        caches.setdefault(i.name, InstanceCache.from_paths(
-            i.state_paths_abs(repo_root),
-            cache_file=_fringe_dir(cfg).parent / "cache" / f"{i.name}.pt",
-            verbose=False))
+        caches.setdefault(i.name, _cache_for(cfg, i, repo_root))
     return solvable
 
 
@@ -328,7 +312,7 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
     if goals is not None and test_i:
         # separated PRIMARY path: test instances score through score_for too, so they
         # need goals as well (same FAIL-LOUD contract as train).
-        goals.update(_load_goals(cfg, list(cfg.test_csvs or []), test_i))
+        goals.update(_load_goals(cfg, test_i, caches))
     for t in test_i:
         by_name.setdefault(t.name, t)
     #        UNIFIED (cfg.unified): every trajectory trains; the ranking metrics and
@@ -565,7 +549,8 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
                                        model=cfg.model, cql_alpha=cfg.cql_alpha,
                                        reward_scale=scale, expansion_cap=cap,
                                        seed=cfg.seed, device=device,
-                                       sampler=cfg.sampler, sampler_k=cfg.sampler_k),
+                                       sampler=cfg.sampler, sampler_k=cfg.sampler_k,
+                                       resident_packing=cfg.resident_packing),
                            goals=goals)
         print(trainer.allocation_report(D))
 
@@ -576,7 +561,7 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
         with torch.no_grad():
             return net(node_features=p["node_features"], edge_index=p["edge_index"],
                        edge_attr=p["edge_attr"], membership=p["membership"],
-                       candidate_batch=None, mask=p["mask"],
+                       pointed_ids=p["pointed_ids"], candidate_batch=None, mask=p["mask"],
                        goal_node_features=p.get("goal_node_features"),
                        goal_edge_index=p.get("goal_edge_index"),
                        goal_edge_attr=p.get("goal_edge_attr"),
@@ -612,10 +597,22 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
     _ckpt_set = set(ckpt_steps)
     import time as _time
     t_train, t_eval = 0.0, 0.0     # wall split: trainer.step vs per-checkpoint eval
+    diverged = None
     for step in range(1, S + 1):
         if trainer is not None:
             _t0 = _time.perf_counter()
-            log = trainer.step()
+            try:
+                log = trainer.step()
+            except DivergenceError as e:
+                # gamma~1 gives no contraction: late drift is expected on long runs. The
+                # checkpoints saved so far were all under the ceiling, so stop here and
+                # select among them (early stopping) instead of losing the run.
+                if not cands:
+                    raise
+                diverged = (step, str(e))
+                print(f"[run] DIVERGED at step {step}/{S}: {e}")
+                print(f"[run] stopping early; selecting among {len(cands)} checkpoint(s)")
+                break
             t_train += _time.perf_counter() - _t0
         bar.update(cfg.batch_size / N_train)
         if step in _ckpt_set:
@@ -884,7 +881,10 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
     except Exception as e:                       # plotting must never fail a run
         print(f"[run] (figures skipped: {e})")
 
-    return {"selected": best, "baselines": baselines, "gates": gates, "run_dir": run_dir}
+    if diverged is not None:
+        (run_dir / "diverged.txt").write_text(f"step {diverged[0]} of {S}\n{diverged[1]}\n")
+    return {"selected": best, "baselines": baselines, "gates": gates, "run_dir": run_dir,
+            "diverged_at": diverged[0] if diverged else None}
 
 
 def _mk(p: Path) -> Path:

@@ -52,17 +52,20 @@ of step with `candidate_batch`.
   encoder's goal packing and the C++ `m_goal_graph_tensor` remains pending a C++
   fringe/goal tensor dump. Inference succeeds, but exact node-order equivalence
   is not yet asserted.
-- **gnn_handler = training + export ready (gnn_handler_plus removed 2026-09-07); deployment pending
-  the C++ `run_inference` separated branch.** A separated distance-estimator ONNX
-  exports the goal inputs (`goal_node_ids, goal_edge_index, goal_edge_attr,
-  goal_batch`). Deployment requires the C++ `GraphNN::run_inference` separated
-  branch to feed `get_goal_tensor()` into them, mirroring `FringeEvalRL` (today
-  `run_inference` early-exits on `--dataset_separated`). The goal tensor is
-  already built at solve time, so training/export here is the ready precursor.
-  **Update (2026-09-28):** the C++ side is done (commit `10cc2ff`, issue #3):
-  `run_inference` no longer exits and feeds the 4 goal inputs after the state
-  inputs. It also feeds `pointed_ids` (5th state input), so the export must
-  add it; see `docs/python_followups.md` §1–3.
+- **Separated data comes from MERGED DOTs (2026-09-26).** The separated writer
+  records no designated worlds (issue #2), while the planner feeds `pointed_ids`
+  in both modes. `deep_nn.dot.separated_view` derives the planner's separated
+  state (designated worlds first, then belief order) and goal graphs from a
+  merged file; verified equal to planner-written separated files. A
+  separated-generated DOT is refused at cache build.
+- **gnn_handler deploys through `FringeEvalRL` too** (fringe contract, scores =
+  `-distance`), so the `GraphNN::run_inference` separated branch is no longer
+  on the deployment path.
+- **Upstream 2026-09-28:** separated DOTs now mark designated worlds
+  (`<id> [shape=doublecircle];`, issue #2, commit f117a71) and `GraphNN::run_inference`
+  has a separated branch (issue #3, commit 10cc2ff). `deep_nn.dot` still derives
+  separated inputs from merged DOTs; reading the new lines is a pending follow-up
+  (`docs/python_followups.md`).
 
 ## Hardening notes
 - **Empty-goal guard:** `load_goal_graph` rejects a 0-node goal; the

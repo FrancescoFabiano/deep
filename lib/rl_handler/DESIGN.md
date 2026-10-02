@@ -22,10 +22,15 @@ Consumer chain: `SpaceSearcher.tpp` → `RL_BestFirst.h` → `FringeEvalRL.{h,tp
 | 1 | `edge_index` | int64 | `[2,E]` | per-state `edge_src`/`edge_dst` + cumulative node offset |
 | 2 | `edge_attr` | int64 | `[E]` | raw integer edge labels |
 | 3 | `membership` | int64 | `[N]` | state index repeated per node |
-| 4–7 | `goal_node_features`, `goal_edge_index`, `goal_edge_attr`, `goal_batch` | int64 | | **separated only** |
+| 4 | `pointed_ids` | int64 | `[P]` | designated worlds (`GraphTensor::pointed_ids`) + cumulative node offset (since 405d76f) |
+| 5–8 | `goal_node_features`, `goal_edge_index`, `goal_edge_attr`, `goal_batch` | int64 | | **separated only** |
 | last | `mask` | uint8 | `[F]` | `active_states`; 1 for slots `0..K-1` |
 
-Output: `logits` float32 `[F]`. **Higher logit = expanded sooner** (`rankScores`
+The contract (names, order, dtypes, export, parity) is implemented ONCE in
+`lib/deep_nn/contract.py` and shared with the GNN distance estimator, which is
+deployed through the same consumer (its scores are `-distance`).
+
+Output: `scores` (historically `logits`) float32 `[F]`. **Higher logit = expanded sooner** (`rankScores`
 sorts descending, assigns rank `i` as the heuristic value; `StateComparator` is a
 min-heap on it, so rank 0 = argmax logit is popped first).
 

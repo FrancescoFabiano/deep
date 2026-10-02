@@ -1,0 +1,30 @@
+(define (problem amc-3-2-clean)  ;; 3 children; 2 are muddy; child 1 is not muddy
+    (:domain active-muddy-child)
+
+    (:requirements
+        :equality :list-comprehensions
+        :finitary-S5-theories :modal-goals
+    )
+
+    (:agents
+        Child1 Child2 Child3
+    )
+
+    (:init
+        (:and
+            ;; Children 2 and 3 are muddy
+            (muddy Child2) (muddy Child3)
+            ;; It is common knowledge that at least one child is muddy
+            ([C. All]
+                (exists (?i - agent)
+                    (muddy ?i) ))
+            ;; It is common knowledge that all children know whether the others are muddy
+            (:forall (?i ?j - agent | (/= ?i ?j))
+                ([C. All]
+                    ([Kw. ?i] (muddy ?j)) )))
+    )
+
+    (:goal
+        ([Kw. Child1] (muddy Child1))
+    )
+)

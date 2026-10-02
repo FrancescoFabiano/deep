@@ -18,11 +18,11 @@ makes it safe to train through one and deploy through the other.
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Dict, Optional, Sequence, Tuple
 
 import torch
 
-from .encoder import InstanceCache, StateGraph, pack_fringe, pack_goal_tensors
+from .encoder import InstanceCache, StateGraph, pack_fringe, pack_fringes, pack_goal_tensors
 
 
 def default_device() -> str:
@@ -82,29 +82,9 @@ def pack_batch(
     `goal_graphs` (separated mode): one goal per fringe, aligned with `picks`,
     emitting the 4 goal tensors. `None` -> merged, byte-identical (no goal keys).
     """
-    nf, ei, ea, mem, cb = [], [], [], [], []
-    slot_offset: List[int] = []
-    node_off, slot_off = 0, 0
-    for i, (name, beam) in enumerate(picks):
-        p = pack_fringe(caches[name], list(beam), len(beam))
-        nf.append(p["node_features"])
-        ei.append(p["edge_index"] + node_off)
-        ea.append(p["edge_attr"])
-        mem.append(p["membership"] + slot_off)
-        cb.append(torch.full((len(beam),), i, dtype=torch.int64))
-        slot_offset.append(slot_off)
-        node_off += int(p["node_features"].numel())
-        slot_off += len(beam)
-    out = {
-        "node_features": torch.cat(nf).to(device),
-        "edge_index": torch.cat(ei, dim=1).to(device),
-        "edge_attr": torch.cat(ea).to(device),
-        "membership": torch.cat(mem).to(device),
-        "candidate_batch": torch.cat(cb).to(device),
-        "slot_offset": torch.tensor(slot_offset, dtype=torch.int64, device=device),
-        "beam_sizes": torch.tensor([len(b) for _, b in picks], dtype=torch.int64, device=device),
-        "n_slots": slot_off,
-    }
+    out = pack_fringes([pack_fringe(caches[name], list(beam), len(beam)) for name, beam in picks])
+    out["beam_sizes"] = torch.tensor([len(b) for _, b in picks], dtype=torch.int64)
+    out = {k: v.to(device) if isinstance(v, torch.Tensor) else v for k, v in out.items()}
     if goal_graphs is not None:
         if len(goal_graphs) != len(picks):
             raise ValueError(

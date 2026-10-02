@@ -1,413 +1,110 @@
-"""Distance-estimator trainer: build data, train, export ONNX for the planner.
+"""Distance-estimator trainer: beams in, per-state distances out, ONNX for the planner.
 
-Per-STATE regressor: one state graph in (merged: goal inlined in the DOT;
-separated: the instance's goal_tree.dot fed as a second graph), one score out.
-No tree, no fringe. Data path: GraphDataPipeline (rows) + GraphStore (graphs
-parsed once per instance, cached under <dir-save-data>/cache/, batched by
-index). Export: TorchScript exporter, single file, then a contract check and a
-planner-style single-state parity check against onnxruntime -- what leaves
-this script is what the C++ GraphNN feeds.
+The model scores one state at a time, so the fringe size is not a property of the
+model: it is trained ONCE on beams of ``--train-fringe-size`` states and exported
+from the same weights once per ``--fringe-sizes`` entry (the pooled size F is
+baked into the ONNX graph) as ``distance_estimator_<F>.onnx``, plus one per-state
+export ``distance_estimator_state.onnx`` (+ ``_C.txt``) for HFS / A*. Exports go
+through the shared FringeEvalRL contract (lib/deep_nn/contract.py): deploy with
+``--search RL --heuristics RL_H --RL_model <file> --RL_fringe_size F`` (plus
+``--dataset_separated`` for a separated model).
 
-Driven by scripts/gnn_exp/train_models.py; the flags are its interface.
+The train/test split is the data: ``--train-csv`` tables train, ``--test-csv``
+tables are evaluated only.  Driven by scripts/trial.py train.
 """
 
+from __future__ import annotations
+
 import argparse
-import os
+import sys
+from pathlib import Path
 
-import torch
-
-from src.graph_store import GraphStore
-from src.preprocessing import (
-    GraphDataPipeline,
-)
-from src.utils import (
-    get_batchers,
-    prepare_targets,
-    print_values,
-    seed_everything,
-    select_model,
-    KEYWORD_MAPPED,
-    KEYWORD_HASHED,
-    KEYWORD_BITMASK,
-)
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))          # this handler's `src`
+sys.path.append(str(HERE.parent))     # lib/deep_nn, shared with rl_handler
 
 
-def str2bool(v):
-    if isinstance(v, bool):
-        return v
-    v = v.lower()
-    if v in ("yes", "y", "true", "t"):
-        return True
-    if v in ("no", "n", "false", "f"):
-        return False
-    raise argparse.ArgumentTypeError("Boolean value expected (true/false).")
+from deep_nn.policies import BEHAVIOUR_POLICIES  # noqa: E402
+from src.beams import build_datasets  # noqa: E402
+from src.utils import DistanceEstimatorModel, seed_everything  # noqa: E402
+
+REPO_ROOT = HERE.parents[1]
 
 
-def parse_args():
-    parser = argparse.ArgumentParser(
-        description="Train and/or build data for the distance estimator model."
-    )
-    # simple string / numeric args
-    parser.add_argument(
-        "--subset-train",
-        action="extend",  # collect all values into one list
-        nargs="+",  # each occurrence takes 1+ args
-        type=str,
-        default=[],
-        help="Name(s) of problem subsets to use for training",
-    )
-    parser.add_argument(
-        "--model-name",
-        default="distance_estimator",
-        type=str,
-        help="Name for the distance estimator model",
-    )
-    parser.add_argument(
-        "--normalization-constants-name",
-        default="C",
-        type=str,
-        help="Name of normalization constants txt file, helpful for rescaling the output of regressor",
-    )
-    parser.add_argument(
-        "--folder-raw-data",
-        type=str,
-        default="out/NN/Training",
-        help="Where to find/build the data",
-    )
-    parser.add_argument(
-        "--unreachable-state-value",
-        type=int,
-        default=1000000,
-        help="Value to use for unreachable states",
-    )
-    parser.add_argument(
-        "--test-size", type=float, default=0.2, help="Fraction of held-out test data"
-    )
-    parser.add_argument(
-        "--max-percentage-per-class",
-        type=float,
-        default=0.5,
-        help="Highest possible percentage for one class in the target variable.",
-    )
-    parser.add_argument(
-        "--dir-save-data",
-        type=str,
-        default="data",
-        help="Directory to save processed data",
-    )
-    parser.add_argument(
-        "--dir-save-model",
-        type=str,
-        default="models",
-        help="Directory to save trained models",
-    )
-    parser.add_argument(
-        "--experiment-name",
-        type=str,
-        default="",
-        help="Name of experiment with which data and models will be stored",
-    )
-
-    parser.add_argument(
-        "--n-train-epochs", type=int, default=200, help="Number of training epochs"
-    )
-    parser.add_argument(
-        "--batch-size", type=int, default=1024, help="Training batch size"
-    )
-
-    parser.add_argument("--seed", type=int, default=42, help="Random State")
-
-    # boolean flags
-    parser.add_argument(
-        "--build-data",
-        type=str2bool,
-        default=True,
-        help="Whether to (re)build the data",
-    )
-    parser.add_argument(
-        "--train", type=str2bool, default=True, help="Whether to train the models"
-    )
-    parser.add_argument(
-        "--if-try-example",
-        type=str2bool,
-        default=False,
-        help="Inference with pytorch and onnx model on example samples",
-    )
-    parser.add_argument(
-        "--dataset_type",
-        choices=[KEYWORD_MAPPED, KEYWORD_HASHED, KEYWORD_BITMASK],
-        default=KEYWORD_HASHED,
-        help="Specifies how node labels are represented in dataset generation. Options: MAPPED (compact integer mapping), HASHED (standard hashing), or BITMASK (bitmask representation of fluents and goals).",
-    )
-    parser.add_argument(
-        "--kind-of-data",
-        type=str,
-        choices=["merged", "separated"],
-        default="merged",
-        help="Data split type to use",
-    )
-    parser.add_argument(
-        "--use-goal",
-        type=str2bool,
-        default=False,
-        help="Whether to include goal info (true/false)",
-    )
-    parser.add_argument(
-        "--use-depth",
-        type=str2bool,
-        default=False,
-        help="Whether to include depth info (true/false)",
-    )
-
-    parser.add_argument(
-        "--verbose",
-        type=str2bool,
-        default=False,
-        help="Whether to print detailed eval errors",
-    )
-
-    args = parser.parse_args()
-
-    return args
+def parse_args(argv=None):
+    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    p.add_argument("--train-csv", nargs="+", required=True, help="generation tables to train on")
+    p.add_argument("--test-csv", nargs="*", default=None, help="held-out tables: evaluated, never trained on")
+    p.add_argument("--dir-save-model", required=True, help="checkpoint, exports and info go here")
+    p.add_argument("--kind-of-data", choices=["merged", "separated"], default="merged",
+                   help="the planner's state representation; separated is derived from merged DOTs")
+    p.add_argument("--dataset-type", "--dataset_type", default="HASHED",
+                   help="only HASHED is deployable through FringeEvalRL (issue #1)")
+    p.add_argument("--fringe-sizes", type=int, nargs="+", default=[1, 4, 8, 16, 32],
+                   help="one ONNX export per F, all from the same trained model")
+    p.add_argument("--train-fringe-size", type=int, default=4, help="beam width of the training batches")
+    p.add_argument("--seed", type=int, default=42)
+    p.add_argument("--epochs", type=int, default=200)
+    p.add_argument("--batch-size", type=int, default=64, help="beams per batch")
+    p.add_argument("--lr", type=float, default=1e-3)
+    p.add_argument("--hidden-dim", type=int, default=128)
+    p.add_argument("--behaviour-policies", nargs="+", default=list(BEHAVIOUR_POLICIES))
+    p.add_argument("--seeds-per-policy", type=int, default=3)
+    p.add_argument("--unreachable-state-value", type=float, default=1e6,
+                   help="the table's distance of a state the generator could not reach a goal from")
+    p.add_argument("--model-name", default="distance_estimator")
+    p.add_argument("--no-export-onnx", action="store_true")
+    return p.parse_args(argv)
 
 
-def main(args):
-    seed = args.seed
-    seed_everything(seed)
+def train_and_export(args) -> Path:
+    seed_everything(args.seed)
+    out_dir = Path(args.dir_save_model)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    F_train = int(args.train_fringe_size)
+    train, test, params = build_datasets(
+        args.train_csv, args.test_csv, args.kind_of_data, F_train, args.unreachable_state_value,
+        cache_dir=out_dir.parent / "cache", repo_root=REPO_ROOT,
+        policies=args.behaviour_policies, seeds_per_policy=args.seeds_per_policy)
+    print(f"[gnn] train F={F_train} {args.kind_of_data}: {len(train)} train beams, "
+          f"{len(test) if test else 0} test beams, scaling {params}")
 
-    list_subset_train = args.subset_train
-    if_build_data = args.build_data
-    if_train = args.train
-    dataset_type = args.dataset_type
-    kind_of_data = args.kind_of_data
-    use_goal = args.use_goal
-    use_depth = args.use_depth
-    if_try_example = args.if_try_example
+    m = DistanceEstimatorModel(lr=args.lr, hidden_dim=args.hidden_dim,
+                               use_goal=(args.kind_of_data == "separated"))
+    train_loader = train.loader(args.batch_size, shuffle=True, seed=args.seed)
+    val_loader = test.loader(args.batch_size, shuffle=False) if test else train.loader(args.batch_size, shuffle=False)
+    m.train(train_loader, val_loader, n_epochs=args.epochs, checkpoint_dir=str(out_dir),
+            model_name=args.model_name)
+    m.load_model(out_dir / f"{args.model_name}.pt")
+    metrics = m.evaluate(val_loader)
+    print(f"[gnn] best checkpoint on {'test' if test else 'train'}: "
+          + " ".join(f"{k}={v:.4f}" for k, v in metrics.items()))
 
-    experiment_name = args.experiment_name
-    folder_raw_data = args.folder_raw_data
-
-    path_save_model = args.dir_save_model
-    path_save_data = args.dir_save_data
-
-    model_name = args.model_name
-    normalization_constants_name = args.normalization_constants_name
-
-    unreachable_state_value = args.unreachable_state_value
-    test_size = args.test_size
-    max_percentage_per_class = args.max_percentage_per_class
-
-    n_train_epochs = args.n_train_epochs
-    batch_size = args.batch_size
-
-    verbose = args.verbose
-
-    path_data = path_save_data
-    if experiment_name != "":
-        path_data += "/" + experiment_name
-    # /{dataset_type}_{kind_of_data}"
-    # path_save_data += "_goal" if use_goal else "_no_goal"
-    # path_save_data += "_depth" if use_depth else "_no_depth"
-    os.makedirs(path_data, exist_ok=True)
-    data_path = path_data + "/samples.pt"
-
-    # Separated state DOTs are goal-free, so the separate goal graph is
-    # mandatory.  Fail fast (covers train-from-saved-samples too, not just the
-    # build path where GraphDataPipeline also enforces this).
-    if kind_of_data == "separated" and not use_goal:
-        raise SystemExit(
-            "kind_of_data='separated' requires --use-goal true: separated "
-            "state DOTs are goal-free, so the goal_tree.dot must be fed as a "
-            "separate goal graph."
-        )
-    if kind_of_data == "merged" and use_goal:
-        raise SystemExit(
-            "kind_of_data='merged' with --use-goal true: the goal is already inlined "
-            "in every merged state DOT and there is no goal_tree.dot to feed, so the "
-            "goal branch would never receive a graph (and the planner feeds none in "
-            "merged mode). Use --use-goal false, or separated data."
-        )
-    if use_depth:
-        raise SystemExit(
-            "--use-depth true: the planner never feeds a depth input to the distance "
-            "estimator, so such a model cannot be deployed. Use --use-depth false."
-        )
-
-    print("\n************************************************")
-    print(
-        f"subset_train: {list_subset_train} | {dataset_type} | {kind_of_data} | Use goal: {use_goal} | Use depth: {use_depth} | Model name: {model_name} | Train: {if_train} | Build Data: {if_build_data}",
-    )
-
-    cache_dir = os.path.join(path_data, "cache")
-    bitmask = dataset_type == KEYWORD_BITMASK
-    if if_build_data:
-        pipe = GraphDataPipeline(
-            folder_data=folder_raw_data,
-            list_subset_train=list_subset_train,
-            dataset_type=dataset_type,
-            kind_of_data=kind_of_data,
-            unreachable_state_value=unreachable_state_value,
-            max_percentage_per_class=max_percentage_per_class,
-            test_size=test_size,
-            use_goal=use_goal,
-            use_depth=use_depth,
-            random_state=seed,
-        )
-        # Graphs: parsed once per instance, cached; rows become indices.
-        store = pipe.build_store(cache_dir=cache_dir, verbose=True)
-        pipe.save(out_dir=data_path, extra_params={})
-        data = torch.load(data_path, weights_only=False)
-    else:
-        data = torch.load(data_path, weights_only=False)
-        if data.get("format") != 2:
-            raise SystemExit(
-                f"{data_path} predates the graph-store format; rerun with --build-data true"
-            )
-        # Rebuild the store from the per-instance caches recorded at build time.
-        stores = []
-        for cf in data["params"]["cache_files"]:
-            payload = torch.load(cf, weights_only=False)
-            stores.append(GraphStore(payload["paths"], payload.get("node_ids"), payload.get("node_bits"),
-                                     payload["edge_index"], payload["edge_attr"],
-                                     payload["node_ptr"], payload["edge_ptr"]))
-        store = GraphStore.concat(stores)
-        if store.paths != data["store_paths"]:
-            raise SystemExit("graph caches changed since samples.pt was built; rerun with "
-                             "--build-data true")
-
-    train_index, test_index = data["train_index"], data["test_index"]
-    depths = [d for d in data["params"].get("generation_depths", {}).values() if d]
-    generation_depth = max(depths) if depths else None
-    train_index, test_index, params_f = prepare_targets(
-        train_index, test_index, unreachable_state_value, max_depth=generation_depth
-    )
-    print(f"train samples: {train_index['state'].numel()}  test samples: "
-          f"{test_index['state'].numel()}  graphs in store: {len(store)}  "
-          f"max_depth for normalisation: {generation_depth or 'legacy 50'}")
-
-    if verbose:
-        print("Train values:")
-        print_values(train_index["raw_target"])
-        print("Test values:")
-        print_values(test_index["raw_target"])
-        print("\n")
-        print("Normalization parameters: ", params_f)
-
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    store.to(device)
-    train_loader, val_loader = get_batchers(
-        store, train_index, test_index, batch_size=batch_size, seed=seed, use_depth=use_depth,
-    )
-
-    path_model = path_save_model
-    if experiment_name != "":
-        path_model += "/" + experiment_name
-
-    # instantiate
-    m = select_model(
-        model_name, use_goal, use_depth, bitmask=dataset_type == KEYWORD_BITMASK
-    )
-
-    # train
-    if if_train:
-        m.train(
-            train_loader,
-            val_loader,
-            n_epochs=n_train_epochs,
-            checkpoint_dir=path_model,
-            model_name=model_name,
-        )
-
-    # load
-    m.load_model(f"{path_model}/{model_name}.pt")
-
-    with open(
-        f"{path_model}/{model_name}_{normalization_constants_name}.txt",
-        "w",
-        encoding="utf-8",
-    ) as fh:
-        for key, value in params_f.items():
-            fh.write(f"{key} = {value}\n")
-
-    kwargs = {"th": params_f["slope"] / 2}
-
-    m.evaluate(val_loader, verbose=verbose, **kwargs)
-
-    onnx_model_path = f"{path_model}/{model_name}.onnx"
-    m.to_onnx(onnx_model_path, use_goal, use_depth)
-
-    # Planner-style parity: single states fed exactly as GraphNN.tpp does.
-    n_check = min(32, test_index["state"].numel())
-    check = m.verify_onnx(
-        onnx_model_path, store,
-        test_index["state"][:n_check].tolist(),
-        test_index["goal"][:n_check].tolist() if use_goal else None,
-    )
-    print(f"[onnx] contract OK; torch vs onnxruntime on {check['n_checked']} single-state "
-          f"feeds: max |diff| = {check['max_abs_diff']:.2e}")
-
-    if kind_of_data == "separated":
-        print(
-            "\n[NOTE] kind_of_data='separated': this ONNX declares the goal_* inputs "
-            "(8 inputs). The planner's GraphNN::run_inference currently refuses "
-            "--dataset_separated and pushes only the 4 state tensors; deploying this "
-            "model needs that C++ branch to feed get_goal_tensor() as FringeEvalRL "
-            "does. Training/export/parity here are complete.\n"
-        )
-
-    if if_try_example:
-        example_state_to_predict = f"./examples/{dataset_type}_{kind_of_data}_state.dot"
-        example_goal = "./examples/goal_tree.dot"
-        example_depth = 5
-
-        out = m.predict_single(
-            example_state_to_predict,
-            depth=example_depth if use_depth else None,
-            goal_dot=example_goal if use_goal else None,
-            bitmask=dataset_type == KEYWORD_BITMASK,
-        )
-
-        print("PyTorch output: ", out)
-
-        sss = [example_state_to_predict, example_state_to_predict]
-        ggg = [example_goal, example_goal]
-        ddd = [example_depth, example_depth]
-
-        out_onnx = m.try_onnx(
-            onnx_model_path,
-            sss,
-            depths=ddd if use_depth else None,
-            goal_dot_files=ggg if use_goal else None,
-        )
-
-        print("Out onnx: ", out_onnx)
-
-        true_val = 0 * params_f["slope"] + params_f["intercept"]
-        print("True rescaled distance: ", true_val, " -> True Distance: 0")
-
-    with open(
-        f"{path_model}/{model_name}_info.txt",
-        "w",
-        encoding="utf-8",
-    ) as fh:
-        for name, value in vars(args).items():
-            fh.write(f"{name} = {value}\n")
-        # Provenance the planner-side reader needs to check a deployment against.
-        fh.write(f"instances = {data['params'].get('instances')}\n")
-        fh.write(f"generation_depths = {data['params'].get('generation_depths')}\n")
-        fh.write(f"normalization_max_depth = {generation_depth or 50}\n")
-        fh.write(f"onnx_inputs = {check_inputs(onnx_model_path)}\n")
-        fh.write(f"onnx_parity_max_abs_diff = {check['max_abs_diff']}\n")
-
-    return onnx_model_path
+    info = {**vars(args), **{f"scaling_{k}": v for k, v in params.items()},
+            **{f"eval_{k}": v for k, v in metrics.items()}}
+    if not args.no_export_onnx:
+        for F in sorted(set(int(f) for f in args.fringe_sizes)):
+            onnx_path = out_dir / f"{args.model_name}_{F}.onnx"
+            m.to_onnx(onnx_path, F, params)
+            # parity on real beams re-packed at THIS F (truncated when F < the training width)
+            feeds = [train.planner_feed(i, fringe_size=F) for i in range(min(32, len(train)))]
+            check = m.verify_onnx(onnx_path, feeds, params)
+            print(f"[gnn] exported {onnx_path}: contract OK, torch vs onnxruntime on "
+                  f"{check['n_checked']} beams max |diff| = {check['max_abs_diff']:.2e}")
+            info.update({f"onnx_F{F}": str(onnx_path), **{f"onnx_F{F}_{k}": v for k, v in check.items()}})
+        if not m.model.use_goal:   # HFS/A* consumer: one state at a time, scaling inverted by the planner
+            info["state_onnx"] = str(m.to_onnx_state(out_dir / f"{args.model_name}_state.onnx", params))
+    (out_dir / f"{args.model_name}_info.txt").write_text(
+        "".join(f"{k} = {v}\n" for k, v in info.items()))
+    return out_dir
 
 
-def check_inputs(onnx_model_path: str):
-    import onnx
-    m = onnx.load(onnx_model_path, load_external_data=False)
-    return [(i.name, i.type.tensor_type.elem_type) for i in m.graph.input]
+def main(argv=None):
+    args = parse_args(argv)
+    if args.dataset_type.upper() != "HASHED":
+        raise SystemExit(f"--dataset-type {args.dataset_type}: FringeEvalRL deploys HASHED models only (issue #1)")
+    train_and_export(args)
 
 
 if __name__ == "__main__":
-    args = parse_args()
-    main(args)
+    main()

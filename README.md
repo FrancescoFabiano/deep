@@ -433,10 +433,11 @@ Experimental results should record the relevant planner configuration, including
 - neural model, when applicable;
 - time and memory limits.
 
-Experiment, testing, and dataset-generation utilities are available under:
+Learning experiments (data generation, RL/GNN training, inference, tables and
+figures) are driven by one script over a trial folder, see `exp/trials/README.md`:
 
-```text
-scripts/
+```bash
+python scripts/trial.py all exp/trials/basic
 ```
 
 ---
@@ -482,9 +483,12 @@ deep/
 │   └── onnxruntime/         optional NN runtime
 │
 ├── exp/
-│   └── ipc2026-benchmarks/
+│   ├── ipc2026-benchmarks/  EPDDL benchmark suite (submodule)
+│   └── trials/              learning experiments, one folder + trial.toml each
 │
 ├── scripts/
+│   ├── trial.py             data -> train -> infer -> report over a trial
+│   └── pipeline/            the four stages
 ├── utils/
 ├── CMakeLists.txt
 └── build.sh

@@ -1,0 +1,310 @@
+;; ***************************************************************************************
+;; Domain: cloud-scheduling
+;;
+;; Scenario: Shared cloud infrastructure with Tenant agents and three Host agents:
+;;   scheduler – senses task workloads (partial observability) and schedule the tasks
+;;   observer  – detects execution completion or failure
+;;   reporter  – validates completion and privately reports to corresponding tenant
+;; Tenant agents are passive: they learn about their own tasks through
+;; private reports; they never learn about other tenants' tasks.
+;;
+;; Action-type library : intermediate  (plank built-in)
+;; Epistemic level     : Intermediate  
+;;
+;; Three epistemic patterns used:
+;;   private-sensing      – scheduler privately senses workload size
+;;   private-ontic        – host-team-visible world changes (observe, validate)
+;;   public-ontic         – publicly visible scheduling decisions
+;;   private-announcement – reporter sends confidential report to one tenant
+;; ***************************************************************************************
+
+(define (domain cloud-scheduling)
+
+    (:requirements
+        :typing
+        :partial-observability
+        :ontic-actions
+        :modal-preconditions
+        :negative-preconditions
+        :knowing-whether
+        :facts
+        :lists
+        :list-comprehensions
+        :equality
+        :multi-pointed-models
+        :events-conditions
+        :negative-list-formulas
+    )
+
+    (:types task)
+
+    (:predicates
+        (submitted   ?t - task)             ;; task is in the system
+        (size-large  ?t - task)             ;; workload >= threshold (set by world)
+        (scheduled   ?t - task)             ;; admitted to execution queue
+        (executing   ?t - task)             ;; currently running
+        (completed   ?t - task)             ;; finished successfully
+        (failed      ?t - task)             ;; terminated with failure
+        (rescheduled ?t - task)             ;; failure recovery attempted (at most once)
+        (validated   ?t - task)             ;; reporter has certified completion
+
+        (:fact owner ?t - task ?i - agent)  ;; agent ?i submitted task ?t
+
+    )
+
+    ;; Shared null event used by all private action types
+    (:event nil)
+
+    ;; ***************************************************************************************
+    ;; ACTION 1: SENSE-WORKLOAD
+    ;;
+    ;; Scheduler privately senses whether task ?t has a large workload.
+    ;; Pre-condition (on world + epistemic):
+    ;;   task is submitted AND scheduler does not yet know whether size-large holds.
+    ;; Post: no world change (pure sensing).
+    ;; Epistemic effect: scheduler learns the truth value of (size-large ?t).
+    ;;   All other agents remain oblivious (cannot distinguish pos from neg).
+    ;; Action type: private-sensing  (?pos ?neg ?nil)
+    ;; ***************************************************************************************
+
+    (:event e-sense-large
+        :parameters (?t - task)
+        :precondition (and
+            (submitted ?t)
+            (size-large ?t)
+            (<Kw. scheduler> (size-large ?t)))
+    )
+
+    (:event e-sense-small
+        :parameters (?t - task)
+        :precondition (and
+            (submitted ?t)
+            (not (size-large ?t))
+            (<Kw. scheduler> (size-large ?t)))
+    )
+
+    (:action sense-workload
+        :parameters (?t - task)
+        :action-type (public-sensing (e-sense-large ?t) (e-sense-small ?t))
+        :observability-conditions (default Fully)
+    )
+
+    ;; ***************************************************************************************
+    ;; ACTION 2: SCHEDULE-TASK
+    ;;
+    ;; Scheduler publicly admits a task into the execution queue.
+    ;; scheduler must know the workload size ([Kw. scheduler] ensures
+    ;;        that sensing has occurred and the size is epistemically resolved).
+    ;; (scheduled ?t)
+    ;; Epistemic effect: all agents know the task is now scheduled.
+    ;; Action type: public-ontic  (?pos)
+    ;; ***************************************************************************************
+
+    (:event e-schedule
+        :parameters (?t - task)
+        :precondition (and
+            (submitted   ?t)
+            (not (scheduled  ?t))
+            (not (executing  ?t))
+            (not (completed  ?t))
+            (not (failed     ?t))
+            ([Kw. scheduler] (size-large ?t)))
+        :effects (scheduled ?t)
+    )
+
+    (:action schedule-task
+        :parameters (?t - task)
+        :action-type (public-ontic (e-schedule ?t))
+        :observability-conditions (default Fully)
+    )
+
+    ;; ***************************************************************************************
+    ;; ACTION 3: START-EXECUTION
+    ;;
+    ;; A scheduled task begins running on the shared infrastructure.
+    ;; All agents publicly observe the transition to executing state.
+    ;; Post: (executing ?t), (not (scheduled ?t))
+    ;; Action type: public-ontic  (?pos)
+    ;; ***************************************************************************************
+
+    (:event e-start
+        :parameters (?t - task)
+        :precondition (and
+            (scheduled ?t)
+            (not (executing ?t)))
+        :effects (:and
+            (executing   ?t)
+            (not (scheduled ?t)))
+    )
+
+    (:action start-execution
+        :parameters (?t - task)
+        :action-type (public-ontic (e-start ?t))
+        :observability-conditions (default Fully)
+    )
+
+    ;; ***************************************************************************************
+    ;; ACTION 4: OBSERVE-COMPLETION
+    ;;
+    ;; Observer detects that a running task finished successfully.
+    ;; Post: (completed ?t), (not (executing ?t))
+    ;; Epistemic effect:
+    ;;   Host team (scheduler + observer + reporter) are Fully observant:
+    ;;     they know completion occurred.
+    ;;   Tenants are Oblivious: they see only the null event and gain no
+    ;;     knowledge of completion (must wait for a private report).
+    ;; Action type: private-ontic  (?pos ?nil)
+    ;; ***************************************************************************************
+
+    (:event e-complete
+        :parameters (?t - task)
+        :precondition (and
+            (executing ?t)
+            (not (failed ?t)))
+        :effects (:and
+            (completed     ?t)
+            (not (executing ?t)))
+    )
+
+    (:action observe-completion
+        :parameters (?t - task)
+        :action-type (private-ontic (e-complete ?t) (nil))
+        :observability-conditions
+            (:and
+                (scheduler Fully)
+                (observer  Fully)
+                (reporter  Fully)
+                (default   Oblivious))
+    )
+
+    ;; ***************************************************************************************
+    ;; ACTION 5: OBSERVE-FAILURE
+    ;;
+    ;; Observer detects that a running task terminated with a failure.
+    ;; Post: (failed ?t), (not (executing ?t))
+    ;; Same host-team/tenant observability split as observe-completion.
+    ;; Action type: private-ontic  (?pos ?nil)
+    ;; ***************************************************************************************
+
+    (:event e-fail
+        :parameters (?t - task)
+        :precondition (and
+            (executing ?t)
+            (not (completed ?t)))
+        :effects (:and
+            (failed        ?t)
+            (not (executing ?t)))
+    )
+
+    (:action observe-failure
+        :parameters (?t - task)
+        :action-type (private-ontic (e-fail ?t) (nil))
+        :observability-conditions
+            (:and
+                (scheduler Fully)
+                (observer  Fully)
+                (reporter  Fully)
+                (default   Oblivious))
+    )
+
+    ;; ***************************************************************************************
+    ;; ACTION 6: RESCHEDULE-TASK
+    ;;
+    ;; Scheduler re-queues a failed task (recovery, at most once).
+    ;; The (rescheduled ?t) flag prevents repeated recovery attempts.
+    ;; Post: (scheduled ?t), (rescheduled ?t), (not (failed ?t))
+    ;; All agents publicly observe the rescheduling decision.
+    ;; Action type: public-ontic  (?pos)
+    ;; ***************************************************************************************
+
+    (:event e-reschedule
+        :parameters (?t - task)
+        :precondition (and
+            (failed        ?t)
+            (not (rescheduled ?t))
+            (not (completed   ?t)))
+        :effects (:and
+            (scheduled      ?t)
+            (rescheduled    ?t)
+            (not (failed    ?t)))
+    )
+
+    (:action reschedule-task
+        :parameters (?t - task)
+        :action-type (public-ontic (e-reschedule ?t))
+        :observability-conditions (default Fully)
+    )
+
+    ;; ***************************************************************************************
+    ;; ACTION 7: VALIDATE-COMPLETION
+    ;;
+    ;; Reporter certifies that a completed task is officially done.
+    ;; This is a host-internal audit step; tenants remain oblivious.
+    ;; Post: (validated ?t)
+    ;; Epistemic effect: host team knows validated; tenants see null event.
+    ;; Action type: private-ontic  (?pos ?nil)
+    ;; ***************************************************************************************
+
+    (:event e-validate
+        :parameters (?t - task)
+        :precondition (and
+            (completed  ?t)
+            (not (validated ?t)))
+        :effects (validated ?t)
+    )
+
+    (:action validate-completion
+        :parameters (?t - task)
+        :action-type (private-ontic (e-validate ?t) (nil))
+        :observability-conditions
+            (:and
+                (scheduler Fully)
+                (observer  Fully)
+                (reporter  Fully)
+                (default   Oblivious))
+    )
+
+    ;; ***************************************************************************************
+    ;; ACTION 8: REPORT-TO-TENANT  (private channel)
+    ;;
+    ;; Reporter truthfully announces to the owning tenant ?tn that their
+    ;; task ?t has been validated and is complete.
+    ;;
+    ;; Event precondition (truthfulness):
+    ;;   - task is validated
+    ;;   - ?tn is the owner
+    ;;   - ?tn does not yet know whether completed holds (<Kw. ?tn> guards
+    ;;     against redundant reports; once ?tn knows, this is false)
+    ;;
+    ;; Epistemic effect:
+    ;;   reporter  (Actor)  : Fully — knows the report was delivered
+    ;;   ?tn       (Target) : Fully — gains knowledge of (completed ?t)
+    ;;   all others         : Oblivious — see only the null event;
+    ;;                        other tenants learn nothing
+    ;;
+    ;; Privacy invariant: for any ?tn2 ≠ ?tn, the accessibility relation of
+    ;; ?tn2 is unchanged after this action (Oblivious group sees nil only).
+    ;; Action type: private-announcement  (?pos ?nil)
+    ;; ***************************************************************************************
+
+    (:event e-report
+        :parameters (?t - task ?tn - agent)
+        :precondition (and
+            (validated ?t)
+            (owner      ?t ?tn))
+        :effects (:and
+                    (completed ?t)
+                    (validated ?t)
+                 )
+    )
+
+    (:action report-to-tenant
+        :parameters (?t - task ?tn - agent | (/= ?tn scheduler))
+        :action-type (private-ontic (e-report ?t ?tn) (nil))
+        :observability-conditions
+            (:and
+                (reporter Fully)
+                (?tn      Fully)
+                (default  Oblivious))
+    )
+)

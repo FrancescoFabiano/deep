@@ -1,0 +1,51 @@
+;; Solution:
+;;  1. unstack_b8_b7
+;;  2. put-down_b8
+;;  3. unstack_b7_b6
+;;  4. put-down_b7
+;;  5. unstack_b3_b1
+;;  6. stack_b3_b8
+;;  7. unstack_b5_b4
+;;  8. stack_b5_b3
+;;  9. unstack_b4_b2
+;;  10. stack_b4_b6
+;;  11. unstack_b10_b9
+;;  12. stack_b10_b1
+;;  13. pick-up_b9
+;;  14. stack_b9_b2
+
+
+(define (problem bw-10)
+    (:domain blocks-world)
+
+    (:requirements
+        :finitary-S5-theories :typing :lists
+    )
+
+    (:objects
+        b1 b2 b3 b4 b5 b6 b7 b8 b9 b10 - block
+    )
+
+    (:init
+        :worlds
+            (w)
+        :relations
+            (Robot (w w))
+        :labels
+            (w
+                (:and
+                    (on-table b1) (on-table b2) (on-table b6) (on-table b9)
+                    (on b3 b1) (on b4 b2) (on b5 b4) (on b7 b6) (on b8 b7) (on b10 b9)
+                    (clear b3) (clear b5) (clear b8) (clear b10)
+                    (arm-empty)) )
+        :designated (w)
+    )
+
+    (:goal
+        (and
+            (on b9 b2)
+            (on b5 b3)
+            (on b10 b1)
+            (on-table b7) )
+    )
+)

@@ -1,0 +1,25 @@
+(define (problem gos-7-all)  ;; 7 agents
+    (:domain gossip)
+
+    (:requirements
+        :finitary-S5-theories :universal-goals :modal-goals
+    )
+
+    (:agents
+        A B C D E F G
+    )
+
+    (:init
+        (:and
+            (forall (?i - agent)
+                (secret ?i) )
+            ;; It is common knowledge that each agent knows whether her secret holds
+            (:forall (?i - agent)
+                ([C. All] ([Kw. ?i] (secret ?i))) ))
+    )
+
+    (:goal
+        (forall (?i - agent)
+            ([Kw. All] (secret ?i)) )
+    )
+)

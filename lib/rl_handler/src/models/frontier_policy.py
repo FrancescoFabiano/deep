@@ -23,6 +23,8 @@ from torch_geometric.nn import (
 )
 from typing import Optional
 
+from deep_nn.features import PointedEmbedding
+
 DATASET_TYPE_HASHED = "HASHED"
 DATASET_TYPE_MAPPED = "MAPPED"
 DATASET_TYPE_BITMASK = "BITMASK"
@@ -260,6 +262,7 @@ class GNNEncoder(nn.Module):
             nn.Linear(self.hidden_dim, self.hidden_dim),
         )
         self.node_label_embedding = nn.Embedding(self.num_node_labels, self.hidden_dim)
+        self.pointed = PointedEmbedding(self.hidden_dim)
         self.edge_embedding = nn.Embedding(self.num_edge_labels, self.edge_emb_dim)
         self.edge_proj = nn.Sequential(
             nn.Linear(self.edge_emb_dim, self.edge_emb_dim),
@@ -411,7 +414,10 @@ class GNNEncoder(nn.Module):
         node_features: torch.Tensor,
         edge_index: torch.Tensor,
         edge_attr: torch.Tensor,
+        pointed_ids: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
+        """`pointed_ids`: the designated worlds (planner input 5); None only for
+        a goal graph, which has none."""
         raw_nodes = node_features
         if raw_nodes.dim() == 1:
             raw_nodes = raw_nodes.view(-1, 1)
@@ -420,6 +426,8 @@ class GNNEncoder(nn.Module):
         x = self.input_proj_refine(x)
         node_ids = self._node_label_ids(raw_nodes, device=edge_index.device)
         x = x + self.node_label_embedding(node_ids)
+        if pointed_ids is not None:
+            x = self.pointed(x, pointed_ids)
         edge_ids = self._edge_label_ids(edge_attr, device=edge_index.device)
         shared_edge_attr = None
         if self.conv_type == "gine":
@@ -675,6 +683,7 @@ class FrontierPolicyNetwork(nn.Module):
         edge_index: torch.Tensor,
         edge_attr: torch.Tensor,
         membership: torch.Tensor,
+        pointed_ids: torch.Tensor,
         candidate_batch: Optional[torch.Tensor] = None,
         mask: Optional[torch.Tensor] = None,
         goal_node_features: Optional[torch.Tensor] = None,
@@ -690,7 +699,7 @@ class FrontierPolicyNetwork(nn.Module):
         this encoder + context stack byte-for-byte. That identity is what makes
         the two-head baseline a fair comparison: only the loss differs.
         """
-        node_emb = self.encoder(node_features, edge_index, edge_attr)
+        node_emb = self.encoder(node_features, edge_index, edge_attr, pointed_ids)
         expected_num_candidates = (
             int(candidate_batch.numel()) if candidate_batch is not None else None
         )
@@ -742,6 +751,7 @@ class FrontierPolicyNetwork(nn.Module):
         edge_index: torch.Tensor,
         edge_attr: torch.Tensor,
         membership: torch.Tensor,
+        pointed_ids: torch.Tensor,
         candidate_batch: Optional[torch.Tensor] = None,
         mask: Optional[torch.Tensor] = None,
         goal_node_features: Optional[torch.Tensor] = None,
@@ -752,7 +762,7 @@ class FrontierPolicyNetwork(nn.Module):
         pool_membership: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
         h = self.head_features(
-            node_features, edge_index, edge_attr, membership,
+            node_features, edge_index, edge_attr, membership, pointed_ids,
             candidate_batch=candidate_batch, mask=mask,
             goal_node_features=goal_node_features, goal_edge_index=goal_edge_index,
             goal_edge_attr=goal_edge_attr, goal_batch=goal_batch,

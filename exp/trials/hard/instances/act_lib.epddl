@@ -1,0 +1,222 @@
+(define (action-type-library hard)
+    (:requirements
+        :lists :list-comprehensions :equality
+        :partial-observability :multi-pointed-models :events-conditions
+        :KD45-frames :negative-list-formulas
+    )
+
+
+    ;=================================================
+    ;|                     HARD                      |
+    ;=================================================
+
+
+    ;-------------------NON-DET-ONTIC-----------------
+
+    (:action-type public-non-det-ontic
+        :events     (?e1 ?e2)
+        :observability-types (Fully)
+        :relations  (Fully (:forall (?e - event) (?e ?e)))
+        :designated (?e1 ?e2)
+        :conditions (?e1 (:non-trivial-postconditions)
+                     ?e2 (:non-trivial-postconditions) )
+    )
+
+    (:action-type private-non-det-ontic
+        :events     (?e1 ?e2 ?nil)
+        :observability-types (Fully Oblivious)
+        :relations  (Fully     (:forall (?e - event) (?e ?e))
+                     Oblivious (:forall (?e - event) (?e ?nil)) )
+        :designated (?e1 ?e2)
+        :conditions (?e1  (:non-trivial-postconditions)
+                     ?e2  (:non-trivial-postconditions)
+                     ?nil (:trivial-event) )
+    )
+
+
+    ;--------------------DECEPTION------------------
+
+    (:action-type private-deception
+        :events     (?actual ?deceive ?nil)
+        :observability-types (Fully Deceived Oblivious)
+        :relations  (Fully     (:forall (?e - event) (?e ?e))
+                     Deceived  (:and (?actual ?deceive) (?deceive ?deceive) (?nil ?nil))
+                     Oblivious (:forall (?e - event) (?e ?nil)) )
+        :designated (?actual)
+        :conditions (?actual  (:trivial-postconditions)
+                     ?deceive (:trivial-postconditions
+                               :non-trivial-precondition)
+                     ?nil     (:trivial-event) )
+    )
+
+    (:action-type private-2x-deception
+        :events
+            (?actual
+             ?true-dec
+             ?false-dec
+             ?spying
+             ?nil)
+        :observability-types
+            (FalselyDeceived
+             TrulyDeceived
+             Spying
+             Oblivious)
+        :relations 
+            (FalselyDeceived
+                (:and
+                    (?actual    ?actual)
+                    (?spying    ?actual)
+                    (?true-dec  ?false-dec)
+                    (?false-dec ?false-dec)
+                    (?nil       ?nil) )
+             TrulyDeceived
+                (:and
+                    (?actual    ?true-dec)
+                    (?spying    ?true-dec)
+                    (?true-dec  ?true-dec)
+                    (?false-dec ?false-dec)
+                    (?nil       ?nil) )
+             Spying
+                (:and
+                    (?actual    ?spying)
+                    (?spying    ?spying)
+                    (?true-dec  ?nil)
+                    (?false-dec ?nil)
+                    (?nil       ?nil) )
+             Oblivious
+                (:forall (?e - event)
+                    (?e ?nil) ))
+        :designated
+            (?actual)
+        :conditions
+            (?actual    (:trivial-postconditions)
+             ?true-dec  (:trivial-postconditions
+                         :non-trivial-precondition)
+             ?false-dec (:trivial-postconditions
+                         :non-trivial-precondition)
+             ?nil       (:trivial-event) )
+    )
+
+
+
+    ;=================================================
+    ;|                 INTERMEDIATE                  |
+    ;=================================================
+    
+    
+    ;--------------------ONTIC------------------
+
+    (:action-type public-ontic
+        :events     (?pos)
+        :observability-types (Fully)
+        :relations  (Fully (:forall (?e - event) (?e ?e)))
+        :designated (?pos)
+        :conditions (?pos (:non-trivial-postconditions))
+    )
+
+    (:action-type private-ontic
+        :events     (?pos ?nil)
+        :observability-types (Fully Oblivious)
+        :relations  (Fully     (:forall (?e - event) (?e ?e))
+                     Oblivious (:forall (?e - event) (?e ?nil)) )
+        :designated (?pos)
+        :conditions (?pos (:non-trivial-postconditions)
+                     ?nil (:trivial-event) )
+    )
+
+
+    ;--------------------SENSING------------------
+
+    (:action-type public-sensing
+        :events     (?pos ?neg)
+        :observability-types (Fully)
+        :relations  (Fully (:forall (?e - event) (?e ?e)))
+        :designated (?pos ?neg)
+        :conditions (?pos (:trivial-postconditions)
+                     ?neg (:trivial-postconditions) )
+    )
+
+    (:action-type private-sensing
+        :events     (?pos ?neg ?nil)
+        :observability-types (Fully Oblivious)
+        :relations  (Fully     (:forall (?e - event) (?e ?e))
+                     Oblivious (:forall (?e - event) (?e ?nil)) )
+        :designated (?pos ?neg)
+        :conditions (?pos (:trivial-postconditions)
+                     ?nil (:trivial-event) )
+    )
+
+    (:action-type semi-private-sensing
+        :events     (?pos ?neg)
+        :observability-types (Fully Partially)
+        :relations  (Fully     (:forall (?e    - event) (?e ?e))
+                     Partially (:forall (?e ?f - event) (?e ?f)) )
+        :designated (?pos ?neg)
+        :conditions (?pos (:trivial-postconditions)
+                     ?neg (:trivial-postconditions) )
+    )
+
+    (:action-type quasi-private-sensing
+        :events     (?pos ?neg ?nil)
+        :observability-types (Fully Partially Oblivious)
+        :relations  (Fully     (:forall (?e - event) (?e ?e))
+                     Partially (:forall (?e ?f - event |
+                        (imply
+                            (/= ?e ?f)
+                            (and (/= ?e ?nil) (/= ?f ?nil)) ))
+                        (?e ?f) )
+                     Oblivious (:forall (?e - event) (?e ?nil)) )
+        :designated (?pos ?neg)
+        :conditions (?pos (:trivial-postconditions)
+                     ?neg (:trivial-postconditions)
+                     ?nil (:trivial-event) )
+    )
+
+
+    ;--------------------ANNOUNCEMENT------------------
+
+    (:action-type public-announcement
+        :events     (?pos ?neg)
+        :observability-types (Fully)
+        :relations  (Fully (:forall (?e - event) (?e ?e)))
+        :designated (?pos)
+        :conditions (?pos (:trivial-postconditions)
+                     ?neg (:trivial-postconditions) )
+    )
+
+    (:action-type private-announcement
+        :events     (?pos ?nil)
+        :observability-types (Fully Oblivious)
+        :relations  (Fully     (:forall (?e - event) (?e ?e))
+                     Oblivious (:forall (?e - event) (?e ?nil)) )
+        :designated (?pos)
+        :conditions (?pos (:trivial-postconditions)
+                     ?nil (:trivial-event) )
+    )
+
+    (:action-type semi-private-announcement
+        :events     (?pos ?neg)
+        :observability-types (Fully Partially)
+        :relations  (Fully     (:forall (?e    - event) (?e ?e))
+                     Partially (:forall (?e ?f - event) (?e ?f)) )
+        :designated (?pos)
+        :conditions (?pos (:trivial-postconditions)
+                     ?neg (:trivial-postconditions) )
+    )
+
+    (:action-type quasi-private-announcement
+        :events     (?pos ?neg ?nil)
+        :observability-types (Fully Partially Oblivious)
+        :relations  (Fully     (:forall (?e - event) (?e ?e))
+                     Partially (:forall (?e ?f - event |
+                        (imply
+                            (/= ?e ?f)
+                            (and (/= ?e ?nil) (/= ?f ?nil)) ))
+                        (?e ?f) )
+                     Oblivious (:forall (?e - event) (?e ?nil)) )
+        :designated (?pos)
+        :conditions (?pos (:trivial-postconditions)
+                     ?neg (:trivial-postconditions)
+                     ?nil (:trivial-event) )
+    )
+)

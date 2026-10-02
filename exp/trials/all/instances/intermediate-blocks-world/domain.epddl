@@ -1,0 +1,354 @@
+;; DOMAIN
+;; Blocks World
+;;
+;; DESCRIPTION
+;; ...
+;;
+;; ACTIONS
+;;  - pick-up (private-ontic)
+;;  - put-down (private-ontic)
+;;  - give (private-ontic)
+;;  - stack (private-ontic)
+;;  - unstack (private-ontic)
+;;  - focus (public-ontic)
+;;  - tell-block (private-announcement)
+;;
+
+(define (domain blocks-world)
+    (:requirements
+        :pal :typing :equality :lists :list-comprehensions :facts
+        :partial-observability :ontic-actions :conditional-effects
+        :general-preconditions :general-obs-conditions :negative-list-formulas
+    )
+
+    (:action-type-libraries
+        intermediate
+    )
+
+    (:types
+        block table
+    )
+
+    (:predicates
+        (on          ?b1 ?b2 - block           )
+        (on-table    ?b      - block ?t - table)
+        (clear       ?b      - block           )
+        (holding     ?i      - agent ?b - block)
+        (arm-empty   ?i      - agent           )
+        (focused-on  ?i  ?j  - agent           )
+        (can-move    ?i      - agent ?b - block)
+        ;; Facts
+        (:fact at    ?i      - agent ?t - table)        ; Whether agent ?i is at table ?t
+        (:fact fixed ?b      - block           )        ; Whether block ?b can be swapped between tables
+    )
+
+    (:event nil)
+
+
+    ;------------------PICK-UP----------------
+
+    (:event e-pick-up
+        :parameters
+            (?i - agent
+             ?b - block
+             ?t - table)
+        :precondition
+            (and
+                (on-table ?b ?t)            ; block ?b must be on table ?t, it must
+                (clear ?b)                  ; be clear, and ?i's arm
+                (arm-empty ?i)              ; must be empty
+                (at ?i ?t)
+                (focused-on ?i ?i)
+                (forall (?j - agent)
+                    (imply
+                        (focused-on ?j ?i)
+                        (<?j>
+                            (and
+                                (on-table ?b ?t)
+                                (clear ?b)
+                                (arm-empty ?i) )))))
+        :effects
+            (:and
+                (not (on-table ?b ?t))
+                ; (not (clear ?b))
+                (not (arm-empty ?i))
+                (holding ?i ?b) )
+    )
+
+    (:action pick-up
+        :parameters
+            (?i - agent
+             ?b - block
+             ?t - table |
+                (at ?i ?t) )
+        :action-type
+            (private-ontic
+                (e-pick-up ?i ?b ?t)
+                (nil) )
+        :observability-conditions
+            (:and
+                (?i Fully)
+                (:forall (?j - agent | (/= ?i ?j))
+                    (?j
+                        (if (focused-on ?j ?i) Fully) ))
+                (default Oblivious) )
+    )
+
+
+    ;------------------PUT-DOWN----------------
+
+    (:event e-put-down
+        :parameters
+            (?i - agent
+             ?b - block
+             ?t - table)
+        :precondition
+            (and
+                (holding ?i ?b)
+                (at ?i ?t)
+                (focused-on ?i ?i)
+                (forall (?j - agent)
+                    (imply
+                        (focused-on ?j ?i)
+                        (<?j> (holding ?i ?b)) )))
+        :effects
+            (:and
+                (not (holding ?i ?b))
+                (clear ?b)
+                (arm-empty ?i)
+                (on-table ?b ?t) )
+    )
+
+    (:action put-down
+        :parameters
+            (?i - agent
+             ?b - block
+             ?t - table |
+                (at ?i ?t) )
+        :action-type
+            (private-ontic
+                (e-put-down ?i ?b ?t)
+                (nil) )
+        :observability-conditions
+            (:and
+                (?i Fully)
+                (:forall (?j - agent | (/= ?i ?j))
+                    (?j
+                        (if (focused-on ?j ?i) Fully) ))
+                (default Oblivious) )
+    )
+
+
+    ;--------------------GIVE------------------
+
+    (:event e-give
+        :parameters
+            (?i ?j - agent
+             ?b - block )
+        :precondition
+            (and
+                (can-move ?i ?b)                                ; Agent ?i must control block ?b, ?b
+                (holding ?i ?b)                                ; must be on table ?t and  must be
+                (clear ?b)                                      ; clear, ?t must be ?i's table, both
+                ;; (at ?i ?t)                                      ; ?i and ?j must be focused on ?t, and
+                (focused-on ?i ?i)                              ; all agents focused on ?t must consider
+                (focused-on ?j ?i)                              ; to be possible that ?i can-move ?b,
+                (forall (?k - agent)                            ; that ?b is on top of ?t, and that ?b
+                    (imply                                      ; is clear
+                        (focused-on ?k ?i)
+                        (<?k>
+                            (and
+                                (can-move ?i ?b)
+                                (holding ?i ?b)
+                                (clear ?b) )))))
+        :effects
+            (:and
+                (not (holding ?i ?b))
+                (can-move ?j ?b)
+                (not (can-move ?i ?b))
+                (holding ?j ?b) )
+    )
+
+    (:action give
+        :parameters
+            (?i ?j - agent
+             ?b - block |
+                (and
+                    (/= ?i ?j)
+                    (not (fixed ?b)) ))
+        :action-type
+            (private-ontic
+                (e-give ?i ?j ?b)
+                (nil) )
+        :observability-conditions
+            (:and
+                (?i Fully)
+                (?j Fully)
+                (:forall (?k - agent |
+                            (and
+                                (/= ?i ?k)
+                                (/= ?j ?k) ))
+                    (?k
+                        (if (focused-on ?k ?i) Fully) ))
+                (default Oblivious) )
+    )
+
+
+    ;--------------------STACK------------------
+
+    (:event e-stack
+        :parameters
+            (?i - agent
+             ?b1 ?b2 - block)
+        :precondition
+            (and
+                (holding ?i ?b1)
+                (clear ?b2)
+                (can-move ?i ?b1)
+                (can-move ?i ?b2)
+                (focused-on ?i ?i)
+                (forall (?j - agent)
+                    (imply
+                        (focused-on ?j ?i)
+                        (<?j>
+                            (and
+                                (holding ?i ?b1)
+                                (clear ?b2)
+                                (can-move ?i ?b1)
+                                (can-move ?i ?b2) )))))
+        :effects
+            (:and
+                (not (holding ?i ?b1))
+                (not (clear ?b2))
+                (clear ?b1)
+                (arm-empty ?i)
+                (on ?b1 ?b2) )
+    )
+
+    (:action stack
+        :parameters
+            (?i - agent
+             ?b1 ?b2 - block |
+                (/= ?b1 ?b2) )
+        :action-type
+            (private-ontic
+                (e-stack ?i ?b1 ?b2)
+                (nil) )
+        :observability-conditions
+            (:and
+                (?i Fully)
+                (:forall (?j - agent | (/= ?i ?j))
+                    (?j
+                        (if (focused-on ?j ?i) Fully) ))
+                (default Oblivious) )
+    )
+
+
+    ;-------------------UNSTACK-----------------
+
+    (:event e-unstack
+        :parameters
+            (?i - agent
+             ?b1 ?b2 - block)
+        :precondition
+            (and
+                (on ?b1 ?b2)
+                (clear ?b1)
+                (arm-empty ?i)
+                (can-move ?i ?b1)
+                (can-move ?i ?b2)
+                (focused-on ?i ?i)
+                (forall (?j - agent)
+                    (imply
+                        (focused-on ?j ?i)
+                        (<?j>
+                            (and
+                                (on ?b1 ?b2)
+                                (clear ?b1)
+                                (arm-empty ?i)
+                                (can-move ?i ?b1)
+                                (can-move ?i ?b2) )))))
+        :effects
+            (:and
+                (holding ?i ?b1)
+                (clear ?b2)
+                (not (clear ?b1))
+                (not (arm-empty ?i))
+                (not (on ?b1 ?b2)) )
+    )
+
+    (:action unstack
+        :parameters
+            (?i - agent
+             ?b1 ?b2 - block |
+                (/= ?b1 ?b2) )
+        :action-type
+            (private-ontic
+                (e-unstack ?i ?b1 ?b2)
+                (nil) )
+        :observability-conditions
+            (:and
+                (?i Fully)
+                (:forall (?j - agent | (/= ?i ?j))
+                    (?j
+                        (if (focused-on ?j ?i) Fully) ))
+                (default Oblivious) )
+    )
+
+
+    ;--------------------FOCUS------------------
+
+    (:event e-focus
+        :parameters
+            (?i ?j - agent)
+        :precondition
+            (not (focused-on ?i ?j))
+        :effects
+            (:and
+                (focused-on ?i ?j)
+                (:forall (?k - agent | (/= ?k ?j))
+                    (when
+                        (focused-on ?i ?k)
+                        (not (focused-on ?i ?k)) )))
+    )
+
+    (:action focus
+        :parameters (?i ?j - agent)
+        :action-type
+            (public-ontic
+                (e-focus ?i ?j) )
+        :observability-conditions
+            (default Fully)
+    )
+
+
+    ;-----------------TELL-BLOCK---------------
+
+    (:event e-tell-block
+        :parameters
+            (?i ?j - agent
+             ?b1 ?b2 - block )
+        :precondition
+            (and
+                ([?i] (on ?b1 ?b2))
+                (<?j> ([?i] (on ?b1 ?b2))) )
+    )
+
+    (:action tell-block
+        :parameters
+            (?i ?j - agent
+             ?b1 ?b2 - block |
+                (and
+                    (/= ?i ?j)
+                    (/= ?b1 ?b2) ))
+        :action-type
+            (private-announcement
+                (e-tell-block ?i ?j ?b1 ?b2)
+                (nil) )
+        :observability-conditions
+            (:and
+                (?i Fully)
+                (?j Fully)
+                (default Oblivious) )
+    )
+)

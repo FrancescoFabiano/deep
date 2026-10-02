@@ -1,0 +1,52 @@
+;; DOMAIN
+;; Gossip
+;;
+;; DESCRIPTION
+;; ...
+;;
+;; ACTIONS
+;;  - tell (semi-private-announcement)
+;;
+
+
+(define (domain gossip)
+    (:requirements
+        :equality :lists :list-comprehensions :partial-observability
+        :general-preconditions :knowing-whether
+    )
+
+    (:action-type-libraries basic)
+
+    (:predicates (secret ?i - agent))
+
+    ;--------------------TELL------------------
+
+    (:event e-tell-pos
+        :parameters (?i ?j - agent)
+        :precondition (and
+            (secret ?i)
+            (<Kw. ?j> (secret ?i)
+        ))
+    )
+
+    (:event e-tell-neg
+        :parameters (?i ?j - agent)
+        :precondition (and
+            (not (secret ?i))
+            (<Kw. ?j> (secret ?i)
+        ))
+    )
+
+    (:action tell
+        :parameters (?i ?j - agent | (/= ?i ?j))
+        :action-type (semi-private-announcement
+            (e-tell-pos ?i ?j)
+            (e-tell-neg ?i ?j))
+        :observability-conditions
+            (:and
+                (?i Fully)
+                (?j Fully)
+                (default Partially)
+            )
+    )
+)

@@ -1,0 +1,106 @@
+(define (problem sc-11-12)    ;; 11 agents; 12 rooms
+    (:domain selective-communication)
+
+    (:requirements
+        :typing :equality :list-comprehensions
+        :finitary-S5-theories :modal-goals :facts
+    )
+
+    (:agents
+        A B C D E F G H I J K
+    )
+
+    (:objects
+        room1 room2 room3 room4 room5 room6 room7 room8 room9 room10 room11 room12 - room
+    )
+
+    (:facts-init
+        (neighbor room1 room2)
+        (neighbor room2 room3)
+        (neighbor room3 room4)
+        (neighbor room4 room5)
+        (neighbor room5 room6)
+        (neighbor room6 room7)
+        (neighbor room7 room8)
+        (neighbor room8 room9)
+        (neighbor room9 room10)
+        (neighbor room10 room11)
+        (neighbor room11 room12)
+        (leftmost room1)
+        (rightmost room12)
+    )
+
+    (:init
+        :worlds (w-info w-not-info)
+        :relations
+            (A (:forall (?x ?y - world) (?x ?y))
+             B (:forall (?x ?y - world) (?x ?y))
+             C (:forall (?x ?y - world) (?x ?y))
+             D (:forall (?x ?y - world) (?x ?y))
+             E (:forall (?x ?y - world) (?x ?y))
+             F (:forall (?x ?y - world) (?x ?y))
+             G (:forall (?x ?y - world) (?x ?y))
+             H (:forall (?x ?y - world) (?x ?y))
+             I (:forall (?x ?y - world) (?x ?y))
+             J (:forall (?x ?y - world) (?x ?y))
+             K (:forall (?x ?y - world) (?x ?y)) )
+        :labels
+            (w-info
+                (:and
+                    (info)
+                    (at A room1)
+                    (at B room2)
+                    (at C room3)
+                    (at D room4)
+                    (at E room5)
+                    (at F room6)
+                    (at G room7)
+                    (at H room8)
+                    (at I room9)
+                    (at J room10)
+                    (at K room11)
+                    (close A B)
+                    (close B C)
+                    (close C D)
+                    (close D E)
+                    (close E F)
+                    (close F G)
+                    (close G H)
+                    (close H I)
+                    (close I J)
+                    (close J K)
+                    (:forall (?i - agent)
+                        (close ?i ?i) ))
+             w-not-info
+                (:and
+                    (at A room1)
+                    (at B room2)
+                    (at C room3)
+                    (at D room4)
+                    (at E room5)
+                    (at F room6)
+                    (at G room7)
+                    (at H room8)
+                    (at I room9)
+                    (at J room10)
+                    (at K room11)
+                    (close A B)
+                    (close B C)
+                    (close C D)
+                    (close D E)
+                    (close E F)
+                    (close F G)
+                    (close G H)
+                    (close H I)
+                    (close I J)
+                    (close J K)
+                    (:forall (?i - agent)
+                        (close ?i ?i) )))
+        :designated
+            (w-info)
+    )
+
+    (:goal
+        ([All] (info))
+    )
+)

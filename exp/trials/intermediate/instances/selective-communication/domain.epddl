@@ -1,0 +1,197 @@
+;; DOMAIN
+;; Selective Communication
+;;
+;; DESCRIPTION
+;; ...
+;;
+;; ACTIONS
+;;  - left  (public-ontic)
+;;  - right (public-ontic)
+;;  - sense (quasi-private-sensing)
+;;  - tell  (private-announcement)
+;;
+
+(define (domain selective-communication)
+    (:requirements
+        :typing :equality :ontic-actions :conditional-effects :partial-observability
+        :facts :lists :list-comprehensions :knowing-whether
+        :general-preconditions :negative-postconditions
+        :disjunctive-list-formulas
+        :quantified-obs-conditions :negative-obs-conditions
+    )
+
+    (:action-type-libraries intermediate)
+
+    (:types room)
+
+    (:predicates
+        (info)
+        (at ?i - agent ?r - room)
+        (close ?i ?j - agent)
+        ;; Facts
+        (:fact neighbor  ?r1 ?r2 - room)
+        (:fact leftmost  ?r      - room)
+        (:fact rightmost ?r      - room)
+    )
+
+    (:event nil)
+
+    ;--------------------LEFT------------------
+
+    (:event e-left
+        :parameters (?i - agent)
+        :precondition
+            (not
+                (exists (?room-from - room)
+                    (and
+                        (at ?i ?room-from)
+                        (leftmost ?room-from) )))
+        :effects (:and
+            (:forall (?room-from ?room-to - room | (neighbor ?room-to ?room-from))
+                (when (at ?i ?room-from)
+                    (:and
+                        (not (at ?i ?room-from))
+                        (at ?i ?room-to) )))
+            (:forall (?room-from ?room-to ?room-j - room ?j - agent
+                | (and
+                    (neighbor ?room-to ?room-from)
+                    (/= ?i ?j) ))
+                (:and
+                    (when (and
+                        (at ?i ?room-from)
+                        (at ?j ?room-j)
+                        (or
+                            (= ?room-j ?room-to)
+                            (neighbor ?room-to ?room-j)
+                            (neighbor ?room-j ?room-to) ))
+                        (:and (close ?i ?j) (close ?j ?i))
+                    )
+                    (when (and
+                        (at ?i ?room-from)
+                        (at ?j ?room-j)
+                        (and
+                            (/= ?room-j ?room-to)
+                            (not (neighbor ?room-to ?room-j))
+                            (not (neighbor ?room-j ?room-to)) ))
+                        (:and (not (close ?i ?j)) (not (close ?j ?i)))
+                    ) )))
+    )
+
+    (:action left
+        :parameters (?i - agent)
+        :action-type (public-ontic (e-left ?i))
+        :observability-conditions (default Fully)
+    )
+
+    ;--------------------RIGHT------------------
+
+    (:event e-right
+        :parameters (?i - agent)
+        :precondition
+            (not
+                (exists (?room-from - room)
+                    (and
+                        (at ?i ?room-from)
+                        (rightmost ?room-from)) ))
+        :effects (:and
+            (:forall (?room-from ?room-to - room | (neighbor ?room-from ?room-to))
+                (when (at ?i ?room-from)
+                    (:and
+                        (not (at ?i ?room-from))
+                        (at ?i ?room-to) )))
+            (:forall (?room-from ?room-to ?room-j - room ?j - agent
+                | (and
+                    (neighbor ?room-to ?room-from)
+                    (/= ?i ?j) ))
+                (:and
+                    (when (and
+                        (at ?i ?room-from)
+                        (at ?j ?room-j)
+                        (or
+                            (= ?room-j ?room-to)
+                            (neighbor ?room-to ?room-j)
+                            (neighbor ?room-j ?room-to) ))
+                        (:and (close ?i ?j) (close ?j ?i))
+                    )
+                    (when (and
+                        (at ?i ?room-from)
+                        (at ?j ?room-j)
+                        (and
+                            (/= ?room-j ?room-to)
+                            (not (neighbor ?room-to ?room-j))
+                            (not (neighbor ?room-j ?room-to)) ))
+                        (:and (not (close ?i ?j)) (not (close ?j ?i)))
+                    ) )))
+    )
+
+    (:action right
+        :parameters (?i - agent)
+        :action-type (public-ontic (e-right ?i))
+        :observability-conditions (default Fully)
+    )
+
+    ;--------------------SENSE------------------
+
+    (:event e-sense-pos
+        :parameters (?i - agent)
+        :precondition (and
+            (info)
+            (forall (?r - room)
+                (imply
+                    (at ?i ?r)
+                    (not (rightmost ?r) ))))
+    )
+
+    (:event e-sense-neg
+        :parameters (?i - agent)
+        :precondition (and
+            (not (info))
+            (forall (?r - room)
+                (imply
+                    (at ?i ?r)
+                    (not (rightmost ?r) ))))
+    )
+
+    (:action sense
+        :parameters (?i - agent)
+        :action-type (quasi-private-sensing (e-sense-pos ?i) (e-sense-neg ?i) (nil))
+        :observability-conditions
+            (:and
+                (?i Fully)
+                (:forall (?j - agent | (/= ?j ?i))
+                    (?j
+                        (if (exists (?room - room) (and (at ?i ?room) (at ?j ?room)))
+                            Partially
+                        else
+                            Oblivious
+                        ) )))
+    )
+
+    ;--------------------TELL------------------
+
+    (:event e-tell-pos
+        :parameters (?i - agent)
+        :precondition (and
+            ([?i] (info))
+            (forall (?j - agent | (/= ?i ?j))
+                (imply
+                    (close ?i ?j)
+                    ([?j] ([Kw. ?i] (info))) )))
+    )
+
+    (:action tell
+        :parameters (?i - agent)
+        :action-type (private-announcement (e-tell-pos ?i) (nil))
+        :observability-conditions
+            (:and
+                (?i Fully)
+                (:forall (?j - agent | (/= ?i ?j))
+                    (?j ; Agents that are in the same room as ?i's, or in
+                        ; a contiguous room, will hear what is announced
+                        (if (close ?i ?j)
+                            Fully
+                        else
+                            Oblivious
+                        ) )))
+    )
+)

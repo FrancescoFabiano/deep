@@ -1,0 +1,243 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Domain
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(define (domain search-and-rescue)
+  (:action-type-libraries intermediate)
+
+  (:requirements
+    :typing
+    :equality
+    :facts
+    :list-comprehensions
+    :partial-observability
+    :ontic-actions
+    :negative-preconditions
+    :negative-postconditions
+    :modal-preconditions
+    :disjunctive-obs-conditions
+    :existential-obs-conditions
+    :group-modalities
+    :knowing-whether
+    :common-knowledge
+  )
+
+  (:types
+    location
+  )
+
+  (:predicates
+    ;; Dynamic world predicates
+    (at ?a - agent ?l - location)
+    (victim-at ?l - location)
+    (fire-at ?l - location)
+    (rescued-victim)
+    ;;(searched ?l - location)
+    ;;(secured ?l - location)
+
+    ;; Static/common facts
+    (:fact adjacent ?from ?to - location)
+    ;;(:fact visible-from ?obs - location ?target - location)
+    (:fact is-drone ?d - agent)
+    (:fact is-ambulance ?a - agent)
+    (:fact is-firefighter ?f - agent)
+  )
+
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  ;; Events & Actions
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+  (:event nil)
+
+  ;; Public movement
+  (:event e-move
+    :parameters (?a - agent ?from ?to - location)
+    :precondition (and
+      (at ?a ?from)
+    )
+    :effects (:and
+      (at ?a ?to)
+      (not (at ?a ?from))
+    )
+  )
+  ;; Any agent can move
+  (:action move
+    :parameters (?a - agent ?from ?to - location | (adjacent ?from ?to))
+    :action-type (public-ontic (e-move ?a ?from ?to))
+    :observability-conditions (default Fully)
+  )
+
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+  ;; Sensing events for victims
+  (:event e-see-victim-pos
+    :parameters (?d - agent ?target - location)
+    :precondition (and
+      (at ?d ?target)
+      (victim-at ?target)
+    )
+    :effects ()
+  )
+
+  (:event e-see-victim-neg
+    :parameters (?d - agent ?target - location)
+    :precondition (and
+      (at ?d ?target)
+      (not (victim-at ?target))
+    )
+    :effects ()
+  )
+
+  ;; Drone senses whether a victim is at a target location.
+  ;; The drone fully learns the result; others only know sensing happened.
+  (:action sense-victim
+    :parameters (?d - agent ?target - location
+      | (is-drone ?d))
+    :action-type
+      (private-sensing
+        (e-see-victim-pos ?d ?target)
+        (e-see-victim-neg ?d ?target)
+        (nil))
+    :observability-conditions
+      (:and
+        (?d Fully)
+        (default Oblivious)
+      )
+  )
+
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+  ;; Drone senses whether a fire is at a target location.
+  
+  (:event e-see-fire-pos
+    :parameters (?d - agent ?target - location)
+    :precondition (and
+      (at ?d ?target)
+      (fire-at ?target)
+    )
+    :effects ()
+  )
+
+  (:event e-see-fire-neg
+    :parameters (?d - agent ?target - location)
+    :precondition (and
+      (at ?d ?target)
+      (not (fire-at ?target))
+    )
+    :effects ()
+  )
+
+  (:action sense-fire
+    :parameters (?d - agent ?target - location
+      | (is-drone ?d))
+    :action-type
+      (semi-private-sensing
+        (e-see-fire-pos ?d ?target)
+        (e-see-fire-neg ?d ?target)
+        )
+    :observability-conditions 
+      (:and
+        (?d Fully)
+        (default Partially))
+  )
+
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+  ;; Share confirmed victim information
+  (:event e-announce-victim
+    :parameters (?d - agent ?l - location)
+    :precondition (and
+      ([?d] (victim-at ?l)))
+    :effects ()
+  )
+
+  (:event e-announce-no-victim
+    :parameters (?d - agent ?l - location)
+    :precondition (and
+      ([?d] (not (victim-at ?l))))
+    :effects ()
+  )
+  
+
+  (:action announce-victim
+    :parameters (?d - agent ?l - location)
+    :action-type 
+      (public-announcement  
+        (e-announce-victim ?d ?l)
+        (e-announce-no-victim ?d ?l))
+    :observability-conditions (default Fully)
+  )
+  
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  ;; Publicly share confirmed fire information
+  
+  (:event e-announce-fire
+    :parameters (?a - agent ?l - location)
+    :precondition ([?a] (fire-at ?l))
+    :effects ()
+  )
+
+  (:event e-announce-no-fire
+    :parameters (?a - agent ?l - location)
+    :precondition ([?a] (not (fire-at ?l)))
+    :effects ()
+  )
+  
+  (:action public-announce-fire
+    :parameters (?a - agent ?l - location)
+    :action-type 
+      (public-announcement 
+        (e-announce-fire ?a ?l)
+        (e-announce-no-fire ?a ?l))
+    :observability-conditions (default Fully)
+  )
+
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  ;; Firefighters act only on believed/known confirmed fire
+
+  (:event e-extinguish
+    :parameters (?f - agent ?l - location)
+    :precondition (and
+      (at ?f ?l)
+      (fire-at ?l)
+      ([?f] (fire-at ?l))
+      (is-firefighter ?f)
+    )
+    :effects (:and
+      (not (fire-at ?l))
+    )
+  )
+  
+  (:action publicly-extinguish-fire
+    :parameters (?f - agent ?l - location | (is-firefighter ?f))
+    :action-type (public-ontic (e-extinguish ?f ?l))
+    :observability-conditions (default Fully)
+  )
+
+
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  ;; Rescue
+  ;; Ambulances act only after a location is known safe and victim-present
+
+  (:event e-rescue
+    :parameters (?a - agent ?l - location)
+    :precondition (and
+      (at ?a ?l)
+      (victim-at ?l)
+      ([?a] (victim-at ?l))
+      (not (fire-at ?l))
+      ([?a] (not (fire-at ?l)))
+      (not (rescued-victim))
+      (is-ambulance ?a)
+    )
+    :effects (:and
+      (rescued-victim)
+    )
+  )
+
+  (:action rescue-victim
+    :parameters (?a - agent ?l - location | (is-ambulance ?a))
+    :action-type (public-ontic (e-rescue ?a ?l))
+    :observability-conditions (default Fully)
+  )
+)
