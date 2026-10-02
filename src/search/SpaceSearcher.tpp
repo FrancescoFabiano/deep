@@ -6,6 +6,7 @@
  * \date May 29, 2025
  */
 
+#include <map>
 #include "argparse/ArgumentParser.h"
 #include "search/SpaceSearcher.h"
 #include "states/State.h"
@@ -137,12 +138,40 @@ bool SpaceSearcher<StateRepr, Strategy>::search_sequential(
 
   std::set<State<StateRepr>> visited_states;
 
+  /*
+   * Iterative deepening restarts from the initial state with a larger depth
+   * bound. Its visited set is cleared at every restart and remembers the
+   * shallowest depth each state was reached at, so a state first reached on a
+   * long path is expanded again when a shorter path reaches it.
+   */
+  constexpr bool depth_aware_visited =
+      requires(Strategy &strategy) { strategy.consume_restart(); };
+  std::map<State<StateRepr>, unsigned short> visited_depths;
+
+  /// True if \p s is new (or, for iterative deepening, reached shallower).
+  auto first_visit = [&](const State<StateRepr> &s) {
+    if constexpr (depth_aware_visited) {
+      const auto depth = s.get_plan_length();
+      const auto [it, inserted] = visited_depths.try_emplace(s, depth);
+      if (inserted) {
+        return true;
+      }
+      if (depth < it->second) {
+        it->second = depth;
+        return true;
+      }
+      return false;
+    } else {
+      return visited_states.insert(s).second;
+    }
+  };
+
   m_expanded_nodes = 0;
 
   m_strategy.push_initial(initial);
 
   if (check_visited) {
-    visited_states.insert(initial);
+    first_visit(initial);
   }
 
   while (!m_strategy.empty()) {
@@ -152,6 +181,13 @@ bool SpaceSearcher<StateRepr, Strategy>::search_sequential(
     }
 
     State current = m_strategy.take();
+
+    if constexpr (depth_aware_visited) {
+      if (m_strategy.consume_restart() && check_visited) {
+        visited_depths.clear(); // current is the initial state again
+        first_visit(current);
+      }
+    }
 
     ++m_expanded_nodes;
 
@@ -173,6 +209,14 @@ bool SpaceSearcher<StateRepr, Strategy>::search_sequential(
       }
 
       State successor = current.compute_successor(action);
+
+      // Iterative deepening: beyond the current depth bound a successor is
+      // neither contracted, goal-tested nor stored.
+      if constexpr (depth_aware_visited) {
+        if (!m_strategy.within_bound(successor)) {
+          continue;
+        }
+      }
 
       // ======================================================================
       // Periodic bisimulation
@@ -212,7 +256,13 @@ bool SpaceSearcher<StateRepr, Strategy>::search_sequential(
        * In Debug we keep the insertion result so that verification is
        * performed only when the successor was actually rejected as visited.
        */
-      if (check_visited) {
+      if (check_visited && depth_aware_visited) {
+
+        if (first_visit(successor)) {
+          m_strategy.push(successor);
+        }
+
+      } else if (check_visited) {
 
         const auto [visited_it, inserted] = visited_states.insert(successor);
 
@@ -259,7 +309,7 @@ bool SpaceSearcher<StateRepr, Strategy>::search_sequential(
       /*
        * Release path stays minimal.
        */
-      if (!check_visited || visited_states.insert(successor).second) {
+      if (!check_visited || first_visit(successor)) {
 
         if (is_RL_search) {
           fringe_RL.push_back(std::move(successor));
