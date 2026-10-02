@@ -139,6 +139,14 @@ public:
     return this->search_space.top();
   }
 
+  /** \brief Next state through peek() (which may refill from the reservoir),
+   * then pop(). */
+  [[nodiscard]] State<StateRepr> take() override {
+    State<StateRepr> next = peek();
+    pop();
+    return next;
+  }
+
   [[nodiscard]] bool empty() const override {
     return (this->search_space.empty() && m_reservoir.empty());
   }

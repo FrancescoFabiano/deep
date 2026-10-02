@@ -39,6 +39,13 @@ public:
    */
   KripkeState(const KripkeState &other);
 
+  /**
+   * \brief Move constructor: moves the same fields the copy copies (worlds,
+   * designated worlds, beliefs, hash); the cached tensor is not carried.
+   * \param other The KripkeState to move from.
+   */
+  KripkeState(KripkeState &&other) noexcept;
+
   ~KripkeState() = default;
 
   // --- Setters ---
@@ -108,6 +115,9 @@ public:
   // --- Operators ---
   /** \brief Copy Assignment operator.*/
   KripkeState &operator=(const KripkeState &to_copy);
+
+  /** \brief Move assignment operator (same fields as the copy).*/
+  KripkeState &operator=(KripkeState &&to_move) noexcept;
 
   /** \brief Less-than operator for set operations.
    *  \param[in] to_compare The KripkeState to compare.

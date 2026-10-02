@@ -112,6 +112,10 @@ public:
    */
   State(const State &other);
 
+  /** \brief Move constructor: moves the same fields the copy copies
+   * (representation, executed actions, heuristic value).*/
+  State(State &&other) noexcept;
+
   /** \brief Constructor with that set *this* as successor of the given one.
    *
    * @param prev_state The predecessor state.
@@ -192,6 +196,10 @@ public:
    * @param[in] to_set The new representation to store.
    */
   void set_representation(const StateRepr &to_set);
+
+  /** \brief Setter for \ref m_representation that takes ownership.
+   *  @param[in] to_set: the representation to move in.*/
+  void set_representation(StateRepr &&to_set);
 
   /** \brief Check whether all designated worlds in this state entail a fluent.
    *
@@ -286,6 +294,9 @@ public:
    * @param [in] to_assign: the State to assign to *this*.
    * @return This with the copied assigned values.*/
   State &operator=(const State<StateRepr> &to_assign);
+
+  /** \brief Move assignment operator (same fields as the copy).*/
+  State &operator=(State<StateRepr> &&to_assign) noexcept;
 
   /** \brief The < operator for set operations.
    *

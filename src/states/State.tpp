@@ -40,6 +40,12 @@ State<StateRepr>::State(const State &other)
       m_heuristic_value(other.m_heuristic_value) {}
 
 template <StateRepresentation StateRepr>
+State<StateRepr>::State(State &&other) noexcept
+    : m_representation(std::move(other.m_representation)),
+      m_executed_actions_id(std::move(other.m_executed_actions_id)),
+      m_heuristic_value(other.m_heuristic_value) {}
+
+template <StateRepresentation StateRepr>
 State<StateRepr>
 State<StateRepr>::compute_successor(const Action &executed_action) {
   State<StateRepr> next_state;
@@ -81,6 +87,14 @@ State<StateRepr> &State<StateRepr>::operator=(const State &to_assign) {
   set_representation(to_assign.get_representation());
   set_executed_actions(to_assign.get_executed_actions());
   set_heuristic_value(to_assign.get_heuristic_value());
+  return (*this);
+}
+
+template <StateRepresentation StateRepr>
+State<StateRepr> &State<StateRepr>::operator=(State &&to_assign) noexcept {
+  m_representation = std::move(to_assign.m_representation);
+  m_executed_actions_id = std::move(to_assign.m_executed_actions_id);
+  m_heuristic_value = to_assign.m_heuristic_value;
   return (*this);
 }
 
@@ -133,6 +147,11 @@ void State<StateRepr>::increase_heuristics_evaluation_times() {
 template <StateRepresentation StateRepr>
 void State<StateRepr>::set_representation(const StateRepr &to_set) {
   m_representation = to_set;
+}
+
+template <StateRepresentation StateRepr>
+void State<StateRepr>::set_representation(StateRepr &&to_set) {
+  m_representation = std::move(to_set);
 }
 
 template <StateRepresentation StateRepr>

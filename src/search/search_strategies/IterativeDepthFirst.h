@@ -30,9 +30,9 @@ public:
   /**
    * \brief Push a state into the search container.
    */
-  void push(const State<StateRepr> &s) {
+  void push(State<StateRepr> &s) {
     if (s.get_plan_length() <= max_depth) {
-      search_space.push(s);
+      search_space.push(std::move(s)); // takes the successor
     } else {
       m_reached_max_depth = true;
     }
@@ -41,7 +41,10 @@ public:
   /**
    * \brief Push the initial state into the search container.
    */
-  void push_initial(const State<StateRepr> &s) { push(s); }
+  void push_initial(const State<StateRepr> &s) {
+    State<StateRepr> initial = s;
+    push(initial);
+  }
 
   /**
    * \brief Push a list of states into the search container. Not implemented for
@@ -75,6 +78,16 @@ public:
    * \brief Peek at the next state in the search container.
    */
   State<StateRepr> peek() const { return search_space.top(); }
+
+  /**
+   * \brief Remove the next state from the container and return it (moved
+   * out, not copied).
+   */
+  State<StateRepr> take() {
+    State<StateRepr> next = std::move(search_space.top());
+    pop(); // may restart the next iteration from the initial state
+    return next;
+  }
 
   /**
    * \brief Get the name of the search strategy.

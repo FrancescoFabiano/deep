@@ -115,6 +115,21 @@ public:
   }
 
   /**
+   * \brief Remove the best state and return it, moved out instead of copied.
+   *
+   * \details The queue's elements are not const objects, so moving out of
+   * top() is legal; pop() then only compares heuristic values, which the move
+   * leaves intact, before destroying the moved-from element.
+   */
+  [[nodiscard]] virtual State<StateRepr> take() {
+    flush_pending();
+    State<StateRepr> next =
+        std::move(const_cast<State<StateRepr> &>(search_space.top()));
+    search_space.pop();
+    return next;
+  }
+
+  /**
    * \brief Pure virtual function to return the name of the search strategy.
    *
    * \return A descriptive name of the strategy and heuristic used.
@@ -148,7 +163,7 @@ protected:
   [[nodiscard]] bool batched() const noexcept { return m_batch_size > 0; }
 
   /** \brief Buffer a state for the next batched evaluation. */
-  void push_pending(const State<StateRepr> &s) { m_pending.push_back(s); }
+  void push_pending(State<StateRepr> &s) { m_pending.push_back(std::move(s)); }
 
   /**
    * \brief Whether the batched priority adds the state depth (A*) to the

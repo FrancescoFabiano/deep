@@ -47,7 +47,7 @@ public:
       return; // Skip states with negative heuristic values.
     }
     s.set_heuristic_value(heuristics_value); // Set the heuristic value
-    this->search_space.push(s);
+    this->search_space.push(std::move(s));    // takes the successor
   }
 
   /**

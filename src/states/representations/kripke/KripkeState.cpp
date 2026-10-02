@@ -83,6 +83,23 @@ KripkeState &KripkeState::operator=(const KripkeState &to_copy) {
     m_beliefs = to_copy.m_beliefs;
 
     m_hash = to_copy.m_hash;
+    // the cached tensor described the old structure
+    m_tensor_representation = GraphTensor{};
+    m_computed_tensor_representation = false;
+  }
+
+  return *this;
+}
+
+KripkeState &KripkeState::operator=(KripkeState &&to_move) noexcept {
+  if (this != &to_move) {
+    m_worlds = std::move(to_move.m_worlds);
+    m_designated_worlds = std::move(to_move.m_designated_worlds);
+    m_beliefs = std::move(to_move.m_beliefs);
+
+    m_hash = to_move.m_hash;
+    m_tensor_representation = GraphTensor{};
+    m_computed_tensor_representation = false;
   }
 
   return *this;
@@ -737,3 +754,8 @@ const GraphTensor &KripkeState::get_tensor_representation() {
 KripkeState::KripkeState(const KripkeState &other)
     : m_worlds(other.m_worlds), m_designated_worlds(other.m_designated_worlds),
       m_beliefs(other.m_beliefs), m_hash(other.m_hash) {}
+
+KripkeState::KripkeState(KripkeState &&other) noexcept
+    : m_worlds(std::move(other.m_worlds)),
+      m_designated_worlds(std::move(other.m_designated_worlds)),
+      m_beliefs(std::move(other.m_beliefs)), m_hash(other.m_hash) {}

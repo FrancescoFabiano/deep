@@ -49,7 +49,7 @@ public:
     }
     s.set_heuristic_value(heuristics_value +
                           plan_length); // Overwrite heuristic with f = g + h
-    this->search_space.push(s);
+    this->search_space.push(std::move(s)); // takes the successor
   }
 
   /**
