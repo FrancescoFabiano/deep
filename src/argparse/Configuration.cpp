@@ -312,6 +312,8 @@ void Configuration::print(std::ostream &os) const {
     os << "    Bisimulation type: ";
     if (m_bisimulation_type == "FB")
       os << "Fast Bisimulation";
+    else if (m_bisimulation_type == "SIG")
+      os << "Signature refinement";
     else
       os << "Paige and Tarjan";
     os << '\n';

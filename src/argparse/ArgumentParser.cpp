@@ -226,10 +226,11 @@ ArgumentParser::ArgumentParser() : app("deep") {
       ->add_option(
           "--bisimulation_type", m_bisimulation_type,
           "Specify the algorithm for bisimulation contraction "
-          "(requires --bisimulation). Options: 'FB' (Fast Bisimulation, "
-          "default) or 'PT' (Paige and Tarjan).")
-      ->check(CLI::IsMember({"FB", "PT"}))
-      ->default_val("FB");
+          "(requires --bisimulation). Options: 'SIG' (signature "
+          "refinement on the Kripke structure, default), 'FB' (Fast "
+          "Bisimulation) or 'PT' (Paige and Tarjan).")
+      ->check(CLI::IsMember({"FB", "PT", "SIG"}))
+      ->default_val("SIG");
   bis_group
       ->add_option("--bisimulation-interval", m_bisimulation_interval,
                    "With -b, contract states every N search-depth levels; 0 "

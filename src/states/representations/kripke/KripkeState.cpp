@@ -28,6 +28,8 @@
 #include "KripkeStorage.h"
 #include "SetHelper.h"
 #include "utilities/ExitHandler.h"
+#include "argparse/Configuration.h"
+#include "bisimulation/SignatureBisimulation.h"
 
 #ifdef USE_NEURALNETS
 #include "neuralnets/GraphNN.h"
@@ -725,8 +727,12 @@ void KripkeState::contract_with_bisimulation() {
     KripkeReachabilityHelper::clean_unreachable_worlds(*this);
   }
 
-  Bisimulation b;
-  b.calc_min_bisimilar(*this);
+  if (Configuration::get_instance().get_bisimulation_type() == "SIG") {
+    SignatureBisimulation::contract(*this);
+  } else {
+    Bisimulation b;
+    b.calc_min_bisimilar(*this);
+  }
 
   // The contraction of a reachable structure is reachable; its setters have
   // already invalidated the hash.

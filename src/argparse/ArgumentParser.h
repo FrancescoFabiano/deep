@@ -355,7 +355,7 @@ private:
   bool m_verbose = false;      ///< Verbose mode flag.
   bool m_bisimulation = false; ///< Bisimulation enabled flag.
   std::string m_bisimulation_type =
-      "FB"; ///< Bisimulation type (FB by default).
+      "SIG"; ///< Bisimulation type (SIG by default).
   std::size_t m_bisimulation_interval = 0;
 
   bool m_check_visited = false; ///< Flag to check for visited states.
