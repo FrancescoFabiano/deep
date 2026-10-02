@@ -228,7 +228,8 @@ public:
                                           const KripkeState &second,
                                           unsigned int modal_depth = 3,
                                           unsigned int formula_count = 100,
-                                          std::uint32_t seed = 3760);
+                                          std::uint32_t seed = 3760,
+                                          bool skip_if_equal = true);
 
   static BeliefFormula make_random_atom(const std::vector<Fluent> &fluents,
                                         std::mt19937 &rng);

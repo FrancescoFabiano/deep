@@ -715,7 +715,7 @@ bool KripkeState::entails(const FormulaeList &to_check) const {
 
 void KripkeState::contract_with_bisimulation() {
 
-#if defined(DEBUG) || defined(DEEP_VERIFY)
+#if defined(DEBUG) || defined(VERIFY)
   const KripkeState before_bisimulation = *this;
 #endif
 
@@ -732,7 +732,7 @@ void KripkeState::contract_with_bisimulation() {
   // already invalidated the hash.
   m_built_reachable = true;
 
-#if defined(DEBUG) || defined(DEEP_VERIFY)
+#if defined(DEBUG) || defined(VERIFY)
 
   /*
    * Bisimulation is allowed to change the structure, so do NOT

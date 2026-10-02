@@ -368,7 +368,10 @@ bool KripkeEqualityHelper::verify_equivalence(
   if (formula_count > 0) {
 
     FormulaHelper::verify_semantic_equivalence(
-        lhs, rhs, max_depth, static_cast<unsigned int>(formula_count));
+        lhs, rhs, max_depth, static_cast<unsigned int>(formula_count), 3760,
+        // never skip: operator== is the comparison under test for visited
+        // hits, and it calls a state and its own contraction equal
+        /*skip_if_equal=*/false);
   }
 
 #ifdef DEBUG
