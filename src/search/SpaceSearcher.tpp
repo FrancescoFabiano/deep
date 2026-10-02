@@ -185,8 +185,10 @@ bool SpaceSearcher<StateRepr, Strategy>::search_sequential(
 
         const auto depth = successor.get_plan_length();
 
-        const bool should_contract = bisimulation_interval > 0 && depth > 0 &&
-                                     depth % bisimulation_interval == 0;
+        // interval 0 (default) or 1: every level; N: every N-th level
+        const bool should_contract =
+            depth > 0 && (bisimulation_interval == 0 ||
+                          depth % bisimulation_interval == 0);
 
         if (should_contract) {
           successor.contract_with_bisimulation();

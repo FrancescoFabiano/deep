@@ -356,7 +356,7 @@ private:
   bool m_bisimulation = false; ///< Bisimulation enabled flag.
   std::string m_bisimulation_type =
       "FB"; ///< Bisimulation type (FB by default).
-  std::size_t m_bisimulation_interval = 2;
+  std::size_t m_bisimulation_interval = 0;
 
   bool m_check_visited = false; ///< Flag to check for visited states.
   bool m_dataset_mode = false;  ///< Flag to indicate dataset mode.

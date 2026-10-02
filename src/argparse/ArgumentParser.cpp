@@ -232,9 +232,10 @@ ArgumentParser::ArgumentParser() : app("deep") {
       ->default_val("FB");
   bis_group
       ->add_option("--bisimulation-interval", m_bisimulation_interval,
-                   "Apply bisimulation contraction every N search-depth levels "
-                   "(0 means no contraction is ever applied)")
-      ->default_val(2);
+                   "With -b, contract states every N search-depth levels; 0 "
+                   "(default) or 1 contracts at every level. Without -b no "
+                   "state is contracted.")
+      ->default_val(0);
 
   // Dataset group
   auto *dataset_group = app.add_option_group("Dataset");

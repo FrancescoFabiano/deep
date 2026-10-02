@@ -220,7 +220,7 @@ private:
       0; ///< Counter to keep track of hwo many times Bisimulation failed so we
          ///< can deactivate it.
   bool m_bisimulation_type_bool = true; ///< Bisimulation type as boolean.
-  std::size_t m_bisimulation_interval = 2;
+  std::size_t m_bisimulation_interval = 0;
 
   bool m_check_visited = false; ///< Visited state checking flag.
 
