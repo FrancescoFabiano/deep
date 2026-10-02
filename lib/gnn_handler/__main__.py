@@ -43,6 +43,8 @@ def parse_args(argv=None):
     p.add_argument("--fringe-sizes", type=int, nargs="+", default=[1, 4, 8, 16, 32],
                    help="one ONNX export per F, all from the same trained model")
     p.add_argument("--train-fringe-size", type=int, default=4, help="beam width of the training batches")
+    p.add_argument("--aggregation", choices=["scatter", "dense"], default="scatter",
+                   help="ONNX form of the sum aggregations: PyG scatters, or one-hot matmuls (deep_nn.dense)")
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--epochs", type=int, default=200)
     p.add_argument("--batch-size", type=int, default=64, help="beams per batch")
@@ -54,6 +56,8 @@ def parse_args(argv=None):
                    help="the table's distance of a state the generator could not reach a goal from")
     p.add_argument("--model-name", default="distance_estimator")
     p.add_argument("--no-export-onnx", action="store_true")
+    p.add_argument("--export-only", action="store_true",
+                   help="skip training: load <dir-save-model>/<model-name>.pt and (re-)export it")
     return p.parse_args(argv)
 
 
@@ -71,21 +75,24 @@ def train_and_export(args) -> Path:
 
     m = DistanceEstimatorModel(lr=args.lr, hidden_dim=args.hidden_dim,
                                use_goal=(args.kind_of_data == "separated"))
-    train_loader = train.loader(args.batch_size, shuffle=True, seed=args.seed)
     val_loader = test.loader(args.batch_size, shuffle=False) if test else train.loader(args.batch_size, shuffle=False)
-    m.train(train_loader, val_loader, n_epochs=args.epochs, checkpoint_dir=str(out_dir),
-            model_name=args.model_name)
+    if args.export_only:
+        print(f"[gnn] export only: loading {out_dir / f'{args.model_name}.pt'}")
+    else:
+        train_loader = train.loader(args.batch_size, shuffle=True, seed=args.seed)
+        m.train(train_loader, val_loader, n_epochs=args.epochs, checkpoint_dir=str(out_dir),
+                model_name=args.model_name)
     m.load_model(out_dir / f"{args.model_name}.pt")
     metrics = m.evaluate(val_loader)
     print(f"[gnn] best checkpoint on {'test' if test else 'train'}: "
           + " ".join(f"{k}={v:.4f}" for k, v in metrics.items()))
 
     info = {**vars(args), **{f"scaling_{k}": v for k, v in params.items()},
-            **{f"eval_{k}": v for k, v in metrics.items()}}
+            **{f"eval_{k}": v for k, v in metrics.items()}, "aggregation": args.aggregation}
     if not args.no_export_onnx:
         for F in sorted(set(int(f) for f in args.fringe_sizes)):
             onnx_path = out_dir / f"{args.model_name}_{F}.onnx"
-            m.to_onnx(onnx_path, F, params)
+            m.to_onnx(onnx_path, F, params, aggregation=args.aggregation)
             # parity on real beams re-packed at THIS F (truncated when F < the training width)
             feeds = [train.planner_feed(i, fringe_size=F) for i in range(min(32, len(train)))]
             check = m.verify_onnx(onnx_path, feeds, params)
@@ -93,7 +100,8 @@ def train_and_export(args) -> Path:
                   f"{check['n_checked']} beams max |diff| = {check['max_abs_diff']:.2e}")
             info.update({f"onnx_F{F}": str(onnx_path), **{f"onnx_F{F}_{k}": v for k, v in check.items()}})
         if not m.model.use_goal:   # HFS/A* consumer: one state at a time, scaling inverted by the planner
-            info["state_onnx"] = str(m.to_onnx_state(out_dir / f"{args.model_name}_state.onnx", params))
+            info["state_onnx"] = str(m.to_onnx_state(out_dir / f"{args.model_name}_state.onnx", params,
+                                                     aggregation=args.aggregation))
     (out_dir / f"{args.model_name}_info.txt").write_text(
         "".join(f"{k} = {v}\n" for k, v in info.items()))
     return out_dir

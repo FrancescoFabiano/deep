@@ -57,6 +57,14 @@ void GraphNN<StateRepr>::initialize_onnx_model() {
   try {
     m_session_options.SetGraphOptimizationLevel(
         GraphOptimizationLevel::ORT_ENABLE_ALL);
+    // --onnx_threads: 1 by default. The per-state graphs are tiny, so the runtime's
+    // one-thread-per-core default only adds synchronisation (and makes CPU-time
+    // measurements meaningless); 0 keeps the runtime default.
+    if (const int threads = ArgumentParser::get_instance().get_onnx_threads();
+        threads > 0) {
+      m_session_options.SetIntraOpNumThreads(threads);
+      m_session_options.SetInterOpNumThreads(1);
+    }
 
     /*#ifdef _WIN32
         // Windows way

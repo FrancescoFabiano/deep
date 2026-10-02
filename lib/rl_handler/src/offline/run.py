@@ -132,6 +132,7 @@ class RunConfig:
     lr: float = 1e-4
     batch_size: int = 64
     resident_packing: bool = False  # batches from device-resident trees (resident.py); no measured gain
+    aggregation: str = "scatter"    # ONNX form of the sum aggregations: scatter | dense (deep_nn.dense)
     cql_alpha: float = 0.0
     gamma: float = DEFAULT_GAMMA    # 0.9999: paper's discounted reward ~= SSP limit
     reward_scale: Optional[float] = None
@@ -740,7 +741,7 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
         # never once executed. Export must not mutate the training model.
         RLFrontierTrainer(model=copy.deepcopy(net), device="cpu",
                           kind_of_data=cfg.kind_of_data).to_onnx(
-            onnx, node_input_dim=1, onnx_frontier_size=cfg.fringe_size)
+            onnx, node_input_dim=1, onnx_frontier_size=cfg.fringe_size, aggregation=cfg.aggregation)
         print(f"[run] exported {onnx}")
 
         # GATE 2 -- only instances the gate can actually SCORE

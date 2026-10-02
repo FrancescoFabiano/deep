@@ -465,3 +465,25 @@ def test_exporting_the_live_model_is_what_broke_it(tmp_path):
         "RLFrontierTrainer no longer relocates the model in place -- if this is "
         "intentional, the deepcopy in run.py's export can be revisited"
     )
+
+
+# ------------------------------------------------- dense (scatter-free) export ----
+
+@pytest.mark.parametrize("F", [1, 4, 16])
+def test_dense_export_has_no_scatter_and_matches_scatter_export(tmp_path, F):
+    import onnx
+    from deep_nn import contract
+    from deep_nn.pack import pack_fringe
+    model = _model("mean_pool")
+    t = RLFrontierTrainer(model=model, device="cpu", kind_of_data="merged")
+    p_sc, p_de = tmp_path / "sc.onnx", tmp_path / "de.onnx"
+    t.to_onnx(p_sc, node_input_dim=1, onnx_frontier_size=F)
+    t.to_onnx(p_de, node_input_dim=1, onnx_frontier_size=F, aggregation="dense")
+    assert any(n.op_type.startswith("Scatter") for n in onnx.load(str(p_sc)).graph.node)
+    assert not any(n.op_type.startswith("Scatter") for n in onnx.load(str(p_de)).graph.node)
+    cache = _cache(16)
+    for k in sorted({1, F}):
+        feed = {kk: v for kk, v in pack_fringe(cache, list(range(k)), F).items()}
+        a = contract.run_onnx(p_sc, feed)[:k]
+        b = contract.run_onnx(p_de, feed)[:k]
+        np.testing.assert_allclose(a, b, atol=1e-5, rtol=0)

@@ -346,6 +346,14 @@ ArgumentParser::ArgumentParser() : app("deep") {
       ->default_val("32");
 
   search_group
+      ->add_option("--onnx_threads", m_onnx_threads,
+                   "Intra-op threads of the onnxruntime sessions (GNN and RL "
+                   "models). 0 = onnxruntime's default (one per core); 1 is "
+                   "the fair setting for CPU-time comparisons and is faster "
+                   "on the small per-state graphs.")
+      ->default_val("1");
+
+  search_group
       ->add_option("--RL_exploration", m_RL_exploration_percentage,
                    "The maximum percentage of the fringe to be filled with "
                    "random states "
@@ -602,6 +610,10 @@ const std::string &ArgumentParser::get_search_strategy() const noexcept {
 
 const std::string &ArgumentParser::get_RL_model_path() const noexcept {
   return m_RL_model_path;
+}
+
+int ArgumentParser::get_onnx_threads() const noexcept {
+  return m_onnx_threads;
 }
 
 int ArgumentParser::get_RL_fringe_size() const noexcept {

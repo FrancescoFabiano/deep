@@ -26,6 +26,7 @@ TRAINERS = {"rl": REPO / "lib" / "rl_handler" / "offline_main.py",
             "gnn": REPO / "lib" / "gnn_handler" / "__main__.py"}
 # Every EPDDL problem is its own configuration; the RL trainer refuses such a split by default.
 FIXED_FLAGS = {"rl": ["--allow-cross-config"], "gnn": []}
+AGGREGATION = "dense"   # [train].aggregation default: ONNX sum aggregations as one-hot matmuls (deep_nn.dense)
 GNN_FRINGE_SIZES = (1, 4, 8, 16, 32)   # the GNN scores states, not fringes: every width is exported
 EXPORTS = {   # per F: (file the trainer writes, installed name); rl under run_fringe<F>/, gnn under run/
     "rl": [("frontier_policy_{F}_best_by_expansions.onnx", "rl_F{F}.onnx")],
@@ -110,7 +111,8 @@ def _train_group(cfg, label, kind, Fs, train_csvs, test_csvs) -> None:
     cmd = [sys.executable, str(TRAINERS[kind]), "--train-csv", *map(str, train_csvs),
            "--dir-save-model", str(out / kind / "run"), "--fringe-sizes", *map(str, Fs),
            "--epochs", str(t["epochs"]), "--batch-size", str(batch), "--seed", str(t["seed"]),
-           "--dataset-type", cfg.data["dataset_type"], *FIXED_FLAGS[kind], *map(str, t.get(kind, {}).get("extra", []))]
+           "--dataset-type", cfg.data["dataset_type"], "--aggregation", str(t.get("aggregation", AGGREGATION)),
+           *FIXED_FLAGS[kind], *map(str, t.get(kind, {}).get("extra", []))]
     if test_csvs:
         cmd += ["--test-csv", *map(str, test_csvs)]
     print(f"[train] {tag}: {len(train_csvs)} train tables, {len(test_csvs)} test tables, batch {batch}")
@@ -126,3 +128,46 @@ def _train_group(cfg, label, kind, Fs, train_csvs, test_csvs) -> None:
         for src, dst in GNN_STATE:
             shutil.copy2(out / kind / "run" / src, out / dst)
     print(f"[train] {tag}: installed {[p.name for p in installed]}")
+
+
+def reexport(cfg: Config) -> None:
+    """`trial.py export`: re-export every installed model from its run dir with the
+    trial's [train].aggregation (same weights, another ONNX form) and reinstall it.
+    RL: offline_main --export-from run_fringe<F>; GNN: __main__ --export-only."""
+    insts = instances.load(cfg)
+    domains = sorted({i.domain for i in insts})
+    labels = [POOLED_DIR] if cfg.pooled else domains
+    t = cfg.train
+    agg = str(t.get("aggregation", AGGREGATION))
+    for label in labels:
+        out = cfg.models_dir / label
+        if "rl" in t["models"]:
+            for F in t["fringe_sizes"]:
+                run_dir = out / "rl" / f"run_fringe{F}"
+                if not (out / f"rl_F{F}.onnx").exists() or not run_dir.is_dir():
+                    continue
+                cmd = [sys.executable, str(TRAINERS["rl"]), "--export-from", str(run_dir), "--aggregation", agg,
+                       "--dataset-type", cfg.data["dataset_type"], *map(str, t.get("rl", {}).get("extra", []))]
+                print(f"[export] {label}/rl@F{F} -> {agg}")
+                if cfg.dry_run:
+                    print(" ".join(cmd))
+                    continue
+                subprocess.run(cmd, cwd=REPO, check=True)
+                shutil.copy2(run_dir / EXPORTS["rl"][0][0].format(F=F), out / f"rl_F{F}.onnx")
+        if "gnn" in t["models"] and (out / "gnn" / "run" / "distance_estimator.pt").exists():
+            members = domains if cfg.pooled else [label]
+            train_csvs = [c for d in members for c in _tables(cfg, insts, d)[0]]
+            cmd = [sys.executable, str(TRAINERS["gnn"]), "--train-csv", *map(str, train_csvs),
+                   "--dir-save-model", str(out / "gnn" / "run"), "--fringe-sizes", *map(str, GNN_FRINGE_SIZES),
+                   "--epochs", str(t["epochs"]), "--batch-size", str(t["batch_size"]), "--seed", str(t["seed"]),
+                   "--dataset-type", cfg.data["dataset_type"], "--aggregation", agg, "--export-only",
+                   *map(str, t.get("gnn", {}).get("extra", []))]
+            print(f"[export] {label}/gnn -> {agg}")
+            if cfg.dry_run:
+                print(" ".join(cmd))
+                continue
+            subprocess.run(cmd, cwd=REPO, check=True)
+            for F in GNN_FRINGE_SIZES:
+                shutil.copy2(out / "gnn" / "run" / EXPORTS["gnn"][0][0].format(F=F), out / f"gnn_F{F}.onnx")
+            for src, dst in GNN_STATE:
+                shutil.copy2(out / "gnn" / "run" / src, out / dst)

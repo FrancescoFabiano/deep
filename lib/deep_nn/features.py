@@ -19,9 +19,15 @@ class PointedEmbedding(nn.Module):
     def __init__(self, dim: int):
         super().__init__()
         self.weight = nn.Parameter(torch.zeros(int(dim)))
+        self.dense_aggregation = False      # export-time switch, see deep_nn.dense
 
     def forward(self, x: torch.Tensor, pointed_ids: torch.Tensor) -> torch.Tensor:
-        ones = torch.ones(pointed_ids.numel(), dtype=x.dtype, device=x.device)
-        mark = torch.zeros(x.size(0), dtype=x.dtype, device=x.device)
-        mark = mark.scatter_add(0, pointed_ids.to(x.device), ones)   # ONNX: ScatterElements(add)
+        pointed_ids = pointed_ids.to(x.device)
+        if self.dense_aggregation:
+            from .dense import onehot_rows
+            mark = onehot_rows(pointed_ids, x.size(0), x.dtype).sum(dim=1)   # Equal + ReduceSum
+        else:
+            ones = torch.ones(pointed_ids.numel(), dtype=x.dtype, device=x.device)
+            mark = torch.zeros(x.size(0), dtype=x.dtype, device=x.device)
+            mark = mark.scatter_add(0, pointed_ids, ones)   # ONNX: ScatterElements(add)
         return x + mark.unsqueeze(1) * self.weight

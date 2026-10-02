@@ -162,6 +162,8 @@ public:
    * @return Fringe size.
    */
   [[nodiscard]] int get_RL_fringe_size() const noexcept;
+  /// \brief Intra-op threads of the onnxruntime sessions (0 = runtime default).
+  [[nodiscard]] int get_onnx_threads() const noexcept;
 
   /**
    * @brief Get the exploration percentage.
@@ -359,6 +361,7 @@ private:
    * @brief Size of the fringe used in RL-based search.
    */
   int m_RL_fringe_size = 32;
+  int m_onnx_threads = 1; ///< onnxruntime intra-op threads, see --onnx_threads
 
   /**
    * @brief Percentage of the fringe allocated to exploration.

@@ -59,12 +59,16 @@ def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     # ---- what train_models.py sends ----
-    p.add_argument("--train-csv", nargs="+", required=True,
+    p.add_argument("--export-from", type=Path, default=None, metavar="RUN_DIR",
+                   help="no training: rebuild the network from --hidden-dim/--gnn-layers/--context-mode, load "
+                        "the checkpoint the selection json of RUN_DIR (a run_fringe<F> dir) names and re-export "
+                        "it with --aggregation as RUN_DIR/frontier_policy_<F>_best_by_expansions.onnx")
+    p.add_argument("--train-csv", nargs="+", default=None,
                    help="generation-table CSVs (train). Instance-level split is "
                         "carved from these; WITHIN-CONFIG is enforced in code.")
     p.add_argument("--test-csv", nargs="*", default=None,
                    help="touched exactly once, at the end; never selects")
-    p.add_argument("--dir-save-model", required=True,
+    p.add_argument("--dir-save-model", required=False, default=None,
                    help="`_fringe<F>` is appended per fringe size")
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--kind-of-data", choices=["merged", "separated"], default="merged",
@@ -179,6 +183,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--fill-k", type=int, default=4,
                    help="fill branches per non-full decision state (--fill-fringes only)")
     p.add_argument("--device", default=None)
+    p.add_argument("--aggregation", choices=["scatter", "dense"], default="scatter",
+                   help="ONNX form of the sum aggregations: PyG scatters, or one-hot matmuls (deep_nn.dense)")
     p.add_argument("--resident-packing", action="store_true",
                    help="pack training batches from device-resident trees (resident.py) instead of the "
                         "per-slot loop (batching.pack_batch); same tensors, no measured step-time gain")
@@ -199,12 +205,44 @@ def build_parser() -> argparse.ArgumentParser:
     return p
 
 
+def export_from(a, kind: str, ctx: str) -> int:
+    """Re-export a finished run's selected checkpoint (same weights, another ONNX form)."""
+    import copy
+    import json
+    import torch
+    from src.offline.run import _net
+    from src.trainer import RLFrontierTrainer
+    run_dir = a.export_from
+    sel = next(run_dir.glob("frontier_policy_*_best_by_expansions.selection.json"), None)
+    if sel is None:
+        raise SystemExit(f"{run_dir}: no *.selection.json (not a finished run_fringe<F> dir)")
+    meta = json.loads(sel.read_text())
+    F, step = int(meta["fringe_size"]), int(meta["checkpoint"])
+    cfg = RunConfig(train_csvs=[], dir_save_model=run_dir.parent, fringe_size=F, model=meta.get("model", a.model),
+                    kind_of_data=meta.get("kind_of_data", kind), context_mode=meta.get("context_mode", ctx),
+                    dataset_type=meta.get("dataset_type", a.dataset_type), hidden_dim=a.hidden_dim,
+                    gnn_layers=a.gnn_layers)
+    net = _net(cfg, max_delta=1.0)
+    net.load_state_dict(torch.load(run_dir / "checkpoints" / f"ckpt_{step}.pt", map_location="cpu"))
+    out = run_dir / f"frontier_policy_{F}_best_by_expansions.onnx"
+    RLFrontierTrainer(model=copy.deepcopy(net).eval(), device="cpu", kind_of_data=cfg.kind_of_data).to_onnx(
+        out, node_input_dim=1, onnx_frontier_size=F, aggregation=a.aggregation)
+    meta["aggregation"] = a.aggregation
+    sel.write_text(json.dumps(meta, indent=1))
+    print(f"[export] {out} from ckpt_{step}.pt, aggregation={a.aggregation}")
+    return 0
+
+
 def main(argv=None) -> int:
     a = build_parser().parse_args(argv)
     kind = "separated" if a.no_goal else a.kind_of_data
     ctx = a.context_mode
     if a.use_global_context is False and ctx == "mean_pool":
         ctx = "none"          # the deprecated bool, honoured
+    if a.export_from is not None:
+        return export_from(a, kind, ctx)
+    if not a.train_csv or not a.dir_save_model:
+        raise SystemExit("--train-csv and --dir-save-model are required (or --export-from RUN_DIR)")
     rc = 0
     for F in a.fringe_sizes:
         cfg = RunConfig(
@@ -227,7 +265,7 @@ def main(argv=None) -> int:
             eval_expansion_cap=a.eval_expansion_cap,
             fidelity_instances=a.fidelity_instances, deep_exe=a.deep_exe,
             device=a.device, export_onnx=a.export_onnx, dataset_type=a.dataset_type,
-            resident_packing=a.resident_packing,
+            resident_packing=a.resident_packing, aggregation=a.aggregation,
             behaviour_policies=a.behaviour_policies,
             unified=a.unified, frozen_eval_m=a.frozen_eval_m,
             frozen_eval_rollouts=a.frozen_eval_rollouts,

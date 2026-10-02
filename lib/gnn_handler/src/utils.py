@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import copy
+
 import math
 import os
 import random
@@ -15,6 +17,7 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from torch import nn
 
 from deep_nn import contract
+from deep_nn.dense import set_dense_aggregation
 from src.model import BaseModel
 from src.models.distance_estimator import (
     DistanceEstimator,
@@ -109,20 +112,30 @@ class DistanceEstimatorModel(BaseModel):
         with torch.no_grad():
             return self.model(**model_inputs(self._move_batch_to_device(batch))).cpu()
 
-    def to_onnx(self, onnx_path: str | Path, fringe_size: int, params: Dict[str, float]) -> Path:
+    def _export_core(self, aggregation: str, fringe_size: int = 1):
+        """A CPU copy of the model for export; `dense` swaps the scatters for one-hot
+        matmuls (deep_nn.dense: blocked per slot when the export is F >= 4 wide), the
+        live model is never touched."""
+        if aggregation not in ("scatter", "dense"):
+            raise ValueError(f"aggregation must be scatter or dense, got {aggregation!r}")
+        core = copy.deepcopy(self.model).cpu().eval()
+        return set_dense_aggregation(core, aggregation == "dense", blocked=int(fringe_size) >= 4)
+
+    def to_onnx(self, onnx_path: str | Path, fringe_size: int, params: Dict[str, float],
+                aggregation: str = "scatter") -> Path:
         """Export through the shared planner contract, scores = -distance."""
         wrapper_cls = OnnxNegativeDistanceSeparated if self.model.use_goal else OnnxNegativeDistance
-        wrapper = wrapper_cls(self.model, params["slope"], params["intercept"], fringe_size)
-        try:
-            return contract.export(wrapper, onnx_path, fringe_size, separated=self.model.use_goal)
-        finally:
-            self.model.to(self.device)
+        wrapper = wrapper_cls(self._export_core(aggregation, fringe_size), params["slope"], params["intercept"],
+                              fringe_size)
+        return contract.export(wrapper, onnx_path, fringe_size, separated=self.model.use_goal)
 
-    def to_onnx_state(self, onnx_path: str | Path, params: Dict[str, float]) -> Path:
+    def to_onnx_state(self, onnx_path: str | Path, params: Dict[str, float],
+                      aggregation: str = "scatter") -> Path:
         """Per-state export for the C++ GraphNN consumer, plus the constant file
         (``<stem>_C.txt``) it inverts the target scaling with."""
         if self.model.use_goal:
             raise ValueError("the GraphNN consumer supports merged models only")
+        core = self._export_core(aggregation)
         onnx_path = Path(onnx_path)
         n, e = 8, 12
         dummy = (torch.zeros(n, dtype=torch.int64), torch.zeros((2, e), dtype=torch.int64),
@@ -131,7 +144,7 @@ class DistanceEstimatorModel(BaseModel):
         axes = {"node_features": {0: "N"}, "edge_index": {1: "E"}, "edge_attr": {0: "E"},
                 "batch": {0: "N"}, "pointed_ids": {0: "P"}}
         try:
-            torch.onnx.export(OnnxScaledDistance(self.model).eval().cpu(), dummy, onnx_path.as_posix(),
+            torch.onnx.export(OnnxScaledDistance(core).eval().cpu(), dummy, onnx_path.as_posix(),
                               opset_version=contract.OPSET, dynamo=False, input_names=list(STATE_INPUTS),
                               output_names=["scaled_distance"], dynamic_axes=axes, do_constant_folding=False)
         finally:
