@@ -27,9 +27,9 @@
 #include "KripkeEqualityHelper.h"
 #include "KripkeStorage.h"
 #include "SetHelper.h"
-#include "utilities/ExitHandler.h"
 #include "argparse/Configuration.h"
 #include "bisimulation/SignatureBisimulation.h"
+#include "utilities/ExitHandler.h"
 
 #ifdef USE_NEURALNETS
 #include "neuralnets/GraphNN.h"

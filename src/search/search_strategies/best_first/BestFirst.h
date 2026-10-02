@@ -295,8 +295,8 @@ private:
       m_pending; ///< Successors waiting for the batched GNN evaluation.
   std::uint64_t m_next_order = 0; ///< Insertion counter for tie-breaking.
   TieBreaking m_tie_breaking = configured_tie_breaking();
-  std::mt19937_64 m_tie_rng{ArgumentParser::get_instance()
-                                .get_tie_breaking_seed()}; ///< random keys
+  std::mt19937_64 m_tie_rng{
+      ArgumentParser::get_instance().get_tie_breaking_seed()}; ///< random keys
   bool m_raw_distance = ArgumentParser::get_instance()
                             .get_GNN_raw_distance(); ///< Unrounded GNN h.
 };

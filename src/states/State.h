@@ -17,8 +17,8 @@
  * \date May 20, 2025
  */
 #pragma once
-#include <cstdint>
 #include <concepts>
+#include <cstdint>
 
 #include "actions/Action.h"
 #include "neuralnets/GraphTensor.h"

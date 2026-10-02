@@ -223,12 +223,11 @@ ArgumentParser::ArgumentParser() : app("deep") {
       "Activate epistemic-state reduction through bisimulation. Use this to "
       "reduce the state space by merging bisimilar states.");
   bis_group
-      ->add_option(
-          "--bisimulation_type", m_bisimulation_type,
-          "Specify the algorithm for bisimulation contraction "
-          "(requires --bisimulation). Options: 'SIG' (signature "
-          "refinement on the Kripke structure, default), 'FB' (Fast "
-          "Bisimulation) or 'PT' (Paige and Tarjan).")
+      ->add_option("--bisimulation_type", m_bisimulation_type,
+                   "Specify the algorithm for bisimulation contraction "
+                   "(requires --bisimulation). Options: 'SIG' (signature "
+                   "refinement on the Kripke structure, default), 'FB' (Fast "
+                   "Bisimulation) or 'PT' (Paige and Tarjan).")
       ->check(CLI::IsMember({"FB", "PT", "SIG"}))
       ->default_val("SIG");
   bis_group

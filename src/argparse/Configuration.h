@@ -214,7 +214,7 @@ private:
   Configuration();
 
   // Configuration fields
-  bool m_bisimulation = false;            ///< Bisimulation enabled flag.
+  bool m_bisimulation = false;             ///< Bisimulation enabled flag.
   std::string m_bisimulation_type = "SIG"; ///< Bisimulation type string.
   int bisimulation_failures =
       0; ///< Counter to keep track of hwo many times Bisimulation failed so we

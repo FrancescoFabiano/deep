@@ -1,7 +1,7 @@
 #pragma once
 
-#include <cstdint>
 #include <CLI/CLI.hpp>
+#include <cstdint>
 #include <fstream>
 #include <string>
 #include <vector>

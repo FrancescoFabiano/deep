@@ -6,11 +6,11 @@
  * \date May 29, 2025
  */
 
-#include <map>
 #include "argparse/ArgumentParser.h"
 #include "search/SpaceSearcher.h"
 #include "states/State.h"
 #include "utilities/ExitHandler.h"
+#include <map>
 
 #include <algorithm>
 #include <atomic>
@@ -231,8 +231,8 @@ bool SpaceSearcher<StateRepr, Strategy>::search_sequential(
 
         // interval 0 (default) or 1: every level; N: every N-th level
         const bool should_contract =
-            depth > 0 && (bisimulation_interval == 0 ||
-                          depth % bisimulation_interval == 0);
+            depth > 0 &&
+            (bisimulation_interval == 0 || depth % bisimulation_interval == 0);
 
         if (should_contract) {
           successor.contract_with_bisimulation();

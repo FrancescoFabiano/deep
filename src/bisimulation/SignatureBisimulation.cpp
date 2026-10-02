@@ -37,7 +37,7 @@ void SignatureBisimulation::contract(KripkeState &kstate) {
         if (const auto target_it = index.find(target);
             target_it != index.end()) {
           successors[source_it->second].emplace_back(agent_it->second,
-                                                      target_it->second);
+                                                     target_it->second);
         }
       }
     }

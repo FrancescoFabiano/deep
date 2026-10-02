@@ -150,8 +150,7 @@ void State<StateRepr>::set_heuristic_value(const int heuristic_value) {
 }
 
 template <StateRepresentation StateRepr>
-void State<StateRepr>::set_old_heuristic_value(
-    const int old_heuristic_value) {
+void State<StateRepr>::set_old_heuristic_value(const int old_heuristic_value) {
   m_old_heuristic_value = old_heuristic_value;
 }
 
