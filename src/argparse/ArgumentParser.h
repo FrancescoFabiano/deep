@@ -182,6 +182,12 @@ public:
   [[nodiscard]] std::string get_RL_heur_selection() const noexcept;
 
   /**
+   * @brief Get the number of ONNX Runtime threads per model evaluation.
+   * @return Thread count; 0 means the ONNX Runtime default.
+   */
+  [[nodiscard]] int get_onnx_threads() const noexcept;
+
+  /**
    * \brief Return the type of encoding used for the information in states.
    * \return the DatasetType used to encode the labels in the GNN states.
    */
@@ -380,6 +386,11 @@ private:
    * Converted to RL_Heur_type when accessed.
    */
   std::string m_RL_heur_selection = "MIN";
+
+  /**
+   * @brief Threads ONNX Runtime may use per model evaluation (0 = its default).
+   */
+  int m_onnx_threads = 0;
 
   bool m_exec_plan =
       false; ///< Flag to indicate if the plan should be executed.

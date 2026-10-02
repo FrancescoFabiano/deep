@@ -370,6 +370,15 @@ ArgumentParser::ArgumentParser() : app("deep") {
       ->check(CLI::IsMember({"MIN", "MAX", "AVG", "RNG"}))
       ->default_val("MIN");
 
+  search_group
+      ->add_option("--onnx_threads", m_onnx_threads,
+                   "Number of threads ONNX Runtime may use for one model "
+                   "evaluation. 0 (default) keeps the ONNX Runtime default "
+                   "(one per core); 1 keeps neural-network planning "
+                   "single-threaded, e.g. for CPU-time measured runs.")
+      ->check(CLI::NonNegativeNumber)
+      ->default_val("0");
+
   dataset_group
       ->add_option("--RL_seed", m_RL_seed,
                    "Set the seed used for RL exploration and RNG heuristics. "
@@ -619,6 +628,8 @@ int ArgumentParser::get_RL_exploitation_percentage() const noexcept {
 std::string ArgumentParser::get_RL_heur_selection() const noexcept {
   return m_RL_heur_selection;
 }
+
+int ArgumentParser::get_onnx_threads() const noexcept { return m_onnx_threads; }
 bool ArgumentParser::get_execute_plan() const noexcept { return m_exec_plan; }
 
 const std::string &ArgumentParser::get_plan_file() const noexcept {

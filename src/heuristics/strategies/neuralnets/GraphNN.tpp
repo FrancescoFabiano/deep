@@ -57,6 +57,11 @@ void GraphNN<StateRepr>::initialize_onnx_model() {
   try {
     m_session_options.SetGraphOptimizationLevel(
         GraphOptimizationLevel::ORT_ENABLE_ALL);
+    if (const int threads = ArgumentParser::get_instance().get_onnx_threads();
+        threads > 0) {
+      m_session_options.SetIntraOpNumThreads(threads);
+      m_session_options.SetInterOpNumThreads(threads);
+    }
 
     /*#ifdef _WIN32
         // Windows way
