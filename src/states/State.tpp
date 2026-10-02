@@ -68,7 +68,7 @@ unsigned short State<StateRepr>::get_plan_length() const {
 }
 
 template <StateRepresentation StateRepr>
-short State<StateRepr>::get_heuristic_value() const {
+int State<StateRepr>::get_heuristic_value() const {
   return m_heuristic_value;
 }
 
@@ -123,19 +123,19 @@ void State<StateRepr>::add_executed_action(const Action &to_add) {
 }
 
 template <StateRepresentation StateRepr>
-void State<StateRepr>::set_heuristic_value(const short heuristic_value) {
+void State<StateRepr>::set_heuristic_value(const int heuristic_value) {
   m_heuristic_value = heuristic_value;
 }
 
 template <StateRepresentation StateRepr>
 void State<StateRepr>::set_old_heuristic_value(
-    const short old_heuristic_value) {
+    const int old_heuristic_value) {
   m_old_heuristic_value = old_heuristic_value;
 }
 
 template <StateRepresentation StateRepr>
 void State<StateRepr>::set_heuristics_evaluation_times(
-    const short heuristics_evaluation_times) {
+    const int heuristics_evaluation_times) {
   m_heuristics_evaluation_times = heuristics_evaluation_times;
 }
 

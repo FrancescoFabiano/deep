@@ -196,7 +196,7 @@ protected:
           evaluator.get_score(batch, &raw_scores);
 
       for (std::size_t i = 0; i < batch.size(); ++i) {
-        constexpr double max_value = std::numeric_limits<short>::max();
+        constexpr double max_value = std::numeric_limits<int>::max();
         double value = std::isfinite(raw_scores[i])
                            ? std::max(0.0, -static_cast<double>(raw_scores[i]))
                            : max_value;
@@ -204,7 +204,7 @@ protected:
           value += batch[i].get_plan_length();
         }
         batch[i].set_heuristic_value(
-            static_cast<short>(std::lround(std::min(value, max_value))));
+            static_cast<int>(std::llround(std::min(value, max_value))));
         search_space.push(std::move(batch[i]));
       }
     }

@@ -142,19 +142,19 @@ public:
   /** \brief Setter for the field \ref m_heuristic_value.
    *
    * @param[in] heuristic_value: the int to copy in \ref m_heuristic_value.*/
-  void set_heuristic_value(short heuristic_value);
+  void set_heuristic_value(int heuristic_value);
 
   /** \brief Setter for the field \ref m_old_heuristic_value.
    *
    * @param[in] old_heuristic_value: the int to copy in \ref
    * m_old_heuristic_value.*/
-  void set_old_heuristic_value(const short old_heuristic_value);
+  void set_old_heuristic_value(int old_heuristic_value);
 
   /** \brief Setter for the field \ref m_heuristics_evaluation_times.
    *
    * @param[in] heuristics_evaluation_times: the int to copy in \ref
    * m_heuristics_evaluation_times.*/
-  void set_heuristics_evaluation_times(const short heuristics_evaluation_times);
+  void set_heuristics_evaluation_times(int heuristics_evaluation_times);
 
   /** \brief Increase the field \ref m_heuristics_evaluation_times by one.*/
   void increase_heuristics_evaluation_times();
@@ -162,7 +162,7 @@ public:
   /** \brief Getter of \ref m_heuristic_value.
    *
    * @return the heuristic value of *this*.*/
-  [[nodiscard]] short get_heuristic_value() const;
+  [[nodiscard]] int get_heuristic_value() const;
 
   /** \brief Getter of \ref m_old_heuristic_value.
    *

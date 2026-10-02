@@ -162,13 +162,13 @@ int HeuristicsManager<StateRepr>::get_heuristic_value(
       case RLHeuristicType::MIN: {
         ret_heuristics =
             std::min(eState.get_heuristic_value(),
-                     static_cast<short>(eState.get_old_heuristic_value()));
+                     static_cast<int>(eState.get_old_heuristic_value()));
         break;
       }
       case RLHeuristicType::MAX: {
         ret_heuristics =
             std::max(eState.get_heuristic_value(),
-                     static_cast<short>(eState.get_old_heuristic_value()));
+                     static_cast<int>(eState.get_old_heuristic_value()));
         break;
       }
       case RLHeuristicType::AVG: {
