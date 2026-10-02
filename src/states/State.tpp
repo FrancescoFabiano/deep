@@ -40,7 +40,9 @@ State<StateRepr>::State(const State &other)
       m_heuristic_value(other.m_heuristic_value),
       m_search_primary(other.m_search_primary),
       m_search_secondary(other.m_search_secondary),
-      m_search_order(other.m_search_order) {}
+      m_search_order(other.m_search_order),
+      m_old_heuristic_value(other.m_old_heuristic_value),
+      m_heuristics_evaluation_times(other.m_heuristics_evaluation_times) {}
 
 template <StateRepresentation StateRepr>
 State<StateRepr>::State(State &&other) noexcept
@@ -49,7 +51,9 @@ State<StateRepr>::State(State &&other) noexcept
       m_heuristic_value(other.m_heuristic_value),
       m_search_primary(other.m_search_primary),
       m_search_secondary(other.m_search_secondary),
-      m_search_order(other.m_search_order) {}
+      m_search_order(other.m_search_order),
+      m_old_heuristic_value(other.m_old_heuristic_value),
+      m_heuristics_evaluation_times(other.m_heuristics_evaluation_times) {}
 
 template <StateRepresentation StateRepr>
 State<StateRepr>
@@ -96,6 +100,9 @@ State<StateRepr> &State<StateRepr>::operator=(const State &to_assign) {
   m_search_primary = to_assign.m_search_primary;
   m_search_secondary = to_assign.m_search_secondary;
   m_search_order = to_assign.m_search_order;
+  // RL_H MIN/MAX/AVG combine a state's new rank with these
+  m_old_heuristic_value = to_assign.m_old_heuristic_value;
+  m_heuristics_evaluation_times = to_assign.m_heuristics_evaluation_times;
   return (*this);
 }
 
@@ -107,6 +114,9 @@ State<StateRepr> &State<StateRepr>::operator=(State &&to_assign) noexcept {
   m_search_primary = to_assign.m_search_primary;
   m_search_secondary = to_assign.m_search_secondary;
   m_search_order = to_assign.m_search_order;
+  // RL_H MIN/MAX/AVG combine a state's new rank with these
+  m_old_heuristic_value = to_assign.m_old_heuristic_value;
+  m_heuristics_evaluation_times = to_assign.m_heuristics_evaluation_times;
   return (*this);
 }
 
