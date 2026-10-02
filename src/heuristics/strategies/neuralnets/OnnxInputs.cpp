@@ -29,7 +29,8 @@ void log_sink(void * /*param*/, OrtLoggingLevel severity,
         text.find("Memcpy nodes") != std::string_view::npos;
     print = header || device_warning ||
             (in_placement_list && text.substr(0, 2) == "  ");
-    in_placement_list = header || (in_placement_list && text.substr(0, 2) == "  ");
+    in_placement_list =
+        header || (in_placement_list && text.substr(0, 2) == "  ");
   }
   if (print) {
     parser.get_output_stream() << "[ONNX] " << text << std::endl;
@@ -72,9 +73,8 @@ void configure_session(Ort::SessionOptions &options) {
   }
 #ifdef USE_CUDA
   const auto providers = Ort::GetAvailableProviders();
-  const bool has_cuda =
-      std::find(providers.begin(), providers.end(), "CUDAExecutionProvider") !=
-      providers.end();
+  const bool has_cuda = std::find(providers.begin(), providers.end(),
+                                  "CUDAExecutionProvider") != providers.end();
   std::string failure = "this ONNX Runtime has no CUDAExecutionProvider "
                         "(CPU package installed? rebuild with: build.sh nn "
                         "use_gpu)";

@@ -57,7 +57,7 @@ public:
    */
   [[nodiscard]] std::string get_name() const override {
     return "Heuristics First Search (" +
-           this->m_heuristics_manager.get_used_h_name() +
-           this->batched_name() + ")";
+           this->m_heuristics_manager.get_used_h_name() + this->batched_name() +
+           ")";
   }
 };

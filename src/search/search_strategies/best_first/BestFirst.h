@@ -173,8 +173,7 @@ protected:
     std::vector<float> raw_scores;
     for (std::size_t first = 0; first < m_pending.size();
          first += m_batch_size) {
-      const std::size_t last =
-          std::min(m_pending.size(), first + m_batch_size);
+      const std::size_t last = std::min(m_pending.size(), first + m_batch_size);
       std::vector<State<StateRepr>> batch(
           std::make_move_iterator(m_pending.begin() + first),
           std::make_move_iterator(m_pending.begin() + last));
