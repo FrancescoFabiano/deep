@@ -57,7 +57,8 @@ def parse_args(argv=None):
     p.add_argument("--model-name", default="distance_estimator")
     p.add_argument("--no-export-onnx", action="store_true")
     p.add_argument("--export-only", action="store_true",
-                   help="skip training: load <dir-save-model>/<model-name>.pt and (re-)export it")
+                   help="skip training and evaluation: load <dir-save-model>/<model-name>.pt and (re-)export it")
+    p.add_argument("--device", default=None, help="cuda / cpu (default: cuda if available)")
     return p.parse_args(argv)
 
 
@@ -73,19 +74,22 @@ def train_and_export(args) -> Path:
     print(f"[gnn] train F={F_train} {args.kind_of_data}: {len(train)} train beams, "
           f"{len(test) if test else 0} test beams, scaling {params}")
 
-    m = DistanceEstimatorModel(lr=args.lr, hidden_dim=args.hidden_dim,
+    m = DistanceEstimatorModel(lr=args.lr, hidden_dim=args.hidden_dim, device=args.device,
                                use_goal=(args.kind_of_data == "separated"))
     val_loader = test.loader(args.batch_size, shuffle=False) if test else train.loader(args.batch_size, shuffle=False)
     if args.export_only:
+        # no training, no evaluation pass (it would need the GPU a training job may hold)
         print(f"[gnn] export only: loading {out_dir / f'{args.model_name}.pt'}")
+        m.load_model(out_dir / f"{args.model_name}.pt")
+        metrics = {}
     else:
         train_loader = train.loader(args.batch_size, shuffle=True, seed=args.seed)
         m.train(train_loader, val_loader, n_epochs=args.epochs, checkpoint_dir=str(out_dir),
                 model_name=args.model_name)
-    m.load_model(out_dir / f"{args.model_name}.pt")
-    metrics = m.evaluate(val_loader)
-    print(f"[gnn] best checkpoint on {'test' if test else 'train'}: "
-          + " ".join(f"{k}={v:.4f}" for k, v in metrics.items()))
+        m.load_model(out_dir / f"{args.model_name}.pt")
+        metrics = m.evaluate(val_loader)
+        print(f"[gnn] best checkpoint on {'test' if test else 'train'}: "
+              + " ".join(f"{k}={v:.4f}" for k, v in metrics.items()))
 
     info = {**vars(args), **{f"scaling_{k}": v for k, v in params.items()},
             **{f"eval_{k}": v for k, v in metrics.items()}, "aggregation": args.aggregation}

@@ -139,6 +139,20 @@ def reexport(cfg: Config) -> None:
     labels = [POOLED_DIR] if cfg.pooled else domains
     t = cfg.train
     agg = str(t.get("aggregation", AGGREGATION))
+    failed: list[str] = []
+
+    def run(tag, cmd, install):
+        print(f"[export] {tag} -> {agg}")
+        if cfg.dry_run:
+            print(" ".join(cmd))
+            return
+        try:
+            subprocess.run(cmd, cwd=REPO, check=True)
+            install()
+        except subprocess.CalledProcessError as e:
+            print(f"[export] FAIL {tag}: exited {e.returncode}")
+            failed.append(tag)
+
     for label in labels:
         out = cfg.models_dir / label
         if "rl" in t["models"]:
@@ -148,26 +162,23 @@ def reexport(cfg: Config) -> None:
                     continue
                 cmd = [sys.executable, str(TRAINERS["rl"]), "--export-from", str(run_dir), "--aggregation", agg,
                        "--dataset-type", cfg.data["dataset_type"], *map(str, t.get("rl", {}).get("extra", []))]
-                print(f"[export] {label}/rl@F{F} -> {agg}")
-                if cfg.dry_run:
-                    print(" ".join(cmd))
-                    continue
-                subprocess.run(cmd, cwd=REPO, check=True)
-                shutil.copy2(run_dir / EXPORTS["rl"][0][0].format(F=F), out / f"rl_F{F}.onnx")
+                run(f"{label}/rl@F{F}", cmd,
+                    lambda F=F, run_dir=run_dir: shutil.copy2(run_dir / EXPORTS["rl"][0][0].format(F=F), out / f"rl_F{F}.onnx"))
         if "gnn" in t["models"] and (out / "gnn" / "run" / "distance_estimator.pt").exists():
             members = domains if cfg.pooled else [label]
             train_csvs = [c for d in members for c in _tables(cfg, insts, d)[0]]
+            # CPU: the export needs no GPU, and a training job may be holding it
             cmd = [sys.executable, str(TRAINERS["gnn"]), "--train-csv", *map(str, train_csvs),
                    "--dir-save-model", str(out / "gnn" / "run"), "--fringe-sizes", *map(str, GNN_FRINGE_SIZES),
                    "--epochs", str(t["epochs"]), "--batch-size", str(t["batch_size"]), "--seed", str(t["seed"]),
-                   "--dataset-type", cfg.data["dataset_type"], "--aggregation", agg, "--export-only",
+                   "--dataset-type", cfg.data["dataset_type"], "--aggregation", agg, "--export-only", "--device", "cpu",
                    *map(str, t.get("gnn", {}).get("extra", []))]
-            print(f"[export] {label}/gnn -> {agg}")
-            if cfg.dry_run:
-                print(" ".join(cmd))
-                continue
-            subprocess.run(cmd, cwd=REPO, check=True)
-            for F in GNN_FRINGE_SIZES:
-                shutil.copy2(out / "gnn" / "run" / EXPORTS["gnn"][0][0].format(F=F), out / f"gnn_F{F}.onnx")
-            for src, dst in GNN_STATE:
-                shutil.copy2(out / "gnn" / "run" / src, out / dst)
+
+            def install_gnn(out=out):
+                for F in GNN_FRINGE_SIZES:
+                    shutil.copy2(out / "gnn" / "run" / EXPORTS["gnn"][0][0].format(F=F), out / f"gnn_F{F}.onnx")
+                for src, dst in GNN_STATE:
+                    shutil.copy2(out / "gnn" / "run" / src, out / dst)
+            run(f"{label}/gnn", cmd, install_gnn)
+    if failed:
+        raise SystemExit(f"[export] {len(failed)} run(s) failed, the rest were re-exported: {failed}")
