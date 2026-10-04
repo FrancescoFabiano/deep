@@ -113,6 +113,8 @@ def _train_group(cfg, label, kind, Fs, train_csvs, test_csvs) -> None:
            "--epochs", str(t["epochs"]), "--batch-size", str(batch), "--seed", str(t["seed"]),
            "--dataset-type", cfg.data["dataset_type"], "--aggregation", str(t.get("aggregation", AGGREGATION)),
            *FIXED_FLAGS[kind], *map(str, t.get(kind, {}).get("extra", []))]
+    if kind == "rl" and "ckpt_every" in t:
+        cmd += ["--ckpt-every", str(int(t["ckpt_every"]))]
     if test_csvs:
         cmd += ["--test-csv", *map(str, test_csvs)]
     print(f"[train] {tag}: {len(train_csvs)} train tables, {len(test_csvs)} test tables, batch {batch}")

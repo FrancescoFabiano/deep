@@ -88,7 +88,11 @@ def build_parser() -> argparse.ArgumentParser:
     # derived: S = ceil(epochs * |train_rows| / batch_size).
     p.add_argument("--epochs", type=float, default=100.0,
                    help="passes over train_rows; steps are derived per run")
-    p.add_argument("--n-checkpoints", type=int, default=5)
+    p.add_argument("--n-checkpoints", type=int, default=5,
+                   help="run-proportional checkpoints (always kept, incl. the last step)")
+    p.add_argument("--ckpt-every", type=int, default=10000,
+                   help="also checkpoint + evaluate every N steps, so an early divergence still leaves "
+                        "pre-drift candidates to select from; 0 = proportional checkpoints only")
     p.add_argument("--select-final", action="store_true",
                    help="export the FINAL checkpoint (step S) instead of the one "
                         "the smoothed heldout_ndcg selector picks; for arms that "
@@ -251,7 +255,7 @@ def main(argv=None) -> int:
             dir_save_model=Path(a.dir_save_model),
             fringe_size=F, model=a.model, kind_of_data=kind, context_mode=ctx,
             attn_heads=a.attn_heads, attn_layers=a.attn_layers,
-            epochs=a.epochs, n_checkpoints=a.n_checkpoints, seed=a.seed,
+            epochs=a.epochs, n_checkpoints=a.n_checkpoints, ckpt_every=a.ckpt_every, seed=a.seed,
             sampler=a.sampler, sampler_k=a.sampler_k, select_final=a.select_final,
             seeds_per_policy=a.seeds_per_policy,
             counterfactual=a.counterfactual_actions,
