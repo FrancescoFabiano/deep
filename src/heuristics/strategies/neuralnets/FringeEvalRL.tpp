@@ -65,8 +65,10 @@ void FringeEvalRL<StateRepr>::initialize_onnx_model() {
     m_input_names = m_session->GetInputNames();
     m_output_names = m_session->GetOutputNames();
 
-    // The exported RL ONNX currently emits fixed-size logits [F] where F is
-    // the export-time frontier size (normally 32). Keep runtime config aligned.
+    // The exported model emits one logit per fringe slot, [F]. Older exports
+    // declare F as a fixed number, checked here against the configured size;
+    // dense exports declare it symbolic (ONNX Runtime 1.22 cannot resolve it),
+    // and get_score checks the actual length on every call instead.
     if (!m_output_names.empty()) {
       auto output_type_info = m_session->GetOutputTypeInfo(0);
 
@@ -87,17 +89,12 @@ void FringeEvalRL<StateRepr>::initialize_onnx_model() {
 
       // Use the last dim if your model exports [1, F], or the only dim if it
       // exports [F].
-      int64_t frontier_dim = output_shape.back();
-      if (frontier_dim <= 0) {
-        ExitHandler::exit_with_message(
-            ExitHandler::ExitCode::FringeEvalModelLoadError,
-            "ONNX output 0 has invalid/dynamic frontier dimension.");
-      }
-
-      const auto model_frontier_size = static_cast<size_t>(frontier_dim);
+      const int64_t frontier_dim = output_shape.back();
       const auto configured_frontier_size = configured_fringe_size();
 
-      if (model_frontier_size != configured_frontier_size) {
+      if (frontier_dim > 0 &&
+          static_cast<size_t>(frontier_dim) != configured_frontier_size) {
+        const auto model_frontier_size = static_cast<size_t>(frontier_dim);
         ExitHandler::exit_with_message(
             ExitHandler::ExitCode::FringeEvalModelLoadError,
             "Fringe size mismatch: ONNX logits length is " +
@@ -228,6 +225,15 @@ FringeEvalRL<StateRepr>::get_score(std::vector<State<StateRepr>> &states,
       inputs.run(*m_session, m_input_names, m_output_names,
                  ExitHandler::ExitCode::FringeEvalModelLoadError);
 
+  if (const size_t length =
+          outputs[0].GetTensorTypeAndShapeInfo().GetElementCount();
+      length != configured_fringe_size()) {
+    ExitHandler::exit_with_message(
+        ExitHandler::ExitCode::FringeEvalModelLoadError,
+        "Fringe size mismatch: the ONNX model returned " +
+            std::to_string(length) + " scores for a fringe of size " +
+            std::to_string(configured_fringe_size()) + ".");
+  }
   const float *output_data = outputs[0].template GetTensorData<float>();
 
   if (raw_scores != nullptr) {
