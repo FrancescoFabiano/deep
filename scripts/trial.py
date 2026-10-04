@@ -19,11 +19,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from pipeline import config, data, infer, report, train  # noqa: E402
 
 STAGES = {"data": data.run, "train": train.run, "infer": infer.run, "report": report.run}
+EXTRA = {"export": train.reexport}        # not part of `all`: re-export installed models with [train].aggregation
 
 
 def main() -> None:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("stage", choices=[*STAGES, "all"])
+    p.add_argument("stage", choices=[*STAGES, *EXTRA, "all"])
     p.add_argument("trial_dir")
     p.add_argument("--domains", nargs="+", help="restrict to these domains (default: all in instances/)")
     p.add_argument("--strategies", nargs="+", help="data: generate only these strategies")
@@ -35,7 +36,7 @@ def main() -> None:
     cfg = config.load(Path(a.trial_dir), domains=a.domains, strategies=a.strategies, models=a.models, workers=a.workers, dry_run=a.dry_run)
     for name in (list(STAGES) if a.stage == "all" else [a.stage]):
         print(f"===== {name} =====")
-        STAGES[name](cfg)
+        {**STAGES, **EXTRA}[name](cfg)
 
 
 if __name__ == "__main__":

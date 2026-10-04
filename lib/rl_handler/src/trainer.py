@@ -12,12 +12,15 @@ checkpoints and the ONNX graph structure reference them.
 
 from __future__ import annotations
 
+import copy
+
 import torch
 from pathlib import Path
 from torch import nn
 from typing import Dict, Optional
 
 from deep_nn import contract
+from deep_nn.dense import set_dense_aggregation
 from src.models.frontier_policy import FrontierPolicyNetwork
 
 FAILURE_EPS = 1e-9
@@ -179,8 +182,10 @@ class RLFrontierTrainer:
         out_path: str | Path,
         node_input_dim: int,
         onnx_frontier_size: int = 32,
+        aggregation: str = "scatter",
     ) -> None:
-        """Export through the shared planner contract (deep_nn.contract)."""
+        """Export through the shared planner contract (deep_nn.contract). `aggregation`
+        = dense swaps the scatters for one-hot matmuls (deep_nn.dense) on a copy."""
         if str(self.model.dataset_type).upper() != "HASHED":
             raise ValueError(
                 f"dataset_type {self.model.dataset_type}: FringeEvalRL deploys HASHED "
@@ -189,8 +194,12 @@ class RLFrontierTrainer:
         wrapper_cls = OnnxFrontierPolicySeparatedWrapper if separated else OnnxFrontierPolicyWrapper
         model_was_training = bool(self.model.training)
         model_device = self._model_device()
+        if aggregation not in ("scatter", "dense"):
+            raise ValueError(f"aggregation must be scatter or dense, got {aggregation!r}")
+        core = (self.model if aggregation == "scatter"
+                else set_dense_aggregation(copy.deepcopy(self.model), True, blocked=int(onnx_frontier_size) >= 4))
         try:
-            contract.export(wrapper_cls(self.model), out_path, onnx_frontier_size, separated)
+            contract.export(wrapper_cls(core), out_path, onnx_frontier_size, separated)
         finally:
             self.model.to(model_device)
             self.model.train(model_was_training)

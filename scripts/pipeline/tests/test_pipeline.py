@@ -83,7 +83,7 @@ def _accepted(main_py: Path) -> set:
 @pytest.mark.parametrize("kind", ["rl", "gnn"])
 def test_trainers_accept_the_flags_stage2_sends(kind):
     sent = {"--train-csv", "--test-csv", "--dir-save-model", "--fringe-sizes", "--epochs", "--batch-size",
-            "--seed", "--dataset-type", *train.FIXED_FLAGS[kind]}
+            "--seed", "--dataset-type", "--aggregation", *train.FIXED_FLAGS[kind]}
     missing = sent - _accepted(train.TRAINERS[kind])
     assert not missing, f"{kind} trainer rejects {missing}"
 
@@ -184,7 +184,7 @@ def test_a_failed_run_does_not_block_the_others(tmp_path, monkeypatch):
     monkeypatch.setattr(train.subprocess, "run", fake_run)
     with pytest.raises(SystemExit, match="d1/rl@F4"):
         train.run(cfg)
-    assert calls == [4, 8, 16, 32, 1]                      # every RL F tried, then the one GNN run
+    assert calls == [*cfg.train["fringe_sizes"], 1]        # every RL F tried, then the one GNN run
     assert (cfg.models_dir / "d1" / "rl_F8.onnx").exists() and (cfg.models_dir / "d1" / "gnn_state.onnx").exists()
     assert all((cfg.models_dir / "d1" / f"gnn_F{f}.onnx").exists() for f in train.GNN_FRINGE_SIZES)
     assert not (cfg.models_dir / "d1" / "rl_F4.onnx").exists()

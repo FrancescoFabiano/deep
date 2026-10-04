@@ -117,6 +117,11 @@ class RunConfig:
     # split, from the size of the pool the trainer actually sees.
     epochs: float = 100.0
     n_checkpoints: int = 5
+    # Checkpoint (and evaluate) every this many steps, so a run that diverges early
+    # still leaves pre-drift candidates to select from -- muddy-child F=16 and the
+    # pooled F=8 died at 37k/339k and 163k/818k steps, before the first of 5
+    # run-proportional checkpoints. 0 = the old rule (n_checkpoints per run).
+    ckpt_every: int = 10000
     seed: int = 0
     seeds_per_policy: int = 3
     eval_seeds: int = 5
@@ -132,6 +137,7 @@ class RunConfig:
     lr: float = 1e-4
     batch_size: int = 64
     resident_packing: bool = False  # batches from device-resident trees (resident.py); no measured gain
+    aggregation: str = "scatter"    # ONNX form of the sum aggregations: scatter | dense (deep_nn.dense)
     cql_alpha: float = 0.0
     gamma: float = DEFAULT_GAMMA    # 0.9999: paper's discounted reward ~= SSP limit
     reward_scale: Optional[float] = None
@@ -583,6 +589,11 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
     # the last is exactly S.
     ckpt_steps = sorted({max(1, round(i * S / cfg.n_checkpoints))
                          for i in range(1, cfg.n_checkpoints + 1)})
+    if cfg.ckpt_every and cfg.ckpt_every > 0:
+        # fixed interval, the last step always included; keeps at least the
+        # n_checkpoints proportional ones when the run is shorter than that
+        ckpt_steps = sorted(set(ckpt_steps) | set(range(cfg.ckpt_every, S + 1, cfg.ckpt_every)))
+    print(f"[run] checkpoints: {len(ckpt_steps)} (every {cfg.ckpt_every} steps, last at {S})")
     # Progress bar: only when attached to a terminal. Through train_models.run_one the
     # child is piped (not a tty), so tqdm disables itself -- no \r spam in the logs;
     # the per-checkpoint prints stream instead (run_one runs the child with -u).
@@ -740,7 +751,7 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
         # never once executed. Export must not mutate the training model.
         RLFrontierTrainer(model=copy.deepcopy(net), device="cpu",
                           kind_of_data=cfg.kind_of_data).to_onnx(
-            onnx, node_input_dim=1, onnx_frontier_size=cfg.fringe_size)
+            onnx, node_input_dim=1, onnx_frontier_size=cfg.fringe_size, aggregation=cfg.aggregation)
         print(f"[run] exported {onnx}")
 
         # GATE 2 -- only instances the gate can actually SCORE

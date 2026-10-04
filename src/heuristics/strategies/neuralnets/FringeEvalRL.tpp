@@ -53,7 +53,54 @@ void FringeEvalRL<StateRepr>::initialize_onnx_model() {
     return;
 
   try {
-    onnx_runtime::configure_session(m_session_options);
+    m_session_options.SetGraphOptimizationLevel(
+        GraphOptimizationLevel::ORT_ENABLE_ALL);
+    // --onnx_threads: 1 by default. The per-state graphs are tiny, so the runtime's
+    // one-thread-per-core default only adds synchronisation (and makes CPU-time
+    // measurements meaningless); 0 keeps the runtime default.
+    if (const int threads = ArgumentParser::get_instance().get_onnx_threads();
+        threads > 0) {
+      m_session_options.SetIntraOpNumThreads(threads);
+      m_session_options.SetInterOpNumThreads(1);
+    }
+
+    /*#ifdef _WIN32
+        // Windows way
+        _putenv_s("ORT_CUDA_USE_CUDNN", "0");
+        _putenv_s("CUDA_LAUNCH_BLOCKING", "1");  // optional, forces sync errors
+    #else
+        // Linux / WSL / macOS way
+        setenv("ORT_CUDA_USE_CUDNN", "0", 1);
+        setenv("CUDA_LAUNCH_BLOCKING", "1", 1);  // optional
+    #endif*/
+
+    // Add this line to show warnings (2) to complete verbose (0) (only errors
+    // and above will be shown)
+    if (ArgumentParser::get_instance().get_verbose()) {
+      m_session_options.SetLogSeverityLevel(0);
+    }
+
+#ifdef USE_CUDA
+    try {
+      OrtCUDAProviderOptions cuda_options;
+      m_session_options.AppendExecutionProvider_CUDA(cuda_options);
+      if (ArgumentParser::get_instance().get_verbose()) {
+        ArgumentParser::get_instance().get_output_stream()
+            << "[ONNX] CUDA execution provider enabled via USE_CUDA."
+            << std::endl;
+      }
+    } catch (const Ort::Exception &e) {
+      ArgumentParser::get_instance().get_output_stream()
+          << "[WARNING][ONNX] Failed to enable CUDA, defaulting to CPU: "
+          << e.what() << std::endl;
+    }
+#else
+    if (ArgumentParser::get_instance().get_verbose()) {
+      ArgumentParser::get_instance().get_output_stream()
+          << "[ONNX] Compiled without CUDA (USE_CUDA not defined), using CPU."
+          << std::endl;
+    }
+#endif
 
     m_session = std::make_unique<Ort::Session>(
         onnx_runtime::env(), m_model_path.c_str(), m_session_options);

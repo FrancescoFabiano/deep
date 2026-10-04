@@ -15,8 +15,10 @@ from src.utils import STATE_INPUTS, DistanceEstimatorModel, constant_file, model
 
 def _model(separated: bool) -> DistanceEstimatorModel:
     torch.manual_seed(0)
-    return DistanceEstimatorModel(hidden_dim=16, node_emb_dim=8, edge_emb_dim=4,
-                                  regressor_hidden_dim=16, regressor_blocks=1, use_goal=separated, device="cpu")
+    m = DistanceEstimatorModel(hidden_dim=16, node_emb_dim=8, edge_emb_dim=4,
+                               regressor_hidden_dim=16, regressor_blocks=1, use_goal=separated, device="cpu")
+    m.model.eval()      # the export works on a copy and no longer flips the live model to eval (dropout)
+    return m
 
 
 def _feed(k: int, F: int, separated: bool, seed: int = 0):
@@ -99,3 +101,22 @@ def test_state_export_matches_torch_and_writes_constants(tmp_path):
     assert got.shape == (1,) and abs(float(got[0]) - float(want[0])) < 1e-5
     text = constant_file(path).read_text()
     assert f"slope = {params['slope']}" in text and f"intercept = {params['intercept']}" in text
+
+
+@pytest.mark.parametrize("F", [1, 8])
+def test_dense_export_matches_the_scatter_model(tmp_path, F):
+    """--aggregation dense: one-hot matmuls instead of ScatterElements, same scores."""
+    import onnx
+    m = _model(False)
+    params = normalization_params(10)
+    path = m.to_onnx(tmp_path / "d.onnx", F, params, aggregation="dense")
+    assert not any(n.op_type.startswith("Scatter") for n in onnx.load(str(path)).graph.node)
+    for k in sorted({1, F, max(1, F // 2)}):
+        feed = _feed(k, F, False, seed=k)
+        got = contract.run_onnx(path, feed)[:k]
+        with torch.no_grad():
+            d = m.model(**model_inputs(feed))
+        want = (-(d - params["intercept"]) / params["slope"]).numpy()
+        np.testing.assert_allclose(got, want, atol=1e-5, rtol=0)
+    state = m.to_onnx_state(tmp_path / "s.onnx", params, aggregation="dense")
+    assert not any(n.op_type.startswith("Scatter") for n in onnx.load(str(state)).graph.node)

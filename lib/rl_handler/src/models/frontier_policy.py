@@ -23,6 +23,7 @@ from torch_geometric.nn import (
 )
 from typing import Optional
 
+from deep_nn.dense import dense_add_pool, dense_mean_pool, pool_size, set_blocking
 from deep_nn.features import PointedEmbedding
 
 DATASET_TYPE_HASHED = "HASHED"
@@ -466,6 +467,8 @@ class FrontierPolicyNetwork(nn.Module):
         use_goal_separate_input: bool = False,
     ):
         super().__init__()
+        self.dense_aggregation = False      # export-time switches, see deep_nn.dense
+        self.dense_blocked = False
         # Resolve the frontier-context mode.  `context_mode` is authoritative when
         # given (new checkpoints carry it); otherwise fall back to the deprecated
         # `use_global_context` bool (True->mean_pool, False->none) so old configs /
@@ -577,7 +580,10 @@ class FrontierPolicyNetwork(nn.Module):
             )
 
         size = int(expected_size) if expected_size is not None else None
-        if self.pooling_type == "mean":
+        if self.dense_aggregation and self.pooling_type in ("mean", "sum"):
+            pool = dense_mean_pool if self.pooling_type == "mean" else dense_add_pool
+            pooled = pool(x, m, pool_size(m, size))
+        elif self.pooling_type == "mean":
             pooled = global_mean_pool(x, m, size=size)
         elif self.pooling_type == "sum":
             pooled = global_add_pool(x, m, size=size)
@@ -597,6 +603,9 @@ class FrontierPolicyNetwork(nn.Module):
         goal_node_embeddings: torch.Tensor,
         goal_batch: torch.Tensor,
     ) -> torch.Tensor:
+        if self.dense_aggregation and self.pooling_type in ("mean", "sum"):
+            pool = dense_mean_pool if self.pooling_type == "mean" else dense_add_pool
+            return pool(goal_node_embeddings, goal_batch, pool_size(goal_batch))
         if self.pooling_type == "mean":
             return global_mean_pool(goal_node_embeddings, goal_batch)
         if self.pooling_type == "sum":
@@ -668,7 +677,10 @@ class FrontierPolicyNetwork(nn.Module):
             ctx = z.new_zeros(z.shape)
             return torch.cat([z, ctx], dim=-1)
         n_frontiers = int(candidate_batch.max().item()) + 1
-        ctx_per_frontier = global_mean_pool(z, candidate_batch, size=n_frontiers)
+        if self.dense_aggregation:
+            ctx_per_frontier = dense_mean_pool(z, candidate_batch, n_frontiers)
+        else:
+            ctx_per_frontier = global_mean_pool(z, candidate_batch, size=n_frontiers)
         if int(candidate_batch.max().item()) >= ctx_per_frontier.size(0):
             raise ValueError(
                 f"candidate_batch index out of range: max={int(candidate_batch.max().item())} "
@@ -699,7 +711,10 @@ class FrontierPolicyNetwork(nn.Module):
         this encoder + context stack byte-for-byte. That identity is what makes
         the two-head baseline a fair comparison: only the loss differs.
         """
+        if self.dense_aggregation and self.dense_blocked:
+            set_blocking(self.encoder, membership)   # per-slot one-hot, sized by occupied slots
         node_emb = self.encoder(node_features, edge_index, edge_attr, pointed_ids)
+        set_blocking(self.encoder, None)
         expected_num_candidates = (
             int(candidate_batch.numel()) if candidate_batch is not None else None
         )

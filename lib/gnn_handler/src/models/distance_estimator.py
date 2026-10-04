@@ -18,6 +18,8 @@ import torch.nn.functional as F
 from torch import nn
 from torch_geometric.nn import GINEConv, global_mean_pool
 
+from deep_nn.dense import dense_mean_pool, pool_size, set_blocking
+
 from deep_nn.features import PointedEmbedding
 
 # floats: the TorchScript exporter cannot hold a Python int above int64 max
@@ -67,6 +69,8 @@ class DistanceEstimator(nn.Module):
                            edge_emb_dim=edge_emb_dim, regressor_hidden_dim=regressor_hidden_dim,
                            regressor_blocks=regressor_blocks, regressor_dropout=regressor_dropout)
         self.use_goal = use_goal
+        self.dense_aggregation = False      # export-time switches, see deep_nn.dense
+        self.dense_blocked = False          # per-slot (batched) one-hot for F-wide exports
         self.id_mlp = nn.Sequential(nn.Linear(1, node_emb_dim), nn.ReLU(), nn.Linear(node_emb_dim, node_emb_dim))
         self.pointed = PointedEmbedding(node_emb_dim)
         self.edge_mlp = nn.Sequential(nn.Linear(1, edge_emb_dim), nn.ReLU(), nn.Linear(edge_emb_dim, edge_emb_dim))
@@ -85,8 +89,13 @@ class DistanceEstimator(nn.Module):
         if pointed_ids is not None:
             x = self.pointed(x, pointed_ids)
         e = self.edge_mlp(edge_attr.to(torch.float32).view(-1, 1))
+        if self.dense_aggregation and self.dense_blocked:
+            set_blocking(self, batch)              # per-slot aggregation, sized by occupied slots
         x = F.relu(conv1(x, edge_index, e))
         x = F.relu(conv2(x, edge_index, e))
+        if self.dense_aggregation:
+            set_blocking(self, None)
+            return dense_mean_pool(x, batch, pool_size(batch))   # [slots, hidden]; baked F
         return global_mean_pool(x, batch)   # [slots, hidden]; tracing bakes slots = F
 
     def forward(
