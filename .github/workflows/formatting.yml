@@ -41,7 +41,10 @@ jobs:
         run: |
           find src -name '*.cpp' -o -name '*.hpp' -o -name '*.h' -o -name '*.tpp' | xargs clang-format -i
 
+      # A pull request (often from a fork) cannot be pushed to; its formatting
+      # is committed by the push run after the merge.
       - name: Commit formatting changes (if any)
+        if: github.event_name != 'pull_request'
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "ci: auto-format C++ files"
