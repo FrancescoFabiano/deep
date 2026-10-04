@@ -27,10 +27,8 @@ template <typename T, typename StateRepr>
 concept SearchStrategy = requires(T rep, State<StateRepr> s) {
   /// Functor/lambda to push a state into the container.
   { rep.push(s) } -> std::same_as<void>;
-  /// Functor/lambda to pop a state from the container.
-  { rep.pop() } -> std::same_as<void>;
-  /// Functor/lambda to peek at the next state in the container.
-  { rep.peek() } -> std::same_as<State<StateRepr>>;
+  /// Remove the next state from the container and return it.
+  { rep.take() } -> std::same_as<State<StateRepr>>;
   /// Functor/lambda to clean container.
   { rep.reset() } -> std::same_as<void>;
   /// Functor/lambda to check if container is empty.

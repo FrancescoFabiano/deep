@@ -1,6 +1,7 @@
 #pragma once
 
 #include <CLI/CLI.hpp>
+#include <cstdint>
 #include <fstream>
 #include <string>
 #include <vector>
@@ -184,6 +185,60 @@ public:
   [[nodiscard]] std::string get_RL_heur_selection() const noexcept;
 
   /**
+   * @brief Get the number of ONNX Runtime threads per model evaluation.
+   * @return Thread count; 0 means the ONNX Runtime default.
+   */
+  [[nodiscard]] int get_onnx_threads() const noexcept;
+
+  /**
+   * @brief Get the batch size of the batched GNN heuristic.
+   * @return Successors scored per model call; 0 means per-state evaluation.
+   */
+  [[nodiscard]] int get_GNN_batch_size() const noexcept;
+
+  /**
+   * @brief How HFS/A* order states with equal values.
+   * @return "none" (default), "fifo", "lifo" or "random".
+   */
+  [[nodiscard]] const std::string &get_tie_breaking() const noexcept;
+
+  /**
+   * @brief Seed of the random tie-breaking.
+   * @return The seed (default 42).
+   */
+  [[nodiscard]] std::uint64_t get_tie_breaking_seed() const noexcept;
+
+  /**
+   * @brief Whether the batched GNN orders by its unrounded distance.
+   * @return True with --GNN_raw_distance.
+   */
+  [[nodiscard]] bool get_GNN_raw_distance() const noexcept;
+
+  /**
+   * @brief Get where the neural networks run.
+   * @return "auto", "cpu" or "cuda".
+   */
+  [[nodiscard]] const std::string &get_onnx_device() const noexcept;
+
+  /**
+   * @brief Get the CUDA device id for the neural networks.
+   * @return Device index.
+   */
+  [[nodiscard]] int get_onnx_device_id() const noexcept;
+
+  /**
+   * @brief Whether to print the ONNX node placement at model load.
+   * @return True if requested.
+   */
+  [[nodiscard]] bool get_onnx_placement() const noexcept;
+
+  /**
+   * @brief Get the cap on ONNX Runtime GPU memory.
+   * @return MiB; 0 means no cap.
+   */
+  [[nodiscard]] int get_onnx_gpu_mem_limit_mib() const noexcept;
+
+  /**
    * \brief Return the type of encoding used for the information in states.
    * \return the DatasetType used to encode the labels in the GNN states.
    */
@@ -302,8 +357,8 @@ private:
   bool m_verbose = false;      ///< Verbose mode flag.
   bool m_bisimulation = false; ///< Bisimulation enabled flag.
   std::string m_bisimulation_type =
-      "FB"; ///< Bisimulation type (FB by default).
-  std::size_t m_bisimulation_interval = 2;
+      "SIG"; ///< Bisimulation type (SIG by default).
+  std::size_t m_bisimulation_interval = 0;
 
   bool m_check_visited = false; ///< Flag to check for visited states.
   bool m_dataset_mode = false;  ///< Flag to indicate dataset mode.
@@ -383,6 +438,51 @@ private:
    * Converted to RL_Heur_type when accessed.
    */
   std::string m_RL_heur_selection = "MIN";
+
+  /**
+   * @brief Threads ONNX Runtime may use per model evaluation (0 = its default).
+   */
+  int m_onnx_threads = 0;
+
+  /**
+   * @brief Batch size of the batched GNN heuristic (0 = per-state model).
+   */
+  int m_GNN_batch_size = 0;
+
+  /**
+   * @brief Tie-breaking of equal open-list keys: "lifo" or "fifo".
+   */
+  std::string m_tie_breaking = "none";
+
+  /**
+   * @brief Seed of --tie_breaking random.
+   */
+  std::uint64_t m_tie_breaking_seed = 42;
+
+  /**
+   * @brief Order the batched GNN by its unrounded distance.
+   */
+  bool m_GNN_raw_distance = false;
+
+  /**
+   * @brief Where the neural networks run: auto, cpu or cuda.
+   */
+  std::string m_onnx_device = "auto";
+
+  /**
+   * @brief CUDA device id for the neural networks.
+   */
+  int m_onnx_device_id = 0;
+
+  /**
+   * @brief Print the ONNX node placement at model load.
+   */
+  bool m_onnx_placement = false;
+
+  /**
+   * @brief Cap on ONNX Runtime GPU memory in MiB (0 = no cap).
+   */
+  int m_onnx_gpu_mem_limit_mib = 0;
 
   bool m_exec_plan =
       false; ///< Flag to indicate if the plan should be executed.

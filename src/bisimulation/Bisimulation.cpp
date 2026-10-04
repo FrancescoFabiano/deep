@@ -1763,7 +1763,11 @@ BisAutomata Bisimulation::kstate_to_automaton(
     VectorBisWrapper<KripkeWorldPointer> &pworld_vec,
     const std::map<Agent, BisLabel> &agent_to_label,
     const KripkeState &kstate) {
-  std::map<int, int> compact_indices;
+  // Valuation label of each world: keyed by the canonical KripkeWorld object
+  // (KripkeStorage keeps exactly one per valuation), not by its 64-bit
+  // fluent hash narrowed to int, where two valuations could collide and be
+  // merged by the minimization.
+  std::map<const KripkeWorld *, int> compact_indices;
   std::map<KripkeWorldPointer, int> index_map;
   BisLabelsMap label_map;
 
@@ -1789,10 +1793,8 @@ BisAutomata Bisimulation::kstate_to_automaton(
     pworld_vec.push_back(world);
     vertex[idx].ne = 0;
 
-    const int internal_id = static_cast<int>(world.get_internal_world_id());
-
     const auto [compact_it, inserted] =
-        compact_indices.emplace(internal_id, compact_id);
+        compact_indices.emplace(world.get_ptr().get(), compact_id);
     if (inserted) {
       ++compact_id;
     }

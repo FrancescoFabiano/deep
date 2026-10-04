@@ -75,6 +75,9 @@ bool PortfolioSearch::run_portfolio_search() const {
   const auto initial_build_start = Clock::now();
   State<KripkeState> initial_state;
   initial_state.build_initial();
+  // The hash is computed on first use; do it here, single-threaded, so the
+  // threads that share this state only ever read it.
+  (void)initial_state.get_representation().get_hash();
   const auto initial_build_duration =
       std::chrono::duration_cast<std::chrono::milliseconds>(
           Clock::now() - initial_build_start);

@@ -513,9 +513,12 @@ BeliefFormula FormulaHelper::make_random_formula(
 void FormulaHelper::verify_semantic_equivalence(
     const KripkeState &first, const KripkeState &second,
     const unsigned int modal_depth, const unsigned int formula_count,
-    const std::uint32_t seed) {
+    const std::uint32_t seed, const bool skip_if_equal) {
 
-  if (second == first) {
+  // skip_if_equal: nothing to check when operator== already says equal.
+  // Verification passes false: operator== is what a visited hit relies on,
+  // and it calls a state and its own bisimulation contraction equal.
+  if (skip_if_equal && second == first) {
     if (ArgumentParser::get_instance().get_verbose()) {
       auto &os = ArgumentParser::get_instance().get_output_stream();
 
@@ -553,9 +556,12 @@ void FormulaHelper::verify_semantic_equivalence(
 
   std::mt19937 rng(seed);
 
-  os << "[DEBUG] Checking state equivalence with " << formula_count
-     << " random formulas" << " (modal depth=" << modal_depth
-     << ", seed=" << seed << ").";
+  const bool verbose = ArgumentParser::get_instance().get_verbose();
+  if (verbose) {
+    os << "[DEBUG] Checking state equivalence with " << formula_count
+       << " random formulas" << " (modal depth=" << modal_depth
+       << ", seed=" << seed << ").";
+  }
 
   for (unsigned int i = 0; i < formula_count; ++i) {
 
@@ -580,5 +586,7 @@ void FormulaHelper::verify_semantic_equivalence(
     }
   }
 
-  os << " All good :)" << std::endl;
+  if (verbose) {
+    os << " All good :)" << std::endl;
+  }
 }

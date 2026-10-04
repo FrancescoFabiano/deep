@@ -312,6 +312,8 @@ void Configuration::print(std::ostream &os) const {
     os << "    Bisimulation type: ";
     if (m_bisimulation_type == "FB")
       os << "Fast Bisimulation";
+    else if (m_bisimulation_type == "SIG")
+      os << "Signature refinement";
     else
       os << "Paige and Tarjan";
     os << '\n';
@@ -332,7 +334,12 @@ void Configuration::print(std::ostream &os) const {
        m_search_strategy_enum == SearchType::RL) &&
       m_heuristic_enum == Heuristics::GNN) {
     os << "    Path to GNN model: " << m_GNN_model_path << '\n';
-    os << "    Path to GNN constant file: " << m_GNN_constant_path << '\n';
+    if (const int batch = ArgumentParser::get_instance().get_GNN_batch_size();
+        batch > 0) {
+      os << "    GNN batch size: " << batch << '\n';
+    } else {
+      os << "    Path to GNN constant file: " << m_GNN_constant_path << '\n';
+    }
   }
   os << '\n';
   if (m_search_strategy_enum == SearchType::RL) {

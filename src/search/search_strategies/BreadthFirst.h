@@ -28,12 +28,14 @@ public:
   /**
    * \brief Push a state into the search container.
    */
-  void push(const State<StateRepr> &s) { search_space.push(s); }
+  void push(State<StateRepr> &s) {
+    search_space.push(std::move(s)); // takes the successor
+  }
 
   /**
    * \brief Push the initial state into the search container.
    */
-  void push_initial(const State<StateRepr> &s) { push(s); }
+  void push_initial(const State<StateRepr> &s) { search_space.push(s); }
 
   /**
    * \brief Push a list of states into the search container. Not implemented for
@@ -55,6 +57,16 @@ public:
    * \brief Peek at the next state in the search container.
    */
   State<StateRepr> peek() const { return search_space.front(); }
+
+  /**
+   * \brief Remove the next state from the container and return it (moved
+   * out, not copied).
+   */
+  State<StateRepr> take() {
+    State<StateRepr> next = std::move(search_space.front());
+    search_space.pop();
+    return next;
+  }
 
   /**
    * \brief Get the name of the search strategy.

@@ -39,6 +39,13 @@ public:
    */
   KripkeState(const KripkeState &other);
 
+  /**
+   * \brief Move constructor: moves the same fields the copy copies (worlds,
+   * designated worlds, beliefs, hash); the cached tensor is not carried.
+   * \param other The KripkeState to move from.
+   */
+  KripkeState(KripkeState &&other) noexcept;
+
   ~KripkeState() = default;
 
   // --- Setters ---
@@ -108,6 +115,9 @@ public:
   // --- Operators ---
   /** \brief Copy Assignment operator.*/
   KripkeState &operator=(const KripkeState &to_copy);
+
+  /** \brief Move assignment operator (same fields as the copy).*/
+  KripkeState &operator=(KripkeState &&to_move) noexcept;
 
   /** \brief Less-than operator for set operations.
    *  \param[in] to_compare The KripkeState to compare.
@@ -218,8 +228,16 @@ private:
    */
   KripkeWorldPointersTransitiveMap m_beliefs;
 
-  /** \brief Cached structural hash used by fast state-comparison modes. */
-  uint64_t m_hash = 0;
+  /** \brief Structural hash, computed on first use by \ref get_hash. It is
+   * only a fast pre-check: equal hashes still go through the full comparison
+   * unless --fast-state-comparison is set. */
+  mutable uint64_t m_hash = 0;
+  /** \brief True while \ref m_hash describes the current structure. */
+  mutable bool m_hash_valid = false;
+  /** \brief True when every world is reachable from the designated ones
+   * (set by \ref compute_successor and by the contraction), so
+   * \ref contract_with_bisimulation can skip the reachability clean-up. */
+  bool m_built_reachable = false;
 
   /** \brief Tensor version of this for the various NN-based heuristics. */
   GraphTensor m_tensor_representation;
@@ -256,8 +274,16 @@ private:
   KripkeWorldPointer add_rep_world(KripkeWorld &&to_add,
                                    unsigned short repetition);
 
-  /** \brief Recompute the cached structural hash after the state changes. */
-  void recompute_hash();
+  /** \brief Called by every structural change: the hash, the reachability
+   * guarantee and a cached tensor no longer hold. */
+  void structure_changed() noexcept {
+    m_hash_valid = false;
+    m_built_reachable = false;
+    if (m_computed_tensor_representation) {
+      m_tensor_representation = GraphTensor{};
+      m_computed_tensor_representation = false;
+    }
+  }
 
   // === DEL Product Update Helpers ===
   /// \brief Product-world identifier `(source world, event id)`.

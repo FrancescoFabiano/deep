@@ -121,6 +121,15 @@ void ArgumentParser::parse(int argc, char **argv) {
           "Heuristic RL_H can only be used with RL search (--search RL).");
     }
 
+    if (m_GNN_batch_size > 0 &&
+        (m_heuristic_opt != "GNN" ||
+         (m_search_strategy != "HFS" && m_search_strategy != "Astar"))) {
+      ExitHandler::exit_with_message(
+          ExitHandler::ExitCode::ArgParseError,
+          "--GNN_batch can only be used with --heuristics GNN and --search "
+          "HFS or --search Astar.");
+    }
+
     if (m_RL_exploration_percentage + m_RL_exploitation_percentage >= 100) {
       ExitHandler::exit_with_message(ExitHandler::ExitCode::ArgParseError,
                                      "The sum of --RL_exploration and "
@@ -214,18 +223,19 @@ ArgumentParser::ArgumentParser() : app("deep") {
       "Activate epistemic-state reduction through bisimulation. Use this to "
       "reduce the state space by merging bisimilar states.");
   bis_group
-      ->add_option(
-          "--bisimulation_type", m_bisimulation_type,
-          "Specify the algorithm for bisimulation contraction "
-          "(requires --bisimulation). Options: 'FB' (Fast Bisimulation, "
-          "default) or 'PT' (Paige and Tarjan).")
-      ->check(CLI::IsMember({"FB", "PT"}))
-      ->default_val("FB");
+      ->add_option("--bisimulation_type", m_bisimulation_type,
+                   "Specify the algorithm for bisimulation contraction "
+                   "(requires --bisimulation). Options: 'SIG' (signature "
+                   "refinement on the Kripke structure, default), 'FB' (Fast "
+                   "Bisimulation) or 'PT' (Paige and Tarjan).")
+      ->check(CLI::IsMember({"FB", "PT", "SIG"}))
+      ->default_val("SIG");
   bis_group
       ->add_option("--bisimulation-interval", m_bisimulation_interval,
-                   "Apply bisimulation contraction every N search-depth levels "
-                   "(0 means no contraction is ever applied)")
-      ->default_val(2);
+                   "With -b, contract states every N search-depth levels; 0 "
+                   "(default) or 1 contracts at every level. Without -b no "
+                   "state is contracted.")
+      ->default_val(0);
 
   // Dataset group
   auto *dataset_group = app.add_option_group("Dataset");
@@ -324,6 +334,17 @@ ArgumentParser::ArgumentParser() : app("deep") {
                    "HFS/Astar/RL with GNN heuristics is selected.")
       ->default_val("lib/gnn_handler/models/distance_estimator.onnx");
   search_group
+      ->add_option(
+          "--GNN_batch", m_GNN_batch_size,
+          "Evaluate the GNN heuristic on batches of up to N successors with a "
+          "fringe export of the model (--GNN_model gnn_F<N>.onnx, N its "
+          "fringe size) instead of one state at a time. The heuristic is the "
+          "model's absolute distance to the goal: --search HFS orders states "
+          "by it, --search Astar by depth + distance. 0 (default) keeps the "
+          "per-state model and its --GNN_constant_file.")
+      ->check(CLI::NonNegativeNumber)
+      ->default_val("0");
+  search_group
       ->add_option("--GNN_constant_file", m_GNN_constant_path,
                    "Specify the path to the normalization constant file for "
                    "the GNN model. "
@@ -373,10 +394,64 @@ ArgumentParser::ArgumentParser() : app("deep") {
       ->default_val("70");
 
   search_group
+      ->add_option("--tie_breaking", m_tie_breaking,
+                   "Order of HFS/A* states with equal values: 'none' (default) "
+                   "compares only h (HFS) or f (A*) and leaves ties to the "
+                   "heap; 'fifo', 'lifo' and 'random' first compare h within "
+                   "equal f (A*) and then expand the oldest, the newest or a "
+                   "random one (seeded by --tie_breaking_seed).")
+      ->check(CLI::IsMember({"none", "fifo", "lifo", "random"}))
+      ->default_val("none");
+  search_group
+      ->add_option("--tie_breaking_seed", m_tie_breaking_seed,
+                   "Seed of --tie_breaking random (the same seed gives the "
+                   "same search).")
+      ->check(CLI::NonNegativeNumber)
+      ->default_val("42");
+  search_group->add_flag(
+      "--GNN_raw_distance", m_GNN_raw_distance,
+      "With --GNN_batch, order states by the GNN's distance as predicted "
+      "(fractional) instead of rounded to an integer.");
+
+  search_group
       ->add_option("--RL_heuristics", m_RL_heur_selection,
                    "Specify the heuristic mode for RL.")
       ->check(CLI::IsMember({"MIN", "MAX", "AVG", "RNG"}))
       ->default_val("MIN");
+
+  search_group
+      ->add_option("--onnx_device", m_onnx_device,
+                   "Where the neural networks run: 'cpu', 'cuda' (fails if "
+                   "CUDA is not available: needs a build with use_gpu and a "
+                   "GPU ONNX Runtime), or 'auto' (default: CUDA when the "
+                   "build has it, otherwise the CPU).")
+      ->check(CLI::IsMember({"auto", "cpu", "cuda"}))
+      ->default_val("auto");
+  search_group
+      ->add_option("--onnx_device_id", m_onnx_device_id,
+                   "CUDA device used by --onnx_device cuda/auto.")
+      ->check(CLI::NonNegativeNumber)
+      ->default_val("0");
+  search_group
+      ->add_option("--onnx_gpu_mem_limit", m_onnx_gpu_mem_limit_mib,
+                   "Cap (MiB) on the GPU memory ONNX Runtime may reserve for "
+                   "the networks; a run that needs more stops with an error. "
+                   "0 (default) means no cap.")
+      ->check(CLI::NonNegativeNumber)
+      ->default_val("0");
+  search_group->add_flag(
+      "--onnx_placement", m_onnx_placement,
+      "Print the execution provider (CPU or CUDA) every model node was "
+      "placed on when the model is loaded, and ORT's warnings about nodes "
+      "left on the CPU or copies between devices.");
+  search_group
+      ->add_option("--onnx_threads", m_onnx_threads,
+                   "Number of threads ONNX Runtime may use for one model "
+                   "evaluation. 0 (default) keeps the ONNX Runtime default "
+                   "(one per core); 1 keeps neural-network planning "
+                   "single-threaded, e.g. for CPU-time measured runs.")
+      ->check(CLI::NonNegativeNumber)
+      ->default_val("0");
 
   dataset_group
       ->add_option("--RL_seed", m_RL_seed,
@@ -630,6 +705,40 @@ int ArgumentParser::get_RL_exploitation_percentage() const noexcept {
 
 std::string ArgumentParser::get_RL_heur_selection() const noexcept {
   return m_RL_heur_selection;
+}
+
+int ArgumentParser::get_onnx_threads() const noexcept { return m_onnx_threads; }
+
+const std::string &ArgumentParser::get_onnx_device() const noexcept {
+  return m_onnx_device;
+}
+
+int ArgumentParser::get_onnx_device_id() const noexcept {
+  return m_onnx_device_id;
+}
+
+int ArgumentParser::get_onnx_gpu_mem_limit_mib() const noexcept {
+  return m_onnx_gpu_mem_limit_mib;
+}
+
+bool ArgumentParser::get_onnx_placement() const noexcept {
+  return m_onnx_placement;
+}
+
+bool ArgumentParser::get_GNN_raw_distance() const noexcept {
+  return m_GNN_raw_distance;
+}
+
+const std::string &ArgumentParser::get_tie_breaking() const noexcept {
+  return m_tie_breaking;
+}
+
+std::uint64_t ArgumentParser::get_tie_breaking_seed() const noexcept {
+  return m_tie_breaking_seed;
+}
+
+int ArgumentParser::get_GNN_batch_size() const noexcept {
+  return m_GNN_batch_size;
 }
 bool ArgumentParser::get_execute_plan() const noexcept { return m_exec_plan; }
 

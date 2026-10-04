@@ -10,6 +10,7 @@
 #include "search/SpaceSearcher.h"
 #include "states/State.h"
 #include "utilities/ExitHandler.h"
+#include <map>
 
 #include <algorithm>
 #include <atomic>
@@ -137,12 +138,40 @@ bool SpaceSearcher<StateRepr, Strategy>::search_sequential(
 
   std::set<State<StateRepr>> visited_states;
 
+  /*
+   * Iterative deepening restarts from the initial state with a larger depth
+   * bound. Its visited set is cleared at every restart and remembers the
+   * shallowest depth each state was reached at, so a state first reached on a
+   * long path is expanded again when a shorter path reaches it.
+   */
+  constexpr bool depth_aware_visited =
+      requires(Strategy &strategy) { strategy.consume_restart(); };
+  std::map<State<StateRepr>, unsigned short> visited_depths;
+
+  /// True if \p s is new (or, for iterative deepening, reached shallower).
+  auto first_visit = [&](const State<StateRepr> &s) {
+    if constexpr (depth_aware_visited) {
+      const auto depth = s.get_plan_length();
+      const auto [it, inserted] = visited_depths.try_emplace(s, depth);
+      if (inserted) {
+        return true;
+      }
+      if (depth < it->second) {
+        it->second = depth;
+        return true;
+      }
+      return false;
+    } else {
+      return visited_states.insert(s).second;
+    }
+  };
+
   m_expanded_nodes = 0;
 
   m_strategy.push_initial(initial);
 
   if (check_visited) {
-    visited_states.insert(initial);
+    first_visit(initial);
   }
 
   while (!m_strategy.empty()) {
@@ -151,11 +180,22 @@ bool SpaceSearcher<StateRepr, Strategy>::search_sequential(
       return false;
     }
 
-    State current = m_strategy.peek();
+    State current = m_strategy.take();
 
-    m_strategy.pop();
+    if constexpr (depth_aware_visited) {
+      if (m_strategy.consume_restart() && check_visited) {
+        visited_depths.clear(); // current is the initial state again
+        first_visit(current);
+      }
+    }
 
     ++m_expanded_nodes;
+
+    if constexpr (depth_aware_visited) {
+      if (!m_strategy.expandable(current)) {
+        continue; // all its successors would lie beyond the depth bound
+      }
+    }
 
 #ifdef DEBUG
 
@@ -176,6 +216,14 @@ bool SpaceSearcher<StateRepr, Strategy>::search_sequential(
 
       State successor = current.compute_successor(action);
 
+      // Iterative deepening: beyond the current depth bound a successor is
+      // neither contracted, goal-tested nor stored.
+      if constexpr (depth_aware_visited) {
+        if (!m_strategy.within_bound(successor)) {
+          continue;
+        }
+      }
+
       // ======================================================================
       // Periodic bisimulation
       // ======================================================================
@@ -187,8 +235,10 @@ bool SpaceSearcher<StateRepr, Strategy>::search_sequential(
 
         const auto depth = successor.get_plan_length();
 
-        const bool should_contract = bisimulation_interval > 0 && depth > 0 &&
-                                     depth % bisimulation_interval == 0;
+        // interval 0 (default) or 1: every level; N: every N-th level
+        const bool should_contract =
+            depth > 0 &&
+            (bisimulation_interval == 0 || depth % bisimulation_interval == 0);
 
         if (should_contract) {
           successor.contract_with_bisimulation();
@@ -212,17 +262,33 @@ bool SpaceSearcher<StateRepr, Strategy>::search_sequential(
        * In Debug we keep the insertion result so that verification is
        * performed only when the successor was actually rejected as visited.
        */
-      if (check_visited) {
+      if (check_visited && depth_aware_visited) {
+
+        if (first_visit(successor)) {
+          m_strategy.push(successor);
+        } else if (const auto it = visited_depths.find(successor);
+                   it != visited_depths.end() &&
+                   !KripkeEqualityHelper::verify_equivalence(
+                       it->first.get_representation(),
+                       successor.get_representation(), true, 500, 5)) {
+          ExitHandler::exit_with_message(
+              ExitHandler::ExitCode::SearchMethodError,
+              "DEBUG: visited-state equivalence verification failed.");
+        }
+
+      } else if (check_visited) {
 
         const auto [visited_it, inserted] = visited_states.insert(successor);
 
         if (inserted) {
 
-          if (!is_RL_search) {
+          // RL batches its successors in fringe_RL; every other strategy
+          // takes them directly (fringe_RL is only flushed for RL).
+          if (is_RL_search) {
+            fringe_RL.push_back(std::move(successor));
+          } else {
             m_strategy.push(successor);
           }
-
-          fringe_RL.push_back(successor);
 
         } else {
 
@@ -245,11 +311,11 @@ bool SpaceSearcher<StateRepr, Strategy>::search_sequential(
 
       } else {
 
-        if (!is_RL_search) {
+        if (is_RL_search) {
+          fringe_RL.push_back(std::move(successor));
+        } else {
           m_strategy.push(successor);
         }
-
-        fringe_RL.push_back(successor);
       }
 
 #else
@@ -257,13 +323,13 @@ bool SpaceSearcher<StateRepr, Strategy>::search_sequential(
       /*
        * Release path stays minimal.
        */
-      if (!check_visited || visited_states.insert(successor).second) {
+      if (!check_visited || first_visit(successor)) {
 
-        if (!is_RL_search) {
+        if (is_RL_search) {
+          fringe_RL.push_back(std::move(successor));
+        } else {
           m_strategy.push(successor);
         }
-
-        fringe_RL.push_back(successor);
       }
 
 #endif

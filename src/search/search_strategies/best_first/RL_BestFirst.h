@@ -82,7 +82,7 @@ public:
 
     for (std::size_t i = 0; i < batch.size(); ++i) {
       batch[i].set_heuristic_value(heuristic_values[i]);
-      this->search_space.push(std::move(batch[i]));
+      this->enqueue(std::move(batch[i]), heuristic_values[i], 0); // by rank
     }
   }
 
@@ -130,13 +130,25 @@ public:
                                        "queue while reservoir is also empty.");
       } else {
         if (m_refill_mode == RefillMode::RANDOM) {
-          this->search_space.push(reservoir_take_random());
+          auto next = reservoir_take_random();
+          const double h = next.get_heuristic_value();
+          this->enqueue(std::move(next), h, 0);
         } else {
-          this->search_space.push(reservoir_take_best());
+          auto next = reservoir_take_best();
+          const double h = next.get_heuristic_value();
+          this->enqueue(std::move(next), h, 0);
         }
       }
     }
     return this->search_space.top();
+  }
+
+  /** \brief Next state through peek() (which may refill from the reservoir),
+   * then pop(). */
+  [[nodiscard]] State<StateRepr> take() override {
+    State<StateRepr> next = peek();
+    pop();
+    return next;
   }
 
   [[nodiscard]] bool empty() const override {

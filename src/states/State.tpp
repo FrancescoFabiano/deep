@@ -37,7 +37,23 @@ template <StateRepresentation StateRepr>
 State<StateRepr>::State(const State &other)
     : m_representation(other.m_representation),
       m_executed_actions_id(other.m_executed_actions_id),
-      m_heuristic_value(other.m_heuristic_value) {}
+      m_heuristic_value(other.m_heuristic_value),
+      m_search_primary(other.m_search_primary),
+      m_search_secondary(other.m_search_secondary),
+      m_search_order(other.m_search_order),
+      m_old_heuristic_value(other.m_old_heuristic_value),
+      m_heuristics_evaluation_times(other.m_heuristics_evaluation_times) {}
+
+template <StateRepresentation StateRepr>
+State<StateRepr>::State(State &&other) noexcept
+    : m_representation(std::move(other.m_representation)),
+      m_executed_actions_id(std::move(other.m_executed_actions_id)),
+      m_heuristic_value(other.m_heuristic_value),
+      m_search_primary(other.m_search_primary),
+      m_search_secondary(other.m_search_secondary),
+      m_search_order(other.m_search_order),
+      m_old_heuristic_value(other.m_old_heuristic_value),
+      m_heuristics_evaluation_times(other.m_heuristics_evaluation_times) {}
 
 template <StateRepresentation StateRepr>
 State<StateRepr>
@@ -62,7 +78,7 @@ unsigned short State<StateRepr>::get_plan_length() const {
 }
 
 template <StateRepresentation StateRepr>
-short State<StateRepr>::get_heuristic_value() const {
+int State<StateRepr>::get_heuristic_value() const {
   return m_heuristic_value;
 }
 
@@ -81,6 +97,29 @@ State<StateRepr> &State<StateRepr>::operator=(const State &to_assign) {
   set_representation(to_assign.get_representation());
   set_executed_actions(to_assign.get_executed_actions());
   set_heuristic_value(to_assign.get_heuristic_value());
+  m_search_primary = to_assign.m_search_primary;
+  m_search_secondary = to_assign.m_search_secondary;
+  m_search_order = to_assign.m_search_order;
+  // RL_H MIN/MAX/AVG combine a state's new rank with these
+  m_old_heuristic_value = to_assign.m_old_heuristic_value;
+  m_heuristics_evaluation_times = to_assign.m_heuristics_evaluation_times;
+  return (*this);
+}
+
+template <StateRepresentation StateRepr>
+State<StateRepr> &State<StateRepr>::operator=(State &&to_assign) noexcept {
+  if (this == &to_assign) {
+    return *this;
+  }
+  m_representation = std::move(to_assign.m_representation);
+  m_executed_actions_id = std::move(to_assign.m_executed_actions_id);
+  m_heuristic_value = to_assign.m_heuristic_value;
+  m_search_primary = to_assign.m_search_primary;
+  m_search_secondary = to_assign.m_search_secondary;
+  m_search_order = to_assign.m_search_order;
+  // RL_H MIN/MAX/AVG combine a state's new rank with these
+  m_old_heuristic_value = to_assign.m_old_heuristic_value;
+  m_heuristics_evaluation_times = to_assign.m_heuristics_evaluation_times;
   return (*this);
 }
 
@@ -109,19 +148,18 @@ void State<StateRepr>::add_executed_action(const Action &to_add) {
 }
 
 template <StateRepresentation StateRepr>
-void State<StateRepr>::set_heuristic_value(const short heuristic_value) {
+void State<StateRepr>::set_heuristic_value(const int heuristic_value) {
   m_heuristic_value = heuristic_value;
 }
 
 template <StateRepresentation StateRepr>
-void State<StateRepr>::set_old_heuristic_value(
-    const short old_heuristic_value) {
+void State<StateRepr>::set_old_heuristic_value(const int old_heuristic_value) {
   m_old_heuristic_value = old_heuristic_value;
 }
 
 template <StateRepresentation StateRepr>
 void State<StateRepr>::set_heuristics_evaluation_times(
-    const short heuristics_evaluation_times) {
+    const int heuristics_evaluation_times) {
   m_heuristics_evaluation_times = heuristics_evaluation_times;
 }
 
@@ -133,6 +171,11 @@ void State<StateRepr>::increase_heuristics_evaluation_times() {
 template <StateRepresentation StateRepr>
 void State<StateRepr>::set_representation(const StateRepr &to_set) {
   m_representation = to_set;
+}
+
+template <StateRepresentation StateRepr>
+void State<StateRepr>::set_representation(StateRepr &&to_set) {
+  m_representation = std::move(to_set);
 }
 
 template <StateRepresentation StateRepr>

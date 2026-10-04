@@ -44,7 +44,10 @@ template <StateRepresentation StateRepr> GraphNN<StateRepr>::GraphNN() {
       TrainingDataset<StateRepr>::get_instance().get_goal_file_path();
 
   populate_with_goal();
-  if (Configuration::get_instance().get_heuristic_opt() == Heuristics::GNN) {
+  // The batched GNN heuristic scores through FringeEvalRL, so the per-state
+  // model is only loaded without --GNN_batch.
+  if (Configuration::get_instance().get_heuristic_opt() == Heuristics::GNN &&
+      ArgumentParser::get_instance().get_GNN_batch_size() == 0) {
     initialize_onnx_model();
   }
 }
@@ -104,8 +107,8 @@ void GraphNN<StateRepr>::initialize_onnx_model() {
     }
 #endif
 
-    m_session = std::make_unique<Ort::Session>(m_env, m_model_path.c_str(),
-                                               m_session_options);
+    m_session = std::make_unique<Ort::Session>(
+        onnx_runtime::env(), m_model_path.c_str(), m_session_options);
     m_allocator = std::make_unique<Ort::AllocatorWithDefaultOptions>();
     m_memory_info = std::make_unique<Ort::MemoryInfo>(
         Ort::MemoryInfo::CreateCpu(OrtDeviceAllocator, OrtMemTypeCPU));
@@ -864,17 +867,18 @@ bool GraphNN<StateRepr>::write_and_compare_tensor_to_dot(
   }
 
   // Node label as printed in the dataset DOT (bitmask string or id)
-  const bool bitmask_labels = ArgumentParser::get_instance().get_dataset_type() ==
-                                  DatasetType::BITMASK &&
-                              !is_goal;
+  const bool bitmask_labels =
+      ArgumentParser::get_instance().get_dataset_type() ==
+          DatasetType::BITMASK &&
+      !is_goal;
   auto node_label = [&](const int64_t symbolic) {
     if (!bitmask_labels) {
       return std::to_string(real_node_ids[symbolic]);
     }
     std::string label;
     for (size_t i = 0; i < m_bitmask_size; ++i) {
-      label += std::to_string(
-          real_node_ids_bitmask[symbolic * m_bitmask_size + i]);
+      label +=
+          std::to_string(real_node_ids_bitmask[symbolic * m_bitmask_size + i]);
     }
     return label;
   };

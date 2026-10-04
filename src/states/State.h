@@ -18,6 +18,7 @@
  */
 #pragma once
 #include <concepts>
+#include <cstdint>
 
 #include "actions/Action.h"
 #include "neuralnets/GraphTensor.h"
@@ -112,6 +113,11 @@ public:
    */
   State(const State &other);
 
+  /** \brief Move constructor: moves the same fields the copy copies
+   * (representation, executed actions, heuristic value, open-list keys, RL
+   * rescoring fields).*/
+  State(State &&other) noexcept;
+
   /** \brief Constructor with that set *this* as successor of the given one.
    *
    * @param prev_state The predecessor state.
@@ -138,19 +144,19 @@ public:
   /** \brief Setter for the field \ref m_heuristic_value.
    *
    * @param[in] heuristic_value: the int to copy in \ref m_heuristic_value.*/
-  void set_heuristic_value(short heuristic_value);
+  void set_heuristic_value(int heuristic_value);
 
   /** \brief Setter for the field \ref m_old_heuristic_value.
    *
    * @param[in] old_heuristic_value: the int to copy in \ref
    * m_old_heuristic_value.*/
-  void set_old_heuristic_value(const short old_heuristic_value);
+  void set_old_heuristic_value(int old_heuristic_value);
 
   /** \brief Setter for the field \ref m_heuristics_evaluation_times.
    *
    * @param[in] heuristics_evaluation_times: the int to copy in \ref
    * m_heuristics_evaluation_times.*/
-  void set_heuristics_evaluation_times(const short heuristics_evaluation_times);
+  void set_heuristics_evaluation_times(int heuristics_evaluation_times);
 
   /** \brief Increase the field \ref m_heuristics_evaluation_times by one.*/
   void increase_heuristics_evaluation_times();
@@ -158,7 +164,29 @@ public:
   /** \brief Getter of \ref m_heuristic_value.
    *
    * @return the heuristic value of *this*.*/
-  [[nodiscard]] short get_heuristic_value() const;
+  [[nodiscard]] int get_heuristic_value() const;
+
+  /** \brief Set the open-list ordering keys (lower is expanded first): the
+   * primary key (h for HFS, g + h for A*), the secondary key (A*: h) and the
+   * insertion order used to break the remaining ties. */
+  void set_search_keys(double primary, double secondary,
+                       std::uint64_t order) noexcept {
+    m_search_primary = primary;
+    m_search_secondary = secondary;
+    m_search_order = order;
+  }
+  /** \brief Primary open-list key. */
+  [[nodiscard]] double get_search_primary() const noexcept {
+    return m_search_primary;
+  }
+  /** \brief Secondary open-list key. */
+  [[nodiscard]] double get_search_secondary() const noexcept {
+    return m_search_secondary;
+  }
+  /** \brief Insertion order in the open list. */
+  [[nodiscard]] std::uint64_t get_search_order() const noexcept {
+    return m_search_order;
+  }
 
   /** \brief Getter of \ref m_old_heuristic_value.
    *
@@ -192,6 +220,10 @@ public:
    * @param[in] to_set The new representation to store.
    */
   void set_representation(const StateRepr &to_set);
+
+  /** \brief Setter for \ref m_representation that takes ownership.
+   *  @param[in] to_set: the representation to move in.*/
+  void set_representation(StateRepr &&to_set);
 
   /** \brief Check whether all designated worlds in this state entail a fluent.
    *
@@ -287,6 +319,9 @@ public:
    * @return This with the copied assigned values.*/
   State &operator=(const State<StateRepr> &to_assign);
 
+  /** \brief Move assignment operator (same fields as the copy).*/
+  State &operator=(State<StateRepr> &&to_assign) noexcept;
+
   /** \brief The < operator for set operations.
    *
    * The result is left to the representations.
@@ -347,6 +382,10 @@ private:
    *
    * This value is given by the chosen implementation of Heuristics.*/
   int m_heuristic_value = 0;
+  /** \brief Open-list keys, see \ref set_search_keys. */
+  double m_search_primary = 0;
+  double m_search_secondary = 0;
+  std::uint64_t m_search_order = 0;
 
   /** \brief The old heuristic value of the *this*, used to compute the RL
    * heuristic value*/

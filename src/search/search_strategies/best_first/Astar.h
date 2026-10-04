@@ -35,6 +35,10 @@ public:
    * \param s The state to be pushed into the priority queue.
    */
   void push(State<StateRepr> &s) override {
+    if (this->batched()) {
+      this->push_pending(s); // scored in a batch at the next peek, f = g + h
+      return;
+    }
     const auto heuristics_value =
         this->m_heuristics_manager.get_heuristic_value(s);
     const auto plan_length = s.get_plan_length();
@@ -45,7 +49,10 @@ public:
     }
     s.set_heuristic_value(heuristics_value +
                           plan_length); // Overwrite heuristic with f = g + h
-    this->search_space.push(s);
+    // takes the successor; ordered by f, then lower h (deeper), then
+    // insertion order
+    this->enqueue(std::move(s), heuristics_value + plan_length,
+                  heuristics_value);
   }
 
   /**
@@ -54,6 +61,10 @@ public:
    * \return A string containing the strategy name and the heuristic used.
    */
   [[nodiscard]] std::string get_name() const override {
-    return "A* Search (" + this->m_heuristics_manager.get_used_h_name() + ")";
+    return "A* Search (" + this->m_heuristics_manager.get_used_h_name() +
+           this->batched_name() + ")";
   }
+
+protected:
+  [[nodiscard]] bool batched_uses_depth() const override { return true; }
 };

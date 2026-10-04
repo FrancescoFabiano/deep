@@ -27,6 +27,8 @@
 #include "KripkeEqualityHelper.h"
 #include "KripkeStorage.h"
 #include "SetHelper.h"
+#include "argparse/Configuration.h"
+#include "bisimulation/SignatureBisimulation.h"
 #include "utilities/ExitHandler.h"
 
 #ifdef USE_NEURALNETS
@@ -37,21 +39,28 @@
 
 void KripkeState::set_worlds(const KripkeWorldPointersSet &to_set) {
   m_worlds = to_set;
+  structure_changed();
 }
 
 void KripkeState::set_designated_worlds(const KripkeWorldPointersSet &to_set) {
   m_designated_worlds = to_set;
+  structure_changed();
 }
 
 void KripkeState::add_designated_world(const KripkeWorldPointer &to_add) {
   m_designated_worlds.insert(to_add);
+  structure_changed();
 }
 
 void KripkeState::set_beliefs(const KripkeWorldPointersTransitiveMap &to_set) {
   m_beliefs = to_set;
+  structure_changed();
 }
 
-void KripkeState::clear_beliefs() { m_beliefs.clear(); }
+void KripkeState::clear_beliefs() {
+  m_beliefs.clear();
+  structure_changed();
+}
 
 // --- Getters ---
 
@@ -83,6 +92,27 @@ KripkeState &KripkeState::operator=(const KripkeState &to_copy) {
     m_beliefs = to_copy.m_beliefs;
 
     m_hash = to_copy.m_hash;
+    m_hash_valid = to_copy.m_hash_valid;
+    m_built_reachable = to_copy.m_built_reachable;
+    // the cached tensor described the old structure
+    m_tensor_representation = GraphTensor{};
+    m_computed_tensor_representation = false;
+  }
+
+  return *this;
+}
+
+KripkeState &KripkeState::operator=(KripkeState &&to_move) noexcept {
+  if (this != &to_move) {
+    m_worlds = std::move(to_move.m_worlds);
+    m_designated_worlds = std::move(to_move.m_designated_worlds);
+    m_beliefs = std::move(to_move.m_beliefs);
+
+    m_hash = to_move.m_hash;
+    m_hash_valid = to_move.m_hash_valid;
+    m_built_reachable = to_move.m_built_reachable;
+    m_tensor_representation = GraphTensor{};
+    m_computed_tensor_representation = false;
   }
 
   return *this;
@@ -113,11 +143,13 @@ void KripkeState::print_dataset_format(std::ofstream &ofs) const {
 void KripkeState::add_world(const KripkeWorld &to_add) {
 
   m_worlds.insert(KripkeStorage::get_instance().add_world(to_add));
+  structure_changed();
 }
 
 void KripkeState::add_world(KripkeWorld &&to_add) {
 
   m_worlds.insert(KripkeStorage::get_instance().add_world(std::move(to_add)));
+  structure_changed();
 }
 
 KripkeWorldPointer KripkeState::add_rep_world(const KripkeWorld &to_add,
@@ -127,6 +159,7 @@ KripkeWorldPointer KripkeState::add_rep_world(const KripkeWorld &to_add,
 
   tmp.set_repetition(repetition);
   m_worlds.insert(tmp);
+  structure_changed();
 
   return tmp;
 }
@@ -140,6 +173,7 @@ KripkeWorldPointer KripkeState::add_rep_world(KripkeWorld &&to_add,
   tmp.set_repetition(repetition);
 
   m_worlds.insert(tmp);
+  structure_changed();
 
   return tmp;
 }
@@ -148,6 +182,7 @@ void KripkeState::add_edge(const KripkeWorldPointer &from,
                            const KripkeWorldPointer &to, const Agent &ag) {
 
   m_beliefs[from][ag].insert(to);
+  structure_changed();
 }
 
 void KripkeState::build_initial() {
@@ -203,6 +238,7 @@ void KripkeState::build_initial() {
         KripkeStorage::get_instance().add_world(std::move(world));
 
     m_worlds.insert(world_ptr);
+    structure_changed();
 
     world_map.push_back(world_ptr);
 
@@ -236,8 +272,6 @@ void KripkeState::build_initial() {
                                    "Cannot build initial Kripke state: "
                                    "plank produced no designated worlds.");
   }
-
-  recompute_hash();
 
 #ifdef DEBUG
   if (ArgumentParser::get_instance().get_verbose()) {
@@ -293,11 +327,13 @@ bool KripkeState::is_executable(const Action &action) const {
   return true;
 }
 
-void KripkeState::recompute_hash() {
-  m_hash = FormulaHelper::hash_kripke_state(*this);
+uint64_t KripkeState::get_hash() const noexcept {
+  if (!m_hash_valid) {
+    m_hash = FormulaHelper::hash_kripke_state(*this);
+    m_hash_valid = true;
+  }
+  return m_hash;
 }
-
-uint64_t KripkeState::get_hash() const noexcept { return m_hash; }
 
 // --- Transition ---
 
@@ -466,6 +502,7 @@ void KripkeState::create_designated_product_worlds(
                                       product_worlds, pending, next_repetition);
 
       successor.m_designated_worlds.insert(product_world);
+      successor.structure_changed();
     }
   }
 
@@ -625,7 +662,9 @@ KripkeState KripkeState::compute_successor(const Action &action) const {
   expand_product_relations(action, observability, successor, product_worlds,
                            pending, applicability_cache, next_repetition);
 
-  successor.recompute_hash();
+  // Built by exploring from the designated pairs: every world is reachable.
+  // The hash is computed when first needed (after a possible contraction).
+  successor.m_built_reachable = true;
 
   return successor;
 }
@@ -682,19 +721,28 @@ bool KripkeState::entails(const FormulaeList &to_check) const {
 
 void KripkeState::contract_with_bisimulation() {
 
-#if defined(DEBUG) || defined(DEEP_VERIFY)
+#if defined(DEBUG) || defined(VERIFY)
   const KripkeState before_bisimulation = *this;
 #endif
 
-  KripkeReachabilityHelper::clean_unreachable_worlds(*this);
+  // Successors are built reachable; only other states (e.g. the initial one)
+  // can hold unreachable worlds.
+  if (!m_built_reachable) {
+    KripkeReachabilityHelper::clean_unreachable_worlds(*this);
+  }
 
-  Bisimulation b;
-  b.calc_min_bisimilar(*this);
+  if (Configuration::get_instance().get_bisimulation_type() == "SIG") {
+    SignatureBisimulation::contract(*this);
+  } else {
+    Bisimulation b;
+    b.calc_min_bisimilar(*this);
+  }
 
-  // Keep this here: the Kripke structure may have changed.
-  recompute_hash();
+  // The contraction of a reachable structure is reachable; its setters have
+  // already invalidated the hash.
+  m_built_reachable = true;
 
-#if defined(DEBUG) || defined(DEEP_VERIFY)
+#if defined(DEBUG) || defined(VERIFY)
 
   /*
    * Bisimulation is allowed to change the structure, so do NOT
@@ -736,4 +784,13 @@ const GraphTensor &KripkeState::get_tensor_representation() {
 
 KripkeState::KripkeState(const KripkeState &other)
     : m_worlds(other.m_worlds), m_designated_worlds(other.m_designated_worlds),
-      m_beliefs(other.m_beliefs), m_hash(other.m_hash) {}
+      m_beliefs(other.m_beliefs), m_hash(other.m_hash),
+      m_hash_valid(other.m_hash_valid),
+      m_built_reachable(other.m_built_reachable) {}
+
+KripkeState::KripkeState(KripkeState &&other) noexcept
+    : m_worlds(std::move(other.m_worlds)),
+      m_designated_worlds(std::move(other.m_designated_worlds)),
+      m_beliefs(std::move(other.m_beliefs)), m_hash(other.m_hash),
+      m_hash_valid(other.m_hash_valid),
+      m_built_reachable(other.m_built_reachable) {}

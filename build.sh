@@ -212,7 +212,9 @@ if [[ "$OS" == "Linux" ]]; then
         HAS_GPU="true"
     fi
 
-    if command -v nvcc &>/dev/null; then
+    # The ONNX Runtime GPU package needs the CUDA 12 runtime (and cuDNN 9),
+    # not the compiler: accept either the runtime library or nvcc.
+    if command -v nvcc &>/dev/null || ldconfig -p 2>/dev/null | grep -q "libcudart.so.12"; then
         HAS_CUDA="true"
     fi
 
@@ -221,7 +223,7 @@ if [[ "$OS" == "Linux" ]]; then
             echo "ERROR: No NVIDIA GPU detected."
             exit 1
         elif [[ "$HAS_CUDA" != "true" ]]; then
-            echo "ERROR: CUDA not installed."
+            echo "ERROR: CUDA 12 runtime not found (libcudart.so.12 / nvcc). Use force_gpu to skip this check."
             exit 1
         fi
     fi
@@ -252,10 +254,22 @@ ONNX_DIR="lib/onnxruntime"
 # --------------------------
 # Download ONNX Runtime
 # --------------------------
+WANT_GPU_ONNX="false"
+if [[ "$OS" == "Linux" && ("$USE_GPU" == "ON" || "$FORCE_GPU" == "ON") ]]; then
+    WANT_GPU_ONNX="true"
+fi
+# A CPU ONNX Runtime left by an earlier `nn` build has no CUDA provider: a GPU
+# build on top of it would silently run on the CPU, so replace it.
+if [[ "$ENABLE_NN" == "ON" && "$WANT_GPU_ONNX" == "true" && -d "$ONNX_DIR" \
+      && ! -f "$ONNX_DIR/lib/libonnxruntime_providers_cuda.so" ]]; then
+    echo "Installed ONNX Runtime is the CPU package; replacing it with the GPU package."
+    rm -rf "$ONNX_DIR"
+fi
+
 if [[ "$ENABLE_NN" == "ON" && ! -d "$ONNX_DIR" ]]; then
     mkdir -p lib
 
-    if [[ "$OS" == "Linux" && ("$USE_GPU" == "ON" || "$FORCE_GPU" == "ON") ]]; then
+    if [[ "$WANT_GPU_ONNX" == "true" ]]; then
         ONNX_URL="https://github.com/microsoft/onnxruntime/releases/download/v${ONNX_VER}/onnxruntime-${ONNX_ARCH}-gpu-${ONNX_VER}.tgz"
     else
         ONNX_URL="https://github.com/microsoft/onnxruntime/releases/download/v${ONNX_VER}/onnxruntime-${ONNX_ARCH}-${ONNX_VER}.tgz"

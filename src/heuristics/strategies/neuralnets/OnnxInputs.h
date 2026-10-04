@@ -16,7 +16,7 @@
  * before it, and \ref batch records which graph each node belongs to.
  */
 struct PackedGraph {
-  size_t num_nodes = 0; ///< Total number of nodes.
+  size_t num_nodes = 0;          ///< Total number of nodes.
   std::vector<int64_t> node_ids; ///< [num_nodes] (non-BITMASK only).
   std::vector<uint8_t>
       node_bits; ///< [num_nodes * bitmask_size], flattened (BITMASK only).
@@ -27,6 +27,37 @@ struct PackedGraph {
       batch; ///< [num_nodes] Index of the graph each node belongs to.
   std::vector<int64_t> pointed_ids; ///< Node indices of the designated worlds.
 };
+
+/**
+ * \brief ONNX Runtime setup shared by GraphNN and FringeEvalRL.
+ */
+namespace onnx_runtime {
+/**
+ * \brief The process-wide ONNX Runtime environment.
+ *
+ * \details One environment for every session, created on first use. Its
+ * logger prints errors, and, with --onnx_placement, the execution provider
+ * each model node was placed on (ORT reports it when a session is created).
+ */
+Ort::Env &env();
+
+/**
+ * \brief Apply the planner's ONNX options to \p options.
+ *
+ * \details Graph optimisation, --onnx_threads, logging and the device:
+ * --onnx_device cpu never uses CUDA; cuda requires it (built with use_gpu and
+ * a CUDA-capable ONNX Runtime) and fails otherwise; auto (default) uses CUDA
+ * when the build has it and falls back to the CPU with a warning.
+ * Prints the device it settled on.
+ */
+void configure_session(Ort::SessionOptions &options);
+
+/**
+ * \brief Run options for inference: per-run logging stays at warnings even
+ * when the session logs verbosely for --onnx_placement.
+ */
+Ort::RunOptions &run_options();
+} // namespace onnx_runtime
 
 /**
  * \class OnnxInputs

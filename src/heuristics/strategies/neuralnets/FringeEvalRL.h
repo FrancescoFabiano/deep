@@ -67,13 +67,19 @@ private:
 
   // static FringeEvalRL *instance; ///< Singleton instance pointer
 
-  std::string m_model_path = ArgumentParser::get_instance()
-                                 .get_RL_model_path(); ///< Path to the RL model
+  /**
+   * \brief Number of fringe slots the model scores: --GNN_batch for the
+   * batched GNN heuristic, --RL_fringe_size otherwise.
+   */
+  static std::size_t configured_fringe_size();
+
+  std::string m_model_path =
+      ArgumentParser::get_instance().get_GNN_batch_size() > 0
+          ? Configuration::get_instance().get_GNN_model_path()
+          : ArgumentParser::get_instance()
+                .get_RL_model_path(); ///< Path to the fringe model
 
   ///// --- ONNX Runtime inference components ---
-  Ort::Env m_env{
-      ORT_LOGGING_LEVEL_ERROR,
-      "FringeEvalRLEnv"}; ///< ONNX Runtime environment for Fringe inference.
   Ort::SessionOptions m_session_options; ///< ONNX Runtime session options.
   std::unique_ptr<Ort::Session>
       m_session; ///< Pointer to the ONNX Runtime session.

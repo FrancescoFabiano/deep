@@ -36,6 +36,10 @@ public:
    * \param s The state to be pushed into the priority queue.
    */
   void push(State<StateRepr> &s) override {
+    if (this->batched()) {
+      this->push_pending(s); // scored in a batch at the next peek
+      return;
+    }
     const auto heuristics_value =
         this->m_heuristics_manager.get_heuristic_value(s);
     // This is to exclude the initial state that might cause problems
@@ -43,7 +47,8 @@ public:
       return; // Skip states with negative heuristic values.
     }
     s.set_heuristic_value(heuristics_value); // Set the heuristic value
-    this->search_space.push(s);
+    // takes the successor; ordered by h, then insertion order
+    this->enqueue(std::move(s), heuristics_value, 0);
   }
 
   /**
@@ -53,6 +58,7 @@ public:
    */
   [[nodiscard]] std::string get_name() const override {
     return "Heuristics First Search (" +
-           this->m_heuristics_manager.get_used_h_name() + ")";
+           this->m_heuristics_manager.get_used_h_name() + this->batched_name() +
+           ")";
   }
 };
