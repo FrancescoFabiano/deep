@@ -164,9 +164,12 @@ def test_a_failed_run_does_not_block_the_others(tmp_path, monkeypatch):
     d = cfg.data_dir / "d1" / "BFS" / "p-00"
     d.mkdir(parents=True)
     (d / "p-00_BFS_depth_25.csv").write_text("")
-    calls = []
+    calls, exports = [], []
 
     def fake_run(cmd, **kw):
+        if "--export-from" in cmd or "--export-only" in cmd:   # the other ONNX form: same files, rewritten
+            exports.append(cmd[cmd.index("--aggregation") + 1])
+            return
         F = int(cmd[cmd.index("--fringe-sizes") + 1])
         calls.append(F)
         if F == 4 and "offline_main" in cmd[1]:                # the RL F=4 run fails
@@ -181,6 +184,7 @@ def test_a_failed_run_does_not_block_the_others(tmp_path, monkeypatch):
                 (run / train.EXPORTS["gnn"][0][0].format(F=f)).write_text("")
             for src, _ in train.GNN_STATE:
                 (run / src).write_text("")
+            (run / "distance_estimator.pt").write_text("")
     monkeypatch.setattr(train.subprocess, "run", fake_run)
     with pytest.raises(SystemExit, match="d1/rl@F4"):
         train.run(cfg)
@@ -189,15 +193,16 @@ def test_a_failed_run_does_not_block_the_others(tmp_path, monkeypatch):
     assert (out / "rl_F8.onnx").exists() and (out / "gnn_state.onnx").exists()
     assert all((out / f"gnn_F{f}.onnx").exists() for f in train.GNN_FRINGE_SIZES)
     assert not (out / "rl_F4.onnx").exists()
-    # the other ONNX form of the same weights: never a retrain, `trial.py export` installs it next to the first
-    calls.clear()
+    # every other ONNX form of what was trained is exported from the same weights, next to the first
     sc = config.load(tmp_path, dry_run=False, aggregation="scatter")
     assert sc.model_dir("d1") == cfg.models_dir / "d1" / "scattered"
+    assert exports == ["scatter"] * 3                      # RL F=8, F=16 and the GNN; nothing for the failed F=4
+    assert (sc.model_dir("d1") / "rl_F8.onnx").exists() and (sc.model_dir("d1") / "gnn_state.onnx").exists()
+    assert not (sc.model_dir("d1") / "rl_F4.onnx").exists()
+    # asked for the other form: never a retrain of what is trained, and nothing left to export
+    calls.clear(), exports.clear()
     with pytest.raises(SystemExit, match="d1/rl@F4"):
         train.run(sc)
-    assert calls == [4]                                    # only the run that never finished is retried
-    (cfg.models_dir / "d1" / "gnn" / "run" / "distance_estimator.pt").write_text("")   # the GNN checkpoint
-    monkeypatch.setattr(train.subprocess, "run", lambda cmd, **kw: None)
-    train.reexport(sc)
-    assert (sc.model_dir("d1") / "rl_F8.onnx").exists() and (sc.model_dir("d1") / "gnn_state.onnx").exists()
-    assert (out / "rl_F8.onnx").exists()
+    assert calls == [4] and exports == []                  # only the run that never finished is retried
+    train.reexport(sc)                                     # `trial.py export`: rewrites the form it is asked for
+    assert exports == ["scatter"] * 3

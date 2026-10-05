@@ -5,7 +5,9 @@ rl  -> lib/rl_handler/offline_main.py   fringe ranker: one run per [train].fring
 gnn -> lib/gnn_handler/__main__.py      per-state distance estimator: ONE run, exported at
                                         every GNN_FRINGE_SIZES width from the same weights
 Installed under models/<domain>/<dense|scattered>/ by [train].aggregation (models/pooled/... when
-[train].pooled); the run dirs models/<domain>/{rl,gnn}/ hold the weights both forms are exported from:
+[train].pooled); the run dirs models/<domain>/{rl,gnn}/ hold the weights both forms are exported from.
+The trainer exports the [train].aggregation form (the one stage 3 runs); the other forms of
+[train].exports (default: all) are then exported from the same weights, never retrained:
     rl_F<F>.onnx                         RL search + RL_H heuristic
     gnn_F<F>.onnx                        RL (beam) search with the GNN as ranker
     gnn_state.onnx + gnn_state_C.txt     HFS / A* with --heuristics GNN (one state at a time)
@@ -13,6 +15,7 @@ Flags the trainers accept but this file does not name go in [train.rl].extra / [
 """
 from __future__ import annotations
 
+import dataclasses
 import shutil
 import subprocess
 import sys
@@ -58,6 +61,10 @@ def run(cfg: Config) -> None:
             continue
         for kind in cfg.train["models"]:
             failed += _train(cfg, label, kind, train_csvs, test_csvs)
+    for agg in cfg.exports:               # the other ONNX forms of what is trained, where not installed yet
+        if agg != cfg.aggregation:
+            other = dataclasses.replace(cfg, train={**cfg.train, "aggregation": agg})
+            failed += [f"{tag} ({agg} export)" for tag in _reexport(other, only_missing=True)]
     if failed:
         raise SystemExit(f"[train] {len(failed)} run(s) failed, the rest were trained: {failed}")
 
@@ -157,6 +164,13 @@ def reexport(cfg: Config) -> None:
     [train].aggregation (same weights, another ONNX form) and install it under that form's
     folder; the other form's folder is left as it is.
     RL: offline_main --export-from run_fringe<F>; GNN: __main__ --export-only."""
+    failed = _reexport(cfg)
+    if failed:
+        raise SystemExit(f"[export] {len(failed)} run(s) failed, the rest were re-exported: {failed}")
+
+
+def _reexport(cfg: Config, only_missing: bool = False) -> list[str]:
+    """Returns the tags that failed. `only_missing` skips what is already installed in this form."""
     insts = instances.load(cfg)
     domains = sorted({i.domain for i in insts})
     labels = [POOLED_DIR] if cfg.pooled else domains
@@ -184,9 +198,15 @@ def reexport(cfg: Config) -> None:
                 run_dir = _run_dir(root, "rl", F)
                 if not all(p.exists() for p in _exported(root, "rl", [F])):
                     continue
+                if only_missing and (out / f"rl_F{F}.onnx").exists():
+                    continue
                 cmd = [sys.executable, str(TRAINERS["rl"]), "--export-from", str(run_dir), "--aggregation", agg,
                        "--dataset-type", cfg.data["dataset_type"], *map(str, t.get("rl", {}).get("extra", []))]
                 run(f"{label}/rl@F{F}", cmd, lambda F=F, root=root, out=out: _install(root, out, "rl", [F]))
+        gnn_installed = [out / dst.format(F=F) for F in GNN_FRINGE_SIZES for _, dst in EXPORTS["gnn"]]
+        gnn_installed += [out / dst for _, dst in GNN_STATE]
+        if only_missing and all(p.exists() for p in gnn_installed):
+            continue
         if "gnn" in t["models"] and (root / "gnn" / "run" / "distance_estimator.pt").exists():
             members = domains if cfg.pooled else [label]
             train_csvs = [c for d in members for c in _tables(cfg, insts, d)[0]]
@@ -197,5 +217,4 @@ def reexport(cfg: Config) -> None:
                    "--dataset-type", cfg.data["dataset_type"], "--aggregation", agg, "--export-only", "--device", "cpu",
                    *map(str, t.get("gnn", {}).get("extra", []))]
             run(f"{label}/gnn", cmd, lambda root=root, out=out: _install(root, out, "gnn", GNN_FRINGE_SIZES))
-    if failed:
-        raise SystemExit(f"[export] {len(failed)} run(s) failed, the rest were re-exported: {failed}")
+    return failed
