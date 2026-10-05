@@ -1,0 +1,121 @@
+trial,domain,kind,F,path,size_bytes,export,act_lib,planner_flags
+all,pooled,gnn_beam,1,exp/trials/all/models/pooled/gnn_F1.onnx,766111,dense,exp/trials/all/instances/pooled/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+all,pooled,gnn_beam,16,exp/trials/all/models/pooled/gnn_F16.onnx,779306,dense,exp/trials/all/instances/pooled/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+all,pooled,gnn_beam,32,exp/trials/all/models/pooled/gnn_F32.onnx,779434,dense,exp/trials/all/instances/pooled/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+all,pooled,gnn_beam,4,exp/trials/all/models/pooled/gnn_F4.onnx,779206,dense,exp/trials/all/instances/pooled/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+all,pooled,gnn_beam,8,exp/trials/all/models/pooled/gnn_F8.onnx,779239,dense,exp/trials/all/instances/pooled/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+all,pooled,gnn_state,,exp/trials/all/models/pooled/gnn_state.onnx,764132,dense,exp/trials/all/instances/pooled/act_lib.epddl,-s Astar|HFS -u GNN --GNN_model <file> --GNN_constant_file gnn_state_C.txt
+all,pooled,gnn_state_constants,,exp/trials/all/models/pooled/gnn_state_C.txt,34,dense,exp/trials/all/instances/pooled/act_lib.epddl,constant file for gnn_state.onnx
+all,pooled,rl,16,exp/trials/all/models/pooled/rl_F16.onnx,1278377,dense,exp/trials/all/instances/pooled/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+all,pooled,rl,4,exp/trials/all/models/pooled/rl_F4.onnx,1278277,dense,exp/trials/all/instances/pooled/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+all,pooled,rl,8,exp/trials/all/models/pooled/rl_F8.onnx,1278310,dense,exp/trials/all/instances/pooled/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+basic,active-muddy-child,gnn_beam,1,exp/trials/basic/models/active-muddy-child/gnn_F1.onnx,766111,dense,exp/trials/basic/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+basic,active-muddy-child,gnn_beam,16,exp/trials/basic/models/active-muddy-child/gnn_F16.onnx,779306,dense,exp/trials/basic/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+basic,active-muddy-child,gnn_beam,32,exp/trials/basic/models/active-muddy-child/gnn_F32.onnx,779434,dense,exp/trials/basic/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+basic,active-muddy-child,gnn_beam,4,exp/trials/basic/models/active-muddy-child/gnn_F4.onnx,779206,dense,exp/trials/basic/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+basic,active-muddy-child,gnn_beam,8,exp/trials/basic/models/active-muddy-child/gnn_F8.onnx,779239,dense,exp/trials/basic/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+basic,active-muddy-child,gnn_state,,exp/trials/basic/models/active-muddy-child/gnn_state.onnx,764132,dense,exp/trials/basic/instances/act_lib.epddl,-s Astar|HFS -u GNN --GNN_model <file> --GNN_constant_file gnn_state_C.txt
+basic,active-muddy-child,gnn_state_constants,,exp/trials/basic/models/active-muddy-child/gnn_state_C.txt,34,dense,exp/trials/basic/instances/act_lib.epddl,constant file for gnn_state.onnx
+basic,active-muddy-child,rl,16,exp/trials/basic/models/active-muddy-child/rl_F16.onnx,1278377,dense,exp/trials/basic/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+basic,active-muddy-child,rl,4,exp/trials/basic/models/active-muddy-child/rl_F4.onnx,1278277,dense,exp/trials/basic/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+basic,active-muddy-child,rl,8,exp/trials/basic/models/active-muddy-child/rl_F8.onnx,1278310,dense,exp/trials/basic/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+basic,blocks-world,gnn_beam,1,exp/trials/basic/models/blocks-world/gnn_F1.onnx,766111,dense,exp/trials/basic/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+basic,blocks-world,gnn_beam,16,exp/trials/basic/models/blocks-world/gnn_F16.onnx,779306,dense,exp/trials/basic/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+basic,blocks-world,gnn_beam,32,exp/trials/basic/models/blocks-world/gnn_F32.onnx,779434,dense,exp/trials/basic/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+basic,blocks-world,gnn_beam,4,exp/trials/basic/models/blocks-world/gnn_F4.onnx,779206,dense,exp/trials/basic/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+basic,blocks-world,gnn_beam,8,exp/trials/basic/models/blocks-world/gnn_F8.onnx,779239,dense,exp/trials/basic/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+basic,blocks-world,gnn_state,,exp/trials/basic/models/blocks-world/gnn_state.onnx,764132,dense,exp/trials/basic/instances/act_lib.epddl,-s Astar|HFS -u GNN --GNN_model <file> --GNN_constant_file gnn_state_C.txt
+basic,blocks-world,gnn_state_constants,,exp/trials/basic/models/blocks-world/gnn_state_C.txt,34,dense,exp/trials/basic/instances/act_lib.epddl,constant file for gnn_state.onnx
+basic,blocks-world,rl,16,exp/trials/basic/models/blocks-world/rl_F16.onnx,1278377,dense,exp/trials/basic/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+basic,blocks-world,rl,4,exp/trials/basic/models/blocks-world/rl_F4.onnx,1278277,dense,exp/trials/basic/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+basic,blocks-world,rl,8,exp/trials/basic/models/blocks-world/rl_F8.onnx,1278310,dense,exp/trials/basic/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+basic,consecutive-numbers,gnn_beam,1,exp/trials/basic/models/consecutive-numbers/gnn_F1.onnx,766111,dense,exp/trials/basic/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+basic,consecutive-numbers,gnn_beam,16,exp/trials/basic/models/consecutive-numbers/gnn_F16.onnx,779306,dense,exp/trials/basic/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+basic,consecutive-numbers,gnn_beam,32,exp/trials/basic/models/consecutive-numbers/gnn_F32.onnx,779434,dense,exp/trials/basic/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+basic,consecutive-numbers,gnn_beam,4,exp/trials/basic/models/consecutive-numbers/gnn_F4.onnx,779206,dense,exp/trials/basic/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+basic,consecutive-numbers,gnn_beam,8,exp/trials/basic/models/consecutive-numbers/gnn_F8.onnx,779239,dense,exp/trials/basic/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+basic,consecutive-numbers,gnn_state,,exp/trials/basic/models/consecutive-numbers/gnn_state.onnx,764132,dense,exp/trials/basic/instances/act_lib.epddl,-s Astar|HFS -u GNN --GNN_model <file> --GNN_constant_file gnn_state_C.txt
+basic,consecutive-numbers,gnn_state_constants,,exp/trials/basic/models/consecutive-numbers/gnn_state_C.txt,34,dense,exp/trials/basic/instances/act_lib.epddl,constant file for gnn_state.onnx
+basic,consecutive-numbers,rl,16,exp/trials/basic/models/consecutive-numbers/rl_F16.onnx,1278377,dense,exp/trials/basic/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+basic,consecutive-numbers,rl,4,exp/trials/basic/models/consecutive-numbers/rl_F4.onnx,1278277,dense,exp/trials/basic/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+basic,consecutive-numbers,rl,8,exp/trials/basic/models/consecutive-numbers/rl_F8.onnx,1278310,dense,exp/trials/basic/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+basic,gossip,gnn_beam,1,exp/trials/basic/models/gossip/gnn_F1.onnx,766111,dense,exp/trials/basic/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+basic,gossip,gnn_beam,16,exp/trials/basic/models/gossip/gnn_F16.onnx,779306,dense,exp/trials/basic/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+basic,gossip,gnn_beam,32,exp/trials/basic/models/gossip/gnn_F32.onnx,779434,dense,exp/trials/basic/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+basic,gossip,gnn_beam,4,exp/trials/basic/models/gossip/gnn_F4.onnx,779206,dense,exp/trials/basic/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+basic,gossip,gnn_beam,8,exp/trials/basic/models/gossip/gnn_F8.onnx,779239,dense,exp/trials/basic/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+basic,gossip,gnn_state,,exp/trials/basic/models/gossip/gnn_state.onnx,764132,dense,exp/trials/basic/instances/act_lib.epddl,-s Astar|HFS -u GNN --GNN_model <file> --GNN_constant_file gnn_state_C.txt
+basic,gossip,gnn_state_constants,,exp/trials/basic/models/gossip/gnn_state_C.txt,34,dense,exp/trials/basic/instances/act_lib.epddl,constant file for gnn_state.onnx
+basic,gossip,rl,16,exp/trials/basic/models/gossip/rl_F16.onnx,1278377,dense,exp/trials/basic/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+basic,gossip,rl,4,exp/trials/basic/models/gossip/rl_F4.onnx,1278277,dense,exp/trials/basic/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+basic,gossip,rl,8,exp/trials/basic/models/gossip/rl_F8.onnx,1278310,dense,exp/trials/basic/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+hard,blocks-world,gnn_beam,1,exp/trials/hard/models/blocks-world/gnn_F1.onnx,766111,dense,exp/trials/hard/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+hard,blocks-world,gnn_beam,16,exp/trials/hard/models/blocks-world/gnn_F16.onnx,779306,dense,exp/trials/hard/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+hard,blocks-world,gnn_beam,32,exp/trials/hard/models/blocks-world/gnn_F32.onnx,779434,dense,exp/trials/hard/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+hard,blocks-world,gnn_beam,4,exp/trials/hard/models/blocks-world/gnn_F4.onnx,779206,dense,exp/trials/hard/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+hard,blocks-world,gnn_beam,8,exp/trials/hard/models/blocks-world/gnn_F8.onnx,779239,dense,exp/trials/hard/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+hard,blocks-world,gnn_state,,exp/trials/hard/models/blocks-world/gnn_state.onnx,764132,dense,exp/trials/hard/instances/act_lib.epddl,-s Astar|HFS -u GNN --GNN_model <file> --GNN_constant_file gnn_state_C.txt
+hard,blocks-world,gnn_state_constants,,exp/trials/hard/models/blocks-world/gnn_state_C.txt,34,dense,exp/trials/hard/instances/act_lib.epddl,constant file for gnn_state.onnx
+hard,blocks-world,rl,16,exp/trials/hard/models/blocks-world/rl_F16.onnx,1278377,dense,exp/trials/hard/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+hard,blocks-world,rl,4,exp/trials/hard/models/blocks-world/rl_F4.onnx,1278277,dense,exp/trials/hard/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+hard,blocks-world,rl,8,exp/trials/hard/models/blocks-world/rl_F8.onnx,1278310,dense,exp/trials/hard/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+hard,gossip,gnn_beam,1,exp/trials/hard/models/gossip/gnn_F1.onnx,766111,dense,exp/trials/hard/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+hard,gossip,gnn_beam,16,exp/trials/hard/models/gossip/gnn_F16.onnx,779306,dense,exp/trials/hard/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+hard,gossip,gnn_beam,32,exp/trials/hard/models/gossip/gnn_F32.onnx,779434,dense,exp/trials/hard/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+hard,gossip,gnn_beam,4,exp/trials/hard/models/gossip/gnn_F4.onnx,779206,dense,exp/trials/hard/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+hard,gossip,gnn_beam,8,exp/trials/hard/models/gossip/gnn_F8.onnx,779239,dense,exp/trials/hard/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+hard,gossip,gnn_state,,exp/trials/hard/models/gossip/gnn_state.onnx,764132,dense,exp/trials/hard/instances/act_lib.epddl,-s Astar|HFS -u GNN --GNN_model <file> --GNN_constant_file gnn_state_C.txt
+hard,gossip,gnn_state_constants,,exp/trials/hard/models/gossip/gnn_state_C.txt,34,dense,exp/trials/hard/instances/act_lib.epddl,constant file for gnn_state.onnx
+hard,gossip,rl,16,exp/trials/hard/models/gossip/rl_F16.onnx,1278377,dense,exp/trials/hard/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+hard,gossip,rl,4,exp/trials/hard/models/gossip/rl_F4.onnx,1278277,dense,exp/trials/hard/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+hard,gossip,rl,8,exp/trials/hard/models/gossip/rl_F8.onnx,1278310,dense,exp/trials/hard/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+intermediate,blocks-world,gnn_beam,1,exp/trials/intermediate/models/blocks-world/gnn_F1.onnx,766111,dense,exp/trials/intermediate/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+intermediate,blocks-world,gnn_beam,16,exp/trials/intermediate/models/blocks-world/gnn_F16.onnx,779306,dense,exp/trials/intermediate/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+intermediate,blocks-world,gnn_beam,32,exp/trials/intermediate/models/blocks-world/gnn_F32.onnx,779434,dense,exp/trials/intermediate/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+intermediate,blocks-world,gnn_beam,4,exp/trials/intermediate/models/blocks-world/gnn_F4.onnx,779206,dense,exp/trials/intermediate/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+intermediate,blocks-world,gnn_beam,8,exp/trials/intermediate/models/blocks-world/gnn_F8.onnx,779239,dense,exp/trials/intermediate/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+intermediate,blocks-world,gnn_state,,exp/trials/intermediate/models/blocks-world/gnn_state.onnx,764132,dense,exp/trials/intermediate/instances/act_lib.epddl,-s Astar|HFS -u GNN --GNN_model <file> --GNN_constant_file gnn_state_C.txt
+intermediate,blocks-world,gnn_state_constants,,exp/trials/intermediate/models/blocks-world/gnn_state_C.txt,34,dense,exp/trials/intermediate/instances/act_lib.epddl,constant file for gnn_state.onnx
+intermediate,blocks-world,rl,16,exp/trials/intermediate/models/blocks-world/rl_F16.onnx,1278377,dense,exp/trials/intermediate/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+intermediate,blocks-world,rl,4,exp/trials/intermediate/models/blocks-world/rl_F4.onnx,1278277,dense,exp/trials/intermediate/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+intermediate,blocks-world,rl,8,exp/trials/intermediate/models/blocks-world/rl_F8.onnx,1278310,dense,exp/trials/intermediate/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+intermediate,cloud-scheduling,gnn_beam,1,exp/trials/intermediate/models/cloud-scheduling/gnn_F1.onnx,766111,dense,exp/trials/intermediate/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+intermediate,cloud-scheduling,gnn_beam,16,exp/trials/intermediate/models/cloud-scheduling/gnn_F16.onnx,779306,dense,exp/trials/intermediate/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+intermediate,cloud-scheduling,gnn_beam,32,exp/trials/intermediate/models/cloud-scheduling/gnn_F32.onnx,779434,dense,exp/trials/intermediate/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+intermediate,cloud-scheduling,gnn_beam,4,exp/trials/intermediate/models/cloud-scheduling/gnn_F4.onnx,779206,dense,exp/trials/intermediate/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+intermediate,cloud-scheduling,gnn_beam,8,exp/trials/intermediate/models/cloud-scheduling/gnn_F8.onnx,779239,dense,exp/trials/intermediate/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+intermediate,cloud-scheduling,gnn_state,,exp/trials/intermediate/models/cloud-scheduling/gnn_state.onnx,764132,dense,exp/trials/intermediate/instances/act_lib.epddl,-s Astar|HFS -u GNN --GNN_model <file> --GNN_constant_file gnn_state_C.txt
+intermediate,cloud-scheduling,gnn_state_constants,,exp/trials/intermediate/models/cloud-scheduling/gnn_state_C.txt,34,dense,exp/trials/intermediate/instances/act_lib.epddl,constant file for gnn_state.onnx
+intermediate,cloud-scheduling,rl,16,exp/trials/intermediate/models/cloud-scheduling/rl_F16.onnx,1278377,dense,exp/trials/intermediate/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+intermediate,cloud-scheduling,rl,4,exp/trials/intermediate/models/cloud-scheduling/rl_F4.onnx,1278277,dense,exp/trials/intermediate/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+intermediate,cloud-scheduling,rl,8,exp/trials/intermediate/models/cloud-scheduling/rl_F8.onnx,1278310,dense,exp/trials/intermediate/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+intermediate,gossip,gnn_beam,1,exp/trials/intermediate/models/gossip/gnn_F1.onnx,766111,dense,exp/trials/intermediate/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+intermediate,gossip,gnn_beam,16,exp/trials/intermediate/models/gossip/gnn_F16.onnx,779306,dense,exp/trials/intermediate/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+intermediate,gossip,gnn_beam,32,exp/trials/intermediate/models/gossip/gnn_F32.onnx,779434,dense,exp/trials/intermediate/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+intermediate,gossip,gnn_beam,4,exp/trials/intermediate/models/gossip/gnn_F4.onnx,779206,dense,exp/trials/intermediate/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+intermediate,gossip,gnn_beam,8,exp/trials/intermediate/models/gossip/gnn_F8.onnx,779239,dense,exp/trials/intermediate/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+intermediate,gossip,gnn_state,,exp/trials/intermediate/models/gossip/gnn_state.onnx,764132,dense,exp/trials/intermediate/instances/act_lib.epddl,-s Astar|HFS -u GNN --GNN_model <file> --GNN_constant_file gnn_state_C.txt
+intermediate,gossip,gnn_state_constants,,exp/trials/intermediate/models/gossip/gnn_state_C.txt,34,dense,exp/trials/intermediate/instances/act_lib.epddl,constant file for gnn_state.onnx
+intermediate,gossip,rl,16,exp/trials/intermediate/models/gossip/rl_F16.onnx,1278377,dense,exp/trials/intermediate/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+intermediate,gossip,rl,4,exp/trials/intermediate/models/gossip/rl_F4.onnx,1278277,dense,exp/trials/intermediate/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+intermediate,gossip,rl,8,exp/trials/intermediate/models/gossip/rl_F8.onnx,1278310,dense,exp/trials/intermediate/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+intermediate,search-and-rescue,gnn_beam,1,exp/trials/intermediate/models/search-and-rescue/gnn_F1.onnx,766111,dense,exp/trials/intermediate/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+intermediate,search-and-rescue,gnn_beam,16,exp/trials/intermediate/models/search-and-rescue/gnn_F16.onnx,779306,dense,exp/trials/intermediate/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+intermediate,search-and-rescue,gnn_beam,32,exp/trials/intermediate/models/search-and-rescue/gnn_F32.onnx,779434,dense,exp/trials/intermediate/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+intermediate,search-and-rescue,gnn_beam,4,exp/trials/intermediate/models/search-and-rescue/gnn_F4.onnx,779206,dense,exp/trials/intermediate/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+intermediate,search-and-rescue,gnn_beam,8,exp/trials/intermediate/models/search-and-rescue/gnn_F8.onnx,779239,dense,exp/trials/intermediate/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+intermediate,search-and-rescue,gnn_state,,exp/trials/intermediate/models/search-and-rescue/gnn_state.onnx,764132,dense,exp/trials/intermediate/instances/act_lib.epddl,-s Astar|HFS -u GNN --GNN_model <file> --GNN_constant_file gnn_state_C.txt
+intermediate,search-and-rescue,gnn_state_constants,,exp/trials/intermediate/models/search-and-rescue/gnn_state_C.txt,34,dense,exp/trials/intermediate/instances/act_lib.epddl,constant file for gnn_state.onnx
+intermediate,search-and-rescue,rl,16,exp/trials/intermediate/models/search-and-rescue/rl_F16.onnx,1278377,dense,exp/trials/intermediate/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+intermediate,search-and-rescue,rl,4,exp/trials/intermediate/models/search-and-rescue/rl_F4.onnx,1278277,dense,exp/trials/intermediate/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+intermediate,search-and-rescue,rl,8,exp/trials/intermediate/models/search-and-rescue/rl_F8.onnx,1278310,dense,exp/trials/intermediate/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+intermediate,selective-communication,gnn_beam,1,exp/trials/intermediate/models/selective-communication/gnn_F1.onnx,766111,dense,exp/trials/intermediate/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+intermediate,selective-communication,gnn_beam,16,exp/trials/intermediate/models/selective-communication/gnn_F16.onnx,779306,dense,exp/trials/intermediate/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+intermediate,selective-communication,gnn_beam,32,exp/trials/intermediate/models/selective-communication/gnn_F32.onnx,779434,dense,exp/trials/intermediate/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+intermediate,selective-communication,gnn_beam,4,exp/trials/intermediate/models/selective-communication/gnn_F4.onnx,779206,dense,exp/trials/intermediate/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+intermediate,selective-communication,gnn_beam,8,exp/trials/intermediate/models/selective-communication/gnn_F8.onnx,779239,dense,exp/trials/intermediate/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+intermediate,selective-communication,gnn_state,,exp/trials/intermediate/models/selective-communication/gnn_state.onnx,764132,dense,exp/trials/intermediate/instances/act_lib.epddl,-s Astar|HFS -u GNN --GNN_model <file> --GNN_constant_file gnn_state_C.txt
+intermediate,selective-communication,gnn_state_constants,,exp/trials/intermediate/models/selective-communication/gnn_state_C.txt,34,dense,exp/trials/intermediate/instances/act_lib.epddl,constant file for gnn_state.onnx
+intermediate,selective-communication,rl,16,exp/trials/intermediate/models/selective-communication/rl_F16.onnx,1278377,dense,exp/trials/intermediate/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+intermediate,selective-communication,rl,4,exp/trials/intermediate/models/selective-communication/rl_F4.onnx,1278277,dense,exp/trials/intermediate/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+intermediate,selective-communication,rl,8,exp/trials/intermediate/models/selective-communication/rl_F8.onnx,1278310,dense,exp/trials/intermediate/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
