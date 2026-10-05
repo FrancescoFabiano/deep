@@ -90,6 +90,10 @@ def build_parser() -> argparse.ArgumentParser:
                    help="passes over train_rows; steps are derived per run")
     p.add_argument("--n-checkpoints", type=int, default=5,
                    help="run-proportional checkpoints (always kept, incl. the last step)")
+    p.add_argument("--early-stop-patience", type=int, default=100000,
+                   help="stop when the smoothed held-out selection score has not improved by more than "
+                        "--early-stop-min-delta over this many steps' checkpoints; 0 = off")
+    p.add_argument("--early-stop-min-delta", type=float, default=0.005)
     p.add_argument("--ckpt-every", type=int, default=10000,
                    help="also checkpoint + evaluate every N steps, so an early divergence still leaves "
                         "pre-drift candidates to select from; 0 = proportional checkpoints only")
@@ -209,6 +213,39 @@ def build_parser() -> argparse.ArgumentParser:
     return p
 
 
+def _select_from_telemetry(run_dir, a) -> dict:
+    import json
+    import re
+    from src.offline.run import SELECTION_WINDOW
+    from src.offline.selection import Candidate, select_smoothed
+    tel = run_dir / "telemetry.jsonl"
+    if not tel.is_file():
+        raise SystemExit(f"{run_dir}: neither a selection json nor telemetry.jsonl")
+    saved = {int(m.group(1)) for p in (run_dir / "checkpoints").glob("ckpt_*.pt")
+             if (m := re.search(r"ckpt_(\d+)\.pt$", p.name))}
+    cands = []
+    for line in tel.read_text().splitlines():
+        r = json.loads(line)
+        if r.get("split") != "val" or int(r.get("step", -1)) not in saved:
+            continue
+        sel = r.get("heldout_ndcg")
+        cands.append(Candidate(step=int(r["step"]), frames=int(r.get("frames", 0)),
+                               coverage=float(r.get("coverage_at_reference_budget", 0.0)),
+                               regret=r.get("regret_mean_lower_bound"), doom=float(r.get("doom_rate", 0.0)),
+                               select_score=float(sel) if sel is not None else None))
+    if not cands:
+        raise SystemExit(f"{run_dir}: no evaluated checkpoint to select from")
+    cands.sort(key=lambda c: c.step)
+    best = select_smoothed(cands, window=SELECTION_WINDOW)
+    F = int(re.search(r"run_fringe(\d+)", run_dir.name).group(1))
+    return {"checkpoint": best.step, "frames": best.frames, "fringe_size": F, "kind_of_data": a.kind_of_data,
+            "model": a.model, "context_mode": a.context_mode, "dataset_type": a.dataset_type,
+            "selection_metric": "heldout_ndcg", "selection_window": SELECTION_WINDOW,
+            "n_candidates": len(cands), "val_coverage_at_reference_budget": best.coverage,
+            "val_regret_lower_bound": best.regret, "select_score": best.select_score,
+            "note": "run stopped before completion; selected from telemetry by offline_main --export-from"}
+
+
 def export_from(a, kind: str, ctx: str) -> int:
     """Re-export a finished run's selected checkpoint (same weights, another ONNX form)."""
     import copy
@@ -219,7 +256,13 @@ def export_from(a, kind: str, ctx: str) -> int:
     run_dir = a.export_from
     sel = next(run_dir.glob("frontier_policy_*_best_by_expansions.selection.json"), None)
     if sel is None:
-        raise SystemExit(f"{run_dir}: no *.selection.json (not a finished run_fringe<F> dir)")
+        # an unfinished (killed) run: select among the checkpoints it saved, from the
+        # per-checkpoint telemetry, with the same smoothed rule the run would apply
+        meta = _select_from_telemetry(run_dir, a)
+        sel = run_dir / f"frontier_policy_{meta['fringe_size']}_best_by_expansions.selection.json"
+        sel.write_text(json.dumps(meta, indent=1))
+        print(f"[export] {run_dir}: no selection json; selected checkpoint {meta['checkpoint']} "
+              f"from telemetry ({meta['n_candidates']} candidates, window {meta['selection_window']})")
     meta = json.loads(sel.read_text())
     F, step = int(meta["fringe_size"]), int(meta["checkpoint"])
     cfg = RunConfig(train_csvs=[], dir_save_model=run_dir.parent, fringe_size=F, model=meta.get("model", a.model),
@@ -256,6 +299,7 @@ def main(argv=None) -> int:
             fringe_size=F, model=a.model, kind_of_data=kind, context_mode=ctx,
             attn_heads=a.attn_heads, attn_layers=a.attn_layers,
             epochs=a.epochs, n_checkpoints=a.n_checkpoints, ckpt_every=a.ckpt_every, seed=a.seed,
+            early_stop_patience=a.early_stop_patience, early_stop_min_delta=a.early_stop_min_delta,
             sampler=a.sampler, sampler_k=a.sampler_k, select_final=a.select_final,
             seeds_per_policy=a.seeds_per_policy,
             counterfactual=a.counterfactual_actions,

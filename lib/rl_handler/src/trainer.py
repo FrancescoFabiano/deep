@@ -28,9 +28,17 @@ FAILURE_REWARD_VALUE = -1.0
 
 
 class OnnxFrontierPolicyWrapper(nn.Module):
-    def __init__(self, core: FrontierPolicyNetwork):
+    """`fringe_size` pins the output to [F]: FringeEvalRL refuses a model whose output
+    length onnxruntime cannot infer statically, and the dense (blocked) aggregation
+    leaves it dynamic, where PyG's baked pool size happened to make it static."""
+
+    def __init__(self, core: FrontierPolicyNetwork, fringe_size: Optional[int] = None):
         super().__init__()
         self.core = core
+        self.fringe_size = int(fringe_size) if fringe_size else None
+
+    def _pin(self, scores: torch.Tensor) -> torch.Tensor:
+        return scores.reshape(self.fringe_size) if self.fringe_size else scores
 
     def forward(
         self,
@@ -41,7 +49,7 @@ class OnnxFrontierPolicyWrapper(nn.Module):
         pointed_ids: torch.Tensor,
         mask: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
-        return self.core(
+        return self._pin(self.core(
             node_features=node_features,
             edge_index=edge_index,
             edge_attr=edge_attr,
@@ -49,13 +57,10 @@ class OnnxFrontierPolicyWrapper(nn.Module):
             pointed_ids=pointed_ids,
             candidate_batch=None,
             mask=mask,
-        )
+        ))
 
 
-class OnnxFrontierPolicySeparatedWrapper(nn.Module):
-    def __init__(self, core: FrontierPolicyNetwork):
-        super().__init__()
-        self.core = core
+class OnnxFrontierPolicySeparatedWrapper(OnnxFrontierPolicyWrapper):
 
     def forward(
         self,
@@ -70,7 +75,7 @@ class OnnxFrontierPolicySeparatedWrapper(nn.Module):
         goal_batch: torch.Tensor,
         mask: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
-        return self.core(
+        return self._pin(self.core(
             node_features=node_features,
             edge_index=edge_index,
             edge_attr=edge_attr,
@@ -82,7 +87,7 @@ class OnnxFrontierPolicySeparatedWrapper(nn.Module):
             goal_edge_index=goal_edge_index,
             goal_edge_attr=goal_edge_attr,
             goal_batch=goal_batch,
-        )
+        ))
 
 
 class RLFrontierTrainer:
@@ -199,7 +204,7 @@ class RLFrontierTrainer:
         core = (self.model if aggregation == "scatter"
                 else set_dense_aggregation(copy.deepcopy(self.model), True, blocked=int(onnx_frontier_size) >= 4))
         try:
-            contract.export(wrapper_cls(core), out_path, onnx_frontier_size, separated)
+            contract.export(wrapper_cls(core, onnx_frontier_size), out_path, onnx_frontier_size, separated)
         finally:
             self.model.to(model_device)
             self.model.train(model_was_training)

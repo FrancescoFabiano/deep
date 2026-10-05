@@ -533,3 +533,23 @@ def test_regret_at_decision_is_graded_and_picked_dead_flags_catastrophe():
     dd = [float("inf"), 1.0]
     md = ranking_metrics_for_frontier(dd, ranking=[0, 1])
     assert md["picked_dead"] == 1.0 and md["regret_at_decision"] is None
+
+
+def test_early_stop_patience_on_the_smoothed_score():
+    from src.offline.selection import Candidate, early_stop_hit
+
+    def cand(step, score):
+        return Candidate(step=step, frames=step, coverage=0.0, regret=None, doom=0.0, select_score=score)
+    # rising then flat: best smoothed window ends at 60k, flat (within 0.005) afterwards
+    scores = {10: .60, 20: .70, 30: .74, 40: .75, 50: .75, 60: .76, 70: .75, 80: .75, 90: .745,
+              100: .75, 110: .745, 120: .75, 130: .75, 140: .75, 150: .75, 160: .75, 170: .75}
+    cands = [cand(s * 1000, v) for s, v in sorted(scores.items())]
+    assert early_stop_hit(cands[:10], 100_000, patience=100_000, min_delta=0.005) is None   # too early
+    hit = early_stop_hit(cands, 170_000, patience=100_000, min_delta=0.005)
+    assert hit is not None and hit[0] == 60_000                                             # best + 100k reached
+    assert early_stop_hit(cands, 170_000, patience=0, min_delta=0.005) is None              # off
+    # a later improvement > min_delta resets the clock
+    better = cands + [cand(180_000, .80), cand(190_000, .80), cand(200_000, .80)]
+    assert early_stop_hit(better, 200_000, patience=100_000, min_delta=0.005) is None
+    # unscored candidates are ignored, fewer than a window of scored ones -> None
+    assert early_stop_hit([cand(1, None), cand(2, None)], 300_000, 1, 0.0) is None

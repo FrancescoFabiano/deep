@@ -115,6 +115,8 @@ def _train_group(cfg, label, kind, Fs, train_csvs, test_csvs) -> None:
            *FIXED_FLAGS[kind], *map(str, t.get(kind, {}).get("extra", []))]
     if kind == "rl" and "ckpt_every" in t:
         cmd += ["--ckpt-every", str(int(t["ckpt_every"]))]
+    if kind == "rl" and "early_stop_patience" in t:
+        cmd += ["--early-stop-patience", str(int(t["early_stop_patience"]))]
     if test_csvs:
         cmd += ["--test-csv", *map(str, test_csvs)]
     print(f"[train] {tag}: {len(train_csvs)} train tables, {len(test_csvs)} test tables, batch {batch}")
