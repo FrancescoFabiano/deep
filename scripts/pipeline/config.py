@@ -54,6 +54,10 @@ class Config:
     def pooled(self) -> bool: return bool(self.train.get("pooled", False))
     @property
     def aggregation(self) -> str: return str(self.train.get("aggregation", AGGREGATION))
+    @property
+    def exports(self) -> list[str]:
+        """The ONNX forms stage 2 installs: every form unless [train].exports narrows it."""
+        return list(self.train.get("exports", AGGREGATION_DIRS))
 
     def act_lib_for(self, domain: str) -> Path:
         """instances/<domain>/act_lib.epddl when the domain ships its own, else the shared one."""
@@ -109,6 +113,7 @@ def _validate(cfg: Config) -> None:
     check("S_DFS" not in d["strategies"] or "discard_factor" in d, "[data] S_DFS needs discard_factor")
     check(set(t["models"]) <= set(MODELS), f"[train] models must be among {MODELS}")
     check(cfg.aggregation in AGGREGATION_DIRS, f"[train] aggregation must be among {sorted(AGGREGATION_DIRS)}")
+    check(set(cfg.exports) <= set(AGGREGATION_DIRS), f"[train] exports must be among {sorted(AGGREGATION_DIRS)}")
     check(t["strategies"] == "all" or set(t["strategies"]) <= set(d["strategies"]),
           "[train] strategies must be 'all' or a subset of [data] strategies")
     check(i["rl_exploration"] + i["rl_exploitation"] < 100, "[inference] rl_exploration + rl_exploitation must be < 100")

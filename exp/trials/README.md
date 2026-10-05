@@ -11,6 +11,8 @@ python scripts/trial.py report exp/trials/<trial>    # tables + figures   -> rep
 
 `all` runs the four in order. `--domains`, `--strategies` (data only) and `--dry-run`
 apply to any stage. Stages skip what is already on disk, so a crashed run resumes.
+Stage 2 installs every model in both ONNX forms (`[train].exports`); stage 3 runs the
+`[train].aggregation` one, or the one named by `--aggregation dense|scatter`.
 
 Layout of a trial:
 
