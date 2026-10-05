@@ -106,7 +106,7 @@ def test_pooled_trains_once_and_refuses_repeated_problem_names(tmp_path, capsys)
     toml = tmp_path / "trial.toml"
     toml.write_text(toml.read_text().replace("[train]\n", "[train]\npooled = true\n"))
     cfg = config.load(tmp_path, dry_run=True)
-    assert cfg.pooled and cfg.model_dir("d1") == cfg.models_dir / config.POOLED_DIR
+    assert cfg.pooled and cfg.model_dir("d1") == cfg.models_dir / config.POOLED_DIR / "dense"
     (cfg.instances_dir / "d2" / "problems").mkdir(parents=True)
     (cfg.instances_dir / "d2" / "domain.epddl").write_text("")
     (cfg.instances_dir / "d2" / "problems" / "p-00.epddl").write_text("")   # same name as in d1
@@ -126,7 +126,7 @@ def test_pooled_trains_once_and_refuses_repeated_problem_names(tmp_path, capsys)
 
 def test_methods_follow_the_installed_models(tmp_path):
     cfg = _trial(tmp_path)
-    d = cfg.models_dir / "d1"
+    d = cfg.model_dir("d1")
     d.mkdir(parents=True)
     for name in ["rl_F4.onnx", "gnn_F1.onnx", "gnn_F8.onnx", "gnn_state.onnx", "gnn_state_C.txt"]:
         (d / name).write_text("")
@@ -185,6 +185,19 @@ def test_a_failed_run_does_not_block_the_others(tmp_path, monkeypatch):
     with pytest.raises(SystemExit, match="d1/rl@F4"):
         train.run(cfg)
     assert calls == [*cfg.train["fringe_sizes"], 1]        # every RL F tried, then the one GNN run
-    assert (cfg.models_dir / "d1" / "rl_F8.onnx").exists() and (cfg.models_dir / "d1" / "gnn_state.onnx").exists()
-    assert all((cfg.models_dir / "d1" / f"gnn_F{f}.onnx").exists() for f in train.GNN_FRINGE_SIZES)
-    assert not (cfg.models_dir / "d1" / "rl_F4.onnx").exists()
+    out = cfg.models_dir / "d1" / "dense"                  # [train].aggregation default
+    assert (out / "rl_F8.onnx").exists() and (out / "gnn_state.onnx").exists()
+    assert all((out / f"gnn_F{f}.onnx").exists() for f in train.GNN_FRINGE_SIZES)
+    assert not (out / "rl_F4.onnx").exists()
+    # the other ONNX form of the same weights: never a retrain, `trial.py export` installs it next to the first
+    calls.clear()
+    sc = config.load(tmp_path, dry_run=False, aggregation="scatter")
+    assert sc.model_dir("d1") == cfg.models_dir / "d1" / "scattered"
+    with pytest.raises(SystemExit, match="d1/rl@F4"):
+        train.run(sc)
+    assert calls == [4]                                    # only the run that never finished is retried
+    (cfg.models_dir / "d1" / "gnn" / "run" / "distance_estimator.pt").write_text("")   # the GNN checkpoint
+    monkeypatch.setattr(train.subprocess, "run", lambda cmd, **kw: None)
+    train.reexport(sc)
+    assert (sc.model_dir("d1") / "rl_F8.onnx").exists() and (sc.model_dir("d1") / "gnn_state.onnx").exists()
+    assert (out / "rl_F8.onnx").exists()

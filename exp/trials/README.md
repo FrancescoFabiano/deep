@@ -18,7 +18,7 @@ Layout of a trial:
 instances/act_lib.epddl, <domain>/domain.epddl, <domain>/problems/*.epddl   the frozen inputs
 split.csv                    train/test per problem, written once from [split]
 data/<domain>/<STRAT>/<problem>/                                             stage 1
-models/<domain>/{rl,gnn}_F<F>.onnx, gnn_state.onnx (+_C.txt)                 stage 2
+models/<domain>/<dense|scattered>/{rl,gnn}_F<F>.onnx, gnn_state.onnx (+_C.txt)   stage 2
 results/results.csv          one row per (problem, method, F)                stage 3
 report/tables/*.tex *.csv, report/figures/*.png                              stage 4
 ```

@@ -10,6 +10,9 @@ STRATEGIES = ("BFS", "DFS", "S_DFS", "HFS")
 MODELS = ("rl", "gnn")
 GNN_SEARCHES = ("Astar", "HFS")
 POOLED_DIR = "pooled"          # models/<POOLED_DIR>/ holds the one model set of a [train].pooled trial
+# [train].aggregation (the ONNX form of the sum aggregations) -> the folder its exports are installed in
+AGGREGATION_DIRS = {"dense": "dense", "scatter": "scattered"}
+AGGREGATION = "dense"          # default: one-hot matmuls (deep_nn.dense), -40% CPU latency on small graphs
 REQUIRED = {
     "trial": ["deep_exe"],
     "split": ["train_pct"],
@@ -49,6 +52,8 @@ class Config:
     def models_dir(self) -> Path: return self.trial_dir / "models"
     @property
     def pooled(self) -> bool: return bool(self.train.get("pooled", False))
+    @property
+    def aggregation(self) -> str: return str(self.train.get("aggregation", AGGREGATION))
 
     def act_lib_for(self, domain: str) -> Path:
         """instances/<domain>/act_lib.epddl when the domain ships its own, else the shared one."""
@@ -56,8 +61,9 @@ class Config:
         return own if own.is_file() else self.act_lib
 
     def model_dir(self, domain: str) -> Path:
-        """Where stage 2 installs and stage 3 finds a domain's models (one shared dir when pooled)."""
-        return self.models_dir / (POOLED_DIR if self.pooled else domain)
+        """Where stage 2 installs and stage 3 finds a domain's models (one shared dir when pooled),
+        in the ONNX form of [train].aggregation: models/<domain>/{dense,scattered}/."""
+        return self.models_dir / (POOLED_DIR if self.pooled else domain) / AGGREGATION_DIRS[self.aggregation]
     @property
     def results_file(self) -> Path: return self.trial_dir / "results" / "results.csv"
     @property
@@ -67,7 +73,8 @@ class Config:
         return int(self.data.get("depth_overrides", {}).get(domain, self.data["depth"]))
 
 
-def load(trial_dir: Path, domains=None, strategies=None, models=None, workers=None, dry_run=False) -> Config:
+def load(trial_dir: Path, domains=None, strategies=None, models=None, workers=None, dry_run=False,
+         aggregation=None) -> Config:
     raw = tomllib.loads((trial_dir / "trial.toml").read_text())
     for section, keys in REQUIRED.items():
         missing = [k for k in keys if k not in raw.get(section, {})]
@@ -77,6 +84,8 @@ def load(trial_dir: Path, domains=None, strategies=None, models=None, workers=No
         raw["train"]["models"] = list(models)
     if workers:
         raw["trial"]["workers"] = int(workers)
+    if aggregation:
+        raw["train"]["aggregation"] = aggregation
     cfg = Config(trial_dir, raw["trial"], raw["split"], raw["data"], raw["train"], raw["inference"],
                  domains, list(strategies or raw["data"]["strategies"]), dry_run)
     _validate(cfg)
@@ -99,6 +108,7 @@ def _validate(cfg: Config) -> None:
     check("HFS" not in d["strategies"] or "hfs_heuristic" in d, "[data] HFS needs hfs_heuristic")
     check("S_DFS" not in d["strategies"] or "discard_factor" in d, "[data] S_DFS needs discard_factor")
     check(set(t["models"]) <= set(MODELS), f"[train] models must be among {MODELS}")
+    check(cfg.aggregation in AGGREGATION_DIRS, f"[train] aggregation must be among {sorted(AGGREGATION_DIRS)}")
     check(t["strategies"] == "all" or set(t["strategies"]) <= set(d["strategies"]),
           "[train] strategies must be 'all' or a subset of [data] strategies")
     check(i["rl_exploration"] + i["rl_exploitation"] < 100, "[inference] rl_exploration + rl_exploitation must be < 100")

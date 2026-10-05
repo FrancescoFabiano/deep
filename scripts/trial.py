@@ -29,11 +29,14 @@ def main() -> None:
     p.add_argument("--domains", nargs="+", help="restrict to these domains (default: all in instances/)")
     p.add_argument("--strategies", nargs="+", help="data: generate only these strategies")
     p.add_argument("--models", nargs="+", choices=["rl", "gnn"], help="train: only these model kinds (default: [train].models)")
+    p.add_argument("--aggregation", choices=["dense", "scatter"],
+                   help="ONNX form to export / run: models/<domain>/{dense,scattered}/ (default: [train].aggregation)")
     p.add_argument("--workers", type=int, help="parallel planner runs (default: [trial].workers)")
     p.add_argument("--dry-run", action="store_true", help="print the commands, run nothing")
     a = p.parse_args()
     sys.stdout.reconfigure(line_buffering=True)     # progress lines reach a redirected log as they happen
-    cfg = config.load(Path(a.trial_dir), domains=a.domains, strategies=a.strategies, models=a.models, workers=a.workers, dry_run=a.dry_run)
+    cfg = config.load(Path(a.trial_dir), domains=a.domains, strategies=a.strategies, models=a.models, workers=a.workers, dry_run=a.dry_run,
+                      aggregation=a.aggregation)
     for name in (list(STAGES) if a.stage == "all" else [a.stage]):
         print(f"===== {name} =====")
         {**STAGES, **EXTRA}[name](cfg)

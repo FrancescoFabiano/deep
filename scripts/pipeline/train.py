@@ -4,7 +4,8 @@ every domain's train trees at once (models/pooled/).
 rl  -> lib/rl_handler/offline_main.py   fringe ranker: one run per [train].fringe_sizes entry
 gnn -> lib/gnn_handler/__main__.py      per-state distance estimator: ONE run, exported at
                                         every GNN_FRINGE_SIZES width from the same weights
-Installed flat under models/<domain>/ (models/pooled/ when [train].pooled):
+Installed under models/<domain>/<dense|scattered>/ by [train].aggregation (models/pooled/... when
+[train].pooled); the run dirs models/<domain>/{rl,gnn}/ hold the weights both forms are exported from:
     rl_F<F>.onnx                         RL search + RL_H heuristic
     gnn_F<F>.onnx                        RL (beam) search with the GNN as ranker
     gnn_state.onnx + gnn_state_C.txt     HFS / A* with --heuristics GNN (one state at a time)
@@ -17,7 +18,7 @@ import subprocess
 import sys
 
 from . import instances
-from .config import POOLED_DIR, REPO, Config
+from .config import AGGREGATION_DIRS, POOLED_DIR, REPO, Config
 
 sys.path.insert(0, str(REPO / "lib"))
 from deep_nn.strategies import discover_tables, select_tables  # noqa: E402
@@ -26,7 +27,6 @@ TRAINERS = {"rl": REPO / "lib" / "rl_handler" / "offline_main.py",
             "gnn": REPO / "lib" / "gnn_handler" / "__main__.py"}
 # Every EPDDL problem is its own configuration; the RL trainer refuses such a split by default.
 FIXED_FLAGS = {"rl": ["--allow-cross-config"], "gnn": []}
-AGGREGATION = "dense"   # [train].aggregation default: ONNX sum aggregations as one-hot matmuls (deep_nn.dense)
 GNN_FRINGE_SIZES = (1, 4, 8, 16, 32)   # the GNN scores states, not fringes: every width is exported
 EXPORTS = {   # per F: (file the trainer writes, installed name); rl under run_fringe<F>/, gnn under run/
     "rl": [("frontier_policy_{F}_best_by_expansions.onnx", "rl_F{F}.onnx")],
@@ -98,7 +98,8 @@ def _batch_size(cfg, kind, F) -> int:
 
 
 def _train_group(cfg, label, kind, Fs, train_csvs, test_csvs) -> None:
-    out = cfg.models_dir / label             # the domain, or POOLED_DIR
+    root = cfg.models_dir / label            # the domain, or POOLED_DIR: run dirs, shared by both ONNX forms
+    out = root / AGGREGATION_DIRS[cfg.aggregation]
     tag = f"{label}/{kind}" + (f"@F{Fs[0]}" if len(Fs) == 1 else "")
     installed = [(out / dst.format(F=F)) for F in Fs for _, dst in EXPORTS[kind]]
     if kind == "gnn":
@@ -106,12 +107,15 @@ def _train_group(cfg, label, kind, Fs, train_csvs, test_csvs) -> None:
     if all(p.exists() for p in installed):
         print(f"[train] {tag}: models present, skipped")
         return
+    if all(p.exists() for p in _exported(root, kind, Fs)):
+        print(f"[train] {tag}: trained, not installed as {cfg.aggregation}: run `trial.py export`, skipped")
+        return
     t = cfg.train
     batch = _batch_size(cfg, kind, Fs[0])
     cmd = [sys.executable, str(TRAINERS[kind]), "--train-csv", *map(str, train_csvs),
-           "--dir-save-model", str(out / kind / "run"), "--fringe-sizes", *map(str, Fs),
+           "--dir-save-model", str(root / kind / "run"), "--fringe-sizes", *map(str, Fs),
            "--epochs", str(t["epochs"]), "--batch-size", str(batch), "--seed", str(t["seed"]),
-           "--dataset-type", cfg.data["dataset_type"], "--aggregation", str(t.get("aggregation", AGGREGATION)),
+           "--dataset-type", cfg.data["dataset_type"], "--aggregation", cfg.aggregation,
            *FIXED_FLAGS[kind], *map(str, t.get(kind, {}).get("extra", []))]
     if kind == "rl" and "ckpt_every" in t:
         cmd += ["--ckpt-every", str(int(t["ckpt_every"]))]
@@ -124,25 +128,40 @@ def _train_group(cfg, label, kind, Fs, train_csvs, test_csvs) -> None:
     if cfg.dry_run:
         return
     subprocess.run(cmd, cwd=REPO, check=True)
+    _install(root, out, kind, Fs)
+    print(f"[train] {tag}: installed {[p.name for p in installed]} in {out}")
+
+
+def _run_dir(root, kind, F):
+    return root / kind / (f"run_fringe{F}" if kind == "rl" else "run")
+
+
+def _exported(root, kind, Fs):
+    """The files a finished trainer run leaves in its run dir (what `_install` copies)."""
+    files = [_run_dir(root, kind, F) / src.format(F=F) for F in Fs for src, _ in EXPORTS[kind]]
+    return files + ([root / kind / "run" / src for src, _ in GNN_STATE] if kind == "gnn" else [])
+
+
+def _install(root, out, kind, Fs) -> None:
+    out.mkdir(parents=True, exist_ok=True)
     for F in Fs:
-        src_dir = out / kind / (f"run_fringe{F}" if kind == "rl" else "run")
         for src, dst in EXPORTS[kind]:
-            shutil.copy2(src_dir / src.format(F=F), out / dst.format(F=F))
+            shutil.copy2(_run_dir(root, kind, F) / src.format(F=F), out / dst.format(F=F))
     if kind == "gnn":
         for src, dst in GNN_STATE:
-            shutil.copy2(out / kind / "run" / src, out / dst)
-    print(f"[train] {tag}: installed {[p.name for p in installed]}")
+            shutil.copy2(root / kind / "run" / src, out / dst)
 
 
 def reexport(cfg: Config) -> None:
-    """`trial.py export`: re-export every installed model from its run dir with the
-    trial's [train].aggregation (same weights, another ONNX form) and reinstall it.
+    """`trial.py export`: re-export every trained model from its run dir with the trial's
+    [train].aggregation (same weights, another ONNX form) and install it under that form's
+    folder; the other form's folder is left as it is.
     RL: offline_main --export-from run_fringe<F>; GNN: __main__ --export-only."""
     insts = instances.load(cfg)
     domains = sorted({i.domain for i in insts})
     labels = [POOLED_DIR] if cfg.pooled else domains
     t = cfg.train
-    agg = str(t.get("aggregation", AGGREGATION))
+    agg = cfg.aggregation
     failed: list[str] = []
 
     def run(tag, cmd, install):
@@ -158,31 +177,25 @@ def reexport(cfg: Config) -> None:
             failed.append(tag)
 
     for label in labels:
-        out = cfg.models_dir / label
+        root = cfg.models_dir / label
+        out = root / AGGREGATION_DIRS[agg]
         if "rl" in t["models"]:
             for F in t["fringe_sizes"]:
-                run_dir = out / "rl" / f"run_fringe{F}"
-                if not (out / f"rl_F{F}.onnx").exists() or not run_dir.is_dir():
+                run_dir = _run_dir(root, "rl", F)
+                if not all(p.exists() for p in _exported(root, "rl", [F])):
                     continue
                 cmd = [sys.executable, str(TRAINERS["rl"]), "--export-from", str(run_dir), "--aggregation", agg,
                        "--dataset-type", cfg.data["dataset_type"], *map(str, t.get("rl", {}).get("extra", []))]
-                run(f"{label}/rl@F{F}", cmd,
-                    lambda F=F, run_dir=run_dir: shutil.copy2(run_dir / EXPORTS["rl"][0][0].format(F=F), out / f"rl_F{F}.onnx"))
-        if "gnn" in t["models"] and (out / "gnn" / "run" / "distance_estimator.pt").exists():
+                run(f"{label}/rl@F{F}", cmd, lambda F=F, root=root, out=out: _install(root, out, "rl", [F]))
+        if "gnn" in t["models"] and (root / "gnn" / "run" / "distance_estimator.pt").exists():
             members = domains if cfg.pooled else [label]
             train_csvs = [c for d in members for c in _tables(cfg, insts, d)[0]]
             # CPU: the export needs no GPU, and a training job may be holding it
             cmd = [sys.executable, str(TRAINERS["gnn"]), "--train-csv", *map(str, train_csvs),
-                   "--dir-save-model", str(out / "gnn" / "run"), "--fringe-sizes", *map(str, GNN_FRINGE_SIZES),
+                   "--dir-save-model", str(root / "gnn" / "run"), "--fringe-sizes", *map(str, GNN_FRINGE_SIZES),
                    "--epochs", str(t["epochs"]), "--batch-size", str(t["batch_size"]), "--seed", str(t["seed"]),
                    "--dataset-type", cfg.data["dataset_type"], "--aggregation", agg, "--export-only", "--device", "cpu",
                    *map(str, t.get("gnn", {}).get("extra", []))]
-
-            def install_gnn(out=out):
-                for F in GNN_FRINGE_SIZES:
-                    shutil.copy2(out / "gnn" / "run" / EXPORTS["gnn"][0][0].format(F=F), out / f"gnn_F{F}.onnx")
-                for src, dst in GNN_STATE:
-                    shutil.copy2(out / "gnn" / "run" / src, out / dst)
-            run(f"{label}/gnn", cmd, install_gnn)
+            run(f"{label}/gnn", cmd, lambda root=root, out=out: _install(root, out, "gnn", GNN_FRINGE_SIZES))
     if failed:
         raise SystemExit(f"[export] {len(failed)} run(s) failed, the rest were re-exported: {failed}")
