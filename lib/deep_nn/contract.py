@@ -85,7 +85,22 @@ def export(wrapper: nn.Module, out_path: str | Path, fringe_size: int, separated
     if sidecar.exists():
         raise RuntimeError(f"export wrote external data {sidecar}; the planner loads one file")
     assert_contract(out_path, separated)
+    assert_static_output(out_path, int(fringe_size))
     return out_path
+
+
+def assert_static_output(onnx_path: str | Path, fringe_size: int) -> None:
+    """FringeEvalRL refuses a model whose output length onnxruntime cannot infer
+    statically (exit 905 "invalid/dynamic frontier dimension"). PyG's baked pool
+    size made it static by accident; the dense (blocked) aggregation does not, so
+    the wrappers reshape to F and this check keeps it that way."""
+    import onnxruntime as ort
+
+    so = ort.SessionOptions()
+    so.log_severity_level = 3
+    shape = ort.InferenceSession(str(onnx_path), so, providers=["CPUExecutionProvider"]).get_outputs()[0].shape
+    if shape != [fringe_size]:
+        raise ValueError(f"{onnx_path}: output shape {shape} is not the static [{fringe_size}] the planner requires")
 
 
 def assert_contract(onnx_path: str | Path, separated: bool) -> Dict[str, object]:
