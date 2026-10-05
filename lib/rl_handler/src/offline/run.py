@@ -720,6 +720,13 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
                   f"ndcg={'nan' if _ndcg is None else round(_ndcg, 4)} "
                   f"td={out.get('td_loss', float('nan')):.4f}")
             t_eval += _time.perf_counter() - _te
+            # graceful stop: `touch <run_dir>/STOP` ends the run here, after this
+            # checkpoint, and the selection/export below proceed as on a divergence
+            if (run_dir / "STOP").exists():
+                print(f"[run] STOP file found at step {step}/{S}: stopping early; "
+                      f"selecting among {len(cands)} checkpoint(s)")
+                diverged = (step, "STOP file")
+                break
     bar.close()
     print(f"[timing] training {t_train:.1f}s over {S} steps "
           f"({1000 * t_train / max(1, S):.2f} ms/step); "
