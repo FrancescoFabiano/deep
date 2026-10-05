@@ -1,14 +1,14 @@
 trial,domain,kind,F,path,size_bytes,export,act_lib,planner_flags
-all,pooled,gnn_beam,1,exp/trials/all/models/pooled/gnn_F1.onnx,766111,dense,exp/trials/all/instances/pooled/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
-all,pooled,gnn_beam,16,exp/trials/all/models/pooled/gnn_F16.onnx,779306,dense,exp/trials/all/instances/pooled/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
-all,pooled,gnn_beam,32,exp/trials/all/models/pooled/gnn_F32.onnx,779434,dense,exp/trials/all/instances/pooled/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
-all,pooled,gnn_beam,4,exp/trials/all/models/pooled/gnn_F4.onnx,779206,dense,exp/trials/all/instances/pooled/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
-all,pooled,gnn_beam,8,exp/trials/all/models/pooled/gnn_F8.onnx,779239,dense,exp/trials/all/instances/pooled/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
-all,pooled,gnn_state,,exp/trials/all/models/pooled/gnn_state.onnx,764132,dense,exp/trials/all/instances/pooled/act_lib.epddl,-s Astar|HFS -u GNN --GNN_model <file> --GNN_constant_file gnn_state_C.txt
-all,pooled,gnn_state_constants,,exp/trials/all/models/pooled/gnn_state_C.txt,34,dense,exp/trials/all/instances/pooled/act_lib.epddl,constant file for gnn_state.onnx
-all,pooled,rl,16,exp/trials/all/models/pooled/rl_F16.onnx,1278377,dense,exp/trials/all/instances/pooled/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
-all,pooled,rl,4,exp/trials/all/models/pooled/rl_F4.onnx,1278277,dense,exp/trials/all/instances/pooled/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
-all,pooled,rl,8,exp/trials/all/models/pooled/rl_F8.onnx,1278310,dense,exp/trials/all/instances/pooled/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+all,pooled,gnn_beam,1,exp/trials/all/models/pooled/gnn_F1.onnx,766111,dense,exp/trials/all/instances/<domain>/act_lib.epddl (pooled model: use the act_lib of the domain being solved),-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+all,pooled,gnn_beam,16,exp/trials/all/models/pooled/gnn_F16.onnx,779306,dense,exp/trials/all/instances/<domain>/act_lib.epddl (pooled model: use the act_lib of the domain being solved),-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+all,pooled,gnn_beam,32,exp/trials/all/models/pooled/gnn_F32.onnx,779434,dense,exp/trials/all/instances/<domain>/act_lib.epddl (pooled model: use the act_lib of the domain being solved),-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+all,pooled,gnn_beam,4,exp/trials/all/models/pooled/gnn_F4.onnx,779206,dense,exp/trials/all/instances/<domain>/act_lib.epddl (pooled model: use the act_lib of the domain being solved),-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+all,pooled,gnn_beam,8,exp/trials/all/models/pooled/gnn_F8.onnx,779239,dense,exp/trials/all/instances/<domain>/act_lib.epddl (pooled model: use the act_lib of the domain being solved),-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+all,pooled,gnn_state,,exp/trials/all/models/pooled/gnn_state.onnx,764132,dense,exp/trials/all/instances/<domain>/act_lib.epddl (pooled model: use the act_lib of the domain being solved),-s Astar|HFS -u GNN --GNN_model <file> --GNN_constant_file gnn_state_C.txt
+all,pooled,gnn_state_constants,,exp/trials/all/models/pooled/gnn_state_C.txt,34,dense,exp/trials/all/instances/<domain>/act_lib.epddl (pooled model: use the act_lib of the domain being solved),constant file for gnn_state.onnx
+all,pooled,rl,16,exp/trials/all/models/pooled/rl_F16.onnx,1278377,dense,exp/trials/all/instances/<domain>/act_lib.epddl (pooled model: use the act_lib of the domain being solved),-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+all,pooled,rl,4,exp/trials/all/models/pooled/rl_F4.onnx,1278277,dense,exp/trials/all/instances/<domain>/act_lib.epddl (pooled model: use the act_lib of the domain being solved),-s RL -u RL_H --RL_model <file> --RL_fringe_size F
+all,pooled,rl,8,exp/trials/all/models/pooled/rl_F8.onnx,1278310,dense,exp/trials/all/instances/<domain>/act_lib.epddl (pooled model: use the act_lib of the domain being solved),-s RL -u RL_H --RL_model <file> --RL_fringe_size F
 basic,active-muddy-child,gnn_beam,1,exp/trials/basic/models/active-muddy-child/gnn_F1.onnx,766111,dense,exp/trials/basic/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
 basic,active-muddy-child,gnn_beam,16,exp/trials/basic/models/active-muddy-child/gnn_F16.onnx,779306,dense,exp/trials/basic/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
 basic,active-muddy-child,gnn_beam,32,exp/trials/basic/models/active-muddy-child/gnn_F32.onnx,779434,dense,exp/trials/basic/instances/act_lib.epddl,-s RL -u RL_H --RL_model <file> --RL_fringe_size F
