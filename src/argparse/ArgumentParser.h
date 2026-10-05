@@ -125,6 +125,13 @@ public:
    */
   [[nodiscard]] const std::string &get_plan_file() const noexcept;
 
+  /**
+   * \brief Folder where plan execution writes every successor of every plan
+   * step (dataset format), or empty when disabled.
+   */
+  [[nodiscard]] const std::string &
+  get_execute_dump_successors() const noexcept;
+
   [[nodiscard]] const std::string &get_domain_file() const noexcept;
 
   [[nodiscard]] const std::string &get_problem_file() const noexcept;
@@ -485,6 +492,8 @@ private:
       false; ///< Flag to indicate if the plan should be executed.
   std::vector<std::string>
       m_exec_actions; ///< Actions to execute instead of planning.
+  std::string m_exec_dump_successors; ///< Folder for every successor along
+                                      ///< the executed plan (empty: off).
   bool m_output_results_info =
       false; ///< Flag to enable extra results info logging.
   std::string m_plan_file = "utils/plans/plan.ut"; ///< Plan file path.

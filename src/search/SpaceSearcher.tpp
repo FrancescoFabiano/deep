@@ -405,9 +405,25 @@ bool SpaceSearcher<StateRepr, Strategy>::validate_plan(
 
   const auto &plan = ArgumentParser::get_instance().get_execution_actions();
 
-  for (auto it = plan.begin(); it != plan.end(); ++it) {
+  const std::string &dump_dir =
+      ArgumentParser::get_instance().get_execute_dump_successors();
+  std::ofstream dump_csv;
+  if (!dump_dir.empty()) {
+    std::filesystem::create_directories(dump_dir);
+    dump_csv.open(dump_dir + "/successors.csv");
+    dump_csv << "step,action,is_plan_action,is_goal,revisits_plan,file"
+             << std::endl;
+  }
+  std::size_t step = 0;
+
+  for (auto it = plan.begin(); it != plan.end(); ++it, ++step) {
 
     const auto &action_name = *it;
+
+    if (dump_csv.is_open()) {
+      dump_successors(current, step, action_name, visited_states, dump_csv,
+                      dump_dir);
+    }
 
     bool is_last = (std::next(it) == plan.end());
 
@@ -505,6 +521,50 @@ bool SpaceSearcher<StateRepr, Strategy>::validate_plan(
   }
 
   return current.is_goal();
+}
+
+template <StateRepresentation StateRepr, SearchStrategy<StateRepr> Strategy>
+void SpaceSearcher<StateRepr, Strategy>::dump_successors(
+    const State<StateRepr> &current, const std::size_t step,
+    const std::string &plan_action,
+    const std::set<State<StateRepr>> &plan_states, std::ofstream &csv,
+    const std::string &dump_dir) {
+
+  std::ostringstream prefix;
+  prefix << std::setw(5) << std::setfill('0') << step;
+
+  const std::string parent_name = prefix.str() + "_parent.dot";
+  if (std::ofstream ofs(dump_dir + "/" + parent_name); ofs.is_open()) {
+    current.print_dataset_format(ofs);
+  }
+  csv << step << ",<parent>,0," << current.is_goal() << ",0," << parent_name
+      << "\n";
+
+  State<StateRepr> parent = current;
+  std::size_t index = 0;
+  for (const auto &action : Domain::get_instance().get_actions()) {
+
+    if (!parent.is_executable(action)) {
+      continue;
+    }
+
+    State<StateRepr> successor = parent.compute_successor(action);
+    if (Configuration::get_instance().get_bisimulation()) {
+      successor.contract_with_bisimulation();
+    }
+
+    std::ostringstream name;
+    name << prefix.str() << "_" << std::setw(3) << std::setfill('0')
+         << index++ << ".dot";
+    if (std::ofstream ofs(dump_dir + "/" + name.str()); ofs.is_open()) {
+      successor.print_dataset_format(ofs);
+    }
+    csv << step << "," << action.get_name() << ","
+        << (action.get_name() == plan_action) << "," << successor.is_goal()
+        << "," << plan_states.contains(successor) << "," << name.str()
+        << "\n";
+  }
+  csv.flush();
 }
 
 template <StateRepresentation StateRepr, SearchStrategy<StateRepr> Strategy>

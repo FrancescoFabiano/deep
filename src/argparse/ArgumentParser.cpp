@@ -150,6 +150,11 @@ void ArgumentParser::parse(int argc, char **argv) {
     }*/
 
     // --- Execution plan checks and action loading ---
+    if (!m_exec_plan && !m_exec_dump_successors.empty()) {
+      ExitHandler::exit_with_message(
+          ExitHandler::ExitCode::ArgParseError,
+          "--execute_dump_successors can only be used with --execute_plan.");
+    }
     if (m_exec_plan) {
       if (m_exec_actions.empty()) {
         m_exec_actions = HelperPrint::read_actions_from_file(m_plan_file);
@@ -539,6 +544,15 @@ ArgumentParser::ArgumentParser() : app("deep") {
                    "Used only if --execute_plan is set and --execute_actions "
                    "is not provided.")
       ->default_val("utils/plans/plan.ut");
+  exec_group
+      ->add_option(
+          "--execute_dump_successors", m_exec_dump_successors,
+          "With --execute_plan, write every successor of every plan step "
+          "(dataset DOT format, contracted as in search) into this folder, "
+          "indexed by successors.csv (step, action, is_plan_action, is_goal, "
+          "revisits_plan, file). Used to probe learned heuristics along a "
+          "known plan.")
+      ->default_val("");
 }
 
 ArgumentParser::~ArgumentParser() {
@@ -732,6 +746,11 @@ bool ArgumentParser::get_execute_plan() const noexcept { return m_exec_plan; }
 
 const std::string &ArgumentParser::get_plan_file() const noexcept {
   return m_plan_file;
+}
+
+const std::string &
+ArgumentParser::get_execute_dump_successors() const noexcept {
+  return m_exec_dump_successors;
 }
 
 const std::vector<std::string> &

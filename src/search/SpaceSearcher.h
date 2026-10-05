@@ -11,6 +11,8 @@
 #pragma once
 #include "states/State.h"
 #include <chrono>
+#include <fstream>
+#include <set>
 #include <string>
 
 /**
@@ -157,6 +159,24 @@ private:
                                          const std::string &action_name,
                                          const State<StateRepr> &current,
                                          const std::string &dot_files_folder);
+
+  /**
+   * \brief Writes \p current and every successor of it (contracted as in
+   * search) in dataset DOT format, one row each in \p csv
+   * (--execute_dump_successors). Works on a copy: \p current is not touched.
+   *
+   * \param current The plan state at this step.
+   * \param step The plan step (0 = initial state).
+   * \param plan_action The action the plan takes from \p current.
+   * \param plan_states The plan states seen so far (filled with -c).
+   * \param csv The open successors.csv index.
+   * \param dump_dir The output folder.
+   */
+  static void dump_successors(const State<StateRepr> &current,
+                              std::size_t step,
+                              const std::string &plan_action,
+                              const std::set<State<StateRepr>> &plan_states,
+                              std::ofstream &csv, const std::string &dump_dir);
 
   ///@}
 };
