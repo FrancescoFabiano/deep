@@ -554,15 +554,14 @@ void SpaceSearcher<StateRepr, Strategy>::dump_successors(
     }
 
     std::ostringstream name;
-    name << prefix.str() << "_" << std::setw(3) << std::setfill('0')
-         << index++ << ".dot";
+    name << prefix.str() << "_" << std::setw(3) << std::setfill('0') << index++
+         << ".dot";
     if (std::ofstream ofs(dump_dir + "/" + name.str()); ofs.is_open()) {
       successor.print_dataset_format(ofs);
     }
     csv << step << "," << action.get_name() << ","
         << (action.get_name() == plan_action) << "," << successor.is_goal()
-        << "," << plan_states.contains(successor) << "," << name.str()
-        << "\n";
+        << "," << plan_states.contains(successor) << "," << name.str() << "\n";
   }
   csv.flush();
 }

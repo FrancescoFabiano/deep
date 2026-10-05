@@ -129,8 +129,7 @@ public:
    * \brief Folder where plan execution writes every successor of every plan
    * step (dataset format), or empty when disabled.
    */
-  [[nodiscard]] const std::string &
-  get_execute_dump_successors() const noexcept;
+  [[nodiscard]] const std::string &get_execute_dump_successors() const noexcept;
 
   [[nodiscard]] const std::string &get_domain_file() const noexcept;
 

@@ -172,8 +172,7 @@ private:
    * \param csv The open successors.csv index.
    * \param dump_dir The output folder.
    */
-  static void dump_successors(const State<StateRepr> &current,
-                              std::size_t step,
+  static void dump_successors(const State<StateRepr> &current, std::size_t step,
                               const std::string &plan_action,
                               const std::set<State<StateRepr>> &plan_states,
                               std::ofstream &csv, const std::string &dump_dir);
