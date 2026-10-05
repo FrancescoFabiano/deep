@@ -34,6 +34,7 @@ batch_size = 64
 max_batch_states = 256                        # RL: batch = min(batch_size, 256 // F), one trainer run per F (8 GB GPU)
 aggregation = "dense"                         # ONNX export: scatter | dense (one-hot matmuls; -40% CPU latency on small graphs)
 ckpt_every = 10000                            # RL: checkpoint + evaluate every N steps (an early divergence keeps pre-drift candidates)
+early_stop_patience = 100000                  # RL: stop when the smoothed held-out score has not improved for this many steps
 seed = 0
 [train.rl]
 extra = []                                    # forwarded to lib/rl_handler/offline_main.py

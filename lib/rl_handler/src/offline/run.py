@@ -46,6 +46,7 @@ from .strategies import STRATEGIES, dir_name
 from .unify import UnifiedInstance, report_unified, unify_instances
 from .qlearning import DivergenceError, QTrainer, TrainConfig, default_reward_scale
 from .selection import (
+    early_stop_hit,
     Candidate,
     GateResult,
     assert_within_config,
@@ -122,6 +123,14 @@ class RunConfig:
     # pooled F=8 died at 37k/339k and 163k/818k steps, before the first of 5
     # run-proportional checkpoints. 0 = the old rule (n_checkpoints per run).
     ckpt_every: int = 10000
+    # Early stopping on the selection score: end the run when the window-smoothed
+    # score (the one select_smoothed maximises) has not improved by more than
+    # early_stop_min_delta over the last early_stop_patience steps' checkpoints.
+    # Pooled F=16 sat at NDCG 0.74-0.75 for 80k+ steps while |Q| drifted before it
+    # was stopped by hand; this ends such runs at roughly best + patience.
+    # 0 = off. The selection/export then proceed as on a divergence or a STOP file.
+    early_stop_patience: int = 100000
+    early_stop_min_delta: float = 0.005
     seed: int = 0
     seeds_per_policy: int = 3
     eval_seeds: int = 5
@@ -720,6 +729,17 @@ def run(cfg: RunConfig, repo_root: Path) -> Dict[str, object]:
                   f"ndcg={'nan' if _ndcg is None else round(_ndcg, 4)} "
                   f"td={out.get('td_loss', float('nan')):.4f}")
             t_eval += _time.perf_counter() - _te
+            # early stopping: no improvement of the smoothed selection score within the
+            # patience window -> stop here; selection/export proceed as on a divergence
+            hit = early_stop_hit(cands, step, cfg.early_stop_patience, cfg.early_stop_min_delta,
+                                 window=SELECTION_WINDOW)
+            if hit is not None:
+                best_step, best_val = hit
+                print(f"[run] EARLY STOP at step {step}/{S}: smoothed selection score {best_val:.4f} at "
+                      f"step {best_step} not improved by > {cfg.early_stop_min_delta} in {step - best_step} "
+                      f"steps (patience {cfg.early_stop_patience}); selecting among {len(cands)} checkpoint(s)")
+                diverged = (step, f"early stop: best smoothed score {best_val:.4f} at step {best_step}")
+                break
             # graceful stop: `touch <run_dir>/STOP` ends the run here, after this
             # checkpoint, and the selection/export below proceed as on a divergence
             if (run_dir / "STOP").exists():

@@ -852,3 +852,22 @@ def onnx_path_for(exp_dir: str | Path, domain: str, fringe_size: int) -> Path:
     """`<exp_dir>/_models/<domain>/frontier_policy_<F>.onnx` — bulk_coverage_run.py
     depends on this exact naming, and the C++ checks logits length == F at load."""
     return Path(exp_dir) / "_models" / domain / f"frontier_policy_{int(fringe_size)}.onnx"
+
+
+def early_stop_hit(candidates: Sequence[Candidate], step: int, patience: int,
+                   min_delta: float, window: int = 3):
+    """Patience on the SMOOTHED selection score (the window mean `select_smoothed`
+    maximises). Returns (best_step, best_value) when the best smoothed score is at
+    least `patience` steps old and no later smoothed value beat it by more than
+    `min_delta`; otherwise None. Candidates without a score are ignored."""
+    scored = [c for c in candidates if c.select_score is not None]
+    if patience <= 0 or len(scored) < window:
+        return None
+    smooth = [(scored[i].step, sum(c.select_score for c in scored[i - window + 1:i + 1]) / window)
+              for i in range(window - 1, len(scored))]
+    best_step, best_val = max(smooth, key=lambda t: t[1])
+    if step - best_step < patience:
+        return None
+    if any(v > best_val + min_delta for s_, v in smooth if s_ > best_step):
+        return None
+    return best_step, best_val

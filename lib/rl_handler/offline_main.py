@@ -90,6 +90,10 @@ def build_parser() -> argparse.ArgumentParser:
                    help="passes over train_rows; steps are derived per run")
     p.add_argument("--n-checkpoints", type=int, default=5,
                    help="run-proportional checkpoints (always kept, incl. the last step)")
+    p.add_argument("--early-stop-patience", type=int, default=100000,
+                   help="stop when the smoothed held-out selection score has not improved by more than "
+                        "--early-stop-min-delta over this many steps' checkpoints; 0 = off")
+    p.add_argument("--early-stop-min-delta", type=float, default=0.005)
     p.add_argument("--ckpt-every", type=int, default=10000,
                    help="also checkpoint + evaluate every N steps, so an early divergence still leaves "
                         "pre-drift candidates to select from; 0 = proportional checkpoints only")
@@ -295,6 +299,7 @@ def main(argv=None) -> int:
             fringe_size=F, model=a.model, kind_of_data=kind, context_mode=ctx,
             attn_heads=a.attn_heads, attn_layers=a.attn_layers,
             epochs=a.epochs, n_checkpoints=a.n_checkpoints, ckpt_every=a.ckpt_every, seed=a.seed,
+            early_stop_patience=a.early_stop_patience, early_stop_min_delta=a.early_stop_min_delta,
             sampler=a.sampler, sampler_k=a.sampler_k, select_final=a.select_final,
             seeds_per_policy=a.seeds_per_policy,
             counterfactual=a.counterfactual_actions,
