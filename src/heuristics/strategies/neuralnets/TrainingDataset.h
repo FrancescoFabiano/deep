@@ -1,6 +1,9 @@
 #pragma once
 #include "Define.h"
 #include "State.h"
+#include "formulae/BeliefFormula.h"
+#include <utility>
+#include <vector>
 #include <cmath>
 #include <mutex>
 #include <random>
@@ -31,6 +34,9 @@ inline std::uniform_real_distribution<> m_dis(0.0, 1.0);
  */
 template <StateRepresentation StateRepr> class TrainingDataset {
 public:
+  // PROTOTYPE (not for commit): goal subformula -> its node id, for sat edges
+  std::vector<std::pair<BeliefFormula, std::string>> m_proto_sat_nodes;
+  size_t proto_fluent_id(const Fluent &f) const { return get_unique_f_id_from_map(f); }
   /**
    * \brief Get the singleton instance of TrainingDataset.
    * \return Reference to the singleton instance.

@@ -1,4 +1,7 @@
 #include "HelperPrint.h"
+#include "FormulaHelper.h"
+#include "states/representations/kripke/helpers/KripkeEntailmentHelper.h"
+#include <cstdlib>
 #include "ExitHandler.h"
 #include "KripkeWorld.h"
 
@@ -675,6 +678,37 @@ void HelperPrint::print_dataset_format(const KripkeState &kstate,
     }
   }*/
 
+  // PROTOTYPE (not for commit): DEEP_PROTO_REPR=holds,sat
+  if (const char *proto = std::getenv("DEEP_PROTO_REPR"); proto && is_merged) {
+    const std::string mode(proto);
+    static bool names_written = false;
+    if (!names_written && mode.find("names") != std::string::npos) {
+      names_written = true;
+      const char *nfp = std::getenv("DEEP_PROTO_NAMES_FILE");   // per-process path (parallel runs share a cwd)
+      std::ofstream nf(nfp ? nfp : "fluent_names.csv");
+      nf << "id,name" << std::endl;
+      for (const auto &fl : Domain::get_instance().get_positive_fluents()) {
+        nf << training_dataset->proto_fluent_id(fl) << ",\"" << HelperPrint::get_instance().get_grounder().deground_fluent(fl) << "\"" << std::endl;
+      }
+    }
+    for (const auto &pw : kstate.get_worlds()) {
+      const auto &wl = world_map[pw.get_id_casted()];
+      if (mode.find("holds") != std::string::npos) {
+        for (const auto &fl : pw.get_fluent_set()) {
+          if (!FormulaHelper::is_negated(fl)) {
+            ofs << "  " << wl << " -> " << training_dataset->proto_fluent_id(fl) << " [label=\"4\"];" << std::endl;
+          }
+        }
+      }
+      if (mode.find("sat") != std::string::npos) {
+        for (const auto &[bf, node] : training_dataset->m_proto_sat_nodes) {
+          if (KripkeEntailmentHelper::entails(bf, pw, kstate)) {
+            ofs << "  " << wl << " -> " << node << " [label=\"999\"];" << std::endl;
+          }
+        }
+      }
+    }
+  }
   ofs << "}" << std::endl;
 }
 
