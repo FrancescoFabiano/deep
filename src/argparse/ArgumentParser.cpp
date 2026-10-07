@@ -553,6 +553,17 @@ ArgumentParser::ArgumentParser() : app("deep") {
           "revisits_plan, file). Used to probe learned heuristics along a "
           "known plan.")
       ->default_val("");
+  exec_group
+      ->add_option(
+          "--expand_server", m_expand_server,
+          "PROTOTYPE. Instead of searching, serve expansions to an external "
+          "search: the initial state is id 0 (written as <folder>/0.dot); "
+          "each stdin line 'expand <id>' generates that state's successors "
+          "(contracted and goal-tested as in search, duplicates detected with "
+          "the search's visited set when -c is set), writes each new one as "
+          "<folder>/<id>.dot (dataset format) and prints '@@ <id> <action> "
+          "<is_goal> <is_new>' per successor, then '@@end'. 'quit' stops.")
+      ->default_val("");
 }
 
 ArgumentParser::~ArgumentParser() {
@@ -751,6 +762,10 @@ const std::string &ArgumentParser::get_plan_file() const noexcept {
 const std::string &
 ArgumentParser::get_execute_dump_successors() const noexcept {
   return m_exec_dump_successors;
+}
+
+const std::string &ArgumentParser::get_expand_server() const noexcept {
+  return m_expand_server;
 }
 
 const std::vector<std::string> &

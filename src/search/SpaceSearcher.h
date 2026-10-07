@@ -147,6 +147,13 @@ private:
   bool validate_plan(const State<StateRepr> &initial, bool check_visited);
 
   /**
+   * \brief PROTOTYPE: serves expansions to an external search
+   * (--expand_server). Returns false when stdin closes or 'quit' arrives.
+   */
+  bool expand_server(const State<StateRepr> &initial, const ActionsSet &actions,
+                     bool check_visited);
+
+  /**
    * \brief Prints a DOT representation for an action in the execution plan.
    *
    * \param initial Boolean indicating if this the initial state.

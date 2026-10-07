@@ -132,6 +132,11 @@ public:
   [[nodiscard]] const std::string &
   get_execute_dump_successors() const noexcept;
 
+  /**
+   * \brief PROTOTYPE: folder of the expand server (--expand_server), or empty.
+   */
+  [[nodiscard]] const std::string &get_expand_server() const noexcept;
+
   [[nodiscard]] const std::string &get_domain_file() const noexcept;
 
   [[nodiscard]] const std::string &get_problem_file() const noexcept;
@@ -494,6 +499,7 @@ private:
       m_exec_actions; ///< Actions to execute instead of planning.
   std::string m_exec_dump_successors; ///< Folder for every successor along
                                       ///< the executed plan (empty: off).
+  std::string m_expand_server; ///< PROTOTYPE: expand-server folder (empty: off).
   bool m_output_results_info =
       false; ///< Flag to enable extra results info logging.
   std::string m_plan_file = "utils/plans/plan.ut"; ///< Plan file path.
