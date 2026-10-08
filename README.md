@@ -448,6 +448,22 @@ Training, model selection, export and the experiments are described in
 
 Automatic recognition of compatible EPDDL fragments is planned. Until then, these heuristics should not be treated as general-purpose heuristics for arbitrary EPDDL tasks.
 
+### Heuristic status with EPDDL input
+
+| Heuristic | Status | What actually happens |
+|---|---|---|
+| `SUBGOALS` | degenerate | The EPDDL goal is stored as one formula (`Domain::build_goal`), and `SUBGOALS` counts the unsatisfied formulas of that list, splitting only a top-level `C` formula (`HeuristicsManager::produce_subgoals`). So h = 1 on every non-goal state and 0 at the goal: HFS with `SUBGOALS` is blind best-first search in heap order, and A* with `SUBGOALS` orders by depth only. |
+| `L_PG`, `S_PG`, `C_PG` | disabled | Still listed by `-u`, but they exit with "EPG is temporarily unavailable during the EPDDL integration". |
+| `GNN` with `--GNN_model`, `RL_H` with `--RL_model` | run, but the input hides the valuation | A world's only feature is a hash of its fluent set; nothing links a world to its fluents, and the goal tree writes NOT, AND and OR identically. |
+| `GNN` or `RL_H` with `--ranker_model` | guides search | The learned sibling ranker reads every world's true fluents (world-to-fluent edges) and the goal operators; see [Learned sibling ranker](#learned-sibling-ranker---ranker_model). |
+
+Results labelled `SUBGOALS` on EPDDL input are blind-search results, and
+training data generated with `--dataset_generation HFS -u SUBGOALS` follows
+the same blind order. Splitting a top-level conjunction (including a grounded
+`forall`) into separate goals in `Domain::build_goal` would make `SUBGOALS` a
+goal-counting heuristic again; it is not applied, and `SUBGOALS` is kept as a
+baseline.
+
 ---
 
 ## Experiments
@@ -483,6 +499,7 @@ training, selection, export, runs on the IPC benchmarks), see
 ## Known limitations
 
 - Applicability of mA*-specific heuristics is not yet detected automatically.
+- With EPDDL input, `SUBGOALS` is degenerate (blind), the planning-graph heuristics are disabled, and the older learned heuristics (`--GNN_model`, `--RL_model`) see world valuations only as hashes: see [Heuristic status](#heuristic-status-with-epddl-input).
 - Learned models may require evaluation or retraining when moving to substantially different domain distributions.
 - GPU ONNX inference currently targets Linux/NVIDIA environments.
 
