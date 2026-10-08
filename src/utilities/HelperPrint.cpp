@@ -1,5 +1,6 @@
 #include "HelperPrint.h"
 #include "ExitHandler.h"
+#include "FormulaHelper.h"
 #include "KripkeWorld.h"
 
 #include "formulae/BeliefFormula.h"
@@ -674,6 +675,38 @@ void HelperPrint::print_dataset_format(const KripkeState &kstate,
           << std::endl;
     }
   }*/
+
+  // Learned ranker encoding (--ranker_encoding): an edge (label 4) from every
+  // world to each positive fluent true in it; the fluent names and the goal
+  // operators are written once, to fluent_names.csv and goal_ops.csv in the
+  // working directory.
+  if (ArgumentParser::get_instance().get_ranker_encoding() && is_merged) {
+    static bool names_written = false;
+    if (!names_written) {
+      names_written = true;
+      std::ofstream nf("fluent_names.csv");
+      nf << "id,name" << std::endl;
+      for (const auto &fl : Domain::get_instance().get_positive_fluents()) {
+        nf << training_dataset->ranker_fluent_id(fl) << ",\""
+           << HelperPrint::get_instance().get_grounder().deground_fluent(fl)
+           << "\"" << std::endl;
+      }
+      std::ofstream of("goal_ops.csv");
+      of << "id,op" << std::endl;
+      for (const auto &[node, op] : training_dataset->get_goal_ops()) {
+        of << node << "," << op << std::endl;
+      }
+    }
+    for (const auto &pw : kstate.get_worlds()) {
+      const auto &wl = world_map[pw.get_id_casted()];
+      for (const auto &fl : pw.get_fluent_set()) {
+        if (!FormulaHelper::is_negated(fl)) {
+          ofs << "  " << wl << " -> " << training_dataset->ranker_fluent_id(fl)
+              << " [label=\"4\"];" << std::endl;
+        }
+      }
+    }
+  }
 
   ofs << "}" << std::endl;
 }

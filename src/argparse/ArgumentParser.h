@@ -131,6 +131,22 @@ public:
    */
   [[nodiscard]] const std::string &get_execute_dump_successors() const noexcept;
 
+  /** \brief Model file of the learned ranker (--ranker_model), or empty. */
+  [[nodiscard]] const std::string &get_ranker_model() const noexcept;
+
+  /** \brief GPU model file of the learned ranker (--ranker_model_gpu), or
+   * empty. */
+  [[nodiscard]] const std::string &get_ranker_model_gpu() const noexcept;
+
+  /** \brief Edge count from which the ranker scores a state on the GPU. */
+  [[nodiscard]] int get_ranker_gpu_edges() const noexcept;
+
+  /** \brief Whether dataset DOT files carry the ranker encoding. */
+  [[nodiscard]] bool get_ranker_encoding() const noexcept;
+
+  /** \brief Folder of the expand server (--expand_server), or empty. */
+  [[nodiscard]] const std::string &get_expand_server() const noexcept;
+
   [[nodiscard]] const std::string &get_domain_file() const noexcept;
 
   [[nodiscard]] const std::string &get_problem_file() const noexcept;
@@ -446,6 +462,11 @@ private:
    * @brief Threads ONNX Runtime may use per model evaluation (0 = its default).
    */
   int m_onnx_threads = 0;
+  std::string m_ranker_model; ///< --ranker_model, resolved to a file.
+  std::string m_ranker_model_gpu; ///< --ranker_model_gpu, resolved to a file.
+  int m_ranker_gpu_edges = 10000; ///< --ranker_gpu_edges.
+  bool m_ranker_encoding = false; ///< --ranker_encoding.
+  std::string m_expand_server; ///< --expand_server folder (empty: off).
 
   /**
    * @brief Batch size of the batched GNN heuristic (0 = per-state model).

@@ -9,7 +9,10 @@
 
 #include "ArgumentParser.h"
 #include "HelperPrint.h"
+#include <fstream>
 #include <iostream>
+#include <regex>
+#include <sstream>
 #include <stdexcept>
 
 #include "KripkeEqualityHelper.h"
@@ -163,6 +166,65 @@ void ArgumentParser::parse(int argc, char **argv) {
               ExitHandler::ExitCode::ArgParseError,
               "No actions found in the specified plan file: " + m_plan_file);
         }
+      }
+    }
+
+    // --- Learned sibling ranker: --ranker_model / --ranker_model_gpu ---
+    // A folder holds per-domain/<domain name>.onnx (the name after "domain" in
+    // the domain file) and general.onnx, used when the domain has none.
+    namespace fs = std::filesystem;
+    const auto resolve_ranker = [&](std::string &model, const std::string &flag) {
+      if (fs::is_directory(model)) {
+        std::ifstream in(m_domain_file);
+        std::stringstream text;
+        text << in.rdbuf();
+        const std::string s = text.str();
+        std::smatch m;
+        std::string name;
+        if (std::regex_search(s, m,
+                              std::regex(R"(\(\s*domain\s+([^\s()]+))",
+                                         std::regex::icase))) {
+          name = m[1];
+        }
+        const fs::path own = fs::path(model) / "per-domain" / (name + ".onnx"),
+                       general = fs::path(model) / "general.onnx";
+        if (!name.empty() && fs::exists(own)) {
+          model = own.string();
+        } else if (fs::exists(general)) {
+          model = general.string();
+        } else {
+          ExitHandler::exit_with_message(
+              ExitHandler::ExitCode::ArgParseError,
+              flag + ": no model for domain '" + name +
+                  "' and no general.onnx in " + model);
+        }
+      } else if (!fs::exists(model)) {
+        ExitHandler::exit_with_message(ExitHandler::ExitCode::ArgParseError,
+                                       flag + ": file not found: " + model);
+      }
+    };
+    if (!m_ranker_model_gpu.empty() && m_ranker_model.empty()) {
+      ExitHandler::exit_with_message(
+          ExitHandler::ExitCode::ArgParseError,
+          "--ranker_model_gpu needs --ranker_model (the model for the states "
+          "below --ranker_gpu_edges).");
+    }
+    if (!m_ranker_model.empty()) {
+      if (m_heuristic_opt != "GNN" && m_heuristic_opt != "RL_H") {
+        ExitHandler::exit_with_message(
+            ExitHandler::ExitCode::ArgParseError,
+            "--ranker_model needs --heuristics GNN (best-first search) or RL_H "
+            "(RL beam search).");
+      }
+      resolve_ranker(m_ranker_model, "--ranker_model");
+      get_output_stream() << "[INFO] Ranker model: " << m_ranker_model
+                          << std::endl;
+      if (!m_ranker_model_gpu.empty()) {
+        resolve_ranker(m_ranker_model_gpu, "--ranker_model_gpu");
+        get_output_stream()
+            << "[INFO] Ranker model for states with at least "
+            << m_ranker_gpu_edges << " edges (GPU): " << m_ranker_model_gpu
+            << std::endl;
       }
     }
 
@@ -441,6 +503,34 @@ ArgumentParser::ArgumentParser() : app("deep") {
       "Print the execution provider (CPU or CUDA) every model node was "
       "placed on when the model is loaded, and ORT's warnings about nodes "
       "left on the CPU or copies between devices.");
+  search_group->add_option(
+      "--ranker_model", m_ranker_model,
+      "Learned sibling ranker as the heuristic: with --heuristics GNN it "
+      "guides best-first search, with --search RL --heuristics RL_H it ranks "
+      "the beam in place of the RL network. "
+      "The value is an ONNX model with its .vocab sidecar, or a folder with "
+      "per-domain/<domain name>.onnx and general.onnx, such as "
+      "exp/gnn_epddl/models/cpu. Runs on the CPU when --ranker_model_gpu is "
+      "given, else on the device of --onnx_device.");
+  search_group->add_option(
+      "--ranker_model_gpu", m_ranker_model_gpu,
+      "The same ranker exported for the GPU (file or folder, as "
+      "--ranker_model, such as exp/gnn_epddl/models/gpu): states with at "
+      "least --ranker_gpu_edges edges are scored with it on CUDA, smaller "
+      "ones with --ranker_model on the CPU. Needs a CUDA build (build.sh nn "
+      "use_gpu).");
+  search_group
+      ->add_option("--ranker_gpu_edges", m_ranker_gpu_edges,
+                   "Edge count (both directions) from which a state is scored "
+                   "on the GPU with --ranker_model_gpu.")
+      ->default_val(10000)
+      ->check(CLI::NonNegativeNumber);
+  dataset_group->add_flag(
+      "--ranker_encoding", m_ranker_encoding,
+      "Write the learned ranker's state encoding in the dataset DOT files: an "
+      "edge (label 4) from every world to each positive fluent true in it, the "
+      "fluent names in fluent_names.csv and the goal operators in "
+      "goal_ops.csv (training data).");
   search_group
       ->add_option("--onnx_threads", m_onnx_threads,
                    "Number of threads ONNX Runtime may use for one model "
@@ -552,6 +642,18 @@ ArgumentParser::ArgumentParser() : app("deep") {
           "indexed by successors.csv (step, action, is_plan_action, is_goal, "
           "revisits_plan, file). Used to probe learned heuristics along a "
           "known plan.")
+      ->default_val("");
+  exec_group
+      ->add_option(
+          "--expand_server", m_expand_server,
+          "Instead of searching, serve expansions to an external search (the "
+          "ranker's training code): the initial state is id 0 (written as "
+          "<folder>/0.dot); each stdin line 'expand <id>' generates that "
+          "state's successors (contracted and goal-tested as in search, "
+          "duplicates detected with the visited set when -c is set), writes "
+          "each new one as <folder>/<id>.dot (dataset format) and prints '@@ "
+          "<id> <action> <is_goal> <is_new>' per successor, then '@@end'. "
+          "'quit' stops.")
       ->default_val("");
 }
 
@@ -751,6 +853,26 @@ const std::string &ArgumentParser::get_plan_file() const noexcept {
 const std::string &
 ArgumentParser::get_execute_dump_successors() const noexcept {
   return m_exec_dump_successors;
+}
+
+const std::string &ArgumentParser::get_ranker_model() const noexcept {
+  return m_ranker_model;
+}
+
+const std::string &ArgumentParser::get_ranker_model_gpu() const noexcept {
+  return m_ranker_model_gpu;
+}
+
+int ArgumentParser::get_ranker_gpu_edges() const noexcept {
+  return m_ranker_gpu_edges;
+}
+
+bool ArgumentParser::get_ranker_encoding() const noexcept {
+  return m_ranker_encoding;
+}
+
+const std::string &ArgumentParser::get_expand_server() const noexcept {
+  return m_expand_server;
 }
 
 const std::vector<std::string> &

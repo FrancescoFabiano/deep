@@ -10,7 +10,14 @@
 #include "search/SpaceSearcher.h"
 #include "states/State.h"
 #include "utilities/ExitHandler.h"
+#ifdef USE_NEURALNETS
+#include "neuralnets/RankerGNN.h"
+#endif
+#include <filesystem>
+#include <fstream>
+#include <iostream>
 #include <map>
+#include <sstream>
 
 #include <algorithm>
 #include <atomic>
@@ -89,6 +96,19 @@ bool SpaceSearcher<StateRepr, Strategy>::search(
   if (Configuration::get_instance().get_bisimulation()) {
 
     thread_safe_initial.contract_with_bisimulation();
+  }
+
+#ifdef USE_NEURALNETS
+  if (RankerGNN<StateRepr>::enabled()) {
+    RankerGNN<StateRepr>::get_instance().set_root(thread_safe_initial);
+  }
+#endif
+
+  if (!ArgumentParser::get_instance().get_expand_server().empty()) {
+    const bool served =
+        expand_server(thread_safe_initial, actions, check_visited);
+    m_elapsed_seconds = std::chrono::system_clock::now() - start_timing;
+    return served;
   }
 
   if (thread_safe_initial.is_goal()) {
@@ -521,6 +541,76 @@ bool SpaceSearcher<StateRepr, Strategy>::validate_plan(
   }
 
   return current.is_goal();
+}
+
+template <StateRepresentation StateRepr, SearchStrategy<StateRepr> Strategy>
+bool SpaceSearcher<StateRepr, Strategy>::expand_server(
+    const State<StateRepr> &initial, const ActionsSet &actions,
+    const bool check_visited) {
+  const std::string &dir = ArgumentParser::get_instance().get_expand_server();
+  std::filesystem::create_directories(dir);
+  const auto &configuration = Configuration::get_instance();
+
+  std::vector<State<StateRepr>> states{initial};
+  std::map<State<StateRepr>, std::size_t> ids;
+  if (check_visited) {
+    ids.emplace(initial, 0);
+  }
+  if (std::ofstream ofs(dir + "/0.dot"); ofs.is_open()) {
+    initial.print_dataset_format(ofs);
+  }
+  std::cout << "@@ready 0 " << initial.is_goal() << std::endl;
+
+  m_expanded_nodes = 0;
+  std::string line;
+  while (std::getline(std::cin, line)) {
+    std::istringstream in(line);
+    std::string cmd;
+    std::size_t id = 0;
+    in >> cmd >> id;
+    if (cmd == "quit") {
+      break;
+    }
+    if (cmd != "expand" || id >= states.size()) {
+      std::cout << "@@error " << line << std::endl;
+      continue;
+    }
+    ++m_expanded_nodes;
+    State<StateRepr> current = states[id];
+    // Same order, contraction and goal test as search_sequential.
+    for (const auto &action : actions) {
+      if (!current.is_executable(action)) {
+        continue;
+      }
+      State<StateRepr> successor = current.compute_successor(action);
+      if (configuration.get_bisimulation()) {
+        const std::size_t interval = configuration.get_bisimulation_interval();
+        const auto depth = successor.get_plan_length();
+        if (depth > 0 && (interval == 0 || depth % interval == 0)) {
+          successor.contract_with_bisimulation();
+        }
+      }
+      const bool goal = successor.is_goal();
+      std::size_t sid = states.size();
+      bool is_new = true;
+      if (check_visited) {
+        const auto [it, inserted] = ids.try_emplace(successor, sid);
+        is_new = inserted;
+        sid = it->second;
+      }
+      if (is_new) {
+        if (std::ofstream ofs(dir + "/" + std::to_string(sid) + ".dot");
+            ofs.is_open()) {
+          successor.print_dataset_format(ofs);
+        }
+        states.push_back(std::move(successor));
+      }
+      std::cout << "@@ " << sid << " " << action.get_name() << " " << goal
+                << " " << is_new << "\n";
+    }
+    std::cout << "@@end" << std::endl;
+  }
+  return false;
 }
 
 template <StateRepresentation StateRepr, SearchStrategy<StateRepr> Strategy>

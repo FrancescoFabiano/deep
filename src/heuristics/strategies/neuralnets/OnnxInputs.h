@@ -49,8 +49,13 @@ Ort::Env &env();
  * a CUDA-capable ONNX Runtime) and fails otherwise; auto (default) uses CUDA
  * when the build has it and falls back to the CPU with a warning.
  * Prints the device it settled on.
+ *
+ * \param device Overrides --onnx_device for this session when not empty
+ * ("cpu", "cuda" or "auto"); the learned ranker uses it to keep small states
+ * on the CPU and large ones on the GPU (--ranker_model_gpu).
  */
-void configure_session(Ort::SessionOptions &options);
+void configure_session(Ort::SessionOptions &options,
+                       const std::string &device = "");
 
 /**
  * \brief Run options for inference: per-run logging stays at warnings even

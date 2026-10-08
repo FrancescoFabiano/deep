@@ -268,6 +268,9 @@ Output directories follow the selected mode:
 | RL beam search (`nn` build) | add `-s RL -u RL_H --RL_model rl_F<F>.onnx --RL_fringe_size F` |
 | Choose where the networks run (`nn` build) | add `--onnx_device cpu`, `cuda` (fails without CUDA) or `auto` (default); `--onnx_placement` prints the CPU/CUDA placement of every model node |
 | Keep the networks on one CPU thread | add `--onnx_threads 1` |
+| Learned sibling ranker, best-first search (`nn` build) | add `-s HFS -u GNN --ranker_model exp/gnn_epddl/models/cpu` |
+| Learned sibling ranker, large states on the GPU (`nn use_gpu` build) | also add `--ranker_model_gpu exp/gnn_epddl/models/gpu` (states with at least `--ranker_gpu_edges`, default 10000, edges go to the GPU) |
+| Learned sibling ranker inside the RL beam (`nn` build) | add `-s RL -u RL_H --RL_fringe_size F --ranker_model exp/gnn_epddl/models/cpu` |
 
 ### Example commands
 
@@ -412,6 +415,33 @@ The representation describes the epistemic state itself—including its graph st
 
 The effectiveness of a trained model nevertheless depends on its training distribution and should be evaluated on the target domains.
 
+#### Learned sibling ranker (`--ranker_model`)
+
+A second learned heuristic ranks the successors of a state. The network
+(`lib/gnn_epddl`) is trained on small generated instances by pairwise ranking
+of siblings, and reads each epistemic state as a graph built directly from the
+Kripke structure:
+
+- the goal tree, its operator nodes typed by operator;
+- the designated worlds and the belief edges, typed by agent rank;
+- an edge from every world to each positive fluent true in it;
+- the arguments of every fluent, with predicate names hidden, so one model can
+  be applied to domains it was not trained on.
+
+`--ranker_model` takes an ONNX model or a folder holding
+`per-domain/<domain name>.onnx` (and `general.onnx` as a fallback). The ranker
+guides greedy best-first search (`-s HFS -u GNN`) or ranks the beam of the RL
+search (`-s RL -u RL_H`). Each model ships in two exports with the same
+scores: `models/cpu` sums the messages of each node with a running sum, which
+is faster on the CPU; `models/gpu` is the standard export for CUDA. With
+`--ranker_model_gpu`, states with many edges are scored on the GPU and small
+ones on the CPU. `--ranker_encoding` writes the same encoding into the dataset
+files that the training code reads, and `--expand_server` lets the training
+code drive the planner's expansions for its validation searches.
+
+Training, model selection, export and the experiments are described in
+`exp/gnn_epddl/README.md`.
+
 ### mA* heuristics
 
 > **Note:** Specialized heuristics designed for the mA* fragment should currently be used only for tasks known to satisfy the assumptions required by those heuristics.
@@ -443,6 +473,10 @@ figures) are driven by one script over a trial folder, see `exp/trials/README.md
 ```bash
 python scripts/trial.py all exp/trials/basic
 ```
+
+The learned sibling ranker has its own pipeline (instance generation, data,
+training, selection, export, runs on the IPC benchmarks), see
+`exp/gnn_epddl/README.md`.
 
 ---
 
@@ -484,11 +518,13 @@ deep/
 │   ├── plank/               EPDDL / DEL infrastructure
 │   ├── CLI11/
 │   ├── xxHash/
-│   └── onnxruntime/         optional NN runtime
+│   ├── onnxruntime/         optional NN runtime
+│   └── gnn_epddl/           learned sibling ranker: generators, training, export
 │
 ├── exp/
 │   ├── ipc2026-benchmarks/  EPDDL benchmark suite (submodule)
-│   └── trials/              learning experiments, one folder + trial.toml each
+│   ├── trials/              learning experiments, one folder + trial.toml each
+│   └── gnn_epddl/           ranker instances, split, models, replication scripts
 │
 ├── scripts/
 │   ├── trial.py             data -> train -> infer -> report over a trial

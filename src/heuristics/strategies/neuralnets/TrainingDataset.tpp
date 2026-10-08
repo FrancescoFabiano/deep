@@ -443,6 +443,12 @@ void TrainingDataset<StateRepr>::generate_goal_subtree(
     const bool force_non_binary_ids) {
   size_t current_node_id = ++next_id;
   std::string node_name;
+  // Goal operator of each node of the goal tree, as written (ranker encoding).
+  auto record_op = [&](const std::string &node, const char *op) {
+    if (!force_non_binary_ids) {
+      m_goal_ops.emplace_back(to_binary_string(force_non_binary_ids, node), op);
+    }
+  };
 
   switch (to_print.get_formula_type()) {
   case BeliefFormulaType::FLUENT_FORMULA: {
@@ -450,6 +456,7 @@ void TrainingDataset<StateRepr>::generate_goal_subtree(
     if (to_print.get_fluent_formula().size() > 1) {
       // REMOVE LETTERS node_name = "F_OR" + std::to_string(current_node_id);
       node_name = std::to_string(current_node_id);
+      record_op(node_name, "FOR");
       current_node_id = ++next_id;
       // ofs << "  " << node_name << " [label=\"" << current_node_id <<
       // "\"];\n";
@@ -465,6 +472,7 @@ void TrainingDataset<StateRepr>::generate_goal_subtree(
       if (fls_set.size() > 1) {
         // REMOVE LETTERS node_name = "F_AND" + std::to_string(current_node_id);
         node_name = std::to_string(current_node_id);
+        record_op(node_name, "FAND");
         current_node_id = ++next_id;
         // ofs << "  " << node_name << " [label=\"" << current_node_id <<
         // "\"];\n";
@@ -491,6 +499,7 @@ void TrainingDataset<StateRepr>::generate_goal_subtree(
   case BeliefFormulaType::BELIEF_FORMULA: {
     // REMOVE LETTERS node_name = "B" + std::to_string(current_node_id);
     node_name = std::to_string(current_node_id);
+    record_op(node_name, "B");
     // ofs << "  " << node_name << " [label=\"" << current_node_id << "\"];\n";
     os << "  " << to_binary_string(force_non_binary_ids, parent_node) << " -> "
        << to_binary_string(force_non_binary_ids, node_name) << " [label=\""
@@ -518,6 +527,7 @@ void TrainingDataset<StateRepr>::generate_goal_subtree(
   case BeliefFormulaType::C_FORMULA: {
     // REMOVE LETTERS node_name = "C" + std::to_string(current_node_id);
     node_name = std::to_string(current_node_id);
+    record_op(node_name, "C");
     // ofs << "  " << node_name << " [label=\"" << current_node_id << "\"];\n";
     os << "  " << to_binary_string(force_non_binary_ids, parent_node) << " -> "
        << to_binary_string(force_non_binary_ids, node_name) << " [label=\""
@@ -560,6 +570,10 @@ void TrainingDataset<StateRepr>::generate_goal_subtree(
 
     // REMOVE LETTERS node_name = node_name + std::to_string(current_node_id);
     node_name = std::to_string(current_node_id);
+    record_op(node_name,
+              to_print.get_operator() == BeliefFormulaOperator::BF_NOT   ? "NOT"
+              : to_print.get_operator() == BeliefFormulaOperator::BF_AND ? "AND"
+                                                                         : "OR");
     // ofs << "  " << node_name << " [label=\"" << current_node_id << "\"];\n";
     os << "  " << to_binary_string(force_non_binary_ids, parent_node) << " -> "
        << to_binary_string(force_non_binary_ids, node_name) << " [label=\""
@@ -579,6 +593,7 @@ void TrainingDataset<StateRepr>::generate_goal_subtree(
     // E_G phi is written as the conjunction of B_a phi for a in G (reusing the
     // BELIEF_FORMULA encoding), so it stays distinct from C_G phi.
     node_name = std::to_string(current_node_id);
+    record_op(node_name, "E");
     os << "  " << to_binary_string(force_non_binary_ids, parent_node) << " -> "
        << to_binary_string(force_non_binary_ids, node_name) << " [label=\""
        << goal_counter << "\"];\n";
@@ -597,6 +612,7 @@ void TrainingDataset<StateRepr>::generate_goal_subtree(
   case BeliefFormulaType::TRUE_FORMULA: {
     // Leaf node with no children
     node_name = std::to_string(current_node_id);
+    record_op(node_name, "TRUE");
     os << "  " << to_binary_string(force_non_binary_ids, parent_node) << " -> "
        << to_binary_string(force_non_binary_ids, node_name) << " [label=\""
        << goal_counter << "\"];\n";
@@ -607,6 +623,8 @@ void TrainingDataset<StateRepr>::generate_goal_subtree(
     // Written as NOT(TRUE) so that it differs from TRUE
     node_name = std::to_string(current_node_id);
     const std::string true_leaf = std::to_string(++next_id);
+    record_op(node_name, "NOT");
+    record_op(true_leaf, "TRUE");
     os << "  " << to_binary_string(force_non_binary_ids, parent_node) << " -> "
        << to_binary_string(force_non_binary_ids, node_name) << " [label=\""
        << goal_counter << "\"];\n";

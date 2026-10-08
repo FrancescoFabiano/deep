@@ -5,6 +5,7 @@
 #ifdef USE_NEURALNETS
 #include "neuralnets/FringeEvalRL.h"
 #include "neuralnets/GraphNN.h"
+#include "neuralnets/RankerGNN.h"
 #endif
 
 template <StateRepresentation StateRepr>
@@ -141,6 +142,9 @@ int HeuristicsManager<StateRepr>::get_heuristic_value(
   }
   case Heuristics::GNN: {
 #ifdef USE_NEURALNETS
+    if (RankerGNN<StateRepr>::enabled()) {
+      return RankerGNN<StateRepr>::get_instance().get_score(eState);
+    }
     return GraphNN<StateRepr>::get_instance().get_score(eState);
     break;
 #else

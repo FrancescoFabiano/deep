@@ -53,7 +53,8 @@ Ort::RunOptions &run_options() {
   return options;
 }
 
-void configure_session(Ort::SessionOptions &options) {
+void configure_session(Ort::SessionOptions &options,
+                       const std::string &device_override) {
   const auto &parser = ArgumentParser::get_instance();
   auto &os = parser.get_output_stream();
 
@@ -66,7 +67,8 @@ void configure_session(Ort::SessionOptions &options) {
     options.SetLogSeverityLevel(ORT_LOGGING_LEVEL_VERBOSE);
   }
 
-  const std::string &device = parser.get_onnx_device();
+  const std::string &device =
+      device_override.empty() ? parser.get_onnx_device() : device_override;
   if (device == "cpu") {
     os << "[ONNX] device: CPU" << std::endl;
     return;
@@ -105,9 +107,12 @@ void configure_session(Ort::SessionOptions &options) {
       "deep was built without CUDA (rebuild with: build.sh nn use_gpu)";
 #endif
   if (device == "cuda") {
-    ExitHandler::exit_with_message(
-        ExitHandler::ExitCode::ArgParseError,
-        "--onnx_device cuda: CUDA is not available: " + failure);
+    ExitHandler::exit_with_message(ExitHandler::ExitCode::ArgParseError,
+                                   (device_override.empty()
+                                        ? "--onnx_device cuda"
+                                        : "--ranker_model_gpu") +
+                                       std::string(": CUDA is not available: ") +
+                                       failure);
   }
 #ifdef USE_CUDA
   os << "[WARNING][ONNX] CUDA unavailable, using the CPU: " << failure

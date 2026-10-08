@@ -9,6 +9,7 @@
 
 #include "BestFirst.h"
 #include "neuralnets/FringeEvalRL.h"
+#include "neuralnets/RankerGNN.h"
 
 enum class RefillMode { RANDOM, HEURISTIC };
 
@@ -77,8 +78,26 @@ public:
       return;
     }
 
-    const std::vector<float> heuristic_values =
-        FringeEvalRL<StateRepr>::get_instance().get_score(batch);
+    // With the learned sibling ranker (--ranker_model) the beam is ranked by
+    // it instead of the RL network, as relative ranks within the beam (0 =
+    // best, ties by beam position), so the beam and its reservoir behave as
+    // with the RL frontier ranker.
+    std::vector<float> heuristic_values;
+    if (RankerGNN<StateRepr>::enabled()) {
+      std::vector<std::pair<int, std::size_t>> h;
+      h.reserve(batch.size());
+      for (std::size_t i = 0; i < batch.size(); ++i) {
+        h.emplace_back(RankerGNN<StateRepr>::get_instance().get_score(batch[i]),
+                       i);
+      }
+      std::sort(h.begin(), h.end());
+      heuristic_values.assign(batch.size(), 0.0f);
+      for (std::size_t r = 0; r < h.size(); ++r) {
+        heuristic_values[h[r].second] = static_cast<float>(r);
+      }
+    } else {
+      heuristic_values = FringeEvalRL<StateRepr>::get_instance().get_score(batch);
+    }
 
     for (std::size_t i = 0; i < batch.size(); ++i) {
       batch[i].set_heuristic_value(heuristic_values[i]);

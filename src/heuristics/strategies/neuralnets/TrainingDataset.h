@@ -8,6 +8,8 @@
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
+#include <vector>
 
 /// \brief Random device for seeding the random number generator.
 inline std::random_device rd;
@@ -31,6 +33,18 @@ inline std::uniform_real_distribution<> m_dis(0.0, 1.0);
  */
 template <StateRepresentation StateRepr> class TrainingDataset {
 public:
+  /** \brief Node id of a fluent in the dataset DOT (ranker encoding). */
+  [[nodiscard]] size_t ranker_fluent_id(const Fluent &f) const {
+    return get_unique_f_id_from_map(f);
+  }
+  /**
+   * \brief Goal operator of each goal-tree node, as written in the dataset
+   * DOT: (node id, FOR | FAND | B | C | E | NOT | AND | OR | TRUE).
+   */
+  [[nodiscard]] const std::vector<std::pair<std::string, std::string>> &
+  get_goal_ops() const {
+    return m_goal_ops;
+  }
   /**
    * \brief Get the singleton instance of TrainingDataset.
    * \return Reference to the singleton instance.
@@ -132,6 +146,9 @@ private:
 
   // --- Singleton instance ---
   // static TrainingDataset *instance; ///< Singleton instance pointer
+
+  std::vector<std::pair<std::string, std::string>>
+      m_goal_ops; ///< Goal-tree node id -> operator (get_goal_ops()).
 
   // --- Dataset and file management ---
   std::string m_folder;
