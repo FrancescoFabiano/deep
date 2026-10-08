@@ -571,9 +571,10 @@ void TrainingDataset<StateRepr>::generate_goal_subtree(
     // REMOVE LETTERS node_name = node_name + std::to_string(current_node_id);
     node_name = std::to_string(current_node_id);
     record_op(node_name,
-              to_print.get_operator() == BeliefFormulaOperator::BF_NOT   ? "NOT"
-              : to_print.get_operator() == BeliefFormulaOperator::BF_AND ? "AND"
-                                                                         : "OR");
+              to_print.get_operator() == BeliefFormulaOperator::BF_NOT ? "NOT"
+              : to_print.get_operator() == BeliefFormulaOperator::BF_AND
+                  ? "AND"
+                  : "OR");
     // ofs << "  " << node_name << " [label=\"" << current_node_id << "\"];\n";
     os << "  " << to_binary_string(force_non_binary_ids, parent_node) << " -> "
        << to_binary_string(force_non_binary_ids, node_name) << " [label=\""

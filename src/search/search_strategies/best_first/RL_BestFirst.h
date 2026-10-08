@@ -96,7 +96,8 @@ public:
         heuristic_values[h[r].second] = static_cast<float>(r);
       }
     } else {
-      heuristic_values = FringeEvalRL<StateRepr>::get_instance().get_score(batch);
+      heuristic_values =
+          FringeEvalRL<StateRepr>::get_instance().get_score(batch);
     }
 
     for (std::size_t i = 0; i < batch.size(); ++i) {

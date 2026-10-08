@@ -107,12 +107,11 @@ void configure_session(Ort::SessionOptions &options,
       "deep was built without CUDA (rebuild with: build.sh nn use_gpu)";
 #endif
   if (device == "cuda") {
-    ExitHandler::exit_with_message(ExitHandler::ExitCode::ArgParseError,
-                                   (device_override.empty()
-                                        ? "--onnx_device cuda"
-                                        : "--ranker_model_gpu") +
-                                       std::string(": CUDA is not available: ") +
-                                       failure);
+    ExitHandler::exit_with_message(
+        ExitHandler::ExitCode::ArgParseError,
+        (device_override.empty() ? "--onnx_device cuda"
+                                 : "--ranker_model_gpu") +
+            std::string(": CUDA is not available: ") + failure);
   }
 #ifdef USE_CUDA
   os << "[WARNING][ONNX] CUDA unavailable, using the CPU: " << failure

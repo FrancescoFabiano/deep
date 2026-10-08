@@ -99,8 +99,7 @@ private:
 
   std::map<std::string, int64_t> m_vocab;
   int64_t m_next_id = 0;
-  bool m_anon = false, m_drop_holds = false, m_ops = false,
-       m_root_set = false;
+  bool m_anon = false, m_drop_holds = false, m_ops = false, m_root_set = false;
   double m_scale = 1000.0;
   std::unordered_map<std::string, std::string> m_names;
   std::vector<std::string> m_name_order;

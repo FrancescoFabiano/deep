@@ -462,11 +462,11 @@ private:
    * @brief Threads ONNX Runtime may use per model evaluation (0 = its default).
    */
   int m_onnx_threads = 0;
-  std::string m_ranker_model; ///< --ranker_model, resolved to a file.
+  std::string m_ranker_model;     ///< --ranker_model, resolved to a file.
   std::string m_ranker_model_gpu; ///< --ranker_model_gpu, resolved to a file.
   int m_ranker_gpu_edges = 10000; ///< --ranker_gpu_edges.
   bool m_ranker_encoding = false; ///< --ranker_encoding.
-  std::string m_expand_server; ///< --expand_server folder (empty: off).
+  std::string m_expand_server;    ///< --expand_server folder (empty: off).
 
   /**
    * @brief Batch size of the batched GNN heuristic (0 = per-state model).

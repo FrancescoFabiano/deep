@@ -173,7 +173,8 @@ void ArgumentParser::parse(int argc, char **argv) {
     // A folder holds per-domain/<domain name>.onnx (the name after "domain" in
     // the domain file) and general.onnx, used when the domain has none.
     namespace fs = std::filesystem;
-    const auto resolve_ranker = [&](std::string &model, const std::string &flag) {
+    const auto resolve_ranker = [&](std::string &model,
+                                    const std::string &flag) {
       if (fs::is_directory(model)) {
         std::ifstream in(m_domain_file);
         std::stringstream text;
@@ -181,9 +182,9 @@ void ArgumentParser::parse(int argc, char **argv) {
         const std::string s = text.str();
         std::smatch m;
         std::string name;
-        if (std::regex_search(s, m,
-                              std::regex(R"(\(\s*domain\s+([^\s()]+))",
-                                         std::regex::icase))) {
+        if (std::regex_search(
+                s, m,
+                std::regex(R"(\(\s*domain\s+([^\s()]+))", std::regex::icase))) {
           name = m[1];
         }
         const fs::path own = fs::path(model) / "per-domain" / (name + ".onnx"),

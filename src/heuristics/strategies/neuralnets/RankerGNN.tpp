@@ -9,8 +9,7 @@
 #include <set>
 #include <sstream>
 
-template <StateRepresentation StateRepr>
-RankerGNN<StateRepr>::RankerGNN() {
+template <StateRepresentation StateRepr> RankerGNN<StateRepr>::RankerGNN() {
   const auto &parser = ArgumentParser::get_instance();
   const std::string &model = parser.get_ranker_model();
   const std::string &gpu_model = parser.get_ranker_model_gpu();
@@ -18,8 +17,8 @@ RankerGNN<StateRepr>::RankerGNN() {
   // With a GPU model the CPU session stays on the CPU whatever --onnx_device
   // says: small states are cheaper there than a GPU call.
   onnx_runtime::configure_session(m_options, gpu_model.empty() ? "" : "cpu");
-  m_session = std::make_unique<Ort::Session>(onnx_runtime::env(),
-                                             model.c_str(), m_options);
+  m_session = std::make_unique<Ort::Session>(onnx_runtime::env(), model.c_str(),
+                                             m_options);
   if (!gpu_model.empty()) {
     onnx_runtime::configure_session(m_gpu_options, "cuda");
     m_gpu_session = std::make_unique<Ort::Session>(
@@ -38,7 +37,8 @@ void RankerGNN<StateRepr>::set_root(const State<StateRepr> &root) {
     if (!m_names.contains(id)) {
       m_name_order.push_back(id);
     }
-    m_names[id] = HelperPrint::get_instance().get_grounder().deground_fluent(fl);
+    m_names[id] =
+        HelperPrint::get_instance().get_grounder().deground_fluent(fl);
   }
   std::set<long long> labels;
   for (const auto &[from_pw, from_map] :
@@ -155,9 +155,9 @@ void RankerGNN<StateRepr>::read_sidecar(const std::string &path) {
       m_scale = static_cast<double>(v);
     } else if (k[0] == '#') {
       if (v != 0) {
-        ExitHandler::exit_with_message(
-            ExitHandler::ExitCode::GNNFileError,
-            "[RankerGNN] " + path + ": unsupported model option " + k);
+        ExitHandler::exit_with_message(ExitHandler::ExitCode::GNNFileError,
+                                       "[RankerGNN] " + path +
+                                           ": unsupported model option " + k);
       }
     } else {
       m_vocab[k] = v;
@@ -313,7 +313,8 @@ RankerGNN<StateRepr>::build_edges(const std::vector<Edge> &E) {
     if (is_world(e.u) && is_world(e.v)) {
       const auto a = m_agents.find(e.l);
       add(e.u, e.v,
-          "B" + std::to_string(std::min(a == m_agents.end() ? 7 : a->second, 7)));
+          "B" +
+              std::to_string(std::min(a == m_agents.end() ? 7 : a->second, 7)));
     } else if (e.l == "2") {
       add(e.u, e.v, "togoal");
     } else if (e.l == "3") {
