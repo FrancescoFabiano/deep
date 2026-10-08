@@ -1,0 +1,44 @@
+(define (problem g-bw-07-s2)  ;; generated: 7 blocks, seed 2 (training/validation only)
+    (:domain blocks-world)
+
+    (:requirements
+        :finitary-S5-theories :typing :lists
+    )
+
+    (:objects
+        b1 b2 b3 b4 b5 b6 b7 - block
+    )
+
+    (:init
+        :worlds
+            (w)
+        :relations
+            (Robot (w w))
+        :labels
+            (w
+                (:and
+                    (on-table b4)
+                    (on b6 b4)
+                    (clear b6)
+                    (on-table b3)
+                    (on b2 b3)
+                    (on b1 b2)
+                    (on b5 b1)
+                    (on b7 b5)
+                    (clear b7)
+                    (arm-empty)) )
+        :designated (w)
+    )
+
+    (:goal
+        (and
+            (on-table b3)
+            (on b1 b3)
+            (on-table b6)
+            (on b4 b6)
+            (on b5 b4)
+            (on b2 b5)
+            (on b7 b2)
+        )
+    )
+)

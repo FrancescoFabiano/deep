@@ -1,0 +1,57 @@
+(define (action-type-library basic)
+    (:requirements
+        :lists :list-comprehensions
+        :partial-observability :multi-pointed-models :events-conditions
+    )
+
+    ;--------------------ONTIC------------------
+
+    (:action-type public-ontic
+        :events     (?pos)
+        :observability-types (Fully)
+        :relations  (Fully (:forall (?e - event) (?e ?e)))
+        :designated (?pos)
+        :conditions (?pos (:non-trivial-postconditions))
+    )
+
+    ;--------------------SENSING------------------
+
+    (:action-type public-sensing
+        :events     (?pos ?neg)
+        :observability-types (Fully)
+        :relations  (Fully (:forall (?e - event) (?e ?e)))
+        :designated (?pos ?neg)
+        :conditions (?pos (:trivial-postconditions)
+                     ?neg (:trivial-postconditions) )
+    )
+
+    (:action-type semi-private-sensing
+        :events     (?pos ?neg)
+        :observability-types (Fully Partially)
+        :relations  (Fully     (:forall (?e    - event) (?e ?e))
+                     Partially (:forall (?e ?f - event) (?e ?f)) )
+        :designated (?pos ?neg)
+        :conditions (?pos (:trivial-postconditions)
+                     ?neg (:trivial-postconditions) )
+    )
+
+    ;--------------------ANNOUNCEMENT------------------
+
+    (:action-type public-announcement
+        :events     (?pos)
+        :observability-types (Fully)
+        :relations  (Fully (?pos ?pos))
+        :designated (?pos)
+        :conditions (?pos (:trivial-postconditions) )
+    )
+
+    (:action-type semi-private-announcement
+        :events     (?pos ?neg)
+        :observability-types (Fully Partially)
+        :relations  (Fully     (:forall (?e    - event) (?e ?e))
+                     Partially (:forall (?e ?f - event) (?e ?f)) )
+        :designated (?pos)
+        :conditions (?pos (:trivial-postconditions)
+                     ?neg (:trivial-postconditions) )
+    )
+)

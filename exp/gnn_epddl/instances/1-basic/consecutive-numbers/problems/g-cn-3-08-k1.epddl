@@ -1,0 +1,67 @@
+(define (problem g-cn-3-08-k1)    ;; 3 agents, N = 8 (generated)
+    (:domain consecutive-numbers)
+
+    (:requirements
+        :typing :equality :list-comprehensions :facts :finitary-S5-theories
+        :negative-list-formulas :modal-goals
+    )
+
+    (:objects
+        n0 n1 n2 n3 n4 n5 n6 n7 n8 - number
+    )
+
+    (:agents
+        A B C
+    )
+
+    (:facts-init
+        (consecutive n0 n1) (consecutive n1 n2) (consecutive n2 n3) (consecutive n3 n4) (consecutive n4 n5) (consecutive n5 n6) (consecutive n6 n7) (consecutive n7 n8)
+        (assignable A n0) (assignable B n1) (assignable C n2) (assignable A n3) (assignable B n4) (assignable C n5) (assignable A n6) (assignable B n7) (assignable C n8)
+    )
+
+    (:init
+        (:and
+            ; Actual assignment
+            (has A n3)
+            (has B n4)
+            (has C n5)
+            ; A, B and C have each an assignable number, and the numbers are consecutive
+            ([C. All]
+                (and
+                    (exists (?i1 ?i2 ?i3 - agent
+                             ?n1 ?n2 ?n3 - number |
+                        (and
+                            (assignable  ?i1 ?n1)
+                            (assignable  ?i2 ?n2)
+                            (assignable  ?i3 ?n3)
+                            (consecutive ?n1 ?n2)
+                            (consecutive ?n2 ?n3) ))
+                        (and
+                            (has ?i1 ?n1)
+                            (has ?i2 ?n2)
+                            (has ?i3 ?n3) ))
+                    (forall (?i - agent
+                             ?n - number |
+                                (not (assignable ?i ?n)) )
+                        (not (has ?i ?n)) )))
+            ; Agents have at most one number
+            ([C. All]
+                (forall (?i - agent
+                         ?m ?n - number |
+                            (/= ?m ?n))
+                    (imply
+                        (has ?i ?m)
+                        (not (has ?i ?n)) )))
+            ; Agents know their number
+            (:forall (?i - agent
+                      ?n - number)
+                ([C. All]
+                    ([Kw. ?i] (has ?i ?n)) )))
+    )
+
+    (:goal
+        (and
+            ([B] ([All] (has B n4)))
+            ([C] ([All] (has C n5))) )
+    )
+)

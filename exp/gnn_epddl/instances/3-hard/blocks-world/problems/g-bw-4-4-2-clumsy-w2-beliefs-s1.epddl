@@ -1,0 +1,107 @@
+(define (problem g-bw-4-4-2-clumsy-w2-beliefs-s1)      ;; generated: 4 agents (2 clumsy); 4 blocks; 2 tables; 2 worlds; goal beliefs; seed 1 (training/validation only)
+    (:domain blocks-world)
+
+    (:requirements
+        :finitary-S5-theories :typing :equality
+        :lists :list-comprehensions :facts
+        :negative-goals :modal-goals :disjunctive-list-formulas
+    )
+
+    (:objects
+        b1 b2 b3 b4 - block
+        t1 t2 - table
+    )
+
+    (:agents
+        A B - precise-agent
+        C D - clumsy-agent
+    )
+
+    (:facts-init
+        (at A t1)
+        (at B t2)
+        (at C t1)
+        (at C t2)
+        (at D t1)
+        (at D t2)
+    )
+
+    (:init
+        :worlds
+            (w1 w2)
+        :relations
+            (A (:forall (?w1 ?w2 - world) (?w1 ?w2))
+             B (:forall (?w - world) (?w ?w))
+             C (:forall (?w - world) (?w ?w))
+             D (:forall (?w - world) (?w ?w)) )
+        :labels
+            (w1
+                (:and
+                    (focused-on A A)
+                    (focused-on B B)
+                    (focused-on C C)
+                    (focused-on D D)
+                    (can-move A b1)
+                    (can-move A b2)
+                    (can-move A b3)
+                    (can-move A b4)
+                    (can-move C b1)
+                    (can-move C b2)
+                    (can-move C b3)
+                    (can-move C b4)
+                    (can-move D b1)
+                    (can-move D b2)
+                    (can-move D b3)
+                    (can-move D b4)
+                    (on-table b4 t1)
+                    (on b3 b4)
+                    (on b2 b3)
+                    (clear b2)
+                    (on-table b1 t2)
+                    (clear b1)
+                    (arm-empty A)
+                    (arm-empty B)
+                    (arm-empty C)
+                    (arm-empty D)
+                )
+             w2
+                (:and
+                    (focused-on A A)
+                    (focused-on B B)
+                    (focused-on C C)
+                    (focused-on D D)
+                    (can-move A b1)
+                    (can-move A b2)
+                    (can-move A b3)
+                    (can-move A b4)
+                    (can-move C b1)
+                    (can-move C b2)
+                    (can-move C b3)
+                    (can-move C b4)
+                    (can-move D b1)
+                    (can-move D b2)
+                    (can-move D b3)
+                    (can-move D b4)
+                    (on-table b4 t1)
+                    (clear b4)
+                    (on-table b1 t2)
+                    (on b2 b1)
+                    (on b3 b2)
+                    (clear b3)
+                    (arm-empty A)
+                    (arm-empty B)
+                    (arm-empty C)
+                    (arm-empty D)
+                )
+            )
+        :designated (w1)
+    )
+
+    (:goal
+        (and
+            (on b1 b3)
+            ([D] (on-table b4 t2))
+            ([B] (on b2 b4))
+        )
+    )
+)

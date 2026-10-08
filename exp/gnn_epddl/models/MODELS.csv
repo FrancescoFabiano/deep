@@ -1,0 +1,21 @@
+model,training_families,seeds_trained,schedule,selected_seed,selected_epoch,validation_solved,validation_log10_nodes,md5_cpu,md5_gpu,note
+per-domain/active-muddy-child,active-muddy-child,"0,1,2","50 epochs, validation every 10",1,50,4/4,3.908,9113cda88a8fd3e419add89495c6637b,002d53fa827234094ac836d79be51cfc,
+per-domain/blocks-world,blocks-world,"0,1,2","50 epochs, validation every 10",2,40,5/6,13.514,dfaf15506fbb8b570d83a7157e20a28f,e643869183f45ff32ccb0ad08bf0956f,
+per-domain/cloud-scheduling,cloud-scheduling,"0,1,2","50 epochs, validation every 10",2,50,2/2,4.121,f4b48cf92e4ecb3b9cb261229bd4df44,316ea25ae74e319acbce6ae4905c9488,
+per-domain/consecutive-numbers,consecutive-numbers,"0,1,2","50 epochs, validation every 10",0,50,2/2,2.38,a6ddf5f8810083f86694f697d6e8781f,840036664b8c52aa4dce435c5d02eac4,
+per-domain/gossip,gossip,"0,1,2","50 epochs, validation every 10",2,20,7/7,7.332,1148213980d8f49d938ed828c51ed361,b4698ee774d50d6c366fdb63b2439629,
+per-domain/search-and-rescue,search-and-rescue,"0,1,2","50 epochs, validation every 10",2,40,4/4,4.766,612ec626add06aebcd08edb2a0ae97c9,299789ab986dba8c2223d8cb416458e6,
+per-domain/selective-communication,selective-communication,"0,1,2","50 epochs, validation every 10",0,10,2/2,1.556,9d6c497bab4dd806815557c3eaaf0ba0,c5ce4caac06d50e3ad81a9db68cebad0,
+general,all seven,0,"50 epochs, validation every 10",0,40,26/27,45.725,3eb3e23d5be89816f7e6addad8c854b5,00e017129b9a2abf713a4560d7659774,placeholder: trained with the first cloud-scheduling rows; to be replaced by the retraining on split.csv
+no-physical,"gossip, selective-communication, active-muddy-child, consecutive-numbers",0,"50 epochs, validation every 10",0,30,14/15,19.337,8154e23c16517ffed1e1f6760fbf0357,a8580dad803be8b01d99cf038ce09de7,
+no-puzzle,"gossip, selective-communication, blocks-world, search-and-rescue, cloud-scheduling",0,"50 epochs, validation every 10",0,50,18/21,35.383,44ed139488b4a8db406a9d7e553f63ee,95931d395a3cacca429d813a901e22d9,placeholder: trained with the first cloud-scheduling rows; to be replaced by the retraining on split.csv
+no-spreading,"active-muddy-child, consecutive-numbers, blocks-world, search-and-rescue, cloud-scheduling",0,"50 epochs, validation every 10",0,10,17/18,33.963,a5c56bc0b7b572506c34099aeae264f2,1452a616e499c87959b9683a2341b795,placeholder: trained with the first cloud-scheduling rows; to be replaced by the retraining on split.csv
+subset,"search-and-rescue, cloud-scheduling, blocks-world",0,"50 epochs, validation every 10",0,10,12/12,21.94,8dbb9e304db402cd2211c641318ccf2b,0804901c13ef1c666b17a8a5f9eec0f9,placeholder: trained with the first cloud-scheduling rows; to be replaced by the retraining on split.csv
+sub-family/blocks-world-classical,blocks-world-classical (sub-family),"0,1,2","30 epochs, validation every 5",0,20,2/2,2.592,11c79625f192dcfc4faa296eb5c7d684,cfb9c9fe2751f4a26583e0513f572ed7,
+sub-family/blocks-world-clumsy,blocks-world-clumsy (sub-family),"0,1,2","30 epochs, validation every 5",2,10,2/2,5.777,125d605cfa8b614a3046c331a5c40852,cf98bf733452a11a7b6d53598b9a8934,
+sub-family/blocks-world-epistemic,blocks-world-epistemic (sub-family),"0,1,2","30 epochs, validation every 5",0,25,2/2,5.174,844acdb45c9fbec31f10fa5a48047c22,be617eda6f92c6dcb03c44e37c2e8b15,
+sub-family/gossip-all,gossip-all (sub-family),"0,1,2","30 epochs, validation every 5",0,30,2/2,2.732,bb01b5cb061d70ca025a330e7ec981e5,bde94ad6f161c9ca597a40b5885f1bf2,
+sub-family/gossip-all-deceived,gossip-all-deceived (sub-family),"0,1,2","30 epochs, validation every 5",1,30,2/2,2.188,aaff170bcd9c7a148501a520fa748796,b1b71a77c4b7013912eaee3a4f2ff7a4,
+sub-family/gossip-imp-deceived,gossip-imp-deceived (sub-family),"0,1,2","30 epochs, validation every 5",1,30,1/1,1.845,fa63aa4935c46caa878439767835ddfe,3ce051eb1b0d14e682dc4d16467f4859,
+sub-family/gossip-single,gossip-single (sub-family),"0,1,2","30 epochs, validation every 5",0,5,2/2,2.033,e0f67525ae28a0eae62d7f68a34f1a0d,a7818bf3f200810288da854cdb1780e5,
+untrained,none (control),0,not trained: the network as training initialises it (seed 0),0,0,,,5fa1988494d80e437ecf7a34ba709a2f,3926070d54d899f1f36e77cf7aca5d98,

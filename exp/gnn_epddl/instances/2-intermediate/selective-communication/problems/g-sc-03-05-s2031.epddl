@@ -1,0 +1,50 @@
+(define (problem g-sc-03-05-s2031)    ;; 3 agents; 5 rooms (generated, seed 2031)
+    (:domain selective-communication)
+
+    (:requirements
+        :typing :equality :list-comprehensions
+        :finitary-S5-theories :modal-goals :facts
+    )
+
+    (:agents
+        A B C
+    )
+
+    (:objects
+        room1 room2 room3 room4 room5 - room
+    )
+
+    (:facts-init
+        (neighbor room1 room2) (neighbor room2 room3) (neighbor room3 room4) (neighbor room4 room5)
+        (leftmost room1)
+        (rightmost room5)
+    )
+
+    (:init
+        :worlds (w-info w-not-info)
+        :relations
+            (A (:forall (?x ?y - world) (?x ?y))
+             B (:forall (?x ?y - world) (?x ?y))
+             C (:forall (?x ?y - world) (?x ?y)) )
+        :labels
+            (w-info
+                (:and
+                    (info)
+                    (at A room2) (at B room3) (at C room3)
+                    (close A B) (close A C) (close B A) (close B C) (close C A) (close C B)
+                    (:forall (?i - agent)
+                        (close ?i ?i) ))
+             w-not-info
+                (:and
+                    (at A room2) (at B room3) (at C room3)
+                    (close A B) (close A C) (close B A) (close B C) (close C A) (close C B)
+                    (:forall (?i - agent)
+                        (close ?i ?i) )))
+        :designated
+            (w-info)
+    )
+
+    (:goal
+        ([All] (info))
+    )
+)

@@ -1,0 +1,28 @@
+(define (problem g-gos-05-single-sh3s6)  ;; 5 agents
+    (:domain gossip)
+
+    (:requirements
+        :finitary-S5-theories :universal-goals :modal-goals
+    )
+
+    (:agents
+        A B C D E
+    )
+
+    (:init
+        (:and
+            ([C. All] ([Kw. A] (secret D)))
+            ([C. All] ([Kw. D] (secret E)))
+            ([C. All] ([Kw. E] (secret C)))
+            (forall (?i - agent)
+                (secret ?i) )
+            ;; It is common knowledge that each agent knows whether her secret holds
+            (:forall (?i - agent)
+                ([C. All] ([Kw. ?i] (secret ?i))) ))
+    )
+
+    (:goal
+        (forall (?i - agent)
+            ([Kw. A] (secret ?i)) )
+    )
+)

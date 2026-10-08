@@ -1,0 +1,40 @@
+(define (problem g-bw-05-s1)  ;; generated: 5 blocks, seed 1 (training/validation only)
+    (:domain blocks-world)
+
+    (:requirements
+        :finitary-S5-theories :typing :lists
+    )
+
+    (:objects
+        b1 b2 b3 b4 b5 - block
+    )
+
+    (:init
+        :worlds
+            (w)
+        :relations
+            (Robot (w w))
+        :labels
+            (w
+                (:and
+                    (on-table b3)
+                    (on b1 b3)
+                    (clear b1)
+                    (on-table b2)
+                    (on b4 b2)
+                    (on b5 b4)
+                    (clear b5)
+                    (arm-empty)) )
+        :designated (w)
+    )
+
+    (:goal
+        (and
+            (on-table b3)
+            (on b2 b3)
+            (on-table b5)
+            (on b1 b5)
+            (on-table b4)
+        )
+    )
+)

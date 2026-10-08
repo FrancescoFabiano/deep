@@ -1,0 +1,54 @@
+(define (problem g-sc-07-09-s2248)    ;; 7 agents; 9 rooms (generated, seed 2248)
+    (:domain selective-communication)
+
+    (:requirements
+        :typing :equality :list-comprehensions
+        :finitary-S5-theories :modal-goals :facts
+    )
+
+    (:agents
+        A B C D E F G
+    )
+
+    (:objects
+        room1 room2 room3 room4 room5 room6 room7 room8 room9 - room
+    )
+
+    (:facts-init
+        (neighbor room1 room2) (neighbor room2 room3) (neighbor room3 room4) (neighbor room4 room5) (neighbor room5 room6) (neighbor room6 room7) (neighbor room7 room8) (neighbor room8 room9)
+        (leftmost room1)
+        (rightmost room9)
+    )
+
+    (:init
+        :worlds (w-info w-not-info)
+        :relations
+            (A (:forall (?x ?y - world) (?x ?y))
+             B (:forall (?x ?y - world) (?x ?y))
+             C (:forall (?x ?y - world) (?x ?y))
+             D (:forall (?x ?y - world) (?x ?y))
+             E (:forall (?x ?y - world) (?x ?y))
+             F (:forall (?x ?y - world) (?x ?y))
+             G (:forall (?x ?y - world) (?x ?y)) )
+        :labels
+            (w-info
+                (:and
+                    (info)
+                    (at A room1) (at B room2) (at C room4) (at D room5) (at E room5) (at F room7) (at G room8)
+                    (close A B) (close B A) (close C D) (close C E) (close D C) (close D E) (close E C) (close E D) (close F G) (close G F)
+                    (:forall (?i - agent)
+                        (close ?i ?i) ))
+             w-not-info
+                (:and
+                    (at A room1) (at B room2) (at C room4) (at D room5) (at E room5) (at F room7) (at G room8)
+                    (close A B) (close B A) (close C D) (close C E) (close D C) (close D E) (close E C) (close E D) (close F G) (close G F)
+                    (:forall (?i - agent)
+                        (close ?i ?i) )))
+        :designated
+            (w-info)
+    )
+
+    (:goal
+        ([All] (info))
+    )
+)

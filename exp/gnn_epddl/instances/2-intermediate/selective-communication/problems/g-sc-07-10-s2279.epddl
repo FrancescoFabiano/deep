@@ -1,0 +1,54 @@
+(define (problem g-sc-07-10-s2279)    ;; 7 agents; 10 rooms (generated, seed 2279)
+    (:domain selective-communication)
+
+    (:requirements
+        :typing :equality :list-comprehensions
+        :finitary-S5-theories :modal-goals :facts
+    )
+
+    (:agents
+        A B C D E F G
+    )
+
+    (:objects
+        room1 room2 room3 room4 room5 room6 room7 room8 room9 room10 - room
+    )
+
+    (:facts-init
+        (neighbor room1 room2) (neighbor room2 room3) (neighbor room3 room4) (neighbor room4 room5) (neighbor room5 room6) (neighbor room6 room7) (neighbor room7 room8) (neighbor room8 room9) (neighbor room9 room10)
+        (leftmost room1)
+        (rightmost room10)
+    )
+
+    (:init
+        :worlds (w-info w-not-info)
+        :relations
+            (A (:forall (?x ?y - world) (?x ?y))
+             B (:forall (?x ?y - world) (?x ?y))
+             C (:forall (?x ?y - world) (?x ?y))
+             D (:forall (?x ?y - world) (?x ?y))
+             E (:forall (?x ?y - world) (?x ?y))
+             F (:forall (?x ?y - world) (?x ?y))
+             G (:forall (?x ?y - world) (?x ?y)) )
+        :labels
+            (w-info
+                (:and
+                    (info)
+                    (at A room4) (at B room6) (at C room7) (at D room7) (at E room7) (at F room8) (at G room9)
+                    (close B C) (close B D) (close B E) (close C B) (close C D) (close C E) (close C F) (close D B) (close D C) (close D E) (close D F) (close E B) (close E C) (close E D) (close E F) (close F C) (close F D) (close F E) (close F G) (close G F)
+                    (:forall (?i - agent)
+                        (close ?i ?i) ))
+             w-not-info
+                (:and
+                    (at A room4) (at B room6) (at C room7) (at D room7) (at E room7) (at F room8) (at G room9)
+                    (close B C) (close B D) (close B E) (close C B) (close C D) (close C E) (close C F) (close D B) (close D C) (close D E) (close D F) (close E B) (close E C) (close E D) (close E F) (close F C) (close F D) (close F E) (close F G) (close G F)
+                    (:forall (?i - agent)
+                        (close ?i ?i) )))
+        :designated
+            (w-info)
+    )
+
+    (:goal
+        ([All] (info))
+    )
+)

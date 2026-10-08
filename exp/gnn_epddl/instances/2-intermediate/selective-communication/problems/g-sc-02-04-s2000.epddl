@@ -1,0 +1,49 @@
+(define (problem g-sc-02-04-s2000)    ;; 2 agents; 4 rooms (generated, seed 2000)
+    (:domain selective-communication)
+
+    (:requirements
+        :typing :equality :list-comprehensions
+        :finitary-S5-theories :modal-goals :facts
+    )
+
+    (:agents
+        A B
+    )
+
+    (:objects
+        room1 room2 room3 room4 - room
+    )
+
+    (:facts-init
+        (neighbor room1 room2) (neighbor room2 room3) (neighbor room3 room4)
+        (leftmost room1)
+        (rightmost room4)
+    )
+
+    (:init
+        :worlds (w-info w-not-info)
+        :relations
+            (A (:forall (?x ?y - world) (?x ?y))
+             B (:forall (?x ?y - world) (?x ?y)) )
+        :labels
+            (w-info
+                (:and
+                    (info)
+                    (at A room1) (at B room2)
+                    (close A B) (close B A)
+                    (:forall (?i - agent)
+                        (close ?i ?i) ))
+             w-not-info
+                (:and
+                    (at A room1) (at B room2)
+                    (close A B) (close B A)
+                    (:forall (?i - agent)
+                        (close ?i ?i) )))
+        :designated
+            (w-info)
+    )
+
+    (:goal
+        ([All] (info))
+    )
+)

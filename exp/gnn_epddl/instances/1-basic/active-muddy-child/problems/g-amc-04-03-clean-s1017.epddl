@@ -1,0 +1,30 @@
+(define (problem g-amc-04-03-clean-s1017)  ;; 4 children; 3 are muddy; child 1 is not muddy (generated, seed 1017)
+    (:domain active-muddy-child)
+
+    (:requirements
+        :equality :list-comprehensions
+        :finitary-S5-theories :modal-goals
+    )
+
+    (:agents
+        Child1 Child2 Child3 Child4
+    )
+
+    (:init
+        (:and
+            ;; Muddy children
+            (muddy Child2) (muddy Child3) (muddy Child4)
+            ;; It is common knowledge that at least one child is muddy
+            ([C. All]
+                (exists (?i - agent)
+                    (muddy ?i) ))
+            ;; It is common knowledge that all children know whether the others are muddy
+            (:forall (?i ?j - agent | (/= ?i ?j))
+                ([C. All]
+                    ([Kw. ?i] (muddy ?j)) )))
+    )
+
+    (:goal
+        ([Kw. Child1] (muddy Child1))
+    )
+)
